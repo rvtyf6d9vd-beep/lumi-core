@@ -1,0 +1,254 @@
+# Lumi 通用项目规则（17 条）
+# 源自 Top Rules_Optimized.md 第三章
+
+rules:
+  # ── 3.1 可追溯性 ──
+  - id: "03"
+    title: "工作留痕"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, ai-infra]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      所有工作必须留痕，以备未来的跟踪和审查。原则上老的内容必须保留而不是被覆盖，
+      最新状态可以根据日期生成新的文件递进更新。粒度暂定一天（一天内的内容可以覆盖
+      而不是拆分成多个文件，Agent 自行判断）。
+    check_type: automated
+    check_criteria:
+      - "每个工作日必须有对应的 audit/instruction-log/YYYY-MM-DD.yaml"
+      - "git 提交记录每天至少一条"
+    audit_role: true
+
+  - id: "16"
+    title: "指令记录"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, ai-infra, qa-audit]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      建立一个机制，把每条指令都存下来。如果是选择类的，把所有选项和我的选择都记录下来。
+    check_type: automated
+    check_criteria:
+      - "audit/instruction-log/ 目录下每天有对应日志文件"
+      - "选择类指令需记录全部选项和最终选择"
+    audit_role: true
+
+  # ── 3.2 文档管理 ──
+  - id: "04"
+    title: "RISC-V 文档本地化"
+    category: general
+    severity: high
+    applicable_roles: [hw-arch, hw-ver, sw-arch, ai-infra]
+    applicable_phases: [setup, requirements, architecture]
+    description: >
+      RISC-V 相关文档必须本地化（选择合适的本地文件夹放置），定期更新。
+    check_type: manual
+    check_criteria:
+      - "docs/standards/riscv-specs/ 目录下有最新版本的 RISC-V 标准文档"
+    audit_role: true
+
+  - id: "14"
+    title: "HTML 文档格式"
+    category: general
+    severity: medium
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, ai-infra]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      供人类参考的文件应尽可能使用 HTML 格式，并用图文和超链接的方式串联形成文档地图。
+    check_type: automated
+    check_criteria:
+      - "docs/ 目录下人类参考文件使用 .html 格式"
+      - "docs/index.html 存在且包含到所有子文档的超链接"
+    audit_role: true
+
+  - id: "15"
+    title: "单一管理文件+索引"
+    category: general
+    severity: medium
+    applicable_roles: [pm, ai-infra]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      项目管理用单一文件，但可以索引到其他文件（如子里程碑的执行计划），来完成扩展。
+    check_type: manual
+    check_criteria:
+      - "docs/project/master-plan.html 存在且包含里程碑索引"
+    audit_role: true
+
+  - id: "19"
+    title: "里程碑文档检查"
+    category: general
+    severity: high
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, ai-infra, qa-audit]
+    applicable_phases: [architecture, design, implementation, verification, delivery]
+    description: >
+      每次里程碑达成时必须对相关文档做一轮全局检查，确认是否需要更新，可制定相关策略。
+    check_type: hybrid
+    check_criteria:
+      - "里程碑门禁报告中包含文档时效检查项"
+      - "所有文档的最后更新日期在里程碑周期内"
+    audit_role: true
+
+  # ── 3.3 标准与规范 ──
+  - id: "05"
+    title: "RISC-V Profile 定义"
+    category: general
+    severity: critical
+    applicable_roles: [hw-arch, hw-ver, sw-arch]
+    applicable_phases: [requirements, architecture]
+    description: >
+      基于 RISC-V 准文档制定属于整个项目的 Profile（可使用或参考 RVM23）。
+      标准文档定期更新，但 Profile 只考虑已被 Ratified 的更新。
+      提醒用户决定是否要接受更改的新标准，让用户决定。
+    check_type: manual
+    check_criteria:
+      - "docs/standards/riscv-profile.html 存在"
+      - "Profile 中仅包含 Ratified 状态的扩展"
+    audit_role: true
+
+  - id: "12"
+    title: "基准测试统一化"
+    category: general
+    severity: medium
+    applicable_roles: [hw-arch, hw-ver, ai-infra]
+    applicable_phases: [architecture, design, implementation, verification]
+    description: >
+      基准测试平台（如 CoreMark）必须统一化，相关参数必须统一管理。
+    check_type: automated
+    check_criteria:
+      - "perf/benchmarks/ 目录下有统一的配置文件"
+      - "基准测试参数有统一的 YAML 配置"
+    audit_role: true
+
+  # ── 3.4 架构与设计 ──
+  - id: "06"
+    title: "性能评估模型"
+    category: general
+    severity: high
+    applicable_roles: [hw-arch]
+    applicable_phases: [requirements, architecture]
+    description: >
+      进入实际项目之前，需要先建立性能评估模型（例如基于 GEM5+ 的 Cycle Model）。
+    check_type: manual
+    check_criteria:
+      - "perf/gem5-model/ 目录下有可运行的性能模型"
+    audit_role: true
+
+  - id: "07"
+    title: "平台架构说明书"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch]
+    applicable_phases: [architecture, design]
+    description: >
+      平台架构说明书起到总揽全局的作用，应包含处理器架构相关的全局内容和详细的硬件需求清单。
+    check_type: manual
+    check_criteria:
+      - "docs/architecture/platform-spec.html 存在"
+      - "包含完整的硬件需求清单"
+    audit_role: true
+
+  - id: "08"
+    title: "编码前写文档"
+    category: general
+    severity: critical
+    applicable_roles: [hw-arch, sw-arch]
+    applicable_phases: [design, implementation]
+    description: >
+      进入 RTL 设计阶段，所有编码工作必须先写文档，承接平台架构的硬件需求
+      （要求每个需求都有承接），文档内容必须细化到具体的设计或验证的详细设计。
+    check_type: hybrid
+    check_criteria:
+      - "每个 src/ 子模块在 docs/design/ 下有对应的设计文档"
+      - "设计文档中的需求可追溯到 platform-spec.html"
+    audit_role: true
+
+  # ── 3.5 验证与质量 ──
+  - id: "09"
+    title: "验证方案框架"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-ver]
+    applicable_phases: [architecture, design, verification]
+    description: >
+      建立完整的验证方案框架设计，生成完整的验证策略。
+      验证案例必须证明能完整覆盖设计的所有需求和接口。
+    check_type: manual
+    check_criteria:
+      - "docs/verification/ 目录下有验证方案文档"
+      - "验证用例到需求的覆盖率矩阵存在"
+    audit_role: true
+
+  - id: "10"
+    title: "里程碑门禁"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, qa-audit]
+    applicable_phases: [architecture, design, implementation, verification, delivery]
+    description: >
+      所有里程碑必须有强制门禁，必须完成全面核查才能进入下一步。
+    check_type: hybrid
+    check_criteria:
+      - "audit/compliance-reports/ 下有每个里程碑的门禁报告"
+      - "门禁报告中所有检查项状态为 PASS"
+      - "人类项目负责人已签署确认"
+    audit_role: true
+
+  - id: "11"
+    title: "每日集成回归"
+    category: general
+    severity: high
+    applicable_roles: [hw-arch, hw-ver, sw-arch, ai-infra]
+    applicable_phases: [design, implementation, verification]
+    description: >
+      每个比较大的进展（以天为单位甚至更短）都必须完成集成和回归测试。
+    check_type: automated
+    check_criteria:
+      - "CI 回归测试每日运行"
+      - "回归通过率 100%"
+    audit_role: true
+
+  - id: "18"
+    title: "问题不允许跳过"
+    category: general
+    severity: critical
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch]
+    applicable_phases: [design, implementation, verification, delivery]
+    description: >
+      每次测试或验证遇到问题不允许回避，需要尽可能解决。如果问题无法解决，
+      记录一个项目风险项等后来解决，不允许跳过。
+    check_type: hybrid
+    check_criteria:
+      - "audit/risk-register.yaml 中无 status: skipped 的项目"
+      - "所有已知问题有对应的风险条目"
+    audit_role: true
+
+  # ── 3.6 版本管理 ──
+  - id: "13"
+    title: "GitHub 版本管理"
+    category: general
+    severity: high
+    applicable_roles: [pm, hw-arch, hw-ver, sw-arch, ai-infra]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      使用 GitHub 进行版本管理，建立一套明确的版本管理机制。
+    check_type: automated
+    check_criteria:
+      - ".git 目录存在"
+      - "远程仓库已配置"
+      - "分支保护策略已启用"
+    audit_role: true
+
+  # ── 3.7 文件操作 ──
+  - id: "17"
+    title: "批量删除须确认"
+    category: general
+    severity: high
+    applicable_roles: [ai-infra]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      批量（一次超过三个文件）删除任何小于 1MB 的文件都需要询问用户，
+      更好的办法是存档而不是删除。
+    check_type: manual
+    check_criteria:
+      - "audit/instruction-log/ 中批量删除操作有用户确认记录"
+    audit_role: true

@@ -1,0 +1,57 @@
+# Lumi 子规则：硬件设计（HD-1 ~ HD-4）
+# 源自 Top Rules_Optimized.md 第四章
+
+rules:
+  - id: "HD-1"
+    title: "迭代前全量代码审查"
+    category: hardware-design
+    severity: critical
+    applicable_roles: [hw-arch]
+    applicable_phases: [design, implementation]
+    description: >
+      每次大的迭代，必须先做全量代码审查和计划制定，再进入执行。
+    check_type: manual
+    check_criteria:
+      - "迭代开始前有代码审查记录"
+      - "迭代计划文档存在且已审批"
+    audit_role: true
+
+  - id: "HD-2"
+    title: "两天期限预警"
+    category: hardware-design
+    severity: high
+    applicable_roles: [hw-arch]
+    applicable_phases: [design, implementation]
+    description: >
+      如果一个方向在两天内跑不出结果，一定是方案有问题，应该回退并重新制定方案。
+    check_type: hybrid
+    check_criteria:
+      - "current-state.yaml 中 active_tasks 的 started 日期距今不超过 2 天"
+      - "超过 2 天的任务必须有回退记录或方案调整说明"
+    audit_role: true
+
+  - id: "HD-3"
+    title: "失败思路记录"
+    category: hardware-design
+    severity: high
+    applicable_roles: [hw-arch]
+    applicable_phases: [design, implementation]
+    description: >
+      每次大的设计如果最后证明思路不正确，必须记录下来，保证以后不重犯。
+    check_type: manual
+    check_criteria:
+      - "knowledge/lessons-learned/ 目录下有对应的失败记录"
+      - "记录包含失败原因分析和未来预防措施"
+    audit_role: true
+
+  - id: "HD-4"
+    title: "预留"
+    category: hardware-design
+    severity: low
+    applicable_roles: [hw-arch]
+    applicable_phases: []
+    description: >
+      预留规则位，待未来扩展。
+    check_type: manual
+    check_criteria: []
+    audit_role: false

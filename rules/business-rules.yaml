@@ -1,0 +1,96 @@
+# Lumi 商业规则（B-1 ~ B-7）
+# 源自 Top Rules_Optimized.md 第八章
+
+rules:
+  - id: "B-1"
+    title: "IP 粒度知识库支持客户"
+    category: business
+    severity: medium
+    applicable_roles: [pm]
+    applicable_phases: [delivery]
+    description: >
+      以 IP 为粒度建立知识库来支持客户。人力的技术支持仅在 AI 无法胜任时介入（兜底）。
+    check_type: manual
+    check_criteria:
+      - "知识库按 IP 模块组织"
+    audit_role: true
+
+  - id: "B-2"
+    title: "Token 成本预算"
+    category: business
+    severity: high
+    applicable_roles: [pm]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      Token 成本预算要算好，不能超过售价的 1/5。
+    check_type: automated
+    check_criteria:
+      - "infra/token-budget/tracker.py 定期输出成本报告"
+      - "Token 成本占比 ≤ 20%"
+      - "超过 15% 时触发预警"
+    audit_role: true
+
+  - id: "B-3"
+    title: "价值维度定义"
+    category: business
+    severity: low
+    applicable_roles: [pm]
+    applicable_phases: [requirements, delivery]
+    description: >
+      价值维度：① 已完成性能功能开发和验证的 IP；② 历史代码移植重构加固；
+      ③ IP 的定制和自动化验证（FDE 介入）。
+    check_type: manual
+    check_criteria: []
+    audit_role: false
+
+  - id: "B-4"
+    title: "合作方私有算力部署"
+    category: business
+    severity: low
+    applicable_roles: [pm]
+    applicable_phases: [delivery]
+    description: >
+      合作方：私有算力部署。
+    check_type: manual
+    check_criteria: []
+    audit_role: false
+
+  - id: "B-5"
+    title: "合规审查与关键字屏蔽"
+    category: business
+    severity: high
+    applicable_roles: [pm]
+    applicable_phases: [delivery]
+    description: >
+      合规审查，关键字屏蔽（AI Agent 监督）。
+    check_type: hybrid
+    check_criteria:
+      - "交付物通过关键字屏蔽检查"
+    audit_role: true
+
+  - id: "B-6"
+    title: "持续运营指标"
+    category: business
+    severity: medium
+    applicable_roles: [pm]
+    applicable_phases: [delivery]
+    description: >
+      持续运营指标。
+    check_type: automated
+    check_criteria:
+      - "infra/monitoring/metrics.yaml 包含运营指标数据"
+    audit_role: true
+
+  - id: "B-7"
+    title: "模型调用分层"
+    category: business
+    severity: high
+    applicable_roles: [pm]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      需要模型调用有层次：用最聪明的模型制定计划，用操作损耗最低的方式完成常规操作。
+      v2.1 实现：Cowork 主会话（默认模型）处理复杂推理，qodercli（轻量模型）处理常规操作。
+    check_type: manual
+    check_criteria:
+      - "audit/instruction-log/ 中记录了每次操作的 session_mode（role-switch / qodercli）"
+    audit_role: true

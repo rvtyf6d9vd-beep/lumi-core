@@ -1,0 +1,44 @@
+milestone: null
+project_root: /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core
+report_type: compliance-check
+results:
+- detail: 所有核心文件存在
+  id: SETUP
+  status: PASS
+  title: 核心文件完整性
+- detail: 所有 6 个角色提示词存在
+  id: ROLES
+  status: PASS
+  title: 角色提示词完整性
+- detail: '今日日志 不存在: 2026-06-10.yaml'
+  id: '03'
+  status: WARN
+  title: 工作留痕
+- detail: .git 目录 不存在
+  id: '13'
+  status: WARN
+  title: GitHub 版本管理
+- detail: 'HTML 文件: 0, 非 HTML 文件: 0'
+  id: '14'
+  non_html_files: []
+  status: PASS
+  title: HTML 文档格式
+- detail: 运行时约束（由 CLAUDE.md 强制执行）
+  id: '17'
+  status: PASS
+  title: 批量删除须确认
+- detail: 无跳过的风险项
+  id: '18'
+  skipped_risks: []
+  status: PASS
+  title: 问题不允许跳过
+- detail: 当前 0/256 条
+  id: IT-1
+  status: PASS
+  title: 知识库规模
+summary:
+  FAIL: 0
+  PASS: 6
+  SKIP: 0
+  WARN: 2
+timestamp: '2026-06-10T22:37:36.636309'

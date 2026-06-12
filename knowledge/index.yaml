@@ -1,0 +1,15 @@
+# Lumi 知识库索引 (IT-1: 上限 256 条)
+# 每条知识库条目包含 id、title、category、source、date
+
+version: "1.0"
+max_entries: 256
+warning_threshold: 240
+
+entries: []
+# 示例条目格式:
+# - id: "LL-001"
+#   title: "AHB burst wrap 计算需要考虑 unaligned 起始地址"
+#   category: lessons-learned
+#   source: "hw-arch, M1 阶段"
+#   date: "2026-06-10"
+#   file: "lessons-learned/LL-001.md"

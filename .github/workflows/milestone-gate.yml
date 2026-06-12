@@ -1,0 +1,85 @@
+# Lumi 里程碑门禁 (规则 10)
+# 手动触发，用于里程碑 Sign-off 前的全面检查
+
+name: Milestone Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: '里程碑编号 (如 M0, M1, M2)'
+        required: true
+        type: string
+      gate_type:
+        description: '门禁类型'
+        required: true
+        type: choice
+        options:
+          - full      # 完整门禁（含所有检查）
+          - quick     # 快速检查（仅自动化项）
+
+jobs:
+  gate-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate all rules
+        run: python rules/scripts/validate_rules.py --project-root .
+
+      - name: Run full compliance check
+        run: |
+          python rules/scripts/check_compliance.py \
+            --project-root . \
+            --milestone ${{ inputs.milestone }} \
+            --output audit/compliance-reports/${{ inputs.milestone }}-gate-$(date +%Y%m%d).yaml
+
+      - name: Check document freshness (规则 19)
+        run: |
+          echo "检查文档时效性..."
+          find docs/ -name "*.html" -mtime +30 | while read f; do
+            echo "::warning::文档超过 30 天未更新: $f"
+          done
+
+      - name: Check risk register (规则 18)
+        run: |
+          if [ -f audit/risk-register.yaml ]; then
+            python3 -c "
+          import yaml
+          with open('audit/risk-register.yaml') as f:
+              data = yaml.safe_load(f)
+          if data and 'risks' in data:
+              open_risks = [r for r in data['risks'] if r.get('status') == 'open']
+              skipped = [r for r in data['risks'] if r.get('status') == 'skipped']
+              print(f'Open risks: {len(open_risks)}')
+              if skipped:
+                  print(f'::error::Found {len(skipped)} skipped risks (规则 18 violation)')
+                  for r in skipped:
+                      print(f'  - {r.get(\"id\", \"??\")}: {r.get(\"title\", \"??\")}')
+          "
+          fi
+
+      - name: Generate gate report
+        if: always()
+        run: |
+          echo "里程碑 ${{ inputs.milestone }} 门禁检查完成"
+          echo "请查看 Artifacts 中的合规报告"
+          echo "后续步骤："
+          echo "  1. 各角色 Sign-off（Cowork 主会话串行切换执行）"
+          echo "  2. QA 独立审计（qodercli 进程隔离执行）"
+          echo "  3. 人类项目负责人最终确认"
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-gate-${{ inputs.milestone }}
+          path: audit/compliance-reports/

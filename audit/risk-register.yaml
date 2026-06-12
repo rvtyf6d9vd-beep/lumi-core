@@ -1,0 +1,18 @@
+# Lumi 风险登记簿 (规则 18: 问题不允许跳过)
+# 所有发现的问题必须记录在此，status 不允许为 skipped
+
+version: "1.0"
+
+risks: []
+# 示例条目格式:
+# - id: "RISK-001"
+#   title: "CSR 模块时序不满足"
+#   severity: high
+#   status: open        # open | mitigated | resolved | accepted (不允许 skipped)
+#   reported_by: hw-ver
+#   reported_date: "2026-06-10"
+#   assigned_to: hw-arch
+#   description: "..."
+#   mitigation: "..."
+#   resolution: null
+#   resolution_date: null

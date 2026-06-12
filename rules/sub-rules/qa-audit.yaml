@@ -1,0 +1,20 @@
+# Lumi 子规则：QA + Audit（QA-1）
+# 源自 Top Rules_Optimized.md 第七章
+
+rules:
+  - id: "QA-1"
+    title: "第三方 Agent 审计"
+    category: qa-audit
+    severity: critical
+    applicable_roles: [pm, qa-audit]
+    applicable_phases: [architecture, design, implementation, verification, delivery]
+    description: >
+      计划、执行过程、结果都必须由第三方 Agent 审计，否则里程碑不能进入下一步。
+      在 v2.1 双引擎架构中，QA 审计通过 qodercli 进程隔离执行，确保审计独立性。
+    check_type: hybrid
+    check_criteria:
+      - "每个里程碑门禁有独立的 QA 审计报告"
+      - "QA 审计报告存储在 audit/compliance-reports/"
+      - "审计通过 qodercli 独立进程执行（进程级隔离）"
+      - "人类项目负责人最终签署确认"
+    audit_role: true

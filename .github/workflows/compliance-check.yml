@@ -1,0 +1,48 @@
+# Lumi 合规性自动检查 (规则 10)
+# 每日定时检查 + PR 时自动检查
+
+name: Compliance Check
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 每天凌晨 2 点 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate rule format
+        run: python rules/scripts/validate_rules.py --project-root .
+
+      - name: Run compliance check
+        run: python rules/scripts/check_compliance.py --project-root . --output audit/compliance-reports/daily-$(date +%Y%m%d).yaml
+
+      - name: Check knowledge base size (IT-1)
+        run: |
+          if [ -f knowledge/index.yaml ]; then
+            COUNT=$(python3 -c "import yaml; d=yaml.safe_load(open('knowledge/index.yaml')); print(len(d.get('entries',[])) if d else 0)")
+            echo "Knowledge base entries: $COUNT"
+            if [ "$COUNT" -gt 240 ]; then
+              echo "::warning::Knowledge base approaching limit: $COUNT/256 entries"
+            fi
+          fi
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report
+          path: audit/compliance-reports/

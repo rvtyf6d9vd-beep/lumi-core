@@ -1,0 +1,34 @@
+# Lumi CODEOWNERS — 角色-目录权限映射
+# 用于 PR 审核时确保只有对应角色可以修改特定目录
+
+# 项目管理文档
+/docs/project/                  @lumi-pm
+
+# 架构与设计文档
+/docs/architecture/             @lumi-hw-arch
+/docs/design/                   @lumi-hw-arch
+/docs/standards/                @lumi-hw-arch
+/src/                           @lumi-hw-arch
+
+# 验证
+/tb/                            @lumi-hw-ver
+/docs/verification/             @lumi-hw-ver
+
+# 软件
+/sw/                            @lumi-sw-arch
+/docs/software/                 @lumi-sw-arch
+
+# 基础设施
+/infra/                         @lumi-ai-infra
+/.github/                       @lumi-ai-infra
+/rules/scripts/                 @lumi-ai-infra
+/knowledge/                     @lumi-ai-infra
+
+# 审计报告（QA 角色可写）
+/audit/compliance-reports/      @lumi-qa-audit
+
+# 审计日志（所有角色可追加）
+/audit/instruction-log/         @lumi-pm @lumi-hw-arch @lumi-hw-ver @lumi-sw-arch @lumi-ai-infra @lumi-qa-audit
+
+# 规则文件（需要 AI-Infra + PM 共同审核）
+/rules/                         @lumi-ai-infra @lumi-pm

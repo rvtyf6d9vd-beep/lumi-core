@@ -1,0 +1,187 @@
+# Lumi 角色-规则映射
+# 定义每个角色可见的规则子集和文件权限
+
+roles:
+  pm:
+    display_name: "项目经理"
+    description: "市场分析、需求导入、项目计划制定与跟踪、里程碑 Sign-off、商业模式"
+    rules:
+      - "03"
+      - "07"
+      - "09"
+      - "10"
+      - "13"
+      - "14"
+      - "15"
+      - "16"
+      - "18"
+      - "19"
+      - "QA-1"
+      - "B-1"
+      - "B-2"
+      - "B-3"
+      - "B-4"
+      - "B-5"
+      - "B-6"
+      - "B-7"
+    permissions:
+      read:
+        - "docs/**"
+        - "rules/**"
+        - "audit/**"
+        - "agents/pm/**"
+        - "knowledge/**"
+        - "infra/monitoring/**"
+        - "infra/token-budget/**"
+      write:
+        - "docs/project/**"
+        - "agents/pm/**"
+        - "audit/instruction-log/**"
+        - "audit/decision-log/**"
+
+  hw-arch:
+    display_name: "硬件架构"
+    description: "架构设计、具体设计、性能/技术特性指标定义、关键节点通过判定"
+    rules:
+      - "03"
+      - "04"
+      - "05"
+      - "06"
+      - "07"
+      - "08"
+      - "10"
+      - "11"
+      - "12"
+      - "13"
+      - "14"
+      - "16"
+      - "18"
+      - "19"
+      - "HD-1"
+      - "HD-2"
+      - "HD-3"
+    permissions:
+      read:
+        - "docs/**"
+        - "rules/**"
+        - "src/**"
+        - "agents/hw-arch/**"
+        - "perf/**"
+        - "reference/**"
+        - "knowledge/**"
+      write:
+        - "src/**"
+        - "docs/architecture/**"
+        - "docs/design/**"
+        - "docs/standards/**"
+        - "agents/hw-arch/**"
+        - "perf/**"
+        - "knowledge/design-decisions/**"
+        - "knowledge/lessons-learned/**"
+        - "audit/instruction-log/**"
+
+  hw-ver:
+    display_name: "硬件验证"
+    description: "验证策略制定、FPGA 硬件验证、开发阶段以后的里程碑 Sign-off"
+    rules:
+      - "03"
+      - "04"
+      - "05"
+      - "07"
+      - "09"
+      - "10"
+      - "11"
+      - "12"
+      - "13"
+      - "14"
+      - "16"
+      - "18"
+      - "19"
+      - "HV-1"
+      - "HV-2"
+    permissions:
+      read:
+        - "docs/**"
+        - "rules/**"
+        - "src/**"
+        - "tb/**"
+        - "agents/hw-ver/**"
+        - "perf/**"
+        - "reference/**"
+        - "knowledge/**"
+      write:
+        - "tb/**"
+        - "docs/verification/**"
+        - "agents/hw-ver/**"
+        - "audit/instruction-log/**"
+
+  sw-arch:
+    display_name: "软件架构"
+    description: "底层驱动软件、RTOS Kernel 移植、工具链开发与整合"
+    rules:
+      - "03"
+      - "04"
+      - "05"
+      - "07"
+      - "08"
+      - "10"
+      - "11"
+      - "13"
+      - "14"
+      - "16"
+      - "18"
+      - "19"
+    permissions:
+      read:
+        - "docs/**"
+        - "rules/**"
+        - "src/**"
+        - "sw/**"
+        - "agents/sw-arch/**"
+        - "reference/**"
+        - "knowledge/**"
+      write:
+        - "sw/**"
+        - "docs/software/**"
+        - "agents/sw-arch/**"
+        - "audit/instruction-log/**"
+
+  ai-infra:
+    display_name: "AI 基础设施"
+    description: "开发环境搭建、GitHub 版本维护、日常文件体系管理、MCP 脚本维护、知识库"
+    rules:
+      - "03"
+      - "04"
+      - "11"
+      - "12"
+      - "13"
+      - "14"
+      - "15"
+      - "16"
+      - "17"
+      - "19"
+      - "IT-1"
+      - "IT-2"
+      - "IT-3"
+    permissions:
+      read:
+        - "**"
+      write:
+        - "infra/**"
+        - "knowledge/**"
+        - ".github/**"
+        - "rules/scripts/**"
+        - "agents/ai-infra/**"
+        - "audit/instruction-log/**"
+
+  qa-audit:
+    display_name: "QA 审计"
+    description: "独立审计：计划、执行过程、结果的第三方检查"
+    rules: "ALL"
+    permissions:
+      read:
+        - "**"
+      write:
+        - "audit/compliance-reports/**"
+        - "agents/qa-audit/**"
+        - "audit/instruction-log/**"

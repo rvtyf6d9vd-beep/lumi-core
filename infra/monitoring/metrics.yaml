@@ -1,0 +1,37 @@
+# Lumi 运营指标 (IT-3, B-6)
+# 定期更新，Cowork 定时任务自动收集
+
+last_updated: null
+
+metrics:
+  token_usage:
+    description: "Token 用量追踪 (B-2: ≤ 售价 1/5)"
+    current_total: 0
+    budget_limit: null
+    warning_threshold_pct: 15
+    history: []
+
+  task_completion:
+    description: "任务完成率"
+    total_tasks: 0
+    completed_tasks: 0
+    rate: null
+
+  rule_compliance:
+    description: "规则合规率"
+    total_rules: 34
+    compliant_rules: 0
+    rate: null
+
+  knowledge_base:
+    description: "知识库规模 (IT-1: ≤ 256)"
+    current_entries: 0
+    max_entries: 256
+    warning_at: 240
+
+  regression_pass_rate:
+    description: "回归测试通过率 (规则 11)"
+    last_run: null
+    total_tests: 0
+    passed_tests: 0
+    rate: null

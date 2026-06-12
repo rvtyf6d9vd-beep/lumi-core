@@ -1,0 +1,47 @@
+# Lumi CI 回归测试 (规则 11)
+# 每次 push 到 main 或 dev 分支时自动运行回归测试
+
+name: CI Regression
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'src/**'
+      - 'tb/**'
+      - 'sw/**'
+  pull_request:
+    branches: [main]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+          # TODO: 安装 Verilator, 仿真工具等
+
+      - name: Run regression tests
+        run: |
+          echo "TODO: 实现回归测试脚本"
+          # make -C tb regress
+          # 测试通过后生成报告
+
+      - name: Run compliance check
+        run: |
+          python rules/scripts/check_compliance.py --project-root . --output audit/compliance-reports/ci-$(date +%Y%m%d).yaml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-results
+          path: audit/compliance-reports/
