@@ -1,0 +1,10 @@
+# ═══════════════ 11. 变更历史 ═══════════════
+section: "11. 变更历史"
+id: sec-changelog
+
+sub_sections:
+  - title: ""
+    table_type: data
+    headers: [日期, 文档版本, 变更内容, 影响需求 ID, 作者]
+    rows:
+      - ["2026-06-26", 0.1-draft, "初始创建 PRD 模板（12 章节结构）", "--", "--"]

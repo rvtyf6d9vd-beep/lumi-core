@@ -1,0 +1,40 @@
+# ═══════════════ 5. 功能安全需求 ═══════════════
+section: "5. 功能安全需求"
+id: sec-safety
+description: "面向 ISO 26262 等功能安全标准的需求，涵盖 ECC 纠错、TLB 保护、双锁步 (Dual Lock-Step) 等安全机制。"
+
+categories:
+  - id: SAFE
+    title: "功能安全"
+    description: ""
+    requirements:
+      - req_id: LUMI-SAFE-001
+        name: "PMP 物理内存保护 (可配, 默认 8 Region)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "PMP Region 数量可配（默认 8），越界访问全部触发异常"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SAFE-002
+        name: "双核异步互锁"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "双核异步互锁机制正确，检测到不一致时触发异常"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SAFE-003
+        name: "总线 Parity 保护机制"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "总线 Parity 校验正确，检测到错误时触发异常"
+        change_date: "2026-06-29"
+        note: ""

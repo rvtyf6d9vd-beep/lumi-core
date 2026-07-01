@@ -1,0 +1,20 @@
+# ═══════════════ 6. 信息安全需求 ═══════════════
+section: "6. 信息安全需求"
+id: sec-security
+description: "安全启动 (Secure Boot)、加密加速 (Crypto Acceleration)、密钥管理等信息安全相关需求。"
+
+categories:
+  - id: SEC
+    title: "信息安全"
+    description: ""
+    requirements:
+      - req_id: LUMI-SEC-001
+        name: "安全启动 ROM"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "启动固件签名验证通过"
+        change_date: ""
+        note: ""

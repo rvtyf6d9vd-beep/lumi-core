@@ -1,0 +1,34 @@
+# ═══════════════ 1. 关于本文档 ═══════════════
+section: "1. 关于本文档"
+id: sec-about
+description: "本文档定义 Lumi-Core RISC-V 处理器 IP 的完整产品需求，覆盖硬件功能、性能目标、交付物、安全合规及软件生态等方面，作为项目全生命周期的需求基线。"
+
+sub_sections:
+  - title: "1.1 参考文档"
+    table_type: data
+    headers: [编号, 文档名称, 版本, 路径/链接, 说明]
+    rows:
+      - [REF-01, Lumi-Core Profile, v1.0, "docs/profile/Lumi-Core-Profile.html", RISC-V Profile 定义]
+      - [REF-02, RISC-V ISA Spec, "20240411", "docs/standards/riscv-specs/isa/", RISC-V 指令集规范]
+      - [REF-03, RISC-V Privileged Spec, v1.12, "docs/standards/riscv-specs/isa/riscv-privileged.pdf", RISC-V 特权架构规范]
+      - [REF-04, RISC-V Debug Spec, V1.0.0, "docs/standards/riscv-specs/extensions/riscv-debug-specification.pdf", RISC-V 调试规范]
+      - [REF-05, RISC-V Nexus Trace Spec, V1.0.0, "docs/standards/riscv-specs/extensions/riscv-nexus-trace.pdf", RISC-V 跟踪规范]
+      - [REF-06, Packed SIMD Spec, v0.9.4, "docs/standards/riscv-specs/extensions/riscv-packed-simd.pdf", Packed SIMD 扩展规范]
+
+  - title: "1.2 术语与缩写"
+    table_type: data
+    headers: [术语/缩写, 全称, 说明]
+    rows:
+      - [ISA, Instruction Set Architecture, 指令集架构]
+      - [PPA, "Performance, Power, Area", "性能、功耗、面积三大芯片设计指标"]
+      - [PMP, Physical Memory Protection, RISC-V 物理内存保护机制]
+      - [TCM, Tightly Coupled Memory, 紧耦合内存]
+      - [CLIC, Core-Local Interrupt Controller, RISC-V 核心本地中断控制器]
+      - [PLIC, Platform-Level Interrupt Controller, RISC-V 平台级中断控制器]
+      - [ECC, Error Correction Code, 纠错码内存保护]
+      - [FPU, Floating Point Unit, 浮点运算单元]
+      - [FFP, Fast Forward Port, 快速外设接口]
+      - [WFI, Wait For Interrupt, RISC-V 等待中断指令]
+      - [WRS, Wait for Reservation Set, RISC-V 等待预约集指令]
+      - [SIMD, "Single Instruction, Multiple Data", 单指令多数据]
+      - [AXI, Advanced eXtensible Interface, AMBA 高性能总线协议]

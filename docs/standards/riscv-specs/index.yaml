@@ -1,0 +1,377 @@
+# RISC-V Standard Specification Index
+# Generated: 2026-06-24
+# Source: Quintauris RT-Europa Profile (2025-03-31)
+# This index maps all 51 extensions referenced in RT-Europa to their spec documents.
+
+metadata:
+  generated: "2026-06-24"
+  source: "Quintauris-RT-Europa-Profile.pdf"
+  total_extensions: 51
+
+documents:
+  - id: isa-unpriv
+    title: "The RISC-V Instruction Set Manual, Volume I: Unprivileged Architecture"
+    version: "20250508 (riscv-isa-release-1bc42ba-2025-07-09)"
+    file: "isa/riscv-unprivileged.pdf"
+    pages: 691
+    source_url: "https://github.com/riscv/riscv-isa-manual/releases/tag/riscv-isa-release-1bc42ba-2025-07-09"
+    description: "Main unprivileged ISA specification — covers base ISA and all ratified unprivileged extensions"
+
+  - id: isa-priv
+    title: "The RISC-V Instruction Set Manual, Volume II: Privileged Architecture"
+    version: "20250508 (riscv-isa-release-1bc42ba-2025-07-09)"
+    file: "isa/riscv-privileged.pdf"
+    pages: 213
+    source_url: "https://github.com/riscv/riscv-isa-manual/releases/tag/riscv-isa-release-1bc42ba-2025-07-09"
+    description: "Main privileged ISA specification — covers all privilege modes and privileged extensions"
+
+  - id: isa-combined
+    title: "RISC-V ISA Specification (Combined Unprivileged + Privileged)"
+    version: "riscv-isa-release-cc30642-2026-06-23"
+    file: "isa/riscv-spec.pdf"
+    pages: 905
+    source_url: "https://github.com/riscv/riscv-isa-manual/releases/tag/riscv-isa-release-cc30642-2026-06-23"
+    description: "Latest combined ISA specification"
+
+  - id: ext-bitmanip
+    title: "RISC-V Bit-Manipulation Extension"
+    version: "1.0.0"
+    file: "extensions/riscv-bitmanip.pdf"
+    pages: 61
+    source_url: "https://github.com/riscv/riscv-bitmanip/releases/tag/1.0.0"
+    description: "Standalone bit-manipulation extension specification (archived; now consolidated into main ISA manual)"
+
+  - id: ext-interrupts
+    title: "RISC-V Advanced Interrupt Architecture"
+    version: "20250312"
+    file: "extensions/riscv-interrupts.pdf"
+    pages: 89
+    source_url: "https://github.com/riscv/riscv-aia/releases/tag/20250312"
+    description: "Combined AIA + CLIC specification"
+
+  - id: ext-zc
+    title: "RISC-V Code Size Reduction Extension (Zc*)"
+    version: "1.0.4"
+    file: "extensions/riscv-zc.pdf"
+    pages: 60
+    source_url: "https://github.com/riscvarchive/riscv-code-size-reduction/releases/tag/v1.0.4-3"
+    description: "Zce, Zca, Zcb, Zcmp, Zcmt, Zcf specification"
+
+  - id: ext-cmo
+    title: "RISC-V Cache Management Operation Extensions (Zicbom, Zicbop, Zicboz)"
+    version: "1.0"
+    file: "extensions/riscv-cmo.pdf"
+    pages: 27
+    source_url: "https://github.com/riscvarchive/riscv-CMOs"
+    description: "Base CMO ISA extensions specification"
+
+  - id: ext-smepmp
+    title: "PMP Enhancements for Memory Access and Execution Prevention on Machine Mode"
+    version: "1.0"
+    file: "extensions/riscv-smepmp.pdf"
+    pages: 9
+    source_url: "https://github.com/riscv/riscv-tee"
+    description: "Smepmp specification"
+
+  - id: ext-spmp
+    title: "Physical Memory Protection for Supervisor Mode (Sspmp)"
+    version: "0.9.1"
+    file: "extensions/riscv-spmp.pdf"
+    pages: 20
+    source_url: "https://github.com/riscv/riscv-spmp/releases/tag/v0.9.1"
+    description: "Sspmp specification"
+
+  - id: ext-smcdeleg-ssccfg
+    title: "Supervisor Counter Delegation and Configuration (Smcdeleg/Ssccfg)"
+    version: "1.0.0"
+    file: "extensions/riscv-smcdeleg-ssccfg.pdf"
+    pages: 15
+    source_url: "https://github.com/riscvarchive/riscv-smcdeleg-ssccfg/releases/tag/v1.0.0"
+    description: "Smcdeleg + Ssccfg specification"
+
+  - id: ext-smcntrpmf
+    title: "Cycle and Instret Privilege Mode Filtering (Smcntrpmf)"
+    version: "1.0"
+    file: "extensions/riscv-smcntrpmf.pdf"
+    pages: 8
+    source_url: "https://github.com/riscvarchive/riscv-smcntrpmf/releases/tag/v1.0"
+    description: "Smcntrpmf specification"
+
+  - id: ext-zicond
+    title: "Integer Conditional Operations (Zicond)"
+    version: "1.0.1"
+    file: "extensions/riscv-zicond.pdf"
+    pages: 11
+    source_url: "https://github.com/riscvarchive/riscv-zicond/releases/tag/v1.0.1"
+    description: "Zicond specification"
+
+  - id: profiles-rva23
+    title: "RVA23 Profile Specification"
+    version: "rva23-rvb23-ratified"
+    file: "extensions/rva23-profile.pdf"
+    pages: 14
+    source_url: "https://github.com/riscv/riscv-profiles/releases/tag/rva23-rvb23-ratified"
+    description: "RVA23 user-mode and supervisor-mode profile specification"
+
+  - id: profiles-rvb23
+    title: "RVB23 Profile Specification"
+    version: "rva23-rvb23-ratified"
+    file: "extensions/rvb23-profile.pdf"
+    pages: 13
+    source_url: "https://github.com/riscv/riscv-profiles/releases/tag/rva23-rvb23-ratified"
+    description: "RVB23 base profile specification"
+
+# Extension-to-Document Mapping
+# Each extension from RT-Europa Profile mapped to its source document(s)
+mappings:
+
+  # Base ISA
+  - extension: "I"
+    version: "2.1.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "M"
+    version: "2.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "A"
+    version: "2.1.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+
+  # Unprivileged Extensions
+  - extension: "B"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+    alternate: "ext-bitmanip"
+  - extension: "F"
+    version: "2.2.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "D"
+    version: "2.2.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "V"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zicsr"
+    version: "2.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zifencei"
+    version: "~> 1.0"
+    document: "isa-unpriv"
+    profile: [S32, M32]
+  - extension: "Zicbom"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    alternate: "ext-cmo"
+    profile: [U32, S32, M32]
+  - extension: "Zicbop"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    alternate: "ext-cmo"
+    profile: [U32, S32, M32]
+  - extension: "Zicboz"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    alternate: "ext-cmo"
+    profile: [U32, S32, M32]
+  - extension: "Ziccamoa"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zicntr"
+    version: "2.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zihpm"
+    version: "2.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zicond"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    alternate: "ext-zicond"
+    profile: [U32, S32, M32]
+  - extension: "Zihintpause"
+    version: "2.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zihintntl"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zimop"
+    version: "~> 1.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zcmop"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zce"
+    version: "1.0.0"
+    document: "ext-zc"
+    profile: [U32, S32, M32]
+  - extension: "Zcf"
+    version: "1.0.0"
+    document: "ext-zc"
+    profile: [U32, S32, M32]
+  - extension: "Zilsd"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zclsd"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zfh"
+    version: "~> 1.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zfa"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zfbfmin"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zvfbfmin"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "Zvfbfwma"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+
+  # Privilege Modes
+  - extension: "U"
+    version: "1.0.0"
+    document: "isa-unpriv"
+    profile: [U32, S32, M32]
+  - extension: "S"
+    version: "~> 1.13"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Sm"
+    version: "~> 1.13"
+    document: "isa-priv"
+    profile: [M32]
+
+  # Supervisor-level Extensions
+  - extension: "Ssaia"
+    version: "1.0.0"
+    document: "ext-interrupts"
+    profile: [S32, M32]
+  - extension: "Ssclic"
+    version: "0.9.0"
+    document: "ext-interrupts"
+    profile: [S32, M32]
+  - extension: "Ssstrict"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Sstc"
+    version: "0.9.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Sstvecd"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Sspmp"
+    version: "0.9.2"
+    document: "ext-spmp"
+    profile: [S32, M32]
+  - extension: "Sscofpmf"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Sscounterenw"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Ssccfg"
+    version: "1.0.0"
+    document: "ext-smcdeleg-ssccfg"
+    profile: [S32, M32]
+
+  # Machine-level Extensions
+  - extension: "Smaia"
+    version: "1.0.0"
+    document: "ext-interrupts"
+    profile: [M32]
+  - extension: "Smclic"
+    version: "0.9.0"
+    document: "ext-interrupts"
+    profile: [M32]
+  - extension: "Smpmp"
+    version: "1.13.0"
+    document: "isa-priv"
+    profile: [M32]
+  - extension: "Smepmp"
+    version: "1.0.0"
+    document: "ext-smepmp"
+    profile: [M32]
+  - extension: "Smrnmi"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [M32]
+  - extension: "Smdbltrp"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [M32]
+  - extension: "Smcdeleg"
+    version: "1.0.0"
+    document: "ext-smcdeleg-ssccfg"
+    profile: [M32]
+  - extension: "Smcntrpmf"
+    version: "1.0.0"
+    document: "ext-smcntrpmf"
+    profile: [M32]
+
+  # Hypervisor Extensions
+  - extension: "Sha"
+    version: "1.0.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+  - extension: "Svbare"
+    version: "~> 1.0"
+    document: "isa-priv"
+    profile: [S32, M32]
+
+  # Floating-point Optional Extensions (mandatory if F is implemented)
+  - extension: "Zfh"  # (conditional, see Zfh above)
+    note: "Mandatory if F extension is implemented."
+    profile: [U32, S32, M32]
+  - extension: "Zcf"  # (conditional, already listed)
+    note: "Mandatory if F extension is implemented."
+    profile: [U32, S32, M32]
+  - extension: "Zfa"  # (conditional, already listed)
+    note: "Mandatory if F extension is implemented."
+    profile: [U32, S32, M32]
+  - extension: "Zvfbfmin"  # (conditional)
+    note: "Mandatory if Zfbfmin and Zve64d extensions are implemented."
+    profile: [U32, S32, M32]
+  - extension: "Zvfbfwma"  # (conditional)
+    note: "Mandatory if Zfbfmin and Zve64d extensions are implemented."
+    profile: [U32, S32, M32]
+
+# Coverage Summary
+coverage:
+  # Documents hosted on docs.riscv.org are also available at:
+  # https://docs.riscv.org/reference/isa/v20240411/_attachments/riscv-unprivileged.pdf
+  # https://docs.riscv.org/reference/isa/v20240411/_attachments/riscv-privileged.pdf
+  notes: |
+    All 51 extensions from RT-Europa Profile are covered.
+    - 27 mandatory extensions in RT-EuropaU32
+    - 25 mandatory + 17 optional in RT-EuropaS32
+    - 31 mandatory + 20 optional in RT-EuropaM32
+    Core ISA extensions (I/M/A/B/F/D/V/Zic*/Zih*) are consolidated in the main ISA manuals.
+    Separate extension specifications are preserved for historical/standalone reference.

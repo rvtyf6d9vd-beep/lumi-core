@@ -1,0 +1,40 @@
+# ═══════════════ 4. 交付物需求 ═══════════════
+section: "4. 交付物需求"
+id: sec-deliver
+description: "定义 IP 交付的完整清单，确保客户能够独立集成和验证处理器核。"
+
+categories:
+  - id: DEL
+    title: "交付物清单"
+    description: ""
+    requirements:
+      - req_id: LUMI-DEL-001
+        name: "RTL 源码 (Verilog)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "通过 lint 检查，无 warning"
+        change_date: ""
+        note: ""
+      - req_id: LUMI-DEL-002
+        name: "验证测试台"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "回归测试 100% 通过"
+        change_date: ""
+        note: ""
+      - req_id: LUMI-DEL-003
+        name: "Cycle Accurate Model"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi Req
+        ref_doc: ""
+        acceptance: "提供可用的 Cycle Accurate Model"
+        change_date: "2026-06-26"
+        note: ""

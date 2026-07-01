@@ -1,0 +1,11 @@
+# ═══════════════ 10. 需求追溯矩阵 ═══════════════
+section: "10. 需求追溯矩阵"
+id: sec-trace
+description: "展示需求 → 设计文档 → 验证用例的完整追溯链，确保每条需求有对应的设计和验证覆盖。"
+
+sub_sections:
+  - title: ""
+    table_type: data
+    headers: [REQ-ID, 需求名称, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-ISA-001, RV32I, "docs/design/isa/rv32i.html", "tc_isa_rv32i_001~040", Covered]

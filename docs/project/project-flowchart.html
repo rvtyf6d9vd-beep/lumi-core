@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumi-Core 项目流程图 -- 任务依赖与并行路径</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --c-path-a: #e74c3c; --bg-path-a: #fdedec;
+    --c-path-b: #2980b9; --bg-path-b: #ebf5fb;
+    --c-path-c: #27ae60; --bg-path-c: #eafaf1;
+    --c-path-d: #7f8c8d; --bg-path-d: #f4f6f7;
+    --c-gate: #f39c12; --bg-gate: #fef9e7;
+  }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 20px; background: #fafafa; color: #2c3e50; }
+  h1 { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 12px; }
+  h2 { margin-top: 40px; border-left: 5px solid #3498db; padding-left: 12px; }
+  h3 { margin-top: 24px; color: #2c3e50; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .mermaid { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 16px 0; overflow-x: auto; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; padding: 12px; background: #fff; border-radius: 8px; border: 1px solid #ddd; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .legend-dot { width: 16px; height: 16px; border-radius: 3px; }
+  .summary-box { background: var(--bg-gate); border: 1px solid var(--c-gate); border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .summary-box h3 { margin-top: 0; }
+
+  /* 并行矩阵表格 */
+  .matrix-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  .matrix-table th, .matrix-table td { border: 1px solid #ddd; padding: 8px 6px; text-align: center; }
+  .matrix-table th { background: #f8f9fa; font-weight: 600; }
+  .matrix-table td.task-label { text-align: left; font-weight: 500; min-width: 200px; }
+  .bar-a { background: var(--c-path-a); color: #fff; border-radius: 3px; padding: 2px 0; }
+  .bar-b { background: var(--c-path-b); color: #fff; border-radius: 3px; padding: 2px 0; }
+  .bar-c { background: var(--c-path-c); color: #fff; border-radius: 3px; padding: 2px 0; }
+  .bar-d { background: var(--c-path-d); color: #fff; border-radius: 3px; padding: 2px 0; }
+  .bar-empty { background: #f0f0f0; }
+
+  .path-card { border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .path-card h4 { margin-top: 0; }
+  .path-a { background: var(--bg-path-a); border: 1px solid var(--c-path-a); }
+  .path-b { background: var(--bg-path-b); border: 1px solid var(--c-path-b); }
+  .path-c { background: var(--bg-path-c); border: 1px solid var(--c-path-c); }
+  .path-d { background: var(--bg-path-d); border: 1px solid var(--c-path-d); }
+
+  .parallel-summary { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .parallel-summary th, .parallel-summary td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  .parallel-summary th { background: #3498db; color: #fff; }
+  .parallel-summary tr:nth-child(even) { background: #f8f9fa; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Lumi-Core 项目流程图<br><small style="font-size:50%;color:#7f8c8d">任务依赖与并行路径分析 (2026-06 ~ 2027-09)</small></h1>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-path-a)"></div><b>路径 A</b> 关键路径 (主线)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-path-b)"></div><b>路径 B</b> GEM5+ 建模线</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-path-c)"></div><b>路径 C</b> 验证体系线</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-path-d)"></div><b>路径 D</b> 项目管理线</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-gate)"></div><b>门禁节点</b> M0-M4</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 项目全局流程图</h2>
+<p>展示 Phase 0-5 全部任务节点、依赖关系和门禁。四条并行路径用颜色区分。</p>
+
+<div class="mermaid">
+graph TB
+  subgraph P0["Phase 0: 项目启动 (4周, 2026-06~07)"]
+    T01["T0.1 PRD需求完善\npm-infra, 2周"]
+    T02["T0.2 基础设施搭建\npm-infra, 1-2周"]
+    T03["T0.3 架构说明书起草\nhw-design, 2-3周"]
+    T04["T0.4 GEM5+ ISA扩展\nhw-design, 并行"]
+  end
+
+  subgraph P1["Phase 1: 需求定版与架构定义 (8周, 2026-07~09)"]
+    T11["T1.1 PRD评审定版\npm-infra, 2周"]
+    T12["T1.2 架构说明书定版\nhw-design, 3-4周"]
+    T13["T1.3 验证方案启动\nhw-ver, 2-3周"]
+    T14["T1.4 GEM5+ 中断建模\nhw-design, 4-6周"]
+  end
+
+  subgraph P2["Phase 2: 详细设计与验证框架 (12周, 2026-10~12)"]
+    T21["T2.1 模块设计文档x14\nhw-design, 8-10周"]
+    T22["T2.2 验证方案定版\nhw-ver, 4-6周"]
+    T23["T2.3 GEM5+ 微架构\nhw-design, 4-5周"]
+    T24["T2.4 RTL骨架搭建\nhw-design, 2-3周"]
+  end
+
+  subgraph P3["Phase 3: RTL实现与单元验证 (12周, 2027-01~03)"]
+    T31["T3.1 RTL逐模块实现\nhw-design, 10-12周"]
+    T32["T3.2 单元验证\nhw-ver, 同步"]
+    T33["T3.3 每日集成回归\nhw-ver, 持续"]
+    T34["T3.4 GEM5+ 交叉校准\nhw-design, 并行"]
+  end
+
+  subgraph P4["Phase 4: 集成验证与RTL冻结 (12周, 2027-04~06)"]
+    T41["T4.1 系统集成验证\nhw-ver, 6-8周"]
+    T42["T4.2 回归+Bug用例\nhw-ver, 4-6周"]
+    T43["T4.3 性能达标验证\nhw-design+hw-ver, 3-4周"]
+    T44["T4.4 交付物准备\nhw-design+hw-ver, 4-5周"]
+  end
+
+  subgraph P5["Phase 5: 交付就绪 (12周, 2027-07~09)"]
+    T51["T5.1 交付物整理\n全角色, 4-6周"]
+    T52["T5.2 文档体系检查\npm-infra, 2周"]
+    T53["T5.3 项目总结\npm-infra, 1-2周"]
+    T54["T5.4 Consultant审阅\n外部, 2-3周"]
+  end
+
+  M0{"M0 门禁"}
+  M1{"M1 门禁"}
+  M2{"M2 门禁"}
+  M3{"M3 门禁"}
+  M4{"M4 门禁"}
+
+  T01 --> T11
+  T02 --> M0
+  T03 --> T12
+  T04 --> T14
+  M0 --> T11
+  M0 --> T13
+
+  T11 --> M1
+  T12 --> M1
+  T13 --> M1
+  T14 --> M1
+
+  M1 --> T21
+  M1 --> T22
+  M1 --> T23
+  T21 --> T24
+  T22 --> M2
+  T23 --> M2
+  T24 --> M2
+
+  M2 --> T31
+  T31 --> T32
+  T31 --> T33
+  T34 -.-> T43
+
+  T32 --> T41
+  T33 --> T42
+  T41 --> T42
+  T42 --> T44
+  T43 --> T44
+  T44 --> M3
+
+  M3 --> T51
+  T51 --> T52
+  T51 --> T54
+  T52 --> T53
+  T53 --> M4
+  T54 --> M4
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 项目甘特图 -- 时间线与并行关系</h2>
+<p>按时间轴展示所有任务的起止时间和并行关系。同一 section 内的任务可并行执行。</p>
+
+<div class="mermaid">
+gantt
+  title Lumi-Core 项目甘特图 (2026-06 ~ 2027-09)
+  dateFormat YYYY-MM
+  axisFormat %Y-%m
+
+  section Phase 0 项目启动
+  T0.1 PRD需求完善 (pm-infra)       :a01, 2026-06, 2w
+  T0.2 基础设施搭建 (pm-infra)        :a02, 2026-06, 2w
+  T0.3 架构说明书起草 (hw-design)     :a03, after a01, 3w
+  T0.4 GEM5+ ISA扩展 (hw-design)     :a04, 2026-06, 4w
+
+  section M0 门禁
+  M0 门禁评审                         :milestone, m0, 2026-07, 0d
+
+  section Phase 1 需求定版
+  T1.1 PRD评审定版 (pm-infra)         :b01, 2026-07, 2w
+  T1.2 架构说明书定版 (hw-design)     :b02, 2026-07, 4w
+  T1.3 验证方案启动 (hw-ver)          :b03, 2026-07, 3w
+  T1.4 GEM5+ 中断建模 (hw-design)    :b04, 2026-07, 6w
+
+  section M1 门禁
+  M1 门禁评审                         :milestone, m1, 2026-09, 0d
+
+  section Phase 2 详细设计
+  T2.1 模块设计文档x14 (hw-design)    :c01, 2026-10, 10w
+  T2.2 验证方案定版 (hw-ver)          :c02, 2026-10, 6w
+  T2.3 GEM5+ 微架构+基准 (hw-design) :c03, 2026-10, 5w
+  T2.4 RTL骨架搭建 (hw-design)        :c04, after c01, 3w
+
+  section M2 门禁
+  M2 门禁评审                         :milestone, m2, 2026-12, 0d
+
+  section Phase 3 RTL实现
+  T3.1 RTL逐模块实现 (hw-design)      :d01, 2027-01, 12w
+  T3.2 单元验证 (hw-ver)              :d02, 2027-01, 12w
+  T3.3 每日集成回归 (hw-ver)          :d03, 2027-01, 12w
+  T3.4 GEM5+ 交叉校准 (hw-design)    :d04, 2027-01, 12w
+
+  section Phase 4 集成验证
+  T4.1 系统集成验证 (hw-ver)          :e01, 2027-04, 8w
+  T4.2 回归+Bug用例 (hw-ver)          :e02, after e01, 6w
+  T4.3 性能达标验证 (hw-design)       :e03, 2027-05, 4w
+  T4.4 交付物准备 (hw-design)         :e04, after e02, 5w
+
+  section M3 门禁
+  M3 门禁评审                         :milestone, m3, 2027-06, 0d
+
+  section Phase 5 交付就绪
+  T5.1 交付物整理 (全角色)            :f01, 2027-07, 6w
+  T5.2 文档体系检查 (pm-infra)        :f02, after f01, 2w
+  T5.3 项目总结 (pm-infra)            :f03, after f02, 2w
+  T5.4 Consultant审阅 (外部)          :f04, after f01, 3w
+
+  section M4 门禁
+  M4 门禁评审                         :milestone, m4, 2027-09, 0d
+</div>
+
+<!-- ============================================================ -->
+<h2>3. 四条并行路径分解</h2>
+<p>项目工作分为四条并行路径，路径 B/C/D 不阻塞关键路径 (路径 A)。</p>
+
+<div class="path-card path-a">
+<h4 style="color:var(--c-path-a)">路径 A: 关键路径 (主线, ~50周, 不可压缩)</h4>
+<div class="mermaid">
+graph LR
+  A1["T0.1 PRD完善\n2周"] --> A2["T1.1 PRD定版\n2周"]
+  A2 --> A3["T1.2 架构定版\n3-4周"]
+  A3 --> A4["T2.1 模块设计x14\n8-10周"]
+  A4 --> A5["T2.4 RTL骨架\n2-3周"]
+  A5 --> A6["T3.1 RTL实现\n10-12周"]
+  A6 --> A7["T4.1 集成验证\n6-8周"]
+  A7 --> A8["T4.4 交付准备\n4-5周"]
+  A8 --> A9["T5.1 交付整理\n4-6周"]
+</div>
+<p><b>角色流:</b> pm-infra &rarr; hw-design &rarr; hw-ver &rarr; 全角色</p>
+</div>
+
+<div class="path-card path-b">
+<h4 style="color:var(--c-path-b)">路径 B: GEM5+ 建模线 (全程独立, 不阻塞主线)</h4>
+<div class="mermaid">
+graph LR
+  B1["T0.4 ISA扩展\n并行"] --> B2["T1.4 中断建模\n4-6周"]
+  B2 --> B3["T2.3 微架构+基准\n4-5周"]
+  B3 --> B4["T3.4 交叉校准\n并行"]
+</div>
+<p><b>角色:</b> hw-design (独立) | <b>风险:</b> CLIC中断建模是瓶颈 | <b>汇合点:</b> M2提供性能数据</p>
+</div>
+
+<div class="path-card path-c">
+<h4 style="color:var(--c-path-c)">路径 C: 验证体系线 (Phase 1 起与主线并行)</h4>
+<div class="mermaid">
+graph LR
+  C1["T1.3 验证方案启动\n2-3周"] --> C2["T2.2 验证方案定版\n4-6周"]
+  C2 --> C3["T3.2 单元验证\n同步RTL"]
+  C3 --> C4["T3.3 每日回归\n持续"]
+  C4 --> C5["T4.2 回归+Bug\n4-6周"]
+</div>
+<p><b>角色:</b> hw-ver | <b>依赖:</b> T3.2需等RTL模块完成 | <b>汇合点:</b> T4.2与T4.1串行</p>
+</div>
+
+<div class="path-card path-d">
+<h4 style="color:var(--c-path-d)">路径 D: 项目管理线 (全程贯穿, 提供支撑)</h4>
+<div class="mermaid">
+graph LR
+  D1["T0.2 基础设施\n1-2周"] --> D2["CI/CD\n每日回归"]
+  D2 --> D3["指令日志\n每日"]
+  D3 --> D4["Errata维护\n持续"]
+  D4 --> D5["门禁核查\n每里程碑"]
+</div>
+<p><b>角色:</b> pm-infra + qa-audit | <b>职责:</b> 基础设施支撑, 不阻塞技术路径</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 各 Phase 并行矩阵</h2>
+<p>每个 Phase 按周展示任务并行关系，颜色条表示任务活跃期。</p>
+
+<h3>Phase 0: 项目启动 (4周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1</th><th>周2</th><th>周3</th><th>周4</th></tr>
+<tr><td class="task-label">T0.1 PRD需求完善</td><td>pm-infra</td><td class="bar-a">==</td><td class="bar-a">==</td><td class="bar-empty"></td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T0.2 基础设施搭建</td><td>pm-infra</td><td class="bar-d">==</td><td class="bar-d">=</td><td class="bar-empty"></td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T0.3 架构说明书起草</td><td>hw-design</td><td class="bar-empty"></td><td class="bar-a">=</td><td class="bar-a">==</td><td class="bar-a">==</td></tr>
+<tr><td class="task-label">T0.4 GEM5+ ISA扩展</td><td>hw-design</td><td class="bar-b">==</td><td class="bar-b">==</td><td class="bar-b">==</td><td class="bar-b">==</td></tr>
+</table>
+<p><b>并行关系:</b> T0.1 + T0.2 + T0.4 可完全并行 (三角色互不依赖); T0.3 在 T0.1 部分完成后启动</p>
+
+<h3>Phase 1: 需求定版与架构定义 (8周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1-2</th><th>周3-4</th><th>周5-6</th><th>周7-8</th></tr>
+<tr><td class="task-label">T1.1 PRD评审与定版</td><td>pm-infra</td><td class="bar-a">==</td><td class="bar-a">==</td><td class="bar-empty"></td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T1.2 架构说明书定版</td><td>hw-design</td><td class="bar-a">==</td><td class="bar-a">==</td><td class="bar-a">==</td><td class="bar-a">==</td></tr>
+<tr><td class="task-label">T1.3 验证方案启动</td><td>hw-ver</td><td class="bar-empty"></td><td class="bar-c">==</td><td class="bar-c">==</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T1.4 GEM5+ 中断建模</td><td>hw-design</td><td class="bar-b">==</td><td class="bar-b">==</td><td class="bar-b">==</td><td class="bar-b">==</td></tr>
+</table>
+<p><b>并行关系:</b> T1.1 / T1.2 / T1.3 / T1.4 <b>四任务可同时推进</b> (最高并行度)</p>
+
+<h3>Phase 2: 详细设计与验证框架 (12周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1-4</th><th>周5-8</th><th>周9-12</th></tr>
+<tr><td class="task-label">T2.1 模块设计文档 x14</td><td>hw-design</td><td class="bar-a">====</td><td class="bar-a">====</td><td class="bar-a">==</td></tr>
+<tr><td class="task-label">T2.2 验证方案定版</td><td>hw-ver</td><td class="bar-c">====</td><td class="bar-c">==</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T2.3 GEM5+ 微架构+基准</td><td>hw-design</td><td class="bar-b">====</td><td class="bar-b">=</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T2.4 RTL骨架搭建</td><td>hw-design</td><td class="bar-empty"></td><td class="bar-empty"></td><td class="bar-a">===</td></tr>
+</table>
+<p><b>并行关系:</b> T2.1 / T2.2 / T2.3 三线并行 (前8周); T2.4 在 T2.1 后期启动</p>
+
+<h3>Phase 3: RTL实现与单元验证 (12周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1-4</th><th>周5-8</th><th>周9-12</th></tr>
+<tr><td class="task-label">T3.1 RTL逐模块实现</td><td>hw-design</td><td class="bar-a">====</td><td class="bar-a">====</td><td class="bar-a">====</td></tr>
+<tr><td class="task-label">T3.2 单元验证</td><td>hw-ver</td><td class="bar-c">====</td><td class="bar-c">====</td><td class="bar-c">====</td></tr>
+<tr><td class="task-label">T3.3 每日集成回归</td><td>hw-ver+pm</td><td class="bar-d">====</td><td class="bar-d">====</td><td class="bar-d">====</td></tr>
+<tr><td class="task-label">T3.4 GEM5+ 交叉校准</td><td>hw-design</td><td class="bar-b">====</td><td class="bar-b">====</td><td class="bar-b">====</td></tr>
+</table>
+<p><b>并行关系:</b> T3.1 + T3.2 + T3.3 + T3.4 <b>四线全程并行</b> (最高并行度); T3.2 与 T3.1 高度同步 (逐模块)</p>
+
+<h3>Phase 4: 集成验证与RTL冻结 (12周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1-4</th><th>周5-8</th><th>周9-12</th></tr>
+<tr><td class="task-label">T4.1 系统集成验证</td><td>hw-ver</td><td class="bar-c">====</td><td class="bar-c">====</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T4.2 回归+Bug用例</td><td>hw-ver</td><td class="bar-empty"></td><td class="bar-c">====</td><td class="bar-c">==</td></tr>
+<tr><td class="task-label">T4.3 性能达标验证</td><td>hw-design+hw-ver</td><td class="bar-empty"></td><td class="bar-a">==</td><td class="bar-a">==</td></tr>
+<tr><td class="task-label">T4.4 交付物准备</td><td>hw-design+hw-ver</td><td class="bar-empty"></td><td class="bar-empty"></td><td class="bar-a">====</td></tr>
+</table>
+<p><b>并行关系:</b> T4.1 &rarr; T4.2 串行; T4.2 + T4.3 可并行; T4.4 在 T4.2/T4.3 完成后启动</p>
+
+<h3>Phase 5: 交付就绪 (12周)</h3>
+<table class="matrix-table">
+<tr><th>任务</th><th>角色</th><th>周1-4</th><th>周5-8</th><th>周9-12</th></tr>
+<tr><td class="task-label">T5.1 交付物整理</td><td>全角色</td><td class="bar-a">====</td><td class="bar-a">==</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T5.2 文档体系检查</td><td>pm-infra</td><td class="bar-empty"></td><td class="bar-d">==</td><td class="bar-empty"></td></tr>
+<tr><td class="task-label">T5.3 项目总结</td><td>pm-infra</td><td class="bar-empty"></td><td class="bar-empty"></td><td class="bar-d">==</td></tr>
+<tr><td class="task-label">T5.4 Consultant审阅</td><td>外部</td><td class="bar-empty"></td><td class="bar-b">===</td><td class="bar-empty"></td></tr>
+</table>
+<p><b>并行关系:</b> T5.2 + T5.4 可与 T5.1 后期并行; T5.2 + T5.3 + T5.4 三者可并行</p>
+
+<!-- ============================================================ -->
+<h2>5. 可并行工作总结</h2>
+
+<table class="parallel-summary">
+<tr><th>并行组合</th><th>时间段</th><th>并行任务数</th><th>说明</th></tr>
+<tr><td>T0.1 + T0.2 + T0.4</td><td>Phase 0 全程</td><td>3</td><td>PRD完善 + 基础设施 + GEM5+，三角色互不依赖</td></tr>
+<tr><td><b>T1.1 + T1.2 + T1.3 + T1.4</b></td><td>Phase 1 全程</td><td><b>4</b></td><td>PRD定版 + 架构定版 + 验证方案 + GEM5+中断，<b>最高并行度</b></td></tr>
+<tr><td>T2.1 + T2.2 + T2.3</td><td>Phase 2 前8周</td><td>3</td><td>模块设计 + 验证定版 + GEM5+微架构，三线并行</td></tr>
+<tr><td><b>T3.1 + T3.2 + T3.3 + T3.4</b></td><td>Phase 3 全程</td><td><b>4</b></td><td>RTL实现 + 单元验证 + 回归 + GEM5+校准，<b>四线全程并行</b></td></tr>
+<tr><td>T4.2 + T4.3</td><td>Phase 4 中期</td><td>2</td><td>回归测试 + 性能验证可并行</td></tr>
+<tr><td>T5.2 + T5.3 + T5.4</td><td>Phase 5 后期</td><td>3</td><td>文档检查 + 项目总结 + Consultant审阅</td></tr>
+<tr><td><b>路径B全程</b></td><td>Phase 0 ~ Phase 3</td><td>-</td><td>GEM5+ 建模线全程独立于关键路径，不阻塞主线</td></tr>
+<tr><td><b>路径C全程</b></td><td>Phase 1 ~ Phase 4</td><td>-</td><td>验证体系线从 Phase 1 起与主线并行</td></tr>
+</table>
+
+<div class="summary-box">
+<h3>关键结论</h3>
+<ul>
+<li><b>项目总工期 ~60 周</b> (2026-06 ~ 2027-09)，由关键路径 (路径A) 决定</li>
+<li><b>并行路径不增加总工期</b>: GEM5+ 线 (路径B) 和验证线 (路径C) 全程与主线并行</li>
+<li><b>Phase 1 和 Phase 3 并行度最高</b>: 各有 4 个任务可同时推进</li>
+<li><b>CLIC 中断建模 (T1.4)</b> 是路径B上的关键风险，需 HD-2 两天预警机制</li>
+<li><b>T2.1 模块设计文档 (8-10周)</b> 是关键路径上最长的单一任务，需重点关注</li>
+</ul>
+</div>
+
+<p style="text-align:center; color:#95a5a6; margin-top:40px; font-size:12px;">
+Lumi-Core 项目流程图 | 基于 Lumi 项目开发计划生成 | 最后更新: 2026-06-29
+</p>
+
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'default',
+  flowchart: { curve: 'basis', nodeSpacing: 30, rankSpacing: 50 },
+  gantt: { fontSize: 12, barGap: 4, barHeight: 24, topPadding: 50, sectionFontSize: 14 }
+});
+</script>
+</body>
+</html>

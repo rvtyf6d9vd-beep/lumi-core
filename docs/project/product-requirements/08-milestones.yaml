@@ -1,0 +1,13 @@
+# ═══════════════ 8. 项目里程碑 ═══════════════
+section: "8. 项目里程碑"
+id: sec-milestone
+description: "定义项目关键时间节点，包括评审点、交付点和发布点。"
+
+sub_sections:
+  - title: ""
+    table_type: data
+    headers: [里程碑, 计划日期, 实际日期, 交付物, 门禁状态, 备注]
+    rows:
+      - ["M1: 需求评审", 2026-Q3, "--", PRD 基线 BL-1.0, Pending, "--"]
+      - ["M2: 架构设计评审", 2026-Q4, "--", Platform Spec, Pending, "--"]
+      - ["M3: RTL 冻结", 2027-Q2, "--", "RTL + 验证报告", Pending, "--"]

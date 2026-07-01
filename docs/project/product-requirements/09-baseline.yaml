@@ -1,0 +1,19 @@
+# ═══════════════ 9. 需求基线管理 ═══════════════
+section: "9. 需求基线管理"
+id: sec-baseline
+description: "需求基线 (Baseline) 是整批需求的快照定版，用于版本锁定和发布追溯。"
+
+rules:
+  - "需求集有独立的基线版本号 BL-{主版本}.{次版本}，与每条需求自身版本号分开维护。"
+  - "定版 (Baseline Freeze) 时：点击基线定版按钮，系统自动收集所有 Approved+ 需求，为需求打上基线标签，并下载 baseline-{BL}.yaml 快照文件。"
+  - "将 YAML 放入 docs/project/baselines/，运行 generate_baseline_html.py 生成 HTML 报告。"
+  - "权威来源：baselines/ 目录下的 YAML 文件为下游流程（设计/验证/实现）的唯一参考依据。"
+  - "定版后变更需求 → 版本 +0.1，基线标签清空，等待下次定版。"
+
+baselines:
+  - version: BL-EXAMPLE
+    date: "2026-06-26"
+    count: 5
+    yaml: "baselines/baseline-BL-EXAMPLE.yaml"
+    html: "baselines/baseline-BL-EXAMPLE.html"
+    note: "示例基线"

@@ -1,0 +1,47 @@
+# ═══════════════ 2. 产品概述 ═══════════════
+section: "2. 产品概述"
+id: sec-overview
+description: "概述 Lumi-Core 的市场定位、目标客户、典型应用场景及标准合规要求，为后续硬件需求提供业务上下文。"
+
+sub_sections:
+  - title: "2.1 市场定位"
+    table_type: meta
+    rows:
+      - [目标市场, "汽车电子 / 工业控制 / 嵌入式消费电子"]
+      - [市场定位, "高性能安全嵌入式处理器"]
+      - [差异化优势, "灵活配置，全验证环境交付，可以完全自由定制"]
+
+  - title: "2.2 竞品分析"
+    table_type: data
+    headers: [竞品名称, 厂商, 架构, 优势, 劣势, 与 Lumi 对比]
+    rows:
+      - [ARM Cortex-M7, ARM, ARMv7E-M, 生态成熟, "授权费高，不可定制", "--"]
+      - [ARM Cortex-R52, ARM, ARMv7E-M, 生态成熟, "授权费高，不可定制", "--"]
+      - [Nuclei NA900, RISC-V, RV32GCBV, "授权灵活，配置丰富，可以定制", "--", "--"]
+
+  - title: "2.3 典型应用场景"
+    table_type: data
+    headers: [编号, 场景名称, 场景描述, 关键需求]
+    rows:
+      - [SC-01, 汽车MCU, 车规主控芯片, "功能安全 ASIL-B、实时中断"]
+      - [SC-02, 功能安全岛, 车规监控芯片, "功能安全 ASIL-D、实时中断"]
+      - [SC-03, 工业MCU, 工业主控芯片, "功能安全 ASIL-B、实时中断"]
+
+  - title: "2.4 目标客户"
+    table_type: data
+    headers: [客户类型, 行业, 规模, 关键诉求]
+    rows:
+      - [Fabless芯片公司, 半导体设计公司, 中型, "性能达标，功能验证完整"]
+
+  - title: "2.5 依赖产品"
+    table_type: data
+    headers: [依赖产品, 类型, 版本要求, 接口方式, 说明]
+    rows:
+      - [暂无, "--", "--", "--", "暂无依赖产品"]
+
+  - title: "2.6 标准合规"
+    table_type: data
+    headers: [标准/规范, 版本, 合规级别, 认证机构, 说明]
+    rows:
+      - [RISC-V Profile RT-Europa, v1.0, Mandatory, RISC-V Intl, 嵌入式实时 Profile]
+      - [ISO 26262, "2018", ASIL-B, 第三方, 汽车功能安全]

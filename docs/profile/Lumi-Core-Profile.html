@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 架构 Profile 参考手册</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #333333;
+            --heading: #1a1a2e;
+            --accent: #16213e;
+            --border: #e0e0e0;
+            --code-bg: #f5f5f5;
+            --table-header: #16213e;
+            --table-header-text: #ffffff;
+            --table-stripe: #f8f9fa;
+            --note-bg: #e8f4fd;
+            --note-border: #2196F3;
+            --toc-bg: #f8f9fa;
+            --link: #0d47a1;
+            --blockquote-bg: #f0f4f8;
+            --blockquote-border: #546e7a;
+            --part-divider: #16213e;
+            --chapter-color: #1a3a5c;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 2rem 4rem;
+        }
+
+        /* Cover / Title Page */
+        .cover {
+            text-align: center;
+            padding: 4rem 0;
+            border-bottom: 3px solid var(--accent);
+            margin-bottom: 3rem;
+        }
+        .cover h1 {
+            font-size: 2.4rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .cover .doc-id {
+            font-size: 1.1rem;
+            color: #78909c;
+            margin-bottom: 0.5rem;
+        }
+        .cover .meta {
+            font-size: 0.9rem;
+            color: #90a4ae;
+            margin-top: 1.5rem;
+            line-height: 2;
+        }
+        .cover .confidential {
+            display: inline-block;
+            border: 1px solid #c62828;
+            color: #c62828;
+            padding: 0.25rem 1rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Headings */
+        h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+            margin: 2.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            page-break-before: always;
+        }
+        h1:first-of-type {
+            page-break-before: avoid;
+        }
+        h2 {
+            font-size: 1.4rem;
+            color: var(--chapter-color);
+            margin: 2rem 0 0.8rem;
+        }
+        h3 {
+            font-size: 1.15rem;
+            color: #37474f;
+            margin: 1.5rem 0 0.6rem;
+        }
+
+        /* Paragraphs */
+        p {
+            margin: 0.8rem 0;
+            text-align: justify;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.2rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+        th {
+            background: var(--table-header);
+            color: var(--table-header-text);
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:nth-child(even) td {
+            background: var(--table-stripe);
+        }
+
+        /* Code */
+        code {
+            background: var(--code-bg);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            font-size: 0.88em;
+        }
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 1.2rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            line-height: 1.5;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Lists */
+        ul {
+            margin: 0.8rem 0;
+            padding-left: 2rem;
+        }
+        li {
+            margin: 0.3rem 0;
+        }
+
+        /* Horizontal Rule */
+        hr {
+            border: none;
+            border-top: 2px solid var(--part-divider);
+            margin: 3rem 0 1rem;
+            position: relative;
+        }
+
+        /* Blockquote / Notes */
+        blockquote {
+            background: var(--note-bg);
+            border-left: 4px solid var(--note-border);
+            padding: 0.8rem 1.2rem;
+            margin: 1rem 0;
+            font-size: 0.93rem;
+            border-radius: 0 6px 6px 0;
+        }
+        blockquote strong {
+            color: #1565C0;
+        }
+
+        /* Links */
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Part divider */
+        .part-header {
+            background: var(--accent);
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: 3rem 0 1.5rem;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border-radius: 4px;
+            page-break-before: always;
+        }
+
+        /* Strong */
+        strong {
+            color: #1a1a2e;
+        }
+
+        /* Print */
+        @media print {
+            body {
+                font-size: 11pt;
+                max-width: none;
+                padding: 0;
+            }
+            h1 { page-break-before: always; }
+            h1:first-of-type { page-break-before: avoid; }
+            .part-header { page-break-before: always; }
+            pre { white-space: pre-wrap; }
+            table { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cover">
+    <p class="doc-id">文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0-draft</p>
+    <h1>Lumi-Core 架构 Profile 参考手册</h1>
+    <div class="meta">
+        <p><strong>发布日期:</strong> 2026-06-24</p>
+        <p><strong>状态:</strong> 开发中 (Development)</p>
+        <p><strong>参考规范:</strong> Quintauris RT-Europa Profile (2025-03-31)</p>
+        <p><strong>组织参考:</strong> Armv7-M Architecture Reference Manual (ARM DDI 0403E.e)</p>
+    </div>
+    <div class="confidential">CONFIDENTIAL — Lumi Project Internal</div>
+</div>
+
+<h1 id="lumi-core-架构-profile-参考手册">Lumi-Core 架构 Profile 参考手册</h1>
+<p><strong><strong>文档编号:</strong> LUMI-ARCH-001</strong></p>
+<p><strong><strong>版本:</strong> 1.0-draft</strong></p>
+<p><strong><strong>发布日期:</strong> 2026-06-24</strong></p>
+<p><strong><strong>状态:</strong> 开发中 (Development)</strong></p>
+<p><strong><strong>许可:</strong> Confidential — Lumi Project Internal</strong></p>
+<hr/>
+<h2 id="前言-(preface)">前言 (Preface)</h2>
+<h3 id="关于本文档">关于本文档</h3>
+<p>本文档定义了 <strong>Lumi-Core</strong> RISC-V 处理器 IP 的架构 Profile——即在标准 RISC-V ISA 基础上，Lumi-Core 所选定的指令集扩展子集、特权架构配置、以及实现定义参数的具体选择。</p>
+<p>Lumi-Core Profile 基于 <strong>Quintauris RT-Europa Profile</strong>（2025-03-31 发布）制定，参考了 <strong>Armv7-M 架构参考手册</strong>（ARM DDI 0403E.e）的组织方式。本文档不重新定义 RISC-V ISA，而是在标准 Profile 框架下，为 Lumi-Core 项目锁定具体的技术选择，以指导硬件设计、验证和软件开发。</p>
+<h3 id="文档结构">文档结构</h3>
+<p>本文档按照 Armv7-M 参考手册的组织模式，分为四个部分：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>部分</th>
+<th>标题</th>
+<th>内容</th>
+</tr>
+<tr>
+<td><strong>Part A</strong></td>
+<td>应用层架构</td>
+<td>用户态 ISA 扩展选择、指令集概览、编程模型</td>
+</tr>
+<tr>
+<td><strong>Part B</strong></td>
+<td>系统层架构</td>
+<td>特权模式、实现定义参数、内存模型、中断架构</td>
+</tr>
+<tr>
+<td><strong>Part C</strong></td>
+<td>调试架构</td>
+<td>调试与跟踪支持</td>
+</tr>
+<tr>
+<td><strong>Part D</strong></td>
+<td>附录</td>
+<td>Profile 对比表、术语表、参考文档索引</td>
+</tr>
+</table></div>
+<h3 id="约定-(conventions)">约定 (Conventions)</h3>
+<p>本文档遵循以下排版约定：</p>
+<ul>
+<li><strong>粗体</strong> — 信号名称、关键词、CSR 字段名</li>
+<li><code>等宽字体</code> — 指令助记符、汇编语法、CSR 地址、伪代码</li>
+<li><em>斜体</em> — 术语首次引入、文档交叉引用</li>
+<li>小体大写 — 具有特定技术含义的术语：IMPLEMENTATION DEFINED、UNPREDICTABLE</li>
+</ul>
+<p><strong><strong>数字表示：</strong></strong></p>
+<ul>
+<li>二进制数以 <code>0b</code> 为前缀（如 <code>0b0100</code>）</li>
+<li>十六进制数以 <code>0x</code> 为前缀（如 <code>0x1000</code>）</li>
+<li>十进制数无前缀</li>
+<li>版本号以标准语义版本格式表示：<code>主版本.次版本.修订版本</code></li>
+</ul>
+<h3 id="参考文档">参考文档</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>编号</th>
+<th>文档</th>
+<th>版本</th>
+<th>路径</th>
+</tr>
+<tr>
+<td>REF-1</td>
+<td>RISC-V Unprivileged ISA Manual</td>
+<td>20250508</td>
+<td><code>docs/standards/riscv-specs/isa/riscv-unprivileged.pdf</code></td>
+</tr>
+<tr>
+<td>REF-2</td>
+<td>RISC-V Privileged ISA Manual</td>
+<td>20250508</td>
+<td><code>docs/standards/riscv-specs/isa/riscv-privileged.pdf</code></td>
+</tr>
+<tr>
+<td>REF-3</td>
+<td>Quintauris RT-Europa Profile</td>
+<td>2025-03-31</td>
+<td><code>docs/standards/Profiles/Quintauris-RT-Europa-Profile.pdf</code></td>
+</tr>
+<tr>
+<td>REF-4</td>
+<td>RISC-V Bit-Manipulation Extension</td>
+<td>1.0.0</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-bitmanip.pdf</code></td>
+</tr>
+<tr>
+<td>REF-5</td>
+<td>RISC-V Code Size Reduction (Zc*)</td>
+<td>1.0.4</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-zc.pdf</code></td>
+</tr>
+<tr>
+<td>REF-6</td>
+<td>RISC-V Advanced Interrupt Architecture</td>
+<td>20250312</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-interrupts.pdf</code></td>
+</tr>
+<tr>
+<td>REF-7</td>
+<td>RISC-V CMO Extensions (Zicbom/Zicbop/Zicboz)</td>
+<td>1.0</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-cmo.pdf</code></td>
+</tr>
+<tr>
+<td>REF-8</td>
+<td>RISC-V Conditional Operations (Zicond)</td>
+<td>1.0.1</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-zicond.pdf</code></td>
+</tr>
+<tr>
+<td>REF-9</td>
+<td>RISC-V Smepmp Specification</td>
+<td>1.0</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-smepmp.pdf</code></td>
+</tr>
+<tr>
+<td>REF-10</td>
+<td>RISC-V Smcdeleg/Ssccfg Specification</td>
+<td>1.0.0</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-smcdeleg-ssccfg.pdf</code></td>
+</tr>
+<tr>
+<td>REF-11</td>
+<td>RISC-V Smcntrpmf Specification</td>
+<td>1.0</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-smcntrpmf.pdf</code></td>
+</tr>
+<tr>
+<td>REF-12</td>
+<td>RISC-V SPMP Specification</td>
+<td>0.9.1</td>
+<td><code>docs/standards/riscv-specs/extensions/riscv-spmp.pdf</code></td>
+</tr>
+<tr>
+<td>REF-13</td>
+<td>RVA23 Profile Specification</td>
+<td>ratified</td>
+<td><code>docs/standards/riscv-specs/extensions/rva23-profile.pdf</code></td>
+</tr>
+</table></div>
+<hr/>
+<h1 id="part-a--应用层架构">Part A — 应用层架构</h1>
+<p>Part A 描述应用层视角下的 Lumi-Core 架构，包括非特权 ISA 扩展选择、指令集概览和编程模型。这是编写应用程序和开发工具链所需的全部信息。</p>
+<hr/>
+<h2 id="chapter-a1--概述">Chapter A1 — 概述</h2>
+<h3 id="a1.1-关于-risc-v-架构与-profile">A1.1 关于 RISC-V 架构与 Profile</h3>
+<p>RISC-V 被设计为高度模块化和可扩展的指令集架构，包含大量且不断增长的标准扩展。这种灵活性使得可能的 ISA 组合呈组合爆炸式增长。<strong>Profile</strong> 通过指定一个较小的通用 ISA 选项集来解决这个问题——它为大多数用户捕获最大价值，使软件社区能够将资源集中在构建丰富的软件生态上。</p>
+<p>Profile 仅描述 ISA 特性，而非完整的执行环境。Lumi-Core 在此 Profile 基础上进一步约束实现参数，为具体设计提供明确规范。</p>
+<h3 id="a1.2-lumi-core-架构-profile">A1.2 Lumi-Core 架构 Profile</h3>
+<p>Lumi-Core 是基于 RISC-V 32 位基础整数指令集（RV32I）的实时处理器 IP，面向 <strong>汽车和工业控制</strong> 领域，遵循 Quintauris RT-Europa Profile 要求。Lumi-Core 的设计目标：</p>
+<ul>
+<li><strong>确定性执行</strong> — 可预测的指令执行时序和中断响应延迟</li>
+<li><strong>低延迟中断</strong> — 基于 CLIC（Core-Local Interrupt Controller）的快速中断响应</li>
+<li><strong>紧凑代码密度</strong> — 全面支持 Zce 压缩指令扩展</li>
+<li><strong>功能安全</strong> — 完整的 PMP 保护、双锁步支持预留</li>
+<li><strong>可配置性</strong> — 浮点、向量等扩展按需可选</li>
+</ul>
+<p>Lumi-Core Profile 定义了 <strong>三个特权级配置</strong>：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>配置</th>
+<th>最高特权模式</th>
+<th>目标场景</th>
+</tr>
+<tr>
+<td><strong>Lumi-CoreM</strong></td>
+<td>Machine (M)</td>
+<td>裸机应用、简单 RTOS</td>
+</tr>
+<tr>
+<td><strong>Lumi-CoreS</strong></td>
+<td>Supervisor (S)</td>
+<td>完整 RTOS、安全分区</td>
+</tr>
+<tr>
+<td><strong>Lumi-CoreU</strong></td>
+<td>User (U)</td>
+<td>用户态任务执行</td>
+</tr>
+</table></div>
+<p>Lumi-CoreS 包含 Lumi-CoreU 的全部能力，Lumi-CoreM 包含 Lumi-CoreS 的全部能力。所有配置均基于 RV32（XLEN = 32）。</p>
+<hr/>
+<h2 id="chapter-a2--扩展选择表">Chapter A2 — 扩展选择表</h2>
+<h3 id="a2.1-扩展分类">A2.1 扩展分类</h3>
+<p>每个 RISC-V 扩展在 Lumi-Core Profile 中被归类为以下类别之一：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>类别</th>
+<th>含义</th>
+</tr>
+<tr>
+<td><strong>Mandatory</strong></td>
+<td>必须实现，软件可以无条件假定其存在</td>
+</tr>
+<tr>
+<td><strong>Optional</strong></td>
+<td>可选实现，提供硬件发现机制供软件查询</td>
+</tr>
+<tr>
+<td><strong>Conditional</strong></td>
+<td>条件必须——当某前提扩展实现时，该扩展也须实现</td>
+</tr>
+<tr>
+<td><strong>Not Applicable</strong></td>
+<td>在当前配置中不适用</td>
+</tr>
+</table></div>
+<h3 id="a2.2-lumi-corem-profile--扩展选择">A2.2 Lumi-CoreM Profile — 扩展选择</h3>
+<p><strong><strong>目标：</strong> 裸机 / 简单 RTOS 应用（Machine-mode only）</strong></p>
+<div class="table-wrapper"><table>
+<tr>
+<th>扩展</th>
+<th>类别</th>
+<th>版本</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>RV32I</strong></td>
+<td>Mandatory</td>
+<td>2.1.0</td>
+<td>32 位基础整数指令集</td>
+</tr>
+<tr>
+<td><strong>M</strong></td>
+<td>Mandatory</td>
+<td>2.0.0</td>
+<td>整数乘除法指令</td>
+</tr>
+<tr>
+<td><strong>A</strong></td>
+<td>Mandatory</td>
+<td>2.1.0</td>
+<td>原子指令（LR/SC, AMO）</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>位操作扩展（Zba/Zbb/Zbc/Zbs）</td>
+</tr>
+<tr>
+<td><strong>Zicsr</strong></td>
+<td>Mandatory</td>
+<td>2.0.0</td>
+<td>CSR 访问指令</td>
+</tr>
+<tr>
+<td><strong>Zicntr</strong></td>
+<td>Mandatory</td>
+<td>2.0.0</td>
+<td>基础性能计数器</td>
+</tr>
+<tr>
+<td><strong>Zihpm</strong></td>
+<td>Mandatory</td>
+<td>2.0.0</td>
+<td>可编程硬件性能计数器</td>
+</tr>
+<tr>
+<td><strong>Zce</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>微控制器压缩指令（Zca+Zcb+Zcmp+Zcmt）</td>
+</tr>
+<tr>
+<td><strong>Zicbom</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>缓存块管理指令（CBO.INVAL, CBO.CLEAN, CBO.FLUSH）</td>
+</tr>
+<tr>
+<td><strong>Zicbop</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>缓存块预取指令（PREFETCH.*）</td>
+</tr>
+<tr>
+<td><strong>Zicboz</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>缓存块清零指令（CBO.ZERO）</td>
+</tr>
+<tr>
+<td><strong>Zicond</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>整数条件操作（CZERO.EQZ, CZERO.NEZ）</td>
+</tr>
+<tr>
+<td><strong>Zihintpause</strong></td>
+<td>Mandatory</td>
+<td>2.0.0</td>
+<td>PAUSE 提示指令</td>
+</tr>
+<tr>
+<td><strong>Zihintntl</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>非时间局部性提示指令</td>
+</tr>
+<tr>
+<td><strong>Zimop</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>"可能操作"（May-Be Operations）</td>
+</tr>
+<tr>
+<td><strong>Zcmop</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>16 位压缩"可能操作"</td>
+</tr>
+<tr>
+<td><strong>Ziccamoa</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>主存原子性要求</td>
+</tr>
+<tr>
+<td><strong>Zifencei</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>指令缓存同步</td>
+</tr>
+<tr>
+<td><strong>Zilsd</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>RV32 加载/存储对指令</td>
+</tr>
+<tr>
+<td><strong>Zclsd</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>RV32 压缩加载/存储对指令</td>
+</tr>
+<tr>
+<td><strong>F</strong></td>
+<td>Optional</td>
+<td>2.2.0</td>
+<td>单精度浮点</td>
+</tr>
+<tr>
+<td><strong>Zfh</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>半精度浮点 — F 实现时强制</td>
+</tr>
+<tr>
+<td><strong>Zcf</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>压缩单精度浮点 — F 实现时强制</td>
+</tr>
+<tr>
+<td><strong>Zfa</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>附加浮点指令 — F 实现时强制</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Optional</td>
+<td>2.2.0</td>
+<td>双精度浮点</td>
+</tr>
+<tr>
+<td><strong>V</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>可变长度向量扩展</td>
+</tr>
+<tr>
+<td><strong>Zfbfmin</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>标量 BF16 转换</td>
+</tr>
+<tr>
+<td><strong>Zvfbfmin</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>向量 BF16 转换 — Zfbfmin+Zve64d 实现时强制</td>
+</tr>
+<tr>
+<td><strong>Zvfbfwma</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>向量 BF16 宽乘加 — Zfbfmin+Zve64d 实现时强制</td>
+</tr>
+</table></div>
+<h3 id="a2.3-lumi-cores-profile--扩展选择（增量）">A2.3 Lumi-CoreS Profile — 扩展选择（增量）</h3>
+<p>在 Lumi-CoreM 基础上增加以下扩展：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>扩展</th>
+<th>类别</th>
+<th>版本</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>S</strong></td>
+<td>Mandatory</td>
+<td>1.13.0</td>
+<td>Supervisor 特权模式</td>
+</tr>
+<tr>
+<td><strong>Sstvecd</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>直接异常向量化</td>
+</tr>
+<tr>
+<td><strong>Ssstrict</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>未定义编码严格 Trap</td>
+</tr>
+<tr>
+<td><strong>Sstc</strong></td>
+<td>Mandatory</td>
+<td>0.9.0</td>
+<td>Supervisor 定时器中断</td>
+</tr>
+<tr>
+<td><strong>Ssclic</strong></td>
+<td>Mandatory</td>
+<td>0.9.0</td>
+<td>Supervisor CLIC 中断控制器</td>
+</tr>
+<tr>
+<td><strong>Ssaia</strong></td>
+<td>—注1</td>
+<td>1.0.0</td>
+<td>AIA — 与 CLIC 互斥</td>
+</tr>
+<tr>
+<td><strong>Sha</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>增强 Hypervisor 扩展</td>
+</tr>
+<tr>
+<td><strong>Svbare</strong></td>
+<td>Conditional</td>
+<td>1.0.0</td>
+<td>Bare 虚拟地址 — Sha 实现时强制</td>
+</tr>
+<tr>
+<td><strong>Sspmp</strong></td>
+<td>Optional</td>
+<td>0.9.2</td>
+<td>Supervisor 物理内存保护</td>
+</tr>
+<tr>
+<td><strong>Sscofpmf</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>计数器溢出和特权模式过滤</td>
+</tr>
+<tr>
+<td><strong>Sscounterenw</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>Supervisor 计数器使能</td>
+</tr>
+<tr>
+<td><strong>Ssccfg</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>Supervisor 计数器配置</td>
+</tr>
+</table></div>
+<blockquote><strong>注1:</strong> Lumi-Core 选择 <strong>CLIC</strong> 作为中断控制器方案，AIA 作为文档保留项但不要求实现。</blockquote>
+<h3 id="a2.4-lumi-corem-profile--扩展选择（增量）">A2.4 Lumi-CoreM Profile — 扩展选择（增量）</h3>
+<p>在 Lumi-CoreS 基础上增加以下扩展：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>扩展</th>
+<th>类别</th>
+<th>版本</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>Sm</strong></td>
+<td>Mandatory</td>
+<td>1.13.0</td>
+<td>Machine 特权模式</td>
+</tr>
+<tr>
+<td><strong>Smpmp</strong></td>
+<td>Mandatory</td>
+<td>1.13.0</td>
+<td>物理内存保护</td>
+</tr>
+<tr>
+<td><strong>Smepmp</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>PMP 增强（执行/访问控制）</td>
+</tr>
+<tr>
+<td><strong>Smrnmi</strong></td>
+<td>Mandatory</td>
+<td>1.0.0</td>
+<td>可恢复不可屏蔽中断</td>
+</tr>
+<tr>
+<td><strong>Smclic</strong></td>
+<td>Mandatory</td>
+<td>0.9.0</td>
+<td>Machine CLIC 中断控制器</td>
+</tr>
+<tr>
+<td><strong>Smaia</strong></td>
+<td>—注2</td>
+<td>1.0.0</td>
+<td>AIA — 与 CLIC 互斥</td>
+</tr>
+<tr>
+<td><strong>Smdbltrp</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>双 Trap 支持</td>
+</tr>
+<tr>
+<td><strong>Smcdeleg</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>计数器委托</td>
+</tr>
+<tr>
+<td><strong>Smcntrpmf</strong></td>
+<td>Optional</td>
+<td>1.0.0</td>
+<td>周期/指令计数特权过滤</td>
+</tr>
+</table></div>
+<blockquote><strong>注2:</strong> CLIC 与 AIA 互斥，Lumi-Core 选择 CLIC。</blockquote>
+<h3 id="a2.5-扩展选择决策依据">A2.5 扩展选择决策依据</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>决策</th>
+<th>选择</th>
+<th>理由</th>
+</tr>
+<tr>
+<td>中断架构</td>
+<td>CLIC</td>
+<td>RT-Europa 要求 CLIC 或 AIA；CLIC 对实时系统延迟更优，硬件面积更小</td>
+</tr>
+<tr>
+<td>基础 ISA</td>
+<td>RV32</td>
+<td>RT-Europa 为 32 位实时 Profile</td>
+</tr>
+<tr>
+<td>位操作</td>
+<td>B (Mandatory)</td>
+<td>提升控制密集型代码密度和性能</td>
+</tr>
+<tr>
+<td>代码压缩</td>
+<td>Zce (Mandatory)</td>
+<td>显著减小代码体积，适合嵌入式 Flash 场景</td>
+</tr>
+<tr>
+<td>缓存操作</td>
+<td>Zicbom/Zicbop/Zicboz (Mandatory)</td>
+<td>支持确定性缓存管理</td>
+</tr>
+<tr>
+<td>条件操作</td>
+<td>Zicond (Mandatory)</td>
+<td>消除分支，提升确定性</td>
+</tr>
+<tr>
+<td>浮点</td>
+<td>F/D (Optional)</td>
+<td>按需集成，节省面积</td>
+</tr>
+</table></div>
+<hr/>
+<h2 id="chapter-a3--应用层编程模型">Chapter A3 — 应用层编程模型</h2>
+<h3 id="a3.1-寄存器">A3.1 寄存器</h3>
+<p>Lumi-Core 提供以下应用层可见寄存器：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>名称</th>
+<th>宽度</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><code>x0</code>–<code>x31</code></td>
+<td>32 bit</td>
+<td>32</td>
+<td>通用整数寄存器；x0 硬连线为 0</td>
+</tr>
+<tr>
+<td><code>pc</code></td>
+<td>32 bit</td>
+<td>1</td>
+<td>程序计数器</td>
+</tr>
+<tr>
+<td><code>f0</code>–<code>f31</code></td>
+<td>32 bit</td>
+<td>32</td>
+<td>浮点寄存器（F 扩展实现时可用）</td>
+</tr>
+<tr>
+<td><code>v0</code>–<code>v31</code></td>
+<td>VLEN</td>
+<td>32</td>
+<td>向量寄存器（V 扩展实现时可用）</td>
+</tr>
+</table></div>
+<h3 id="a3.2-地址空间">A3.2 地址空间</h3>
+<ul>
+<li><strong>物理地址宽度:</strong> 32 bit（最大 4 GB 寻址空间）</li>
+<li><strong>虚拟地址宽度:</strong> 32 bit（仅 Bare 翻译模式，无 MMU）</li>
+<li><strong>字节序:</strong> 小端 (Little-Endian)</li>
+<li><strong>非对齐访问:</strong> 支持（MISALIGNED_LDST = true）</li>
+</ul>
+<h3 id="a3.3-异常与中断（应用层视图）">A3.3 异常与中断（应用层视图）</h3>
+<p>从应用层视角，以下事件可导致控制流转移：</p>
+<ul>
+<li><strong>ECALL 指令</strong> — 请求特权服务（U-mode → S/M-mode trap）</li>
+<li><strong>EBREAK 指令</strong> — 调试断点</li>
+<li><strong>非法指令</strong> — 未定义或未实现的指令编码</li>
+<li><strong>非对齐访问</strong> — 跨自然边界的加载/存储（硬件支持）</li>
+<li><strong>页面/访问错误</strong> — 内存保护违规</li>
+</ul>
+<p>详细异常模型见 [Chapter B4](#chapter-b4--异常与中断模型)。</p>
+<hr/>
+<h2 id="chapter-a4--指令集概要">Chapter A4 — 指令集概要</h2>
+<h3 id="a4.1-基础整数指令-(rv32i)">A4.1 基础整数指令 (RV32I)</h3>
+<p>Lumi-Core 实现完整的 RV32I 基础指令集（40 条指令），包括：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>类别</th>
+<th>指令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>寄存器-立即数</td>
+<td><code>ADDI</code>, <code>SLTI</code>, <code>SLTIU</code>, <code>XORI</code>, <code>ORI</code>, <code>ANDI</code>, <code>SLLI</code>, <code>SRLI</code>, <code>SRAI</code></td>
+<td>立即数算术/逻辑</td>
+</tr>
+<tr>
+<td>寄存器-寄存器</td>
+<td><code>ADD</code>, <code>SLT</code>, <code>SLTU</code>, <code>XOR</code>, <code>OR</code>, <code>AND</code>, <code>SLL</code>, <code>SRL</code>, <code>SUB</code>, <code>SRA</code></td>
+<td>寄存器算术/逻辑</td>
+</tr>
+<tr>
+<td>加载</td>
+<td><code>LB</code>, <code>LH</code>, <code>LW</code>, <code>LBU</code>, <code>LHU</code></td>
+<td>存储器加载</td>
+</tr>
+<tr>
+<td>存储</td>
+<td><code>SB</code>, <code>SH</code>, <code>SW</code></td>
+<td>存储器存储</td>
+</tr>
+<tr>
+<td>控制转移</td>
+<td><code>JAL</code>, <code>JALR</code>, <code>BEQ</code>, <code>BNE</code>, <code>BLT</code>, <code>BGE</code>, <code>BLTU</code>, <code>BGEU</code></td>
+<td>跳转和分支</td>
+</tr>
+<tr>
+<td>系统</td>
+<td><code>ECALL</code>, <code>EBREAK</code>, <code>FENCE</code></td>
+<td>系统指令</td>
+</tr>
+<tr>
+<td>其他</td>
+<td><code>LUI</code>, <code>AUIPC</code></td>
+<td>PC-相对地址生成</td>
+</tr>
+</table></div>
+<h3 id="a4.2-m-扩展--乘除法">A4.2 M 扩展 — 乘除法</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>指令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><code>MUL</code>, <code>MULH</code>, <code>MULHSU</code>, <code>MULHU</code></td>
+<td>有符号/无符号乘法</td>
+</tr>
+<tr>
+<td><code>DIV</code>, <code>DIVU</code>, <code>REM</code>, <code>REMU</code></td>
+<td>有符号/无符号除法与余数</td>
+</tr>
+</table></div>
+<h3 id="a4.3-a-扩展--原子指令">A4.3 A 扩展 — 原子指令</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>指令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><code>LR.W</code></td>
+<td>加载保留字</td>
+</tr>
+<tr>
+<td><code>SC.W</code></td>
+<td>条件存储字</td>
+</tr>
+<tr>
+<td><code>AMOSWAP.W</code>, <code>AMOADD.W</code>, <code>AMOXOR.W</code>, <code>AMOAND.W</code>, <code>AMOOR.W</code></td>
+<td>原子内存操作</td>
+</tr>
+<tr>
+<td><code>AMOMIN.W</code>, <code>AMOMAX.W</code>, <code>AMOMINU.W</code>, <code>AMOMAXU.W</code></td>
+<td>原子最大/最小</td>
+</tr>
+</table></div>
+<h3 id="a4.4-b-扩展--位操作">A4.4 B 扩展 — 位操作</h3>
+<p>B 扩展强制包含：Zba（地址生成）、Zbb（基础位操作）、Zbc（进位/乘法）、Zbs（单比特操作）。</p>
+<h3 id="a4.5-zce-扩展--代码压缩">A4.5 Zce 扩展 — 代码压缩</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>子扩展</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Zca</td>
+<td>基础压缩指令（C.* 指令）</td>
+</tr>
+<tr>
+<td>Zcb</td>
+<td>压缩基本操作</td>
+</tr>
+<tr>
+<td>Zcmp</td>
+<td>压缩 Push/Pop 多条指令</td>
+</tr>
+<tr>
+<td>Zcmt</td>
+<td>压缩跳转表</td>
+</tr>
+</table></div>
+<h3 id="a4.6-zicond--条件操作">A4.6 Zicond — 条件操作</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>指令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><code>CZERO.EQZ rd, rs1, rs2</code></td>
+<td>若 rs2 == 0，rd = 0；否则 rd = rs1</td>
+</tr>
+<tr>
+<td><code>CZERO.NEZ rd, rs1, rs2</code></td>
+<td>若 rs2 != 0，rd = 0；否则 rd = rs1</td>
+</tr>
+</table></div>
+<h3 id="a4.7-缓存管理操作-(zicbom/zicbop/zicboz)">A4.7 缓存管理操作 (Zicbom/Zicbop/Zicboz)</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>指令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><code>CBO.INVAL</code></td>
+<td>缓存块无效化</td>
+</tr>
+<tr>
+<td><code>CBO.CLEAN</code></td>
+<td>缓存块清除（Clean）</td>
+</tr>
+<tr>
+<td><code>CBO.FLUSH</code></td>
+<td>缓存块刷新（Flush）</td>
+</tr>
+<tr>
+<td><code>CBO.ZERO</code></td>
+<td>缓存块归零</td>
+</tr>
+<tr>
+<td><code>PREFETCH.R</code>, <code>PREFETCH.W</code></td>
+<td>缓存预取（读/写）</td>
+</tr>
+</table></div>
+<hr/>
+<h1 id="part-b--系统层架构">Part B — 系统层架构</h1>
+<p>Part B 描述系统层视角下的 Lumi-Core 架构，包括特权级别、实现定义参数选择、内存模型和中断架构。</p>
+<hr/>
+<h2 id="chapter-b1--特权架构">Chapter B1 — 特权架构</h2>
+<h3 id="b1.1-特权模式">B1.1 特权模式</h3>
+<p>Lumi-CoreM 配置支持三个特权级别：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>模式</th>
+<th>编码</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>Machine (M)</strong></td>
+<td>11</td>
+<td>最高特权级，固件和底层管理</td>
+</tr>
+<tr>
+<td><strong>Supervisor (S)</strong></td>
+<td>01</td>
+<td>操作系统内核级</td>
+</tr>
+<tr>
+<td><strong>User (U)</strong></td>
+<td>00</td>
+<td>应用程序级</td>
+</tr>
+</table></div>
+<p>Lumi-CoreS 配置支持 S + U 模式（无 M 模式硬件，M 功能由 SBI 模拟或外部 SEE 提供）。</p>
+<p>Lumi-CoreU 配置仅支持 U 模式，所有特权操作通过 ECALL 委托给外部执行环境。</p>
+<h3 id="b1.2-hypervisor-支持">B1.2 Hypervisor 支持</h3>
+<p><strong><strong>Hypervisor (H) 模式:</strong> 通过 Sha 扩展可选支持。实现 Sha 时，增加 VS 和 VU 虚拟化模式。</strong></p>
+<h3 id="b1.3-misa-csr">B1.3 MISA CSR</h3>
+<p><code>misa</code> CSR 提供 ISA 发现机制。Lumi-Core 中：</p>
+<ul>
+<li><strong>MXL</strong> 字段固定为 <code>01</code>（XLEN = 32）</li>
+<li><strong>Extensions</strong> 字段反映已实现扩展集合</li>
+<li><code>misa</code> CSR <strong>可写</strong>，但某些扩展位硬连线（M/A/B 不可在运行时禁用）</li>
+</ul>
+<hr/>
+<h2 id="chapter-b2--实现定义参数">Chapter B2 — 实现定义参数</h2>
+<p>RT-Europa Profile 定义了 90 个实现定义参数。以下为 Lumi-Core 对关键参数的<strong>锁定选择</strong>：</p>
+<h3 id="b2.1-通用参数">B2.1 通用参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>RT-Europa 范围</th>
+</tr>
+<tr>
+<td><strong>XLEN / MXLEN</strong></td>
+<td>32</td>
+<td>32</td>
+</tr>
+<tr>
+<td><strong>PHYS_ADDR_WIDTH</strong></td>
+<td>32</td>
+<td>实现定义</td>
+</tr>
+<tr>
+<td><strong>VA_SIZE</strong></td>
+<td>32</td>
+<td>实现定义</td>
+</tr>
+<tr>
+<td><strong>M_MODE_ENDIANESS</strong></td>
+<td>little</td>
+<td>little / big / dynamic</td>
+</tr>
+<tr>
+<td><strong>S_MODE_ENDIANESS</strong></td>
+<td>little</td>
+<td>little / big / dynamic</td>
+</tr>
+<tr>
+<td><strong>U_MODE_ENDIANESS</strong></td>
+<td>little</td>
+<td>little / big / dynamic</td>
+</tr>
+<tr>
+<td><strong>MISA_CSR_IMPLEMENTED</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_M</strong></td>
+<td>false</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_A</strong></td>
+<td>false</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_B</strong></td>
+<td>false</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_F</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_D</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_S</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_U</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+<tr>
+<td><strong>MUTABLE_MISA_V</strong></td>
+<td>true</td>
+<td>true / false</td>
+</tr>
+</table></div>
+<h3 id="b2.2-异常报告参数">B2.2 异常报告参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>PRECISE_SYNCHRONOUS_EXCEPTIONS</strong></td>
+<td>true</td>
+<td>同步异常精确定位</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_ILLEGAL_WLRL</strong></td>
+<td>true</td>
+<td>写入非法 WLRL 值产生 Trap</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_RESERVED_INSTRUCTION</strong></td>
+<td>true</td>
+<td>未定义指令产生 Trap</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_UNIMPLEMENTED_CSR</strong></td>
+<td>true</td>
+<td>未实现 CSR 访问产生 Trap</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_UNIMPLEMENTED_INSTRUCTION</strong></td>
+<td>true</td>
+<td>未实现指令产生 Trap</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_EBREAK</strong></td>
+<td>true</td>
+<td>EBREAK 产生同步异常</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_ECALL_FROM_U</strong></td>
+<td>true</td>
+<td>ECALL-from-U 产生同步异常</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_ECALL_FROM_S</strong></td>
+<td>true</td>
+<td>ECALL-from-S 产生同步异常</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_ECALL_FROM_M</strong></td>
+<td>true</td>
+<td>ECALL-from-M 产生同步异常</td>
+</tr>
+<tr>
+<td><strong>TRAP_ON_SFENCE_VMA</strong></td>
+<td>true</td>
+<td>无虚拟内存时 SFENCE.VMA 产生异常</td>
+</tr>
+<tr>
+<td><strong>REPORT_VA_IN_MTVAL</strong></td>
+<td>true</td>
+<td>mtval 报告虚拟地址</td>
+</tr>
+<tr>
+<td><strong>REPORT_VA_IN_STVAL</strong></td>
+<td>true</td>
+<td>stval 报告虚拟地址</td>
+</tr>
+<tr>
+<td><strong>REPORT_ENCODING_IN_MTVAL</strong></td>
+<td>true</td>
+<td>mtval 报告非法指令编码</td>
+</tr>
+</table></div>
+<h3 id="b2.3-内存访问参数">B2.3 内存访问参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>MISALIGNED_LDST</strong></td>
+<td>true</td>
+<td>支持硬件非对齐加载/存储</td>
+</tr>
+<tr>
+<td><strong>MISALIGNED_AMO</strong></td>
+<td>false</td>
+<td>不支持非对齐原子操作</td>
+</tr>
+<tr>
+<td><strong>MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE</strong></td>
+<td>0</td>
+<td>不支持非对齐原子性</td>
+</tr>
+<tr>
+<td><strong>MISALIGNED_LDST_EXCEPTION_PRIORITY</strong></td>
+<td>low</td>
+<td>非对齐异常优先级低于页面/访问错误</td>
+</tr>
+<tr>
+<td><strong>MISALIGNED_SPLIT_STRATEGY</strong></td>
+<td>by_byte</td>
+<td>按字节顺序处理非对齐访问</td>
+</tr>
+</table></div>
+<h3 id="b2.4-缓存参数">B2.4 缓存参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>CACHE_BLOCK_SIZE</strong></td>
+<td>64</td>
+<td>64 字节缓存块大小</td>
+</tr>
+<tr>
+<td><strong>FORCE_UPGRADE_CBO_INVAL_TO_FLUSH</strong></td>
+<td>false</td>
+<td>CBO.INVAL 执行真正的无效化</td>
+</tr>
+</table></div>
+<h3 id="b2.5-lr/sc-参数">B2.5 LR/SC 参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>LRSC_FAIL_ON_NON_EXACT_LRSC</strong></td>
+<td>true</td>
+<td>SC 地址/大小不精确匹配 LR 时失败</td>
+</tr>
+<tr>
+<td><strong>LRSC_FAIL_ON_VA_SYNONYM</strong></td>
+<td>true</td>
+<td>VA 不匹配时 SC 失败（防止同义词）</td>
+</tr>
+<tr>
+<td><strong>LRSC_MISALIGNED_BEHAVIOR</strong></td>
+<td>raise exception</td>
+<td>非对齐 LR/SC 产生非对齐异常</td>
+</tr>
+<tr>
+<td><strong>LRSC_RESERVATION_STRATEGY</strong></td>
+<td>reserve 64-byte region</td>
+<td>预留 64 字节对齐区域</td>
+</tr>
+</table></div>
+<h3 id="b2.6-pmp-参数">B2.6 PMP 参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>NUM_PMP_ENTRIES</strong></td>
+<td>16</td>
+<td>16 个 PMP 条目</td>
+</tr>
+<tr>
+<td><strong>PMP_GRANULARITY</strong></td>
+<td>12</td>
+<td>4KiB 最小 PMP 区域</td>
+</tr>
+<tr>
+<td><strong>ASID_WIDTH</strong></td>
+<td>9</td>
+<td>9 位 ASID（最大 512 地址空间）</td>
+</tr>
+</table></div>
+<h3 id="b2.7-mtvec-参数">B2.7 MTVEC 参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>MTVEC_MODES</strong></td>
+<td>[Direct, Vectored]</td>
+<td>支持直接和向量化模式</td>
+</tr>
+<tr>
+<td><strong>MTVEC_BASE_ALIGNMENT_DIRECT</strong></td>
+<td>4</td>
+<td>Direct 模式下 4 字节对齐</td>
+</tr>
+<tr>
+<td><strong>MTVEC_BASE_ALIGNMENT_VECTORED</strong></td>
+<td>256</td>
+<td>Vectored 模式下 256 字节对齐</td>
+</tr>
+</table></div>
+<h3 id="b2.8-性能计数器参数">B2.8 性能计数器参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>TIME_CSR_IMPLEMENTED</strong></td>
+<td>true</td>
+<td>硬件 time CSR 实现</td>
+</tr>
+<tr>
+<td><strong>SCOUNTENABLE_EN[0:2]</strong></td>
+<td>true</td>
+<td>Cycle/Time/Instret 可委托</td>
+</tr>
+<tr>
+<td><strong>SCOUNTENABLE_EN[3:31]</strong></td>
+<td>true</td>
+<td>HPM 计数器可委托</td>
+</tr>
+<tr>
+<td><strong>HW_MSTATUS_FS_DIRTY_UPDATE</strong></td>
+<td>precise</td>
+<td>精确更新 mstatus.FS</td>
+</tr>
+<tr>
+<td><strong>MSTATUS_FS_LEGAL_VALUES</strong></td>
+<td>[0(Off), 3(Dirty)]</td>
+<td>FS 字段合法值</td>
+</tr>
+<tr>
+<td><strong>HW_MSTATUS_VS_DIRTY_UPDATE</strong></td>
+<td>precise</td>
+<td>精确更新 mstatus.VS</td>
+</tr>
+<tr>
+<td><strong>MSTATUS_VS_LEGAL_VALUES</strong></td>
+<td>[0(Off), 3(Dirty)]</td>
+<td>VS 字段合法值</td>
+</tr>
+</table></div>
+<h3 id="b2.9-中断向量参数">B2.9 中断向量参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>STVEC_MODE_DIRECT</strong></td>
+<td>true</td>
+<td>Supervisor 支持 Direct 模式</td>
+</tr>
+<tr>
+<td><strong>STVEC_MODE_VECTORED</strong></td>
+<td>true</td>
+<td>Supervisor 支持 Vectored 模式</td>
+</tr>
+<tr>
+<td><strong>STVAL_WIDTH</strong></td>
+<td>32</td>
+<td>stval 宽度</td>
+</tr>
+<tr>
+<td><strong>MTVAL_WIDTH</strong></td>
+<td>32</td>
+<td>mtval 宽度</td>
+</tr>
+</table></div>
+<h3 id="b2.10-地址翻译参数">B2.10 地址翻译参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>SATP_MODE_BARE</strong></td>
+<td>true</td>
+<td>支持 Bare 模式（无虚拟地址翻译）</td>
+</tr>
+<tr>
+<td><strong>SV_MODE_BARE</strong></td>
+<td>true</td>
+<td>satp 寄存器支持 Bare 模式</td>
+</tr>
+<tr>
+<td><strong>MSTATUS_TVM_IMPLEMENTED</strong></td>
+<td>false</td>
+<td>不实现 TVM（Trap Virtual Memory）</td>
+</tr>
+</table></div>
+<h3 id="b2.11-sxlen/uxlen">B2.11 SXLEN/UXLEN</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>SXLEN</strong></td>
+<td>32</td>
+<td>Supervisor 模式固定 32 位</td>
+</tr>
+<tr>
+<td><strong>UXLEN</strong></td>
+<td>32</td>
+<td>User 模式固定 32 位</td>
+</tr>
+</table></div>
+<h3 id="b2.12-厂商-id-参数">B2.12 厂商 ID 参数</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>参数</th>
+<th>Lumi-Core 选择</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>VENDOR_ID_BANK</strong></td>
+<td>0</td>
+<td>JEDEC Bank 0</td>
+</tr>
+<tr>
+<td><strong>VENDOR_ID_OFFSET</strong></td>
+<td>0</td>
+<td>Vendor JEDEC Code 0（待分配）</td>
+</tr>
+<tr>
+<td><strong>ARCH_ID</strong></td>
+<td>0</td>
+<td>待分配</td>
+</tr>
+<tr>
+<td><strong>IMP_ID</strong></td>
+<td>1</td>
+<td>首个 Lumi-Core 实现</td>
+</tr>
+<tr>
+<td><strong>CONFIG_PTR_ADDRESS</strong></td>
+<td>0</td>
+<td>暂不使用统一发现结构</td>
+</tr>
+</table></div>
+<hr/>
+<h2 id="chapter-b3--内存模型">Chapter B3 — 内存模型</h2>
+<h3 id="b3.1-系统地址映射">B3.1 系统地址映射</h3>
+<p>Lumi-Core 采用标准的 RISC-V 地址映射方案：</p>
+<pre><code>
+0x0000_0000 ───────────────────────────  内存/外设区域（PMA 配置）
+    ⋮
+0xFFFF_FFFF ───────────────────────────  结束
+</code></pre>
+<p>具体地址分配由 SoC 集成时确定，通过 PMA (Physical Memory Attributes) 寄存器配置。</p>
+<h3 id="b3.2-内存保护-(pmp)">B3.2 内存保护 (PMP)</h3>
+<p>Lumi-Core 实现 16 个 PMP 条目（pmpcfg0–pmpcfg3, pmpaddr0–pmpaddr15），支持：</p>
+<ul>
+<li><strong>访问控制:</strong> R（读）、W（写）、X（执行）</li>
+<li><strong>地址匹配模式:</strong> OFF（禁用）、TOR（Top of Range）、NA4（自然对齐 4 字节）、NAPOT（自然对齐 2 的幂）</li>
+<li><strong>锁定机制:</strong> 锁定后直到复位才可更改</li>
+<li><strong>增强 PMP (Smepmp):</strong> 支持 M-mode 执行阻止和 U/S 模式访问控制</li>
+</ul>
+<h3 id="b3.3-内存属性-(pma)">B3.3 内存属性 (PMA)</h3>
+<p>PMA 按物理地址区域定义内存属性：</p>
+<ul>
+<li><strong>可缓存性:</strong> Cacheable / Non-cacheable</li>
+<li><strong>原子性支持:</strong> 支持 LR/SC 和 AMO</li>
+<li><strong>访问类型:</strong> 是否支持读写执行</li>
+</ul>
+<h3 id="b3.4-内存一致性模型">B3.4 内存一致性模型</h3>
+<p>Lumi-Core 遵循 RISC-V RVWMO (Weak Memory Ordering) 模型：</p>
+<ul>
+<li>同一 hart 的同一地址访问按程序顺序</li>
+<li>不同地址间的访问可重排序</li>
+<li><code>FENCE</code> 指令用于显式排序</li>
+<li><code>FENCE.I</code> 指令用于指令/数据同步</li>
+<li>原子指令提供 <code>aq</code>（Acquire）和 <code>rl</code>（Release）排序</li>
+</ul>
+<hr/>
+<h2 id="chapter-b4--异常与中断模型">Chapter B4 — 异常与中断模型</h2>
+<h3 id="b4.1-中断架构选择">B4.1 中断架构选择</h3>
+<p>Lumi-Core 采用 <strong>CLIC (Core-Local Interrupt Controller)</strong> 作为中断方案：</p>
+<div class="table-wrapper"><table>
+<tr>
+<th>特性</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>中断触发方式</td>
+<td>电平或边沿触发</td>
+</tr>
+<tr>
+<td>优先级</td>
+<td>CLIC 优先级方案（0–255，0 最高）</td>
+</tr>
+<tr>
+<td>向量化</td>
+<td>支持硬件中断向量化</td>
+</tr>
+<tr>
+<td>嵌套</td>
+<td>支持中断嵌套</td>
+</tr>
+<tr>
+<td>抢占</td>
+<td>高优先级中断可抢占低优先级</td>
+</tr>
+</table></div>
+<h3 id="b4.2-异常向量表">B4.2 异常向量表</h3>
+<p><strong><strong>Machine-mode 向量表 (mtvec):</strong></strong></p>
+<div class="table-wrapper"><table>
+<tr>
+<th>MODE</th>
+<th>BASE 对齐</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Direct (0)</td>
+<td>4 字节</td>
+<td>所有异常跳转到 BASE</td>
+</tr>
+<tr>
+<td>Vectored (1)</td>
+<td>256 字节</td>
+<td>中断按编号跳转到 BASE + 4 × cause</td>
+</tr>
+</table></div>
+<p><strong><strong>Supervisor-mode 向量表 (stvec):</strong></strong></p>
+<div class="table-wrapper"><table>
+<tr>
+<th>MODE</th>
+<th>BASE 对齐</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Direct (0)</td>
+<td>4 字节</td>
+<td>所有异常跳转到 BASE</td>
+</tr>
+<tr>
+<td>Vectored (1)</td>
+<td>256 字节</td>
+<td>中断按编号跳转到 BASE + 4 × cause</td>
+</tr>
+</table></div>
+<h3 id="b4.3-trap-处理流程">B4.3 Trap 处理流程</h3>
+<p>1. 硬件自动保存上下文到 <code>mepc</code>/<code>sepc</code>、<code>mcause</code>/<code>scause</code>、<code>mtval</code>/<code>stval</code></p>
+<p>2. 跳转到 <code>mtvec</code>/<code>stvec</code> 指定的处理程序</p>
+<p>3. 执行处理程序</p>
+<p>4. <code>MRET</code>/<code>SRET</code> 指令恢复上下文并返回</p>
+<h3 id="b4.4-不可屏蔽中断-(nmi)">B4.4 不可屏蔽中断 (NMI)</h3>
+<p>Lumi-CoreM 通过 <strong>Smrnmi</strong> 扩展支持可恢复不可屏蔽中断：</p>
+<ul>
+<li><code>mnmi</code> CSR 寄存器提供 NMI 状态和控制</li>
+<li>NMI 具有最高优先级，可抢占任何低优先级处理</li>
+<li>NMI 处理程序可安全保存/恢复上下文后返回</li>
+</ul>
+<hr/>
+<h1 id="part-c--调试架构">Part C — 调试架构</h1>
+<hr/>
+<h2 id="chapter-c1--调试支持">Chapter C1 — 调试支持</h2>
+<h3 id="c1.1-调试接口">C1.1 调试接口</h3>
+<p>Lumi-Core 支持标准 RISC-V External Debug 接口（参见 <em>RISC-V External Debug Support</em> 规范）。</p>
+<h3 id="c1.2-调试模式">C1.2 调试模式</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>特性</th>
+<th>支持状态</th>
+<th>说明</th>
+</tr>
+<tr>
+<td><strong>Halting Debug</strong></td>
+<td>Required</td>
+<td>暂停 hart 进入调试模式</td>
+</tr>
+<tr>
+<td><strong>Hardware Breakpoint</strong></td>
+<td>4+ triggers</td>
+<td>硬件断点</td>
+</tr>
+<tr>
+<td><strong>Hardware Watchpoint</strong></td>
+<td>2+ triggers</td>
+<td>硬件监视点</td>
+</tr>
+<tr>
+<td><strong>Single Step</strong></td>
+<td>Required</td>
+<td>单步执行</td>
+</tr>
+<tr>
+<td><strong>Abstract Command</strong></td>
+<td>Required</td>
+<td>通过调试总线访问寄存器和内存</td>
+</tr>
+<tr>
+<td><strong>Program Buffer</strong></td>
+<td>Required</td>
+<td>通过程序缓冲区执行指令</td>
+</tr>
+<tr>
+<td><strong>System Bus Access</strong></td>
+<td>Required</td>
+<td>通过系统总线访问内存</td>
+</tr>
+</table></div>
+<h3 id="c1.3-触发模块-(trigger-module)">C1.3 触发模块 (Trigger Module)</h3>
+<p>Lumi-Core 实现 RISC-V Trigger Module：</p>
+<ul>
+<li><strong>mcontrol</strong> — 指令执行/加载/存储地址匹配</li>
+<li><strong>icount</strong> — 指令计数触发</li>
+<li><strong>etrigger</strong> — 异常触发</li>
+<li><strong>itrigger</strong> — 中断触发</li>
+</ul>
+<h3 id="c1.4-跟踪接口">C1.4 跟踪接口</h3>
+<p>跟踪支持为 <strong>Optional</strong>：</p>
+<ul>
+<li>指令跟踪（可选）</li>
+<li>数据跟踪（可选）</li>
+<li>遵循 RISC-V Trace Specification</li>
+</ul>
+<hr/>
+<h1 id="part-d--附录">Part D — 附录</h1>
+<hr/>
+<h2 id="appendix-d1--profile-对比">Appendix D1 — Profile 对比</h2>
+<h3 id="d1.1-rt-europa-与-lumi-core-对比">D1.1 RT-Europa 与 Lumi-Core 对比</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>扩展</th>
+<th>RT-EuropaU32</th>
+<th>RT-EuropaS32</th>
+<th>RT-EuropaM32</th>
+<th>Lumi-CoreU</th>
+<th>Lumi-CoreS</th>
+<th>Lumi-CoreM</th>
+</tr>
+<tr>
+<td>I</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>M</td>
+<td>Mandatory (2.0.0)</td>
+<td>Mandatory (2.0.0)</td>
+<td>Mandatory (2.0.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>A</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory (2.1.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>Zce</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>Zicond</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory (1.0.0)</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>F</td>
+<td>Optional (2.2.0)</td>
+<td>Optional (2.2.0)</td>
+<td>Optional (2.2.0)</td>
+<td>Optional</td>
+<td>Optional</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>D</td>
+<td>Optional (2.2.0)</td>
+<td>Optional (2.2.0)</td>
+<td>Optional (2.2.0)</td>
+<td>Optional</td>
+<td>Optional</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>V</td>
+<td>Optional (1.0.0)</td>
+<td>Optional (1.0.0)</td>
+<td>Optional (1.0.0)</td>
+<td>Optional</td>
+<td>Optional</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>Zifencei</td>
+<td>—</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>—</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>Smepmp</td>
+<td>—</td>
+<td>—</td>
+<td>Mandatory</td>
+<td>—</td>
+<td>—</td>
+<td>Mandatory</td>
+</tr>
+<tr>
+<td>Ssclic/AIA</td>
+<td>—</td>
+<td>Mandatory</td>
+<td>Mandatory</td>
+<td>—</td>
+<td>Mandatory (CLIC)</td>
+<td>Mandatory (CLIC)</td>
+</tr>
+<tr>
+<td>Smrnmi</td>
+<td>—</td>
+<td>—</td>
+<td>Mandatory</td>
+<td>—</td>
+<td>—</td>
+<td>Mandatory</td>
+</tr>
+</table></div>
+<h3 id="d1.2-lumi-core-关键选择汇总">D1.2 Lumi-Core 关键选择汇总</h3>
+<div class="table-wrapper"><table>
+<tr>
+<th>类别</th>
+<th>Lumi-Core 选择</th>
+<th>备注</th>
+</tr>
+<tr>
+<td><strong>XLEN</strong></td>
+<td>32</td>
+<td>固定</td>
+</tr>
+<tr>
+<td><strong>中断方案</strong></td>
+<td>CLIC</td>
+<td>非 AIA</td>
+</tr>
+<tr>
+<td><strong>缓存块大小</strong></td>
+<td>64 字节</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>PMP 条目</strong></td>
+<td>16</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>PMP 粒度</strong></td>
+<td>4 KiB</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>地址空间</strong></td>
+<td>32-bit 物理</td>
+<td>无 MMU</td>
+</tr>
+<tr>
+<td><strong>字节序</strong></td>
+<td>小端</td>
+<td>固定</td>
+</tr>
+<tr>
+<td><strong>非对齐访问</strong></td>
+<td>支持</td>
+<td>硬件处理</td>
+</tr>
+<tr>
+<td><strong>原子性</strong></td>
+<td>不支持非对齐原子</td>
+<td>LR/SC 精确匹配</td>
+</tr>
+<tr>
+<td><strong>浮点更新</strong></td>
+<td>精确</td>
+<td>FS/VS Dirty 更新</td>
+</tr>
+</table></div>
+<hr/>
+<h2 id="appendix-d2--术语表">Appendix D2 — 术语表</h2>
+<div class="table-wrapper"><table>
+<tr>
+<th>术语</th>
+<th>定义</th>
+</tr>
+<tr>
+<td><strong>AIA</strong></td>
+<td>Advanced Interrupt Architecture — RISC-V 高级中断架构</td>
+</tr>
+<tr>
+<td><strong>AMO</strong></td>
+<td>Atomic Memory Operation — 原子内存操作</td>
+</tr>
+<tr>
+<td><strong>CLIC</strong></td>
+<td>Core-Local Interrupt Controller — 核心本地中断控制器</td>
+</tr>
+<tr>
+<td><strong>CSR</strong></td>
+<td>Control and Status Register — 控制与状态寄存器</td>
+</tr>
+<tr>
+<td><strong>EEI</strong></td>
+<td>Execution Environment Interface — 执行环境接口</td>
+</tr>
+<tr>
+<td><strong>HINT</strong></td>
+<td>提示指令 — 可被实现为 NOP 的指令</td>
+</tr>
+<tr>
+<td><strong>ISA</strong></td>
+<td>Instruction Set Architecture — 指令集架构</td>
+</tr>
+<tr>
+<td><strong>LR/SC</strong></td>
+<td>Load-Reserved / Store-Conditional — 加载保留/条件存储</td>
+</tr>
+<tr>
+<td><strong>MOP</strong></td>
+<td>May-Be Operation — "可能操作"指令</td>
+</tr>
+<tr>
+<td><strong>NMI</strong></td>
+<td>Non-Maskable Interrupt — 不可屏蔽中断</td>
+</tr>
+<tr>
+<td><strong>PMA</strong></td>
+<td>Physical Memory Attributes — 物理内存属性</td>
+</tr>
+<tr>
+<td><strong>PMP</strong></td>
+<td>Physical Memory Protection — 物理内存保护</td>
+</tr>
+<tr>
+<td><strong>PMSA</strong></td>
+<td>Protected Memory System Architecture — 受保护内存系统架构</td>
+</tr>
+<tr>
+<td><strong>RTOS</strong></td>
+<td>Real-Time Operating System — 实时操作系统</td>
+</tr>
+<tr>
+<td><strong>SEE</strong></td>
+<td>Supervisor Execution Environment — 监管者执行环境</td>
+</tr>
+<tr>
+<td><strong>WARL</strong></td>
+<td>Write Any, Read Legal — 写入任意值，读出合法值</td>
+</tr>
+<tr>
+<td><strong>WLRL</strong></td>
+<td>Write Legal, Read Legal — 写入/读出均须合法值</td>
+</tr>
+<tr>
+<td><strong>WPRI</strong></td>
+<td>Write Preserve, Read Ignore — 写入保留，读出忽略</td>
+</tr>
+</table></div>
+<hr/>
+<h2 id="appendix-d3--变更记录">Appendix D3 — 变更记录</h2>
+<div class="table-wrapper"><table>
+<tr>
+<th>日期</th>
+<th>版本</th>
+<th>变更内容</th>
+<th>作者</th>
+</tr>
+<tr>
+<td>2026-06-24</td>
+<td>1.0-draft</td>
+<td>初始版本 — 定义 Lumi-Core Profile 扩展选择、实现参数、中断架构</td>
+<td>Lumi Project</td>
+</tr>
+</table></div>
+<hr/>
+<h2 id="appendix-d4--参考规范索引">Appendix D4 — 参考规范索引</h2>
+<p>完整的 RISC-V 标准规范文件位于 <code>docs/standards/riscv-specs/</code>，索引文件为 <code>docs/standards/riscv-specs/index.yaml</code>。</p>
+<p><strong><strong>核心必读规范：</strong></strong></p>
+<p>1. <strong>RISC-V Unprivileged ISA Manual</strong> — 所有非特权扩展的完整定义</p>
+<p>2. <strong>RISC-V Privileged ISA Manual</strong> — 特权架构和系统级特性</p>
+<p>3. <strong>Quintauris RT-Europa Profile</strong> — Lumi-Core Profile 的上级参考规范</p>
+<p><strong><strong>扩展阅读：</strong></strong></p>
+<p>4. <strong>RISC-V Bit-Manipulation Extension</strong> — B 扩展独立规范</p>
+<p>5. <strong>RISC-V Code Size Reduction (Zc*)</strong> — Zce 压缩指令完整定义</p>
+<p>6. <strong>RISC-V Advanced Interrupt Architecture</strong> — CLIC 和 AIA 完整规范</p>
+<p>7. <strong>RISC-V CMO Extensions</strong> — 缓存管理操作详细说明</p>
+<hr/>
+<p><em>本文档由 Lumi-Core 架构团队维护。最新版本和变更历史请参见项目审计记录 <code>audit/instruction-log/</code>。</em></p>
+
+<hr/>
+<p style="text-align: center; color: #90a4ae; font-size: 0.85rem; margin-top: 2rem;">
+    <em>本文档由 Lumi-Core 架构团队维护。最新版本和变更历史请参见项目审计记录 <code>audit/instruction-log/</code>。</em>
+</p>
+
+</body>
+</html>

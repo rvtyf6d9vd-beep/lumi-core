@@ -1,0 +1,43 @@
+# ═══════════════ 7. 依赖软件需求 ═══════════════
+section: "7. 依赖软件需求"
+id: sec-sw
+description: "处理器 IP 配套的软件生态需求，确保客户获得完整的开发、调试和性能评估工具链。"
+
+categories:
+  - id: SW-TOOL
+    title: "7.1 工具链"
+    requirements:
+      - req_id: LUMI-TOOL-001
+        name: "GCC 14+ 支持"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "可编译并运行裸机程序"
+        change_date: ""
+        note: ""
+
+  - id: SW-SDK
+    title: "7.2 SDK"
+    requirements: []
+
+  - id: SW-FW
+    title: "7.3 固件 (Firmware)"
+    requirements: []
+
+  - id: SW-IDE
+    title: "7.4 IDE"
+    requirements: []
+
+  - id: SW-SIM
+    title: "7.5 仿真器"
+    requirements: []
+
+  - id: SW-DBG
+    title: "7.6 调试工具"
+    requirements: []
+
+  - id: SW-PERF
+    title: "7.7 性能工具"
+    requirements: []

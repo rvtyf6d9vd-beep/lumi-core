@@ -1,0 +1,505 @@
+# ═══════════════ 3. 硬件需求 ═══════════════
+section: "3. 硬件需求"
+id: sec-hw
+description: "本节定义 Lumi-Core 处理器的全部硬件需求，按 PPA 目标、RTL 功能需求、配置表和增量需求分层组织。每条需求 REQ-ID 格式为 LUMI-{分类缩写}-{三位序号}。"
+
+categories:
+  # ── 3.1 PPA 目标 ──
+  - id: PPA-PIPE
+    title: "3.1.1 流水线架构"
+    description: "流水线级数、分支预测等架构参数。"
+    requirements:
+      - req_id: LUMI-PIPE-001
+        name: "8 级流水线架构"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "流水线级数为 8 级，微架构设计以达到预定性能参数为准"
+        change_date: "2026-06-29"
+        note: "其他微架构设计由架构组自行决定"
+
+  - id: PPA-FREQ
+    title: "3.1.2 频率目标"
+    description: "目标工艺节点下的主频指标。"
+    requirements:
+      - req_id: LUMI-FREQ-001
+        name: "TSMC 28HPC 主频 >=1.0GHz"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "TSMC 28HPC 工艺下达到 >=1.0GHz 时钟频率"
+        change_date: "2026-06-29"
+        note: "基于 TSMC 28HPC 工艺"
+
+  - id: PPA-IPC
+    title: "3.1.3 性能基准"
+    description: "性能基准测试目标 (CM/MHz, DMIPS/MHz)。"
+    requirements:
+      - req_id: LUMI-IPC-001
+        name: "Coremark >=5.5 CM/MHz"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Coremark 基准测试达到 >=5.5 CM/MHz"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-IPC-002
+        name: "Dhrystone >=3.8 DMIPS/MHz"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Dhrystone 基准测试达到 >=3.8 DMIPS/MHz"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-IPC-003
+        name: "售前售后基准测试覆盖"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Coremark、Dhrystone、Crypto (AES/SHA/CRC32) 基准测试可运行并输出报告"
+        change_date: "2026-06-29"
+        note: "支撑售前和售后客户支持"
+
+  - id: PPA-AREA
+    title: "3.1.4 面积约束"
+    description: "逻辑面积、门数等面积目标。"
+    requirements:
+      - req_id: LUMI-AREA-001
+        name: "STDCELL 面积 <=0.32 mm²"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "TSMC 28HPC 工艺下 STDCELL 面积不超过 0.32 mm²"
+        change_date: "2026-06-29"
+        note: ""
+
+  - id: PPA-PWR
+    title: "3.1.5 功耗预算"
+    description: "动态功耗、静态功耗、功耗模式。"
+    requirements:
+      - req_id: LUMI-PWR-001
+        name: "单核动态功耗 <=100mW/GHz"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Dynamic power <=100mW/GHz (单核)"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-PWR-002
+        name: "单核泄漏功耗 <=32mW"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Leakage Power <=32mW (单核)"
+        change_date: "2026-06-29"
+        note: ""
+
+  - id: PPA-INT
+    title: "3.1.6 中断性能"
+    description: "中断响应延时等中断性能指标。"
+    requirements:
+      - req_id: LUMI-SYS-003
+        name: "快速中断延时 <=16 周期"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "从中断信号到第一条中断处理指令执行 <=16 时钟周期"
+        change_date: "2026-06-29"
+        note: ""
+
+  # ── 3.2 RTL 功能需求 ──
+  - id: RTL-PROF
+    title: "3.2.1 Profile 合规"
+    description: "RISC-V Profile 合规性要求。"
+    requirements:
+      - req_id: LUMI-PROF-001
+        name: "Lumi-Core Profile 技术特性合规"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: "Lumi-Core Profile"
+        acceptance: "Profile 定义的全部 Mandatory 技术特性通过合规测试"
+        change_date: "2026-06-29"
+        note: ""
+
+  - id: RTL-ISA
+    title: "3.2.2 ISA 扩展"
+    description: "基于 RV32GCBV 指令集扩展选择与实现要求。"
+    requirements:
+      - req_id: LUMI-ISA-001
+        name: "RV32I 基础整数指令集"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "全部 RV32I 指令通过合规测试"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-ISA-002
+        name: "M 扩展 — 整数乘除法"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "MUL/DIV 系列指令通过合规测试"
+        change_date: "2026-06-29"
+        note: "RV32G 包含"
+      - req_id: LUMI-ISA-003
+        name: "A 扩展 — 原子操作"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "AMO/LR/SC 系列指令通过合规测试"
+        change_date: "2026-06-29"
+        note: "RV32G 包含"
+      - req_id: LUMI-ISA-004
+        name: "F/D 双精度浮点扩展"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "FP32/FP16/BF16 浮点运算正确，支持标量和向量，数据格式互转正确"
+        change_date: "2026-06-29"
+        note: "RV32G 包含，FPU 可配置"
+      - req_id: LUMI-ISA-005
+        name: "C 扩展 — 压缩指令"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "16bit 压缩指令解码执行正确"
+        change_date: "2026-06-29"
+        note: "RV32G 包含"
+      - req_id: LUMI-ISA-006
+        name: "B 扩展 — 位操作"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "位操作指令通过合规测试"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-ISA-007
+        name: "V 向量扩展 + zvfh/zvfbf"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: "RISC-V Spec"
+        acceptance: "基于 RVV1.0，支持 zvfh/zvfbf，VLEN=128bit 向量运算正确"
+        change_date: "2026-06-29"
+        note: "支持 128bit/256bit 位宽（可配置）"
+      - req_id: LUMI-ISA-008
+        name: "Zce 代码压缩扩展"
+        priority: Must
+        status: Proposed
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Zca+Zcb+Zcmp+Zcmt 全部子扩展通过"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-ISA-009
+        name: "Vector Crypto 向量加密指令"
+        priority: Could
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "向量加密指令功能正确 (zvkg/zvkn 等)"
+        change_date: "2026-06-29"
+        note: "可选支持"
+      - req_id: LUMI-ISA-010
+        name: "Packed SIMD 扩展"
+        priority: Could
+        status: Draft
+        version: v0.9.4
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "Packed SIMD 指令功能正确"
+        change_date: "2026-06-29"
+        note: "基于 v0.9.4 规范，可选支持"
+
+  - id: RTL-MEM
+    title: "3.2.3 内存模型"
+    description: "PMP、TCM、Cache 等内存子系统需求。"
+    requirements:
+      - req_id: LUMI-MEM-001
+        name: "PMP 物理内存保护 (可配, 默认 8 Region)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "PMP Region 数量可配（默认 8），越界访问触发异常"
+        change_date: "2026-06-29"
+        note: "Region 数为可配置参数"
+      - req_id: LUMI-MEM-002
+        name: "TCM 紧耦合内存 (0~128KB 可配)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "TCM 大小 0~128KB 可配置，必须为 8KB 的 2 的幂次倍数"
+        change_date: "2026-06-29"
+        note: "可配置选项"
+      - req_id: LUMI-MEM-003
+        name: "TCM 三区域 (代码+数据双区)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "代码单一区域 + 数据双区域（奇偶地址），三个区域独立访问正确"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-MEM-004
+        name: "TCM 0 拍 / 1 拍延迟访问"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "支持 0 拍延迟和 1 拍延迟两种访问模式"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-MEM-005
+        name: "TCM ECC 内存保护"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "TCM ECC 保护功能正确，单 bit 翻转可检测并纠正"
+        change_date: "2026-06-29"
+        note: "可选配置"
+      - req_id: LUMI-MEM-006
+        name: "L1 Cache 可配 (8/16/32KB)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "L1 I-Cache/D-Cache 容量可选 8KB/16KB/32KB"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-MEM-007
+        name: "L1 Cache ECC 内存保护"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "L1 Cache ECC 保护功能正确"
+        change_date: "2026-06-29"
+        note: "可选配置"
+      - req_id: LUMI-SYS-006
+        name: "32bit 物理寻址"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "32bit 物理地址空间寻址正确"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SYS-007
+        name: "Little-Endian 字节序"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "所有内存访问符合 Little-Endian 字节序"
+        change_date: "2026-06-29"
+        note: ""
+
+  - id: RTL-IF
+    title: "3.2.4 外部接口"
+    description: "总线接口、中断接口等外部接口需求。"
+    requirements:
+      - req_id: LUMI-IF-001
+        name: "AMBA4 AXI 主总线 (128bit)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "AXI4 协议合规，128bit 位宽"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-IF-002
+        name: "FFP 外设接口 (AXI 32bit)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "FFP 接口 AXI 协议合规，32bit 位宽"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-IF-003
+        name: "TCM 从接口 (DMA 数据导入导出)"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "DMA 通过从接口正确读写 TCM 数据"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SYS-001
+        name: "PLIC 中断控制器支持"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "PLIC 中断控制器功能正确，中断数可配置 32~960（32 的 2 的幂次倍数）"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SYS-002
+        name: "CLIC 快速中断控制器"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "CLIC 中断控制器功能正确，中断数可配置 1~240"
+        change_date: "2026-06-29"
+        note: "中断数为可配置选项"
+
+  - id: RTL-FEAT
+    title: "3.2.5 调试与跟踪"
+    description: "调试、跟踪功能特性。"
+    requirements:
+      - req_id: LUMI-FEAT-001
+        name: "RISC-V Debug V1.0.0"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: "RISC-V Debug Spec V1.0.0"
+        acceptance: "调试模块功能符合 RISC-V Debug V1.0.0 规范"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-FEAT-002
+        name: "RISC-V Nexus Trace V1.0.0"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: "RISC-V Nexus Trace V1.0.0"
+        acceptance: "跟踪模块功能符合 Nexus Trace V1.0.0 规范"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-FEAT-003
+        name: "跟踪指令流 AXI4 写出"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "跟踪指令流数据通过 AXI4 接口正确写出"
+        change_date: "2026-06-29"
+        note: "可配置选项"
+
+  - id: RTL-OTHER
+    title: "3.2.6 其他 RTL 功能"
+    description: "低功耗管理、协处理器接口等其他 RTL 功能需求。"
+    requirements:
+      - req_id: LUMI-SYS-004
+        name: "WFI/WRS 低功耗指令"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "WFI 和 WRS 指令正确进入低功耗状态"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SYS-005
+        name: "多时钟域多电压域管理"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "支持多个电压域的功耗管理机制"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-SYS-008
+        name: "低功耗状态管理接口"
+        priority: Must
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "可配置 CPU 进入睡眠或深度睡眠状态，进行系统功率管理"
+        change_date: "2026-06-29"
+        note: ""
+      - req_id: LUMI-FEAT-005
+        name: "自定义协处理器接口"
+        priority: Could
+        status: Draft
+        version: v0.1
+        source: Lumi原始需求
+        ref_doc: ""
+        acceptance: "协处理器接口功能正确，可扩展自定义标量/矢量协处理器"
+        change_date: "2026-06-29"
+        note: "可配置选项"
+
+  # ── 3.3 增量需求 ──
+  - id: INC
+    title: "3.3 增量需求"
+    description: "未来版本计划引入的增量功能，当前版本暂不实现但需在架构上预留扩展空间。"
+    requirements: []
+
+# ═══════════════ 3.4 可选配置表 ═══════════════
+sub_sections:
+  - title: "3.4 可选配置表"
+    table_type: data
+    headers: [编号, 配置参数, 可选值, 默认值, 说明]
+    rows:
+      - [1, 基准 RTL 配置, "见下方各项", "--", "Core=1, ITCM/DTCM0/DTCM1=32KB, L1=32KB, ECC=No, FPU=Yes, Vector=Yes(VLEN128), Crypto=No, PMP=8, Bus=AXI, Debug&Trace=Yes"]
+      - [2, TCM 容量, "0/8/16/32/64/128 KB", 32KB, "必须为 8KB 的 2 的幂次倍数"]
+      - [3, TCM 访问延迟, "0 拍 / 1 拍", 0 拍, ""]
+      - [4, L1 Cache 容量, "8/16/32 KB", 32KB, "I-Cache 和 D-Cache 独立配置"]
+      - [5, FPU 浮点单元, "Yes / No", Yes, "启用时支持 F/D 双精度"]
+      - [6, Vector 向量单元, "Yes / No", Yes, ""]
+      - [7, VLEN 向量位宽, "128bit / 256bit", 128bit, "需 Vector=Yes"]
+      - [8, Vector Crypto 向量加密, "Yes / No", No, "需 Vector=Yes"]
+      - [9, PMP Region 数量, "可配置", 8, ""]
+      - [10, PLIC 中断数, "32~960 (32 的 2 的幂次倍数)", 32, ""]
+      - [11, CLIC 中断数, "1~240", 16, ""]
+      - [12, Trace AXI4 写出, "Yes / No", No, ""]
+      - [13, 协处理器接口, "Yes / No", No, ""]
+      - [14, L1 Cache ECC, "Yes / No", No, ""]
+      - [15, TCM ECC, "Yes / No", No, ""]

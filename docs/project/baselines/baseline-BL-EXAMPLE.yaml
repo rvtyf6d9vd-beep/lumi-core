@@ -1,0 +1,91 @@
+# Lumi-Core 需求基线快照 — 示例文件
+# 本文件由 PRD 编辑器 (product-requirements.html) 在基线定版时自动生成
+# 权威来源: 此 YAML 文件为下游流程（设计/验证/实现）的唯一参考依据
+
+baseline:
+  version: "BL-EXAMPLE"
+  frozen_at: "2026-06-26T14:00:00+08:00"
+  description: "示例基线文件，展示完整 schema 结构"
+  approver: "(填写)"
+  statistics:
+    total: 5
+    by_category:
+      ISA: 3
+      SAFE: 1
+      PERF: 1
+    by_status:
+      Approved: 3
+      Proposed: 1
+      Draft: 1
+    by_priority:
+      Must: 4
+      Should: 1
+
+requirements:
+  # ── ISA 与架构需求 ──
+  - category: ISA
+    req_id: "LUMI-ISA-001"
+    name: "RV32I 基础整数指令集"
+    priority: "Must"
+    status: "Approved"
+    version: "v1.0"
+    baseline: "BL-EXAMPLE"
+    source: "RT-Europa Profile"
+    ref_doc: "Profile A2.2"
+    acceptance: "全部 40 条 RV32I 指令通过合规测试"
+    change_date: "2026-06-26"
+    note: "--"
+
+  - category: ISA
+    req_id: "LUMI-ISA-002"
+    name: "Zce 代码压缩扩展"
+    priority: "Must"
+    status: "Approved"
+    version: "v1.0"
+    baseline: "BL-EXAMPLE"
+    source: "RT-Europa Profile"
+    ref_doc: "Profile A2.5"
+    acceptance: "Zca+Zcb+Zcmp+Zcmt 全部子扩展通过"
+    change_date: "2026-06-26"
+    note: "--"
+
+  - category: ISA
+    req_id: "LUMI-ISA-003"
+    name: "Smclic 中断控制器 ISA 扩展"
+    priority: "Must"
+    status: "Proposed"
+    version: "v1.0"
+    baseline: "BL-EXAMPLE"
+    source: "RT-Europa Profile"
+    ref_doc: "Profile B4.2"
+    acceptance: "CLIC 中断响应延迟 <= N 周期"
+    change_date: "2026-06-26"
+    note: "--"
+
+  # ── 功能安全需求 ──
+  - category: SAFE
+    req_id: "LUMI-SAFE-001"
+    name: "PMP 物理内存保护 (16 条目)"
+    priority: "Must"
+    status: "Approved"
+    version: "v1.0"
+    baseline: "BL-EXAMPLE"
+    source: "RT-Europa Profile"
+    ref_doc: "Profile B2.6"
+    acceptance: "PMP 越界访问全部触发异常"
+    change_date: "2026-06-26"
+    note: "Smepmp 增强"
+
+  # ── 性能需求 ──
+  - category: PERF
+    req_id: "LUMI-PERF-001"
+    name: "目标主频"
+    priority: "Should"
+    status: "Draft"
+    version: "v0.1"
+    baseline: "BL-EXAMPLE"
+    source: "客户需求"
+    ref_doc: "--"
+    acceptance: "在 TSMC XXnm 工艺下达到 >= XXX MHz"
+    change_date: "2026-06-26"
+    note: "--"
