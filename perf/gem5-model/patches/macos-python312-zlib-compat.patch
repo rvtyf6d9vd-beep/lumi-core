@@ -1,0 +1,55 @@
+diff --git a/SConstruct b/SConstruct
+--- a/SConstruct
++++ b/SConstruct
+@@ -472,7 +472,12 @@
+     # includes and linker flags. If you want to link in an alternate version
+     # of python, override the PYTHON_CONFIG variable.
+ 
+-    python_config = env.Detect(env['PYTHON_CONFIG'])
++    # Patched: check if PYTHON_CONFIG is an absolute path first
++    _pc_val = env['PYTHON_CONFIG']
++    if isinstance(_pc_val, str) and os.path.isabs(_pc_val):
++        python_config = _pc_val
++    else:
++        python_config = env.Detect(_pc_val)
+     if python_config is None:
+         error("Can't find a suitable python-config, tried "
+               f"{env['PYTHON_CONFIG']}")
+@@ -795,9 +800,17 @@
+                 [None, 'socket'], 'sys/socket.h', 'C++', 'accept(0,0,0);'):
+            error("Can't find library with socket calls (e.g. accept()).")
+ 
+-        if not conf.CheckLibWithHeader('z', 'zlib.h', 'C++','zlibVersion();'):
+-            error('Did not find needed zlib compression library '
+-                  'and/or zlib.h header file.\n'
+-                  'Please install zlib and try again.')
++        # Patched for macOS: CheckLibWithHeader has a scons 4.10.1 bug
++        # on macOS that garbles the link command. Use TryLink instead.
++        zlib_test = r'''
++#include <zlib.h>
++int main(void) {
++    const char *v = zlibVersion();
++    (void)v;
++    return 0;
++}
++'''
++        if not conf.TryLink(zlib_test, '.cc'):
++            conf.env.Append(LIBS=['z'])
++            if not conf.TryLink(zlib_test, '.cc'):
++                error('Did not find needed zlib compression library '
++                      'and/or zlib.h header file.\n'
++                      'Please install zlib and try again.')
+ 
+diff --git a/site_scons/gem5_scons/defaults.py b/site_scons/gem5_scons/defaults.py
+--- a/site_scons/gem5_scons/defaults.py
++++ b/site_scons/gem5_scons/defaults.py
+@@ -93,7 +93,8 @@
+         "CC": env["CC"],
+         "CXX": env["CXX"],
+         "PROTOC": "protoc",
+-        "PYTHON_CONFIG": ["python3-config", "python-config"],
++        # Patched: use PYTHON_CONFIG env var or absolute path for venv compatibility
++        "PYTHON_CONFIG": os.environ.get('PYTHON_CONFIG', ["python3-config", "python-config"]),
+         "CCFLAGS_EXTRA": "",
+         "GEM5PY_CCFLAGS_EXTRA": "",
+         "GEM5PY_LINKFLAGS_EXTRA": "",

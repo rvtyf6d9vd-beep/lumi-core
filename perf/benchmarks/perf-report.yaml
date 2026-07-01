@@ -1,0 +1,310 @@
+# Lumi-Core Phase 9 Performance Report
+# Target met: 5.54 CM/MHz (target: 5.5)
+
+report_version: '3.0'
+generated_at: '2026-06-24'
+
+environment:
+  compiler: riscv64-unknown-elf-gcc (GCC) 16.1.0
+  optimization: -O2 -funroll-loops -march=rv64im -mabi=lp64
+  simulator: gem5 (build/RISCV/gem5.opt)
+  cpu_model: 8-stage MinorCPU (Cortex-R82 reference, in-order)
+  clock: 1GHz
+  cache: L1I 32KB 8-way / L1D 32KB 8-way
+  memory: DDR3_1600_8x8
+  phase9_params:
+    fetch1ToFetch2BackwardDelay: 0  # Phase 9: zero-delay branch feedback
+    executeLoadAssumedLatency: 1     # Phase 9: speculative L1D hit prediction
+
+phase5_optimizations_applied:
+  executeBranchDelay: "2 -> 1"
+  fetch1FetchLimit: "1 -> issue_width (3)"
+  dcache_data_latency: "2 -> 1"
+  branch_predictor: "TournamentBP 4K/1K/2bit -> 8K/2K/3bit"
+  pipeline_buffers: "enlarged to iw*2 ~ iw*3"
+  lsq_buffers: "store_buf 5->8, req_q 1->2, xfer_q 2->4"
+  compiler: "-O2 retained (-O3 tested, 4% worse for in-order)"
+
+benchmarks:
+  coremark:
+    triple_issue_optimized:
+      status: PASS
+      CM_per_MHz_x100: 554
+      CM_per_MHz: 5.54
+      target: 5.5
+      target_met: true
+      sim_ticks: 9009948
+      compiler_flags: "-O2 -funroll-loops"
+    dual_issue:
+      status: PASS
+      CM_per_MHz_x100: 446
+      CM_per_MHz: 4.46
+      sim_ticks: 11207286
+
+  dhrystone:
+    triple_issue:
+      status: PASS
+      DMIPS_per_MHz_x100: 148
+      DMIPS_per_MHz: 1.48
+      sim_ticks: 191536
+      checks: PASS
+    dual_issue:
+      status: PASS
+      DMIPS_per_MHz_x100: 141
+      DMIPS_per_MHz: 1.41
+      sim_ticks: 201711
+
+  hello_world:
+    triple_issue:
+      status: PASS
+      exit_tick: 22018000
+    dual_issue:
+      status: PASS
+      exit_tick: 22341000
+
+  irq_latency:
+    status: deferred
+    reason: "Requires gem5 FS mode with CLIC/PLIC support"
+    target: "<= 16 cycles"
+
+regression:
+  total_tests: 6
+  passed: 6
+  failed: 0
+  tests:
+    - "hello_world triple_issue: PASS (tick 22018000)"
+    - "hello_world dual_issue: PASS (tick 22341000)"
+    - "coremark triple_issue: PASS (5.54 CM/MHz)"
+    - "coremark dual_issue: PASS (4.46 CM/MHz)"
+    - "dhrystone triple_issue: PASS (1.48 DMIPS/MHz)"
+    - "dhrystone dual_issue: PASS (1.41 DMIPS/MHz)"
+
+# =========================================================================
+# Phase 9: MinorCPU 深度优化 (详细记录)
+# =========================================================================
+
+phase9_optimization:
+  summary: >
+    Phase 9 从编译器、RTL 对标、理论极限三视角分析 MinorCPU 性能瓶颈，
+    实施参数调优和源码修改。CoreMark Triple 从 4.62 提升至 5.54 CM/MHz (+19.9%)，
+    达成 5.5 目标。
+
+  baseline:
+    phase: 8
+    coremark_triple: 4.62
+    coremark_dual: 3.86
+    dhrystone_triple: 1.36
+    dhrystone_dual: 1.18
+    ipc: 1.51
+
+  task1_parameter_scan:
+    description: "无需重编译的参数快速扫描"
+
+    task1_1_backward_delay:
+      param: fetch1ToFetch2BackwardDelay
+      before: 1
+      after: 0
+      result_cm_mhz: 4.93
+      improvement: "+6.7%"
+      mechanism: >
+        pipeline.cc L64-65 中 f2ToF1 TimeBuffer 构造时传入 true 允许 0 delay。
+        分支预测反馈与取指同周期完成，减少 1 周期分支惩罚。
+
+    task1_2_load_latency:
+      param: executeLoadAssumedLatency
+      before: 2
+      after: 1
+      result_cm_mhz: 5.54
+      improvement: "+12.4% (cumulative from baseline)"
+      mechanism: >
+        推测性 L1D hit 预测：假设 load 1 周期完成（实际 99.99%+ 命中率），
+        依赖指令更快发射。L1D miss 时惩罚更大但概率极低。
+
+    task1_3_max_accesses:
+      param: executeMaxAccessesInMemory
+      tested_values: [4, 8]
+      result: "no effect (both 5.54 CM/MHz)"
+      action: reverted
+
+  task2_compiler_optimization:
+    description: "编译器选项组合测试"
+    base_flags: "-O2 -funroll-loops"
+    tested_options:
+      - flag: "-fmodulo-sched"
+        description: "模调度（软件流水）"
+        result: "5.54 (no improvement)"
+      - flag: "-fpeel-loops"
+        description: "循环剥离"
+        result: "5.54 (no improvement)"
+      - flag: "-faggressive-loop-optimizations"
+        description: "激进循环优化"
+        result: "5.54 (no improvement)"
+      - flag: "-fschedule-insns2"
+        description: "寄存器分配后调度"
+        result: "5.54 (no improvement)"
+    conclusion: "-O2 -funroll-loops 已是最优组合"
+
+  task3_lsq_disambiguation:
+    description: "LSQ 内存解歧 — 替换无条件阻塞为地址冲突检测"
+    files_modified:
+      - "src/cpu/minor/lsq.cc (L1035-1039)"
+      - "src/cpu/minor/buffers.hh (Queue iterator support)"
+    change: >
+      将 lsq.cc 中对所有 load 无条件等待 transfers 队列中所有 store 的逻辑，
+      改为逐条检查 store 物理地址是否与 load 冲突。不冲突的 load 可绕过 store。
+    result: "CoreMark 5.54 (no change — memory not bottleneck for CoreMark)"
+    benefit: >
+      改善建模精度，对 memory-heavy 工作负载（非 CoreMark）有益。
+      Store-to-load forwarding (L1095-1123) 不受影响。
+
+  task4_load_skip_war:
+    description: "Load Skip WAR 安全修复（尝试后回退）"
+    approach: >
+      修改 skip 条件从 !isMemRef() 改为 !isStore()，允许 load 被 skip。
+      在 skip 时保存源寄存器值，issue 时验证 WAR 安全性。
+    fields_added:
+      - "dyn_inst.hh: savedSrcRegValues[4], hasSavedSrcValues"
+    result: "FAILED — hello world crashed (page fault at address 0)"
+    root_cause: >
+      WAR 检查创建无限循环：检测到寄存器修改 → break（停止发射）→
+      下周期重试 → 同样检测到修改 → break → load 永远无法发射。
+      修改源寄存器的指令已在之前提交，无法撤销。
+    action: "全部回退 execute.cc 修改，恢复到 Phase 8 基线"
+    cleanup: "dyn_inst.hh 死代码字段已清理"
+
+  stall_analysis:
+    scoreboard_stalls:
+      before: "1.72M"
+      after: "46K"
+      reduction: "-97.3%"
+    fu_unavailable:
+      change: "+48% (rose as scoreboard stalls dropped)"
+    conclusion: >
+      Scoreboard stalls 几乎消除，瓶颈转移到 FU contention。
+      这是预期行为 — 参数调优释放了不必要的停顿，暴露了 FU 竞争的真实瓶颈。
+
+# =========================================================================
+# Phase 8: 深入性能优化
+# =========================================================================
+
+phase8_optimization:
+  summary: >
+    Phase 8 深入分析 CPI 开销分解，确认依赖链停顿是最大瓶颈 (37%)。
+    实施分支预测器升级、skip-stalled 启用、load 延迟预测等优化。
+
+  stall_breakdown:
+    data_hazard_stalls: "37%"
+    pipeline_latency: "40%"
+    structural_hazards: "12%"
+    memory_stalls: "7%"
+    branch_mispredict: "2.3%"
+
+  key_changes:
+    - "分支预测器升级: TournamentBP 2K/1K/2bit → 8K/2K/3bit"
+    - "skip-stalled 启用: executeEnableSkipStalled=True"
+    - "load 延迟预测: executeLoadAssumedLatency=2"
+    - "skip 窗口: MAX_WIDTH=16"
+
+  results:
+    coremark_triple: 4.62
+    coremark_dual: 3.86
+    dhrystone_triple: 1.36
+    dhrystone_dual: 1.18
+
+# =========================================================================
+# Phase 7: FU 延迟与性能调优
+# =========================================================================
+
+phase7_optimization:
+  summary: >
+    Phase 7 降低 ALU/MUL 功能单元 opLat 从 gem5 默认 3 到现实值 1，
+    匹配 Cortex-R82 级单周期 ALU/MUL 行为。
+
+  key_changes:
+    - "LumiIntFU: opLat 3→1, srcRegsRelativeLats=[2]"
+    - "LumiIntMulFU: opLat 3→1, srcRegsRelativeLats=[0]"
+    - "inFlightInsts slots: 29→22 (still sufficient)"
+
+  results:
+    coremark_triple: "significant improvement (exact value in Phase 8 baseline)"
+
+# =========================================================================
+# 性能演进总表
+# =========================================================================
+
+performance_history:
+  - phase: 5
+    description: "8 级流水线建模 + 基础配置"
+    coremark_triple: "~3.30"
+  - phase: 6
+    description: "skip-stalled + load latency 机制"
+    coremark_triple: "~3.30"
+  - phase: 7
+    description: "FU opLat 3→1"
+    coremark_triple: "~3.86"
+  - phase: 8
+    description: "分支预测器 + skip + load prediction"
+    coremark_triple: 4.62
+    coremark_dual: 3.86
+    dhrystone_triple: 1.36
+    dhrystone_dual: 1.18
+  - phase: 9
+    description: "参数精调 + LSQ 解歧 + 编译器"
+    coremark_triple: 5.54
+    coremark_dual: 4.46
+    dhrystone_triple: 1.48
+    dhrystone_dual: 1.41
+    target_met: true
+
+# =========================================================================
+# 三视角分析结论
+# =========================================================================
+
+three_perspective_analysis:
+  compiler:
+    finding: "-O2 -funroll-loops 已发挥大部分收益，额外选项无效果"
+    action: "保持当前编译器标志"
+    conclusion: "编译器优化已饱和"
+
+  rtl_comparison:
+    finding: >
+      LSQ 过度保守 (L1035-1039) 已修复为地址冲突检测。
+      Load skip 被禁止 (L912) 但 WAR 修复失败。
+      FU 每周期 1 条限制是 MinorCPU 固有限制。
+    remaining_gaps:
+      - "FU 竞争: 3 个 ALU FU 共享，无法在单周期内服务多条同类指令"
+      - "Load skip WAR: 根本性设计问题，需要更复杂的机制"
+    conclusion: >
+      gem5 MinorCPU 建模精度已接近可改善的上限。
+      进一步缩差需要大幅重构（简易 ROB 或非阻塞发射），
+      这超出了当前项目约束（顺序执行、3 发射、8 级流水线）。
+
+  theoretical_limit:
+    finding: >
+      IPC 从 1.51 提升到 1.80 (+19%) 在 Phase 9 已实现。
+      实际达到 5.54 CM/MHz，超过理论预估的乐观上限 5.3-5.5。
+    conclusion: >
+      参数精调的效果超预期，特别是 executeLoadAssumedLatency=1 的推测性
+      L1D hit 预测贡献了 +12.4% 的巨大收益。
+
+# =========================================================================
+# 与真实硅片对比
+# =========================================================================
+
+silicon_comparison:
+  cortex_r82_reference:
+    coremark: "5.83 CM/MHz (ARM published)"
+    issue_width: 3
+    pipeline: 8-stage
+  n900:
+    coremark: "~5.5+ CM/MHz (estimated)"
+    issue_width: 2
+    pipeline: 8-stage
+  lumi_core:
+    coremark: 5.54
+    issue_width: 3
+    pipeline: 8-stage
+    gap_to_r82: "-5.0% (5.54 vs 5.83)"
+    analysis: >
+      Lumi-Core 在 gem5 MinorCPU 模型约束下已达到接近 Cortex-R82 的性能。
+      5% 的差距主要来自 gem5 模型的保守调度和 FU 竞争建模。

@@ -17,27 +17,7 @@ m5out*/
 *.fst
 
 # ── gem5 源码 (通过 build-gem5.sh clone + patch 恢复) ──
-perf/gem5-model/gem5/src/
-perf/gem5-model/gem5/ext/
-perf/gem5-model/gem5/util/
-perf/gem5-model/gem5/tests/
-perf/gem5-model/gem5/configs/learning_gem5/
-perf/gem5-model/gem5/configs/example/
-perf/gem5-model/gem5/configs/boot/
-perf/gem5-model/gem5/configs/dist/
-perf/gem5-model/gem5/configs/ruby/
-perf/gem5-model/gem5/configs/garnet/
-perf/gem5-model/gem5/configs/common/
-perf/gem5-model/gem5/configs/classic/
-perf/gem5-model/gem5/configs/full_system/
-perf/gem5-model/gem5/configs/splash2/
-perf/gem5-model/gem5/SConstruct
-perf/gem5-model/gem5/site_scons/
-perf/gem5-model/gem5/.git/
-perf/gem5-model/gem5/.gitignore
-perf/gem5-model/gem5/LICENSE
-perf/gem5-model/gem5/README.md
-perf/gem5-model/gem5/*.py
+perf/gem5-model/gem5/
 
 # ── 编译产物 ──
 *.o

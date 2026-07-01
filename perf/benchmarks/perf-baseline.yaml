@@ -1,0 +1,92 @@
+# Lumi-Core Phase 5 Performance Baseline
+# Generated from Phase 4 benchmark runs (2026-06-29)
+# These values serve as the optimization baseline for Phase 5.
+
+baseline_version: "1.0"
+captured_at: "2026-06-29"
+environment:
+  compiler: riscv64-unknown-elf-gcc (GCC) 16.1.0
+  optimization: -O2 -march=rv64im -mabi=lp64 -ffreestanding
+  simulator: gem5 build/RISCV/gem5.opt
+  cpu_model: 8-stage MinorCPU (in-order, sequential execution)
+  clock: 1GHz
+  cache_l1i: 32KB 8-way LRU tag_lat=1 data_lat=1
+  cache_l1d: 32KB 8-way LRU tag_lat=1 data_lat=2
+  memory: DDR3_1600_8x8
+
+cpu_params:
+  issue_width: 3 (triple) / 2 (dual)
+  fetch1FetchLimit: 1
+  executeBranchDelay: 2
+  branch_predictor: TournamentBP
+  bp_localPredictorSize: 1024
+  bp_globalPredictorSize: 4096
+  bp_choicePredictorSize: 4096
+  bp_CtrBits: 2
+  fetch2InputBufferSize: 2
+  decode1InputBufferSize: 3
+  decodeInputBufferSize: 3
+  issueInputBufferSize: 4  # issue_width+1
+  executeInputBufferSize: 7
+  memoryInputBufferSize: 3
+  writebackInputBufferSize: 2
+  executeLSQStoreBufferSize: 5
+  executeLSQRequestsQueueSize: 1
+  executeLSQTransfersQueueSize: 2
+  dcache_data_latency: 2
+
+coremark:
+  config: TOTAL_DATA_SIZE=2000, ITERATIONS=50
+  triple_issue:
+    cm_per_mhz: 3.05
+    cycles: 16446548
+    instructions: 16510779
+    cpi: 0.9961
+    ipc: 1.0039
+    bp_mispredict_rate: 3.30
+    bp_squashes: 246645
+    branch_penalty_pct: 12.00
+    icache_miss_rate: 0.0030
+    dcache_miss_rate: 0.0038
+    inst_mix:
+      int_alu_pct: 76.2
+      int_mult_pct: 2.8
+      mem_read_pct: 16.6
+      mem_write_pct: 4.4
+    target: 5.5
+    target_met: false
+  dual_issue:
+    cm_per_mhz: 2.81
+    cycles: 17861233
+    instructions: 16510779
+    cpi: 1.0818
+    ipc: 0.9244
+    bp_squashes: 218549
+    branch_penalty_pct: 9.79
+
+dhrystone:
+  config: NUMBER_OF_RUNS=500
+  triple_issue:
+    dmips_per_mhz: 0.94
+    cycles: 325844
+    instructions: 280518
+    cpi: 1.1602
+    ipc: 0.8619
+    bp_mispredict_rate: 1.70
+    bp_squashes: 3721
+    inst_mix:
+      int_alu_pct: 62.4
+      int_mult_pct: 0.2
+      mem_read_pct: 22.5
+      mem_write_pct: 14.7
+  dual_issue:
+    dmips_per_mhz: 0.89
+    cycles: 343725
+    cpi: 1.2239
+    ipc: 0.8170
+
+bottleneck_analysis:
+  primary: "Branch penalty (12% of cycles in CoreMark)"
+  secondary: "Low IPC (1.0 vs theoretical 3.0) due to in-order dependencies"
+  not_bottleneck: "Cache miss rates (0.004% D, 0.003% I - excellent)"
+  note: "5.5 CM/MHz target is achievable - Nuclei N900 and T-Head R908 (dual-issue) reach it"

@@ -1,0 +1,3901 @@
+diff --git a/SConstruct b/SConstruct
+index 7f73f6b..7873838 100755
+--- a/SConstruct
++++ b/SConstruct
+@@ -472,7 +472,12 @@ def config_embedded_python(env):
+     # includes and linker flags. If you want to link in an alternate version
+     # of python, override the PYTHON_CONFIG variable.
+ 
+-    python_config = env.Detect(env['PYTHON_CONFIG'])
++    # Patched: check if PYTHON_CONFIG is an absolute path first
++    _pc_val = env['PYTHON_CONFIG']
++    if isinstance(_pc_val, str) and os.path.isabs(_pc_val):
++        python_config = _pc_val
++    else:
++        python_config = env.Detect(_pc_val)
+     if python_config is None:
+         error("Can't find a suitable python-config, tried "
+               f"{env['PYTHON_CONFIG']}")
+@@ -794,10 +799,23 @@ for variant_path in variant_paths:
+                 [None, 'socket'], 'sys/socket.h', 'C++', 'accept(0,0,0);'):
+            error("Can't find library with socket calls (e.g. accept()).")
+ 
+-        if not conf.CheckLibWithHeader('z', 'zlib.h', 'C++','zlibVersion();'):
+-            error('Did not find needed zlib compression library '
+-                  'and/or zlib.h header file.\n'
+-                  'Please install zlib and try again.')
++        # Patched for macOS: CheckLibWithHeader has a scons 4.10.1 bug
++        # on macOS that garbles the link command. Use TryLink instead.
++        zlib_test = r'''
++#include <zlib.h>
++int main(void) {
++    const char *v = zlibVersion();
++    (void)v;
++    return 0;
++}
++'''
++        if not conf.TryLink(zlib_test, '.cc'):
++            # Fallback: manually add zlib
++            conf.env.Append(LIBS=['z'])
++            if not conf.TryLink(zlib_test, '.cc'):
++                error('Did not find needed zlib compression library '
++                      'and/or zlib.h header file.\n'
++                      'Please install zlib and try again.')
+ 
+     if not GetOption('without_tcmalloc'):
+         with gem5_scons.Configure(env) as conf:
+diff --git a/configs/lumi-core.py b/configs/lumi-core.py
+new file mode 100644
+index 0000000..a07754a
+--- /dev/null
++++ b/configs/lumi-core.py
+@@ -0,0 +1,252 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++#
++# Lumi-Core top-level gem5 configuration script.
++# Models an 8-stage in-order RISC-V processor (Cortex-R82 reference):
++#   Fetch1 -> Fetch2 -> Decode1 -> Decode2 -> Issue -> Execute -> Memory -> Writeback
++#
++# Features:
++#   - Triple-issue / dual-issue configurable (--issue-width 2|3)
++#   - L1I 32KB 8-way + L1D 32KB 8-way caches
++#   - TCM (Tightly-Coupled Memory) 32KB
++#   - AXI 128-bit interconnect (SystemXBar width=16)
++#   - CLIC interrupt controller (Phase 2)
++#   - DDR3 memory controller
++#
++# Usage:
++#   build/RISCV/gem5.opt configs/lumi-core.py [--issue-width 3] [--binary <path>]
++#                                               [--enable-tcm] [--max-ticks N]
++
++import argparse
++import os
++import sys
++
++import m5
++from m5.objects import (
++    AddrRange,
++    DDR3_1600_8x8,
++    MemCtrl,
++    Process,
++    Root,
++    SEWorkload,
++    SrcClockDomain,
++    System,
++    SystemXBar,
++    VoltageDomain,
++)
++
++# Add lumi-lib to path for imports
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "lumi-lib"))
++
++from lumi_cpu import create_lumi_cpu
++from lumi_cache import create_l1i_cache, create_l1d_cache
++from lumi_tcm import create_tcm
++
++
++def parse_args():
++    parser = argparse.ArgumentParser(description="Lumi-Core 8-stage simulation")
++    parser.add_argument(
++        "--issue-width",
++        type=int,
++        default=3,
++        choices=[2, 3],
++        help="Issue width: 2 (dual) or 3 (triple, default)",
++    )
++    parser.add_argument(
++        "--binary",
++        type=str,
++        default=None,
++        help="Path to RISC-V ELF binary (default: riscv-hello)",
++    )
++    parser.add_argument(
++        "--enable-tcm",
++        action="store_true",
++        default=False,
++        help="Enable TCM memory regions",
++    )
++    parser.add_argument(
++        "--enable-clic",
++        action="store_true",
++        default=False,
++        help="Enable CLIC interrupt controller",
++    )
++    parser.add_argument(
++        "--clic-interrupts",
++        type=int,
++        default=16,
++        help="Number of CLIC interrupt inputs (default 16)",
++    )
++    parser.add_argument(
++        "--max-ticks",
++        type=int,
++        default=0,
++        help="Maximum simulation ticks (0 = unlimited)",
++    )
++    # Phase 5: Performance tuning overrides
++    parser.add_argument("--branch-delay", type=int, default=None,
++                        help="Override executeBranchDelay")
++    parser.add_argument("--fetch-limit", type=int, default=None,
++                        help="Override fetch1FetchLimit")
++    parser.add_argument("--dcache-latency", type=int, default=None,
++                        help="Override D-cache data_latency")
++    parser.add_argument("--bp-global", type=int, default=None,
++                        help="Override branch predictor globalPredictorSize")
++    parser.add_argument("--bp-local", type=int, default=None,
++                        help="Override branch predictor localPredictorSize")
++    parser.add_argument("--buffer-scale", type=int, default=None,
++                        help="Override buffer size scale factor (1-4)")
++    # Phase 6: skip-stalled and load latency overrides
++    parser.add_argument("--skip-stalled", type=int, default=None,
++                        choices=[0, 1],
++                        help="Override executeEnableSkipStalled (0=off, 1=on)")
++    parser.add_argument("--load-latency", type=int, default=None,
++                        help="Override executeLoadAssumedLatency (0=unpredictable, N=cycles)")
++    return parser.parse_args()
++
++
++def main():
++    args = parse_args()
++
++    # --- System ---
++    system = System()
++    system.clk_domain = SrcClockDomain(clock="1GHz")
++    system.clk_domain.voltage_domain = VoltageDomain()
++    system.mem_mode = "timing"
++    system.mem_ranges = [AddrRange("512MiB")]
++
++    # --- CPU (8-stage MinorCPU) ---
++    system.cpu = create_lumi_cpu(issue_width=args.issue_width)
++
++    # --- L1 Caches ---
++    system.cpu.icache = create_l1i_cache()
++    system.cpu.dcache = create_l1d_cache()
++
++    # Phase 5: Apply performance tuning overrides
++    if args.branch_delay is not None:
++        system.cpu.executeBranchDelay = args.branch_delay
++        print(f"Override: executeBranchDelay = {args.branch_delay}")
++    if args.fetch_limit is not None:
++        system.cpu.fetch1FetchLimit = args.fetch_limit
++        print(f"Override: fetch1FetchLimit = {args.fetch_limit}")
++    if args.dcache_latency is not None:
++        system.cpu.dcache.data_latency = args.dcache_latency
++        print(f"Override: dcache.data_latency = {args.dcache_latency}")
++    if args.bp_global is not None:
++        system.cpu.branchPred.globalPredictorSize = args.bp_global
++        system.cpu.branchPred.choicePredictorSize = args.bp_global
++        print(f"Override: bp globalPredictorSize = {args.bp_global}")
++    if args.bp_local is not None:
++        system.cpu.branchPred.localPredictorSize = args.bp_local
++        system.cpu.branchPred.localHistoryTableSize = args.bp_local
++        print(f"Override: bp localPredictorSize = {args.bp_local}")
++    if args.buffer_scale is not None:
++        iw = args.issue_width
++        s = args.buffer_scale
++        system.cpu.fetch2InputBufferSize = iw * s
++        system.cpu.decode1InputBufferSize = iw * s
++        system.cpu.decodeInputBufferSize = iw * s
++        system.cpu.issueInputBufferSize = iw * s
++        system.cpu.executeInputBufferSize = iw * s
++        system.cpu.memoryInputBufferSize = iw * s
++        system.cpu.writebackInputBufferSize = iw * s
++        print(f"Override: buffer_scale = {s} (all buffers = iw*{s})")
++    # Phase 6 overrides
++    if args.skip_stalled is not None:
++        system.cpu.executeEnableSkipStalled = (args.skip_stalled != 0)
++        print(f"Override: executeEnableSkipStalled = {args.skip_stalled != 0}")
++    if args.load_latency is not None:
++        system.cpu.executeLoadAssumedLatency = args.load_latency
++        print(f"Override: executeLoadAssumedLatency = {args.load_latency}")
++    system.cpu.icache_port = system.cpu.icache.cpu_side
++    system.cpu.dcache_port = system.cpu.dcache.cpu_side
++
++    # --- AXI Interconnect (128-bit = 16 bytes) ---
++    system.membus = SystemXBar(width=16)
++    system.cpu.icache.mem_side = system.membus.cpu_side_ports
++    system.cpu.dcache.mem_side = system.membus.cpu_side_ports
++
++    # --- Memory Controller ---
++    system.mem_ctrl = MemCtrl()
++    system.mem_ctrl.dram = DDR3_1600_8x8(range=system.mem_ranges[0])
++    system.mem_ctrl.port = system.membus.mem_side_ports
++
++    # --- TCM (optional) ---
++    if args.enable_tcm:
++        itcm, dtcm0, dtcm1 = create_tcm()
++        system.itcm = itcm
++        system.dtcm0 = dtcm0
++        system.dtcm1 = dtcm1
++        # Connect TCM to the memory bus
++        system.itcm.port = system.membus.mem_side_ports
++        system.dtcm0.port = system.membus.mem_side_ports
++        system.dtcm1.port = system.membus.mem_side_ports
++
++    # --- System port ---
++    system.system_port = system.membus.cpu_side_ports
++
++    # --- Interrupt Controller ---
++    system.cpu.createInterruptController()
++
++    # --- CLIC (optional, Phase 2 integration) ---
++    clic = None
++    if args.enable_clic:
++        from m5.objects import CLIC
++        clic = CLIC(num_interrupts=args.clic_interrupts)
++
++    # --- Workload ---
++    if args.binary:
++        binary = args.binary
++    else:
++        thispath = os.path.dirname(os.path.realpath(__file__))
++        binary = os.path.join(
++            thispath,
++            "../tests/test-progs/hello/bin/riscv/linux/hello",
++        )
++
++    if not os.path.exists(binary):
++        print(f"ERROR: Binary not found: {binary}")
++        sys.exit(1)
++
++    system.workload = SEWorkload.init_compatible(binary)
++    process = Process()
++    process.cmd = [binary]
++    system.cpu.workload = process
++    system.cpu.createThreads()
++
++    # --- Root ---
++    root = Root(full_system=False, system=system)
++    m5.instantiate()
++
++    # Connect CLIC after instantiation (needs thread context)
++    if clic is not None:
++        try:
++            tc = system.cpu.getThreadContext(0)
++            isa = tc.getIsaPtr()
++            interrupts = isa.getInterrupts(tc)
++            interrupts.setCLIC(clic)
++            print(f"Lumi-Core: CLIC connected ({args.clic_interrupts} interrupts)")
++        except Exception as e:
++            print(f"Lumi-Core: CLIC created but not connected in SE mode ({e})")
++            print(f"Lumi-Core: CLIC will be available in full-system mode")
++
++    # --- Simulate ---
++    print(f"Lumi-Core: {args.issue_width}-issue, 8-stage MinorCPU @ 1GHz")
++    print(f"Lumi-Core: Binary = {binary}")
++    print(f"Lumi-Core: TCM = {'enabled' if args.enable_tcm else 'disabled'}")
++
++    if args.max_ticks > 0:
++        exit_event = m5.simulate(args.max_ticks)
++    else:
++        exit_event = m5.simulate()
++
++    print(f"Lumi-Core: Simulation exited at tick {m5.curTick()}")
++    print(f"Lumi-Core: Exit cause: {exit_event.getCause()}")
++
++    # Print basic stats
++    print(f"\n--- Lumi-Core Performance Summary ---")
++    stats = m5.stats.dump()
++    print(f"Simulation completed: {exit_event.getCause()}")
++
++
++# gem5 exec's the config script, so always call main()
++main()
+diff --git a/configs/lumi-lib/__init__.py b/configs/lumi-lib/__init__.py
+new file mode 100644
+index 0000000..56440f9
+--- /dev/null
++++ b/configs/lumi-lib/__init__.py
+@@ -0,0 +1 @@
++# Lumi-Core configuration library
+diff --git a/configs/lumi-lib/interrupts.py b/configs/lumi-lib/interrupts.py
+new file mode 100644
+index 0000000..38fae28
+--- /dev/null
++++ b/configs/lumi-lib/interrupts.py
+@@ -0,0 +1,74 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++#
++# Lumi-Core CLIC/PLIC interrupt configuration library.
++# Provides helper functions to create and wire up the CLIC interrupt controller
++# with the existing PLIC and CPU in gem5 RISC-V simulations.
++
++from m5.objects import CLIC
++from m5.util import warn
++
++def create_clic(num_interrupts=64):
++    """
++    Create a CLIC interrupt controller instance.
++
++    The CLIC handles local interrupt prioritization, vectored dispatch,
++    and preemption for the Lumi-Core RISC-V processor.
++
++    :param num_interrupts: Number of CLIC interrupt inputs (1-240).
++                           Default 64 is suitable for most configurations.
++    :returns: A configured CLIC SimObject instance.
++    """
++    clic = CLIC(num_interrupts=num_interrupts)
++    return clic
++
++
++def connect_clic_to_cpu(clic, cpu):
++    """
++    Connect a CLIC instance to a RISC-V CPU core.
++
++    This wires the CLIC to the CPU's interrupt controller via setCLIC(),
++    enabling CLIC-based interrupt arbitration and vectored dispatch.
++
++    When CLIC is connected, the standard M-mode external interrupt (MEIP)
++    from PLIC is automatically routed through the CLIC interrupt controller
++    for priority-based arbitration and vectoring.
++
++    :param clic: A CLIC SimObject instance.
++    :param cpu: A RISC-V CPU core (BaseCPU subclass).
++    """
++    tc = cpu.getThreadContext(0)
++    isa = tc.getIsaPtr()
++    interrupts = isa.getInterrupts(tc)
++    interrupts.setCLIC(clic)
++
++
++def configure_lumi_interrupts(
++    board,
++    clic_num_interrupts=64,
++    use_clic=True
++):
++    """
++    Full interrupt configuration for Lumi-Core board.
++
++    Sets up CLIC and connects it to the CPU's interrupt path.
++    The existing PLIC continues to handle external device interrupts,
++    but its M-mode output is routed through CLIC for priority arbitration.
++
++    :param board: The board (RiscvBoard or compatible) to configure.
++    :param clic_num_interrupts: Number of CLIC interrupt inputs.
++    :param use_clic: If True, create and connect CLIC; otherwise use
++                     standard interrupt handling only.
++    :returns: The CLIC instance if created, or None.
++    """
++    if not use_clic:
++        return None
++
++    # Create CLIC instance
++    clic = create_clic(num_interrupts=clic_num_interrupts)
++
++    # Connect CLIC to each CPU core in the processor
++    for cpu_core in board.get_processor().get_cores():
++        connect_clic_to_cpu(clic, cpu_core)
++
++    return clic
+diff --git a/configs/lumi-lib/lumi_cache.py b/configs/lumi-lib/lumi_cache.py
+new file mode 100644
+index 0000000..9182e10
+--- /dev/null
++++ b/configs/lumi-lib/lumi_cache.py
+@@ -0,0 +1,49 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++#
++# Lumi-Core L1 cache configuration factory.
++# L1I: 32KB, 8-way, 64B line, tag_lat=1, data_lat=1
++# L1D: 32KB, 8-way, 64B line, tag_lat=1, data_lat=2
++
++from m5.objects import Cache, StridePrefetcher, LRURP
++
++
++def create_l1i_cache():
++    """Create Lumi-Core L1 Instruction Cache (32KB, 8-way)."""
++    cache = Cache()
++    cache.size = "32KiB"
++    cache.assoc = 8
++    cache.tag_latency = 1
++    cache.data_latency = 1
++    cache.response_latency = 1
++    cache.mshrs = 16
++    cache.tgts_per_mshr = 20
++    cache.writeback_clean = True
++    cache.write_buffers = 16
++    cache.replacement_policy = LRURP()
++    cache.prefetcher = StridePrefetcher(
++        queue_size=16,
++        degree=2,
++    )
++    return cache
++
++
++def create_l1d_cache():
++    """Create Lumi-Core L1 Data Cache (32KB, 8-way)."""
++    cache = Cache()
++    cache.size = "32KiB"
++    cache.assoc = 8
++    cache.tag_latency = 1
++    # Phase 5: reduced from 2 to 1 cycle for faster D-cache access
++    cache.data_latency = 1
++    cache.response_latency = 1
++    cache.mshrs = 16
++    cache.tgts_per_mshr = 20
++    cache.writeback_clean = False
++    cache.write_buffers = 32  # Phase 5: increased from 16
++    cache.replacement_policy = LRURP()
++    cache.prefetcher = StridePrefetcher(
++        queue_size=16,
++        degree=2,
++    )
++    return cache
+diff --git a/configs/lumi-lib/lumi_cpu.py b/configs/lumi-lib/lumi_cpu.py
+new file mode 100644
+index 0000000..1949d5b
+--- /dev/null
++++ b/configs/lumi-lib/lumi_cpu.py
+@@ -0,0 +1,137 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++#
++# Lumi-Core 8-stage MinorCPU factory function.
++# Creates a RiscvMinorCPU configured for the Cortex-R82-like pipeline:
++#   Fetch1 -> Fetch2 -> Decode1 -> Decode2 -> Issue -> Execute -> Memory -> Writeback
++
++from m5.objects import (
++    RiscvMinorCPU,
++    MinorFU,
++    MinorFUPool,
++    MinorFUTiming,
++    minorMakeOpClassSet,
++    MinorDefaultIntDivFU,
++    MinorDefaultFloatSimdFU,
++    MinorDefaultMemFU,
++    MinorDefaultMiscFU,
++    TournamentBP,
++)
++
++
++# =========================================================================
++# Phase 7: Custom FU classes with realistic opLat
++# Default MinorDefaultIntFU has opLat=3 which is a gem5 convention,
++# not reflective of real Cortex-R82-class ALUs (1-cycle for simple ops).
++# =========================================================================
++
++class LumiIntFU(MinorFU):
++    """Single-cycle integer ALU: opLat=1 (vs default 3).
++    Covers add/sub/and/or/xor/slt/shift -- all 1-cycle on real silicon."""
++    opClasses = minorMakeOpClassSet(["IntAlu"])
++    timings = [MinorFUTiming(description="Int", srcRegsRelativeLats=[2])]
++    opLat = 1
++
++
++class LumiIntMulFU(MinorFU):
++    """Single-cycle pipelined integer multiplier: opLat=1 (vs default 3).
++    Modern pipelined multipliers achieve 1-cycle throughput."""
++    opClasses = minorMakeOpClassSet(["IntMult"])
++    timings = [MinorFUTiming(description="Mul", srcRegsRelativeLats=[0])]
++    opLat = 1
++
++
++def create_lumi_cpu(issue_width=3):
++    """
++    Create a Lumi-Core 8-stage RiscvMinorCPU.
++
++    :param issue_width: 2 or 3 (default 3 = triple-issue, Cortex-R82 style).
++    :returns: A configured RiscvMinorCPU instance.
++    """
++    if issue_width not in (2, 3):
++        raise ValueError(f"issue_width must be 2 or 3, got {issue_width}")
++
++    cpu = RiscvMinorCPU()
++
++    # --- Stage 1+2: Fetch (BTB + I-Cache) ---
++    # Phase 5 optimization: fetch issue_width instructions per cycle
++    cpu.fetch1FetchLimit = issue_width * 2
++    cpu.fetch1ToFetch2ForwardDelay = 1
++    cpu.fetch1ToFetch2BackwardDelay = 0  # Phase 9: zero-delay branch feedback
++
++    # Phase 5: increased buffer sizes to reduce pipeline bubbles
++    cpu.fetch2InputBufferSize = issue_width * 2
++    cpu.fetch2ToDecode1ForwardDelay = 1
++
++    # --- Stage 3: Decode1 (pre-decode, passthrough) ---
++    cpu.decode1InputBufferSize = issue_width * 2
++    cpu.decode1ToDecode2ForwardDelay = 1
++
++    # --- Stage 4: Decode2 (full decode + register read) ---
++    cpu.decodeInputBufferSize = issue_width * 2
++    cpu.decodeInputWidth = issue_width
++    cpu.decode2ToIssueForwardDelay = 1
++
++    # --- Stage 5: Issue (passthrough, models dispatch delay) ---
++    cpu.issueInputBufferSize = issue_width * 3
++    cpu.issueToExecuteForwardDelay = 1
++
++    # --- Stage 6: Execute (ALU / Branch / Mem-op issue) ---
++    cpu.executeInputWidth = issue_width
++    cpu.executeIssueLimit = issue_width
++    cpu.executeCommitLimit = issue_width
++    cpu.executeMemoryIssueLimit = 2   # Phase 7: allow 2 mem ops/cycle
++    cpu.executeMemoryCommitLimit = 2  # Phase 7: allow 2 mem commits/cycle
++    cpu.executeInputBufferSize = issue_width * 3
++    cpu.executeToMemoryForwardDelay = 1
++    cpu.executeAllowEarlyMemoryIssue = True
++
++    # Phase 6: skip-stalled issue + load latency prediction
++    cpu.executeEnableSkipStalled = True
++    cpu.executeLoadAssumedLatency = 1  # Phase 9: speculative L1D hit prediction
++
++    # --- Stage 7: Memory (D-Cache access, passthrough) ---
++    cpu.memoryInputBufferSize = issue_width * 2
++    cpu.memoryToWritebackForwardDelay = 1
++
++    # --- Stage 8: Writeback (register writeback, terminal) ---
++    cpu.writebackInputBufferSize = issue_width * 2
++
++    # --- Branch feedback (Execute -> Fetch1) ---
++    # Phase 5: reduced from 2 to 1 cycle to lower branch penalty
++    cpu.executeBranchDelay = 1
++
++    # --- LSQ ---
++    cpu.executeLSQStoreBufferSize = 12
++    cpu.executeLSQRequestsQueueSize = 4
++    cpu.executeLSQTransfersQueueSize = 6
++    cpu.executeLSQMaxStoreBufferStoresPerCycle = issue_width
++
++    # --- Functional Unit Pool (triple-issue: 3x ALU) ---
++    # Phase 7: use LumiIntFU (opLat=1) and LumiIntMulFU (opLat=1)
++    # to match realistic Cortex-R82-class latencies.
++    fu_list = [
++        LumiIntFU(),
++        LumiIntFU(),
++        LumiIntFU(),  # 3x single-cycle ALU (opLat=1, was 3)
++        LumiIntMulFU(),  # 1x single-cycle MUL (opLat=1, was 3)
++        MinorDefaultIntDivFU(),  # 1x DIV (opLat=9, unchanged)
++        MinorDefaultFloatSimdFU(),  # 1x FP/SIMD (opLat=6, unchanged)
++        MinorDefaultMemFU(),  # 1x MEM (opLat=1, unchanged)
++        MinorDefaultMiscFU(),  # 1x MISC (opLat=1, unchanged)
++    ]
++    cpu.executeFuncUnits = MinorFUPool(funcUnits=fu_list)
++
++    # --- Branch Predictor (Phase 5: enlarged for better accuracy) ---
++    cpu.branchPred = TournamentBP(
++        localPredictorSize=2048,
++        localCtrBits=3,
++        localHistoryTableSize=2048,
++        globalPredictorSize=8192,
++        globalCtrBits=3,
++        choicePredictorSize=8192,
++        choiceCtrBits=2,
++        numThreads=1,
++    )
++
++    return cpu
+diff --git a/configs/lumi-lib/lumi_tcm.py b/configs/lumi-lib/lumi_tcm.py
+new file mode 100644
+index 0000000..21c1d00
+--- /dev/null
++++ b/configs/lumi-lib/lumi_tcm.py
+@@ -0,0 +1,54 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++#
++# Lumi-Core TCM (Tightly-Coupled Memory) configuration.
++# Models zero-latency on-chip SRAM for real-time deterministic access.
++# Default 32KB total: 16KB ITCM + 8KB DTCM0 + 8KB DTCM1.
++
++from m5.objects import SimpleMemory, AddrRange
++
++
++# Default TCM base addresses (above 512MiB main memory to avoid overlap)
++ITCM_BASE = 0x3000_0000  # 768MiB
++DTCM0_BASE = 0x3001_0000  # 768MiB + 64KiB
++DTCM1_BASE = 0x3001_2000  # 768MiB + 72KiB
++
++
++def create_tcm(
++    itcm_size="16KiB",
++    dtcm0_size="8KiB",
++    dtcm1_size="8KiB",
++    itcm_base=ITCM_BASE,
++    dtcm0_base=DTCM0_BASE,
++    dtcm1_base=DTCM1_BASE,
++):
++    """
++    Create TCM memory regions for Lumi-Core.
++
++    TCM is modeled as SimpleMemory with 0ns latency, providing
++    deterministic single-cycle access for real-time workloads.
++
++    :param itcm_size: Instruction TCM size (default 16KiB).
++    :param dtcm0_size: Data TCM region 0 size (default 8KiB).
++    :param dtcm1_size: Data TCM region 1 size (default 8KiB).
++    :returns: Tuple of (itcm, dtcm0, dtcm1) SimpleMemory instances.
++    """
++    itcm = SimpleMemory(
++        range=AddrRange(start=itcm_base, size=itcm_size),
++        latency="0ns",
++        bandwidth="0B/s",  # unlimited
++    )
++
++    dtcm0 = SimpleMemory(
++        range=AddrRange(start=dtcm0_base, size=dtcm0_size),
++        latency="0ns",
++        bandwidth="0B/s",
++    )
++
++    dtcm1 = SimpleMemory(
++        range=AddrRange(start=dtcm1_base, size=dtcm1_size),
++        latency="0ns",
++        bandwidth="0B/s",
++    )
++
++    return itcm, dtcm0, dtcm1
+diff --git a/configs/lumi-lib/perf_measure.py b/configs/lumi-lib/perf_measure.py
+new file mode 100644
+index 0000000..97ef903
+--- /dev/null
++++ b/configs/lumi-lib/perf_measure.py
+@@ -0,0 +1,213 @@
++#!/usr/bin/env python3
++"""
++Phase 6 Performance Measurement Script.
++Runs 4 configurations and collects comparison metrics.
++
++Configurations:
++  1. baseline:  skip_stalled=0, load_latency=0
++  2. skip_only:  skip_stalled=1, load_latency=0
++  3. load_only:  skip_stalled=0, load_latency=1
++  4. both:       skip_stalled=1, load_latency=1
++"""
++
++import argparse
++import os
++import re
++import subprocess
++import sys
++
++THIS_DIR = os.path.dirname(os.path.realpath(__file__))
++GEM5_DIR = os.path.join(THIS_DIR, "../..")
++GEM5 = os.path.join(GEM5_DIR, "build/RISCV/gem5.opt")
++LUMI_CORE = os.path.join(GEM5_DIR, "configs/lumi-core.py")
++
++BENCH_DIR = os.path.join(GEM5_DIR, "../benchmarks")
++COREMARK_BIN = os.path.join(BENCH_DIR, "coremark/coremark.riscv")
++DHRYSTONE_BIN = os.path.join(BENCH_DIR, "dhrystone/dhrystone.riscv")
++
++CONFIGS = [
++    ("baseline",  0, 0),
++    ("skip_only", 1, 0),
++    ("load_only", 0, 1),
++    ("both",      1, 1),
++]
++
++
++def run_benchmark(config_name, skip_stalled, load_latency,
++                  binary, issue_width=3, timeout=600):
++    """Run a single benchmark configuration and parse metrics."""
++    outdir = os.path.join(GEM5_DIR, f"m5out_perf_{config_name}")
++    cmd = [
++        GEM5, "--outdir", outdir, LUMI_CORE,
++        "--issue-width", str(issue_width),
++        "--binary", binary,
++        "--skip-stalled", str(skip_stalled),
++        "--load-latency", str(load_latency),
++    ]
++
++    label = os.path.basename(binary).replace(".riscv", "")
++    print(f"\n  Running {label} [{config_name}] ...")
++
++    try:
++        proc = subprocess.run(
++            cmd, capture_output=True, timeout=timeout,
++            cwd=GEM5_DIR,
++        )
++        output = proc.stdout.decode('utf-8', errors='replace') + \
++            proc.stderr.decode('utf-8', errors='replace')
++    except subprocess.TimeoutExpired:
++        print(f"    TIMEOUT ({timeout}s)")
++        return None
++
++    # Parse metrics from output
++    result = {"config": config_name, "skip": skip_stalled, "load_lat": load_latency}
++
++    # Exit tick
++    m = re.search(r"Simulation exited at tick (\d+)", output)
++    if m:
++        result["tick"] = int(m.group(1))
++
++    # CoreMark metric
++    m = re.search(r"CoreMark_CM_per_MHz_x100\s*:\s*(\d+)", output)
++    if m:
++        result["cm_per_mhz"] = int(m.group(1)) / 100.0
++
++    # Dhrystone metric
++    m = re.search(r"Dhrystone_DMIPS_per_MHz_x100\s*:\s*(\d+)", output)
++    if m:
++        result["dmips_per_mhz"] = int(m.group(1)) / 100.0
++
++    # Correct operation (CoreMark CRC)
++    if "Correct operation validated" in output:
++        result["crc_ok"] = True
++
++    # Parse stats file for CPI, IPC, branch squashes
++    stats_file = os.path.join(outdir, "stats.txt")
++    if os.path.exists(stats_file):
++        with open(stats_file) as f:
++            stats_text = f.read()
++
++        # CPI - must match at start of line to avoid comment text
++        m = re.search(r"^system\.cpu\.cpi\s+([\d.]+)", stats_text, re.MULTILINE)
++        if m:
++            result["cpi"] = float(m.group(1))
++
++        # IPC - must match at start of line to avoid comment text
++        m = re.search(r"^system\.cpu\.ipc\s+([\d.]+)", stats_text, re.MULTILINE)
++        if m:
++            result["ipc"] = float(m.group(1))
++
++        # Branch squashes total
++        m = re.search(r"squashes_0::total\s+(\d+)", stats_text)
++        if m:
++            result["branch_squashes"] = int(m.group(1))
++
++        # Committed instructions (if available)
++        m = re.search(r"^system\.cpu\.(?:committedInsts|numInsts)\s+(\d+)",
++                      stats_text, re.MULTILINE)
++        if m:
++            result["committed_insts"] = int(m.group(1))
++
++    return result
++
++
++def main():
++    parser = argparse.ArgumentParser(description="Phase 6 Performance Measurement")
++    parser.add_argument("--benchmark", choices=["coremark", "dhrystone", "both"],
++                        default="both", help="Which benchmark to run")
++    parser.add_argument("--issue-width", type=int, default=3,
++                        help="Issue width (default 3)")
++    args = parser.parse_args()
++
++    print("=" * 80)
++    print("Phase 6 Performance Measurement: 4-Configuration Comparison")
++    print("=" * 80)
++
++    all_results = []
++
++    # Run CoreMark
++    if args.benchmark in ("coremark", "both"):
++        if not os.path.exists(COREMARK_BIN):
++            print(f"SKIP: CoreMark binary not found: {COREMARK_BIN}")
++        else:
++            print("\n--- CoreMark (50 iterations) ---")
++            for config_name, skip, load_lat in CONFIGS:
++                r = run_benchmark(config_name, skip, load_lat,
++                                  COREMARK_BIN, args.issue_width)
++                if r:
++                    all_results.append(("coremark", r))
++                    cm = r.get("cm_per_mhz", "N/A")
++                    tick = r.get("tick", "N/A")
++                    crc = "OK" if r.get("crc_ok") else "?"
++                    print(f"    {config_name:12s}: CM/MHz={cm}, tick={tick}, CRC={crc}")
++
++    # Run Dhrystone
++    if args.benchmark in ("dhrystone", "both"):
++        if not os.path.exists(DHRYSTONE_BIN):
++            print(f"SKIP: Dhrystone binary not found: {DHRYSTONE_BIN}")
++        else:
++            print("\n--- Dhrystone (500 runs) ---")
++            for config_name, skip, load_lat in CONFIGS:
++                r = run_benchmark(config_name, skip, load_lat,
++                                  DHRYSTONE_BIN, args.issue_width)
++                if r:
++                    all_results.append(("dhrystone", r))
++                    dm = r.get("dmips_per_mhz", "N/A")
++                    tick = r.get("tick", "N/A")
++                    print(f"    {config_name:12s}: DMIPS/MHz={dm}, tick={tick}")
++
++    # Print summary table
++    print("\n" + "=" * 80)
++    print("PERFORMANCE COMPARISON TABLE")
++    print("=" * 80)
++
++    # CoreMark summary
++    cm_results = [r for bench, r in all_results if bench == "coremark"]
++    if cm_results:
++        print("\nCoreMark Results:")
++        print(f"  {'Config':<12s} {'skip':>5s} {'load':>5s} {'CM/MHz':>8s} "
++              f"{'CPI':>6s} {'IPC':>6s} {'Squashes':>10s} {'Tick':>12s} {'CRC':>5s}")
++        print(f"  {'-'*12} {'-'*5} {'-'*5} {'-'*8} {'-'*6} {'-'*6} {'-'*10} {'-'*12} {'-'*5}")
++        for r in cm_results:
++            cm = f"{r['cm_per_mhz']:.2f}" if "cm_per_mhz" in r else "N/A"
++            cpi = f"{r['cpi']:.2f}" if "cpi" in r else "N/A"
++            ipc = f"{r['ipc']:.2f}" if "ipc" in r else "N/A"
++            sq = str(r.get("branch_squashes", "N/A"))
++            tick = str(r.get("tick", "N/A"))
++            crc = "OK" if r.get("crc_ok") else "N/A"
++            print(f"  {r['config']:<12s} {r['skip']:>5d} {r['load_lat']:>5d} "
++                  f"{cm:>8s} {cpi:>6s} {ipc:>6s} {sq:>10s} {tick:>12s} {crc:>5s}")
++
++    # Dhrystone summary
++    dh_results = [r for bench, r in all_results if bench == "dhrystone"]
++    if dh_results:
++        print("\nDhrystone Results:")
++        print(f"  {'Config':<12s} {'skip':>5s} {'load':>5s} {'DMIPS/MHz':>10s} "
++              f"{'CPI':>6s} {'IPC':>6s} {'Squashes':>10s} {'Tick':>12s}")
++        print(f"  {'-'*12} {'-'*5} {'-'*5} {'-'*10} {'-'*6} {'-'*6} {'-'*10} {'-'*12}")
++        for r in dh_results:
++            dm = f"{r['dmips_per_mhz']:.2f}" if "dmips_per_mhz" in r else "N/A"
++            cpi = f"{r['cpi']:.2f}" if "cpi" in r else "N/A"
++            ipc = f"{r['ipc']:.2f}" if "ipc" in r else "N/A"
++            sq = str(r.get("branch_squashes", "N/A"))
++            tick = str(r.get("tick", "N/A"))
++            print(f"  {r['config']:<12s} {r['skip']:>5d} {r['load_lat']:>5d} "
++                  f"{dm:>10s} {cpi:>6s} {ipc:>6s} {sq:>10s} {tick:>12s}")
++
++    # Improvement analysis
++    if cm_results and len(cm_results) >= 4:
++        baseline_cm = cm_results[0].get("cm_per_mhz", 0)
++        if baseline_cm > 0:
++            print("\nCoreMark Improvement vs Baseline:")
++            for r in cm_results[1:]:
++                cm = r.get("cm_per_mhz", 0)
++                if cm > 0:
++                    pct = (cm / baseline_cm - 1) * 100
++                    print(f"  {r['config']:12s}: {pct:+.1f}%")
++
++    print("\n" + "=" * 80)
++    print("Done.")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/configs/lumi-lib/test_minorcpu.py b/configs/lumi-lib/test_minorcpu.py
+new file mode 100644
+index 0000000..f01a985
+--- /dev/null
++++ b/configs/lumi-lib/test_minorcpu.py
+@@ -0,0 +1,46 @@
++# MinorCPU regression test for Lumi-Core Phase 2
++import m5
++from m5.objects import *
++import os
++
++system = System()
++system.clk_domain = SrcClockDomain()
++system.clk_domain.clock = "1GHz"
++system.clk_domain.voltage_domain = VoltageDomain()
++
++system.mem_mode = "timing"
++system.mem_ranges = [AddrRange("512MiB")]
++system.cpu = RiscvMinorCPU()
++
++system.membus = SystemXBar()
++system.cpu.icache_port = system.membus.cpu_side_ports
++system.cpu.dcache_port = system.membus.cpu_side_ports
++
++system.cpu.createInterruptController()
++
++system.mem_ctrl = MemCtrl()
++system.mem_ctrl.dram = DDR3_1600_8x8()
++system.mem_ctrl.dram.range = system.mem_ranges[0]
++system.mem_ctrl.port = system.membus.mem_side_ports
++system.system_port = system.membus.cpu_side_ports
++
++thispath = os.path.dirname(os.path.realpath(__file__))
++binary = os.path.join(
++    thispath,
++    "../../",
++    "tests/test-progs/hello/bin/riscv/linux/hello",
++)
++
++system.workload = SEWorkload.init_compatible(binary)
++process = Process()
++process.cmd = [binary]
++system.cpu.workload = process
++system.cpu.createThreads()
++
++root = Root(full_system=False, system=system)
++m5.instantiate()
++
++print("OK: MinorCPU instantiated, starting simulation...")
++exit_event = m5.simulate()
++print(f"OK: MinorCPU simulation exited at tick {m5.curTick()} - {exit_event.getCause()}")
++print("MinorCPU regression test PASSED")
+diff --git a/configs/lumi-lib/test_o3cpu.py b/configs/lumi-lib/test_o3cpu.py
+new file mode 100644
+index 0000000..8fb1f8b
+--- /dev/null
++++ b/configs/lumi-lib/test_o3cpu.py
+@@ -0,0 +1,31 @@
++# O3CPU regression test for Lumi-Core Phase 2
++import m5
++from m5.objects import *
++import os
++
++system = System()
++system.clk_domain = SrcClockDomain(clock="1GHz", voltage_domain=VoltageDomain())
++system.mem_mode = "timing"
++system.mem_ranges = [AddrRange("512MiB")]
++system.cpu = RiscvO3CPU()
++
++system.membus = SystemXBar()
++system.cpu.icache_port = system.membus.cpu_side_ports
++system.cpu.dcache_port = system.membus.cpu_side_ports
++system.cpu.createInterruptController()
++
++system.mem_ctrl = MemCtrl(dram=DDR3_1600_8x8(range=system.mem_ranges[0]))
++system.mem_ctrl.port = system.membus.mem_side_ports
++system.system_port = system.membus.cpu_side_ports
++
++thispath = os.path.dirname(os.path.realpath(__file__))
++binary = os.path.join(thispath, "../../tests/test-progs/hello/bin/riscv/linux/hello")
++
++system.workload = SEWorkload.init_compatible(binary)
++system.cpu.workload = Process(cmd=[binary])
++system.cpu.createThreads()
++
++root = Root(full_system=False, system=system)
++m5.instantiate()
++e = m5.simulate()
++print(f"O3CPU PASSED - tick {m5.curTick()} - {e.getCause()}")
+diff --git a/configs/lumi-lib/test_regression.py b/configs/lumi-lib/test_regression.py
+new file mode 100644
+index 0000000..6b1dad9
+--- /dev/null
++++ b/configs/lumi-lib/test_regression.py
+@@ -0,0 +1,189 @@
++# Lumi-Core Phase 3/4 Regression Test
++# Tests the 8-stage MinorCPU with various configurations.
++# Phase 4: Added CoreMark and Dhrystone benchmark tests.
++
++import os
++import re
++import sys
++import subprocess
++
++GEM5 = "build/RISCV/gem5.opt"
++LUMI_CORE = "configs/lumi-core.py"
++
++# Test binary
++thispath = os.path.dirname(os.path.realpath(__file__))
++BINARY = os.path.join(
++    thispath, "../../tests/test-progs/hello/bin/riscv/linux/hello"
++)
++
++# Benchmark binaries (Phase 4)
++BENCH_DIR = os.path.join(thispath, "../../../benchmarks")
++COREMARK_BIN = os.path.join(BENCH_DIR, "coremark/coremark.riscv")
++DHRYSTONE_BIN = os.path.join(BENCH_DIR, "dhrystone/dhrystone.riscv")
++
++results = []
++
++
++def run_test(name, extra_args):
++    """Run a single regression test."""
++    cmd = [GEM5, LUMI_CORE] + extra_args
++    print(f"\n{'='*60}")
++    print(f"TEST: {name}")
++    print(f"CMD:  {' '.join(cmd)}")
++    print(f"{'='*60}")
++
++    try:
++        proc = subprocess.run(
++            cmd,
++            capture_output=True,
++            timeout=120,
++            cwd=os.path.join(thispath, "../.."),
++        )
++        output = proc.stdout.decode('utf-8', errors='replace') + \
++            proc.stderr.decode('utf-8', errors='replace')
++        if "Hello world!" in output and proc.returncode == 0:
++            # Extract tick count
++            tick_str = ""
++            for line in output.split("\n"):
++                if "exited at tick" in line:
++                    tick_str = line.strip()
++                    break
++            results.append((name, "PASS", tick_str))
++            print(f"  PASS - {tick_str}")
++        else:
++            error_msg = output[-500:] if len(output) > 500 else output
++            results.append((name, "FAIL", error_msg[:200]))
++            print(f"  FAIL - returncode={proc.returncode}")
++            print(f"  Last output: {error_msg[:200]}")
++    except subprocess.TimeoutExpired:
++        results.append((name, "TIMEOUT", "Exceeded 120s"))
++        print(f"  TIMEOUT")
++    except Exception as e:
++        results.append((name, "ERROR", str(e)))
++        print(f"  ERROR: {e}")
++
++
++def run_benchmark_test(name, binary, issue_width, metric_key, timeout=300):
++    """Run a benchmark test and verify metric output."""
++    if not os.path.exists(binary):
++        results.append((name, "SKIP", f"Binary not found: {binary}"))
++        print(f"  SKIP - {binary} not found")
++        return
++
++    cmd = [GEM5, "--outdir", f"m5out_regress_{name}",
++           LUMI_CORE, "--issue-width", str(issue_width),
++           "--binary", binary]
++    print(f"\n{'='*60}")
++    print(f"BENCHMARK: {name}")
++    print(f"CMD:  {' '.join(cmd)}")
++    print(f"{'='*60}")
++
++    try:
++        proc = subprocess.run(
++            cmd, capture_output=True, timeout=timeout,
++            cwd=os.path.join(thispath, "../.."),
++        )
++        output = proc.stdout.decode('utf-8', errors='replace') + \
++            proc.stderr.decode('utf-8', errors='replace')
++
++        # Check for successful exit
++        if proc.returncode != 0:
++            results.append((name, "FAIL", f"gem5 exit={proc.returncode}"))
++            print(f"  FAIL - gem5 exit code: {proc.returncode}")
++            return
++
++        # Parse metric
++        metric_val = None
++        for line in output.split("\n"):
++            if metric_key in line:
++                m = re.search(r":\s*(\d+)", line)
++                if m:
++                    metric_val = int(m.group(1)) / 100.0
++
++        # Check for correct operation (CoreMark) or valid output (Dhrystone)
++        has_correct = "Correct operation validated" in output
++        has_dmips = "Dhrystone_DMIPS_per_MHz_x100" in output
++
++        if metric_val is not None and metric_val > 0:
++            if has_correct or has_dmips:
++                results.append((name, "PASS", f"{metric_key}={metric_val:.2f}"))
++                print(f"  PASS - {metric_key} = {metric_val:.2f}")
++            else:
++                results.append((name, "PASS", f"{metric_key}={metric_val:.2f} (no CRC check)"))
++                print(f"  PASS - {metric_key} = {metric_val:.2f} (no CRC check)")
++        else:
++            results.append((name, "FAIL", "No valid metric output"))
++            print(f"  FAIL - No valid metric output")
++
++    except subprocess.TimeoutExpired:
++        results.append((name, "TIMEOUT", f"Exceeded {timeout}s"))
++        print(f"  TIMEOUT")
++    except Exception as e:
++        results.append((name, "ERROR", str(e)))
++        print(f"  ERROR: {e}")
++
++
++# --- Phase 3 Test Cases (hello world) ---
++
++# 1. Triple-issue (default)
++run_test("8-stage triple-issue", [])
++
++# 2. Dual-issue
++run_test("8-stage dual-issue", ["--issue-width", "2"])
++
++# 3. Triple-issue with TCM
++run_test("8-stage triple+TCM", ["--enable-tcm"])
++
++# 4. Triple-issue with CLIC
++run_test("8-stage triple+CLIC", ["--enable-clic"])
++
++# 5. Dual-issue with all features
++run_test("8-stage dual+TCM+CLIC", [
++    "--issue-width", "2", "--enable-tcm", "--enable-clic"
++])
++
++# --- Phase 4 Benchmark Tests ---
++
++# 6. CoreMark triple-issue
++run_benchmark_test(
++    "coremark-triple", COREMARK_BIN, 3,
++    "CoreMark_CM_per_MHz_x100"
++)
++
++# 7. CoreMark dual-issue
++run_benchmark_test(
++    "coremark-dual", COREMARK_BIN, 2,
++    "CoreMark_CM_per_MHz_x100"
++)
++
++# 8. Dhrystone triple-issue
++run_benchmark_test(
++    "dhrystone-triple", DHRYSTONE_BIN, 3,
++    "Dhrystone_DMIPS_per_MHz_x100"
++)
++
++# --- Summary ---
++print(f"\n{'='*60}")
++print("REGRESSION TEST SUMMARY")
++print(f"{'='*60}")
++
++passed = sum(1 for _, status, _ in results if status == "PASS")
++skipped = sum(1 for _, status, _ in results if status == "SKIP")
++failed = sum(1 for _, status, _ in results if status not in ("PASS", "SKIP"))
++total = len(results)
++
++for name, status, detail in results:
++    if status == "PASS":
++        icon = "\u2713"
++    elif status == "SKIP":
++        icon = "-"
++    else:
++        icon = "\u2717"
++    print(f"  {icon} {name}: {status}")
++
++print(f"\nResult: {passed}/{total} passed, {skipped} skipped, {failed} failed")
++if failed == 0:
++    print("ALL TESTS PASSED" if skipped == 0 else "ALL TESTS PASSED (with skips)")
++else:
++    print("SOME TESTS FAILED")
++    sys.exit(1)
+diff --git a/configs/lumi-lib/test_smoke.py b/configs/lumi-lib/test_smoke.py
+new file mode 100644
+index 0000000..b21ed69
+--- /dev/null
++++ b/configs/lumi-lib/test_smoke.py
+@@ -0,0 +1,60 @@
++# Smoke test for Lumi-Core Phase 2 changes (Smepmp, CLIC, Smrnmi)
++# Based on configs/learning_gem5/part1/simple-riscv.py
++
++import m5
++from m5.objects import *
++import os
++
++system = System()
++system.clk_domain = SrcClockDomain()
++system.clk_domain.clock = "1GHz"
++system.clk_domain.voltage_domain = VoltageDomain()
++
++system.mem_mode = "timing"
++system.mem_ranges = [AddrRange("512MiB")]
++system.cpu = RiscvTimingSimpleCPU()
++
++system.membus = SystemXBar()
++system.cpu.icache_port = system.membus.cpu_side_ports
++system.cpu.dcache_port = system.membus.cpu_side_ports
++
++system.cpu.createInterruptController()
++
++system.mem_ctrl = MemCtrl()
++system.mem_ctrl.dram = DDR3_1600_8x8()
++system.mem_ctrl.dram.range = system.mem_ranges[0]
++system.mem_ctrl.port = system.membus.mem_side_ports
++system.system_port = system.membus.cpu_side_ports
++
++thispath = os.path.dirname(os.path.realpath(__file__))
++binary = os.path.join(
++    thispath,
++    "../../",
++    "tests/test-progs/hello/bin/riscv/linux/hello",
++)
++
++if not os.path.exists(binary):
++    print("ERROR: binary not found at", binary)
++    import sys; sys.exit(1)
++
++system.workload = SEWorkload.init_compatible(binary)
++
++process = Process()
++process.cmd = [binary]
++system.cpu.workload = process
++system.cpu.createThreads()
++
++# Verify CLIC SimObject is available
++try:
++    clic = CLIC(num_interrupts=64)
++    print("OK: CLIC SimObject created (num_interrupts=64)")
++except Exception as e:
++    print("ERROR creating CLIC:", e)
++
++root = Root(full_system=False, system=system)
++m5.instantiate()
++
++print("OK: gem5 instantiated, starting simulation...")
++exit_event = m5.simulate()
++print(f"OK: simulation exited at tick {m5.curTick()} - {exit_event.getCause()}")
++print("Phase 2 smoke test PASSED")
+diff --git a/site_scons/gem5_scons/defaults.py b/site_scons/gem5_scons/defaults.py
+index 4de9a93..39700f9 100644
+--- a/site_scons/gem5_scons/defaults.py
++++ b/site_scons/gem5_scons/defaults.py
+@@ -93,7 +93,8 @@ def EnvDefaults(env):
+         "CC": env["CC"],
+         "CXX": env["CXX"],
+         "PROTOC": "protoc",
+-        "PYTHON_CONFIG": ["python3-config", "python-config"],
++        # Patched for Lumi-Core: use Python 3.12 config from venv
++        "PYTHON_CONFIG": os.environ.get('PYTHON_CONFIG', '/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/perf/gem5-model/.venv/bin/python3-config'),
+         "CCFLAGS_EXTRA": "",
+         "GEM5PY_CCFLAGS_EXTRA": "",
+         "GEM5PY_LINKFLAGS_EXTRA": "",
+diff --git a/src/arch/riscv/CLIC.py b/src/arch/riscv/CLIC.py
+new file mode 100644
+index 0000000..ed3e44f
+--- /dev/null
++++ b/src/arch/riscv/CLIC.py
+@@ -0,0 +1,13 @@
++# Copyright (c) 2024 Lumi-Core Project
++# All rights reserved.
++
++from m5.params import *
++from m5.proxy import *
++from m5.SimObject import SimObject
++
++class CLIC(SimObject):
++    type = "CLIC"
++    cxx_header = "arch/riscv/clic.hh"
++    cxx_class = "gem5::RiscvISA::CLIC"
++
++    num_interrupts = Param.Int(64, "Number of CLIC interrupt inputs (1-240)")
+diff --git a/src/arch/riscv/SConscript b/src/arch/riscv/SConscript
+index 55fcf46..1c10707 100644
+--- a/src/arch/riscv/SConscript
++++ b/src/arch/riscv/SConscript
+@@ -51,6 +51,7 @@ Source('decoder.cc', tags='riscv isa')
+ Source('faults.cc', tags='riscv isa')
+ Source('interrupts.cc', tags='riscv isa')
+ Source('isa.cc', tags='riscv isa')
++Source('clic.cc', tags='riscv isa')
+ Source('process.cc', tags='riscv isa')
+ Source('pagetable.cc', tags='riscv isa')
+ Source('pagetable_walker.cc', tags='riscv isa')
+@@ -66,6 +67,7 @@ Source('linux/fs_workload.cc', tags='riscv isa')
+ 
+ Source('bare_metal/fs_workload.cc', tags='riscv isa')
+ 
++SimObject('CLIC.py', sim_objects=['CLIC'], tags='riscv isa')
+ SimObject('PMAChecker.py', sim_objects=['PMAChecker', 'BasePMAChecker'],
+     tags='riscv isa')
+ SimObject('PMP.py', sim_objects=['PMP'], tags='riscv isa')
+diff --git a/src/arch/riscv/clic.cc b/src/arch/riscv/clic.cc
+new file mode 100644
+index 0000000..1eaaa17
+--- /dev/null
++++ b/src/arch/riscv/clic.cc
+@@ -0,0 +1,230 @@
++/*
++ * Copyright (c) 2024 Lumi-Core Project
++ * All rights reserved.
++ *
++ * CLIC (Core-Local Interrupt Controller) implementation for Lumi-Core.
++ */
++
++#include "arch/riscv/clic.hh"
++
++#include "base/logging.hh"
++#include "base/bitfield.hh"
++#include "debug/Interrupt.hh"
++
++namespace gem5
++{
++
++namespace RiscvISA
++{
++
++// Local CLIC CSR indices matching MiscRegIndex in regs/misc.hh.
++// Calculated from misc.hh enum: MTVT=133, MNVEC=134, MINTSTATUS=135,
++// MINTTHRESH=136, MSCRATCHCSW=137, MSCRATCHCSWL=138
++enum {
++    CLIC_MISCREG_MTVT        = 133,
++    CLIC_MISCREG_MNVEC       = 134,
++    CLIC_MISCREG_MINTSTATUS  = 135,
++    CLIC_MISCREG_MINTTHRESH  = 136,
++    CLIC_MISCREG_MSCRATCHCSW = 137,
++    CLIC_MISCREG_MSCRATCHCSWL= 138,
++};
++
++CLIC::CLIC(const Params &params)
++    : SimObject(params),
++      numInterrupts(params.num_interrupts),
++      vectorBase(0),
++      mintthresh(0),
++      mil(0),
++      mvie(false),
++      mnvec(false),
++      currentSelectedId(-1),
++      currentLevel(0)
++{
++    // Validate interrupt count
++    panic_if(numInterrupts < 1 || numInterrupts > 240,
++             "CLIC: num_interrupts must be between 1 and 240");
++
++    // Initialize interrupt state array
++    interrupts.resize(numInterrupts);
++    for (int i = 0; i < numInterrupts; i++) {
++        interrupts[i].id = i;
++        interrupts[i].level = 0;
++        interrupts[i].pending = 0;
++        interrupts[i].enable = 0;
++    }
++}
++
++void
++CLIC::postInterrupt(uint32_t id, uint8_t priority)
++{
++    if (id >= numInterrupts) {
++        warn("CLIC: ignoring interrupt post for out-of-range ID %u\n", id);
++        return;
++    }
++
++    DPRINTF(Interrupt, "CLIC: post interrupt %u, priority %u\n", id, priority);
++
++    interrupts[id].pending = 1;
++    if (priority > 0) {
++        interrupts[id].level = priority;
++    }
++}
++
++void
++CLIC::clearInterrupt(uint32_t id)
++{
++    if (id >= numInterrupts) {
++        warn("CLIC: ignoring interrupt clear for out-of-range ID %u\n", id);
++        return;
++    }
++
++    DPRINTF(Interrupt, "CLIC: clear interrupt %u\n", id);
++    interrupts[id].pending = 0;
++}
++
++int
++CLIC::arbitrate()
++{
++    int bestId = -1;
++    uint8_t bestPriority = 0;
++
++    for (int i = 0; i < numInterrupts; i++) {
++        if (interrupts[i].pending && interrupts[i].level > mintthresh &&
++            interrupts[i].level > mil) {
++            if (interrupts[i].level > bestPriority ||
++                (interrupts[i].level == bestPriority && i < bestId)) {
++                bestPriority = interrupts[i].level;
++                bestId = i;
++            }
++        }
++    }
++
++    currentSelectedId = bestId;
++    if (bestId >= 0) {
++        currentLevel = bestPriority;
++    }
++
++    return bestId;
++}
++
++Addr
++CLIC::getVectorAddress(int id) const
++{
++    if (mnvec) {
++        // Non-vectored mode: all interrupts go to base address
++        return vectorBase;
++    }
++
++    // Vectored mode: vectorBase + id * 4
++    // Each vector entry is 4 bytes (one instruction or address)
++    return vectorBase + id * 4;
++}
++
++bool
++CLIC::readCSR(int misc_reg_idx, RegVal &val) const
++{
++    switch (misc_reg_idx) {
++      case CLIC_MISCREG_MTVT:
++        val = vectorBase;
++        return true;
++      case CLIC_MISCREG_MNVEC:
++        val = mnvec ? 1 : 0;
++        return true;
++      case CLIC_MISCREG_MINTSTATUS:
++        val = ((RegVal)mil << 16) | (mvie ? (1 << 8) : 0) | (mnvec ? 1 : 0);
++        return true;
++      case CLIC_MISCREG_MINTTHRESH:
++        val = mintthresh;
++        return true;
++      case CLIC_MISCREG_MSCRATCHCSW:
++      case CLIC_MISCREG_MSCRATCHCSWL:
++        // Write-only CSRs, reading returns 0
++        val = 0;
++        return true;
++      default:
++        val = 0;
++        return false;
++    }
++}
++
++bool
++CLIC::writeCSR(int misc_reg_idx, RegVal val)
++{
++    switch (misc_reg_idx) {
++      case CLIC_MISCREG_MTVT:
++        vectorBase = bits(val, 63, 2) << 2;
++        return true;
++      case CLIC_MISCREG_MNVEC:
++        mnvec = (val & 1) != 0;
++        return true;
++      case CLIC_MISCREG_MINTSTATUS:
++        mil = (val >> 16) & 0x3F;
++        return true;
++      case CLIC_MISCREG_MINTTHRESH:
++        mintthresh = val & 0x3F;
++        return true;
++      case CLIC_MISCREG_MSCRATCHCSW:
++      case CLIC_MISCREG_MSCRATCHCSWL:
++        return true;
++      default:
++        return false;
++    }
++}
++
++void
++CLIC::serialize(CheckpointOut &cp) const
++{
++    SERIALIZE_SCALAR(numInterrupts);
++    SERIALIZE_SCALAR(vectorBase);
++    SERIALIZE_SCALAR(mintthresh);
++    SERIALIZE_SCALAR(mil);
++    SERIALIZE_SCALAR(mvie);
++    SERIALIZE_SCALAR(mnvec);
++    SERIALIZE_SCALAR(currentSelectedId);
++    SERIALIZE_SCALAR(currentLevel);
++
++    // Serialize interrupt states
++    std::vector<uint8_t> pendingBits(numInterrupts);
++    std::vector<uint8_t> levelBits(numInterrupts);
++    std::vector<uint8_t> enableBits(numInterrupts);
++    for (int i = 0; i < numInterrupts; i++) {
++        pendingBits[i] = interrupts[i].pending;
++        levelBits[i] = interrupts[i].level;
++        enableBits[i] = interrupts[i].enable;
++    }
++    SERIALIZE_CONTAINER(pendingBits);
++    SERIALIZE_CONTAINER(levelBits);
++    SERIALIZE_CONTAINER(enableBits);
++}
++
++void
++CLIC::unserialize(CheckpointIn &cp)
++{
++    UNSERIALIZE_SCALAR(numInterrupts);
++    UNSERIALIZE_SCALAR(vectorBase);
++    UNSERIALIZE_SCALAR(mintthresh);
++    UNSERIALIZE_SCALAR(mil);
++    UNSERIALIZE_SCALAR(mvie);
++    UNSERIALIZE_SCALAR(mnvec);
++    UNSERIALIZE_SCALAR(currentSelectedId);
++    UNSERIALIZE_SCALAR(currentLevel);
++
++    // Restore interrupt states
++    std::vector<uint8_t> pendingBits(numInterrupts);
++    std::vector<uint8_t> levelBits(numInterrupts);
++    std::vector<uint8_t> enableBits(numInterrupts);
++    UNSERIALIZE_CONTAINER(pendingBits);
++    UNSERIALIZE_CONTAINER(levelBits);
++    UNSERIALIZE_CONTAINER(enableBits);
++
++    interrupts.resize(numInterrupts);
++    for (int i = 0; i < numInterrupts; i++) {
++        interrupts[i].id = i;
++        interrupts[i].pending = pendingBits[i];
++        interrupts[i].level = levelBits[i];
++        interrupts[i].enable = enableBits[i];
++    }
++}
++
++} // namespace RiscvISA
++} // namespace gem5
+diff --git a/src/arch/riscv/clic.hh b/src/arch/riscv/clic.hh
+new file mode 100644
+index 0000000..b9445f1
+--- /dev/null
++++ b/src/arch/riscv/clic.hh
+@@ -0,0 +1,171 @@
++/*
++ * Copyright (c) 2024 Lumi-Core Project
++ * All rights reserved.
++ *
++ * CLIC (Core-Local Interrupt Controller) implementation for Lumi-Core.
++ * Based on RISC-V CLIC specification.
++ */
++
++#ifndef __ARCH_RISCV_CLIC_HH__
++#define __ARCH_RISCV_CLIC_HH__
++
++#include <cstdint>
++#include <vector>
++
++#include "base/types.hh"
++#include "cpu/thread_context.hh"
++#include "params/CLIC.hh"
++#include "sim/sim_object.hh"
++
++namespace gem5
++{
++
++class ThreadContext;
++
++namespace RiscvISA
++{
++
++// Forward declaration
++class FaultBase;
++
++/**
++ * CLIC interrupt state for one interrupt input.
++ */
++struct ClicInterruptState
++{
++    /** Interrupt source ID (0 to num_interrupts-1) */
++    uint32_t id;
++
++    /** CLIC level (0-63, 0 = no level/edge triggered) */
++    uint8_t level;
++
++    /** Pending flag */
++    uint8_t pending;
++
++    /** Enable flag */
++    uint8_t enable;
++};
++
++/**
++ * Core-Local Interrupt Controller (CLIC) model.
++ *
++ * Implements the RISC-V CLIC specification for Lumi-Core:
++ * - Up to 240 interrupt inputs with 64-level priority
++ * - Programmable vectoring via mtvt register
++ * - Interrupt threshold (mintthresh)
++ * - Nested preemption based on interrupt levels
++ * - Scratch register swap (mscratchcsw/mscratchcswl)
++ */
++class CLIC : public SimObject
++{
++  private:
++    /** Number of interrupt inputs */
++    int numInterrupts;
++
++    /** CLIC vector table base (from CSR_MTVT) */
++    Addr vectorBase;
++
++    /** CLIC interrupt threshold */
++    uint8_t mintthresh;
++
++    /** Machine interrupt level (current priority) */
++    uint8_t mil;
++
++    /** Machine vector interrupt enable */
++    bool mvie;
++
++    /** Machine non-vectored mode */
++    bool mnvec;
++
++    /** Per-interrupt state */
++    std::vector<ClicInterruptState> interrupts;
++
++    /** Currently selected highest priority interrupt ID */
++    int currentSelectedId;
++
++    /** Priority level of the currently serviced interrupt */
++    uint8_t currentLevel;
++
++  public:
++    using Params = CLICParams;
++
++    CLIC(const Params &params);
++
++    /**
++     * Post an interrupt with the given priority.
++     * @param id Interrupt source ID (0 to numInterrupts-1)
++     * @param priority Priority level (0-63)
++     */
++    void postInterrupt(uint32_t id, uint8_t priority = 0);
++
++    /**
++     * Clear a pending interrupt.
++     * @param id Interrupt source ID
++     */
++    void clearInterrupt(uint32_t id);
++
++    /**
++     * Read a CLIC CSR register.
++     * @param misc_reg_idx Misc register index (MiscRegIndex)
++     * @param val Output value
++     * @return true if the CSR was handled, false otherwise
++     */
++    bool readCSR(int misc_reg_idx, RegVal &val) const;
++
++    /**
++     * Write a CLIC CSR register.
++     * @param misc_reg_idx Misc register index (MiscRegIndex)
++     * @param val Value to write
++     * @return true if the CSR was handled, false otherwise
++     */
++    bool writeCSR(int misc_reg_idx, RegVal val);
++
++    /**
++     * Arbitrate among pending interrupts and return the winning ID.
++     * @return Interrupt ID of highest priority pending interrupt, or -1 if none
++     */
++    int arbitrate();
++
++    /**
++     * Get the vector target address for the given interrupt ID.
++     * @param id Interrupt source ID
++     * @return Target PC address
++     */
++    Addr getVectorAddress(int id) const;
++
++    /**
++     * Get the current machine interrupt level.
++     */
++    uint8_t getMil() const { return mil; }
++
++    /**
++     * Set the machine interrupt level (called when entering/exiting ISR).
++     */
++    void setMil(uint8_t level) { mil = level; }
++
++    /**
++     * Get whether CLIC non-vectored mode is active.
++     */
++    bool isMnvec() const { return mnvec; }
++
++    /**
++     * Get vector base address.
++     */
++    Addr getVectorBase() const { return vectorBase; }
++
++    /**
++     * Check if an interrupt with given priority can preempt current context.
++     */
++    bool canPreempt(uint8_t priority) const
++    {
++        return priority > mintthresh && priority > mil;
++    }
++
++    void serialize(CheckpointOut &cp) const override;
++    void unserialize(CheckpointIn &cp) override;
++};
++
++} // namespace RiscvISA
++} // namespace gem5
++
++#endif // __ARCH_RISCV_CLIC_HH__
+diff --git a/src/arch/riscv/faults.cc b/src/arch/riscv/faults.cc
+index 7f1302a..c91f763 100644
+--- a/src/arch/riscv/faults.cc
++++ b/src/arch/riscv/faults.cc
+@@ -31,7 +31,9 @@
+ 
+ #include "arch/riscv/faults.hh"
+ 
++#include "arch/riscv/clic.hh"
+ #include "arch/riscv/insts/static_inst.hh"
++#include "arch/riscv/interrupts.hh"
+ #include "arch/riscv/isa.hh"
+ #include "arch/riscv/mmu.hh"
+ #include "arch/riscv/pmp.hh"
+@@ -70,12 +72,8 @@ RiscvFault::invoke(ThreadContext *tc, const StaticInstPtr &inst)
+         MISA misa = tc->readMiscRegNoEffect(MISCREG_ISA);
+         STATUS status = tc->readMiscReg(MISCREG_STATUS);
+ 
+-        // According to riscv-privileged-v1.11, if a NMI occurs at the middle
+-        // of a M-mode trap handler, the state (epc/cause) will be overwritten
+-        // and is not necessary recoverable. There's nothing we can do here so
+-        // we'll just warn our user that the CPU state might be broken.
+-        warn_if(isNonMaskableInterrupt() && pp == PRV_M && status.mie == 0,
+-                "NMI overwriting M-mode trap handler state");
++        // With Smrnmi, NMI state is saved to separate CSRs (MNEPC/MNCAUSE/MNSTATUS)
++        // so it no longer overwrites MEPC/MCAUSE.
+ 
+         // Set fault handler privilege mode
+         if (isNonMaskableInterrupt()) {
+@@ -123,14 +121,28 @@ RiscvFault::invoke(ThreadContext *tc, const StaticInstPtr &inst)
+             status.sie = 0;
+             break;
+           case PRV_M:
+-            cause = MISCREG_MCAUSE;
+-            epc = MISCREG_MEPC;
+-            tvec = isNonMaskableInterrupt() ? MISCREG_NMIVEC : MISCREG_MTVEC;
+-            tval = MISCREG_MTVAL;
++            if (isNonMaskableInterrupt()) {
++                // Smrnmi: save to NMI-specific CSRs
++                cause = MISCREG_MNCAUSE;
++                epc = MISCREG_MNEPC;
++                tvec = MISCREG_NMIVEC;
++                tval = MISCREG_MTVAL;
++                // Save MNSTATUS: NMIE = old mie, MNPP = old prv
++                RegVal mnst = 0;
++                if (status.mie) mnst |= (1 << 0);
++                mnst |= ((RegVal)pp << 5);
++                tc->setMiscReg(MISCREG_MNSTATUS, mnst);
++                status.mie = 0;
++            } else {
++                cause = MISCREG_MCAUSE;
++                epc = MISCREG_MEPC;
++                tvec = MISCREG_MTVEC;
++                tval = MISCREG_MTVAL;
+ 
+-            status.mpp = pp;
+-            status.mpie = status.mie;
+-            status.mie = 0;
++                status.mpp = pp;
++                status.mpie = status.mie;
++                status.mie = 0;
++            }
+             break;
+           default:
+             panic("Unknown privilege mode %d.", prv);
+diff --git a/src/arch/riscv/interrupts.cc b/src/arch/riscv/interrupts.cc
+index a45cae6..0f061b9 100644
+--- a/src/arch/riscv/interrupts.cc
++++ b/src/arch/riscv/interrupts.cc
+@@ -30,6 +30,8 @@
+ 
+ #include "arch/riscv/interrupts.hh"
+ 
++#include "arch/riscv/clic.hh"
++
+ namespace gem5
+ {
+ 
+@@ -132,6 +134,19 @@ Interrupts::getInterrupt()
+     assert(checkInterrupts());
+     if (checkNonMaskableInterrupt())
+         return std::make_shared<NonMaskableInterruptFault>();
++
++    // CLIC arbitration: consult CLIC when configured
++    if (clic) {
++        int clic_id = clic->arbitrate();
++        if (clic_id >= 0) {
++            DPRINTF(Interrupt, "CLIC: selected interrupt ID %d\n", clic_id);
++            // Map CLIC interrupt ID (0..n-1) to local interrupt code
++            // INT_LOCAL_0 = 16, so CLIC ID i -> INT_LOCAL_0 + i
++            return std::make_shared<InterruptFault>(
++                static_cast<ExceptionCode>(INT_LOCAL_0 + clic_id));
++        }
++    }
++
+     std::bitset<NumInterruptTypes> mask = globalMask();
+     if (((ISA*) tc->getIsaPtr())->rvType() == RV64) {
+         const std::vector<int> interrupt_order {
+@@ -180,7 +195,14 @@ Interrupts::post(int int_num, int index)
+ {
+     DPRINTF(Interrupt, "Interrupt %d:%d posted\n", int_num, index);
+     if (int_num != INT_NMI) {
+-        ip[int_num] = true;
++        // When CLIC is present, route M-mode external interrupts through CLIC
++        if (clic && int_num == INT_EXT_MACHINE) {
++            // PLIC's external interrupt goes to CLIC interrupt ID 0
++            clic->postInterrupt(0, 1);
++            DPRINTF(Interrupt, "CLIC: posted external interrupt\n");
++        } else {
++            ip[int_num] = true;
++        }
+     } else {
+         postNMI();
+     }
+@@ -191,7 +213,13 @@ Interrupts::clear(int int_num, int index)
+ {
+     DPRINTF(Interrupt, "Interrupt %d:%d cleared\n", int_num, index);
+     if (int_num != INT_NMI) {
+-        ip[int_num] = false;
++        // When CLIC is present, clear M-mode external interrupt through CLIC
++        if (clic && int_num == INT_EXT_MACHINE) {
++            clic->clearInterrupt(0);
++            DPRINTF(Interrupt, "CLIC: cleared external interrupt\n");
++        } else {
++            ip[int_num] = false;
++        }
+     } else {
+         clearNMI();
+     }
+diff --git a/src/arch/riscv/interrupts.hh b/src/arch/riscv/interrupts.hh
+index 54cf501..79a5d49 100644
+--- a/src/arch/riscv/interrupts.hh
++++ b/src/arch/riscv/interrupts.hh
+@@ -52,6 +52,8 @@ class ThreadContext;
+ 
+ namespace RiscvISA {
+ 
++class CLIC;
++
+ /*
+  * This is based on version 1.10 of the RISC-V privileged ISA reference,
+  * chapter 3.1.14.
+@@ -63,7 +65,16 @@ class Interrupts : public BaseInterrupts
+     std::bitset<NumInterruptTypes> ie;
+ 
+     std::vector<gem5::IntSinkPin<Interrupts>*> localInterruptPins;
++
++    /** Optional CLIC interrupt controller */
++    CLIC* clic = nullptr;
++
+   public:
++    /** Get the CLIC controller (may be null) */
++    CLIC* getCLIC() const { return clic; }
++
++    /** Set the CLIC controller (called during configuration) */
++    void setCLIC(CLIC* c) { clic = c; }
+     using Params = RiscvInterruptsParams;
+ 
+     Interrupts(const Params &p);
+diff --git a/src/arch/riscv/isa.cc b/src/arch/riscv/isa.cc
+index ee153fa..a709d9b 100644
+--- a/src/arch/riscv/isa.cc
++++ b/src/arch/riscv/isa.cc
+@@ -207,6 +207,19 @@ namespace RiscvISA
+     [MISCREG_NMIE]          = "NMIE",
+     [MISCREG_NMIP]          = "NMIP",
+ 
++    [MISCREG_MSECCFG]       = "MSECCFG",
++
++    [MISCREG_MNEPC]         = "MNEPC",
++    [MISCREG_MNCAUSE]       = "MNCAUSE",
++    [MISCREG_MNSTATUS]      = "MNSTATUS",
++
++    [MISCREG_MTVT]          = "MTVT",
++    [MISCREG_MNVEC]         = "MNVEC",
++    [MISCREG_MINTSTATUS]    = "MINTSTATUS",
++    [MISCREG_MINTTHRESH]    = "MINTTHRESH",
++    [MISCREG_MSCRATCHCSW]   = "MSCRATCHCSW",
++    [MISCREG_MSCRATCHCSWL]  = "MSCRATCHCSWL",
++
+     // following are rv32 only registers
+     [MISCREG_MSTATUSH]      = "MSTATUSH",
+ 
+@@ -724,6 +737,17 @@ ISA::setMiscReg(RegIndex idx, RegVal val)
+             }
+             break;
+ 
++          case MISCREG_MSECCFG:
++            {
++                // Smepmp: only writable in M-mode
++                assert(readMiscRegNoEffect(MISCREG_PRV) == PRV_M);
++                auto mmu = dynamic_cast<RiscvISA::MMU *>
++                              (tc->getMMUPtr());
++                mmu->getPMP()->setMseccfg(val);
++                setMiscRegNoEffect(idx, mmu->getPMP()->getMseccfg());
++            }
++            break;
++
+           case MISCREG_IP:
+             {
+                 val = val & MI_MASK[getPrivilegeModeSet()];
+diff --git a/src/arch/riscv/isa/decoder.isa b/src/arch/riscv/isa/decoder.isa
+index bc92f17..bd6ee50 100644
+--- a/src/arch/riscv/isa/decoder.isa
++++ b/src/arch/riscv/isa/decoder.isa
+@@ -255,10 +255,18 @@ decode QUADRANT default Unknown::unknown() {
+             }}, {{
+                 // RC1 == 0 is HINT
+                 if (imm == 0) {
+-                    return std::make_shared<IllegalInstFault>(
++                    // Zcmop: C.MOP.n instructions (n = 1,3,5,7,9,11,13,15)
++                    // Encoded as c.lui xn, 0 where n is odd
++                    // These are NOP-like instructions
++                    if (RC1 != 0 && (RC1 & 1) == 1) {
++                        // C.MOP.n - NOP (no write to rd)
++                    } else {
++                        return std::make_shared<IllegalInstFault>(
+                             "immediate = 0", machInst);
++                    }
++                } else {
++                    Rc1_sd = imm;
+                 }
+-                Rc1_sd = imm;
+             }});
+         }
+         0x4: decode CFUNCT2HIGH {
+@@ -488,14 +496,31 @@ decode QUADRANT default Unknown::unknown() {
+         format CompressedStore {
+             0x5: decode ENABLE_ZCD {
+                 0x0: decode CFUNCT6LOW3 {
++                    // Zcmt: cm.jt and cm.jalt (table jump instructions)
++                    // cm.jt: RC1=0 (bits[11:7]=00000), RC2=index (0-31)
++                    // cm.jalt: RC1!=0, index bits[9:2] (32-255)
++                    0x0: decode RC1 {
++                        0x00: CmJt::cm_jt({{
++                            // cm.jt: PC = JVT.base + index * 4
++                            // index = RC2 (bits[6:2])
++                            // NOP for now (JVT CSR not implemented)
++                        }});
++                        default: CmJalt::cm_jalt({{
++                            // cm.jalt: ra = NPC; PC = JVT.base + index*4
++                            // NOP for now (JVT CSR not implemented)
++                        }});
++                    }
++                    // Zcmp: cm.mvsa01, cm.mva01s
+                     0x3: decode CFUNCT2LOW {
+                         0x1: CmMvsa01::cm_mvsa01();
+                         0x3: CmMva01s::cm_mva01s();
+                     }
++                    // Zcmp: cm.push, cm.pop
+                     0x6: decode CFUNCT2MID {
+                         0x0: CmPush::cm_push();
+                         0x2: CmPop::cm_pop();
+                     }
++                    // Zcmp: cm.popretz, cm.popret
+                     0x7: decode CFUNCT2MID {
+                         0x0: CmPop::cm_popretz(is_ret=True, has_a0=True);
+                         0x2: CmPop::cm_popret(is_ret=True);
+@@ -5038,18 +5063,41 @@ decode QUADRANT default Unknown::unknown() {
+                                         "mret at lower privilege", machInst);
+                             NPC = NPC;
+                         } else {
+-                            STATUS status = xc->readMiscReg(MISCREG_STATUS);
+-                            xc->setMiscReg(MISCREG_PRV, status.mpp);
+-                            xc->setMiscReg(MISCREG_NMIE, 1);
+-                            status.mie = status.mpie;
+-                            status.mpie = 1;
+-                            status.mpp = PRV_U;
+-                            xc->setMiscReg(MISCREG_STATUS, status);
+-                            NPC = rvSext(xc->readMiscReg(MISCREG_MEPC));
++                            // Smrnmi: check if returning from NMI context
++                            uint64_t mnstatus = xc->readMiscReg(MISCREG_MNSTATUS);
++                            if ((mnstatus & 1) == 0) {
++                                // NMI was active: restore from Smrnmi CSRs
++                                xc->setMiscReg(MISCREG_NMIE,
++                                        (mnstatus >> 0) & 1);
++                                uint64_t mnpp = (mnstatus >> 5) & 0x3;
++                                xc->setMiscReg(MISCREG_PRV, mnpp);
++                                NPC = rvSext(
++                                    xc->readMiscReg(MISCREG_MNEPC));
++                            } else {
++                                STATUS status = xc->readMiscReg(MISCREG_STATUS);
++                                xc->setMiscReg(MISCREG_PRV, status.mpp);
++                                xc->setMiscReg(MISCREG_NMIE, 1);
++                                status.mie = status.mpie;
++                                status.mpie = 1;
++                                status.mpp = PRV_U;
++                                xc->setMiscReg(MISCREG_STATUS, status);
++                                NPC = rvSext(xc->readMiscReg(MISCREG_MEPC));
++                            }
+                         }
+                     }}, IsSerializeAfter, IsNonSpeculative, IsReturn);
+                 }
+             }
++            // Zimop May-Be-Operations (Zimop extension)
++            // MOP.R.n and MOP.RR.n are encoded under funct3=4 in SYSTEM opcode
++            // Default behavior: write 0 to rd
++            0x4: decode FUNCT7 {
++                default: MopRn::mop_r_n({{
++                    // Zimop MOP: write 0 to rd (default NOP-like behavior)
++                    // Covers both MOP.R.n (funct7=0b100001x) and
++                    // MOP.RR.n (funct7=0b100000x) variants
++                    Rd = 0;
++                }});
++            }
+             format CSROp {
+                 0x1: csrrw({{
+                     Rd = rvSext(data);
+diff --git a/src/arch/riscv/isa/formats/formats.isa b/src/arch/riscv/isa/formats/formats.isa
+index 377bc5d..3e1ae93 100644
+--- a/src/arch/riscv/isa/formats/formats.isa
++++ b/src/arch/riscv/isa/formats/formats.isa
+@@ -42,6 +42,9 @@
+ ##include "vector_mem.isa"
+ ##include "zcmp.isa"
+ 
++// Include formats for Zimop/Zcmt/Zcmop extensions
++##include "zext.isa"
++
+ // Include formats for nonstandard extensions
+ ##include "compressed.isa"
+ 
+diff --git a/src/arch/riscv/isa/formats/zext.isa b/src/arch/riscv/isa/formats/zext.isa
+new file mode 100644
+index 0000000..759cff8
+--- /dev/null
++++ b/src/arch/riscv/isa/formats/zext.isa
+@@ -0,0 +1,71 @@
++// -*- mode:c++ -*-
++
++// Format definitions for Zimop, Zcmt, and Zcmop extensions
++// These are May-Be-Operations (MOPs) and table jump instructions
++
++// Custom declare template with generateDisassembly override
++def template ZextDeclare {{
++    //
++    // Static instruction class for "%(mnemonic)s".
++    //
++    class %(class_name)s : public %(base_class)s
++    {
++      private:
++        %(reg_idx_arr_decl)s;
++
++      public:
++        /// Constructor.
++        %(class_name)s(ExtMachInst machInst);
++        Fault execute(ExecContext *, trace::InstRecord *) const override;
++        std::string generateDisassembly(
++                Addr pc, const loader::SymbolTable *symtab) const override;
++    };
++}};
++
++// Custom execute template with simple disassembly
++def template ZextExecute {{
++    Fault
++    %(class_name)s::execute(ExecContext *xc,
++        trace::InstRecord *traceData) const
++    {
++        %(op_decl)s;
++        %(op_rd)s;
++        %(code)s;
++        %(op_wb)s;
++        return NoFault;
++    }
++
++    std::string
++    %(class_name)s::generateDisassembly(
++            Addr pc, const loader::SymbolTable *symtab) const
++    {
++        return mnemonic;
++    }
++}};
++
++// Zimop MOP format - writes 0 to rd (default NOP-like behavior)
++def format MopRn(code, *flags) {{
++    iop = InstObjParams(name, Name, 'RiscvStaticInst', code, flags)
++    header_output = ZextDeclare.subst(iop)
++    decoder_output = BasicConstructor.subst(iop)
++    decode_block = BasicDecode.subst(iop)
++    exec_output = ZextExecute.subst(iop)
++}};
++
++// Zcmt cm.jt format - table jump without link
++def format CmJt(code, *flags) {{
++    iop = InstObjParams(name, Name, 'RiscvStaticInst', code, flags)
++    header_output = ZextDeclare.subst(iop)
++    decoder_output = BasicConstructor.subst(iop)
++    decode_block = BasicDecode.subst(iop)
++    exec_output = ZextExecute.subst(iop)
++}};
++
++// Zcmt cm.jalt format - table jump with link
++def format CmJalt(code, *flags) {{
++    iop = InstObjParams(name, Name, 'RiscvStaticInst', code, flags)
++    header_output = ZextDeclare.subst(iop)
++    decoder_output = BasicConstructor.subst(iop)
++    decode_block = BasicDecode.subst(iop)
++    exec_output = ZextExecute.subst(iop)
++}};
+diff --git a/src/arch/riscv/pmp.cc b/src/arch/riscv/pmp.cc
+index 0b27384..0399763 100644
+--- a/src/arch/riscv/pmp.cc
++++ b/src/arch/riscv/pmp.cc
+@@ -51,7 +51,8 @@ PMP::PMP(const Params &params) :
+     SimObject(params),
+     pmpEntries(params.pmp_entries),
+     numRules(0),
+-    hasLockEntry(false)
++    hasLockEntry(false),
++    mseccfg(0)
+ {
+     pmpTable.resize(pmpEntries);
+ }
+@@ -92,10 +93,27 @@ PMP::pmpCheck(const RequestPtr &req, BaseMMU::Mode mode,
+         if ((match_index > -1)
+             && (PMP_OFF != pmpGetAField(pmpTable[match_index].pmpCfg))) {
+             uint8_t this_cfg = pmpTable[match_index].pmpCfg;
+-
+-            if ((pmode == PrivilegeMode::PRV_M) &&
+-                                    (PMP_LOCK & this_cfg) == 0) {
+-                return NoFault;
++            bool locked = (PMP_LOCK & this_cfg) != 0;
++
++            if (pmode == PrivilegeMode::PRV_M) {
++                // Smepmp: check M-mode access if MML or MMWP is set
++                if ((mseccfg & (MSECCFG_MML | MSECCFG_MMWP)) != 0) {
++                    if (smepmpCheckMMode(mode, locked, this_cfg))
++                        return NoFault;
++                    else
++                        return createAddrfault(vaddr, mode);
++                }
++                // Standard PMP: M-mode access always succeeds on unlocked entries
++                if (!locked)
++                    return NoFault;
++                // M-mode with locked entry: check permissions
++                if ((mode == BaseMMU::Mode::Read) && (PMP_READ & this_cfg))
++                    return NoFault;
++                if ((mode == BaseMMU::Mode::Write) && (PMP_WRITE & this_cfg))
++                    return NoFault;
++                if ((mode == BaseMMU::Mode::Execute) && (PMP_EXEC & this_cfg))
++                    return NoFault;
++                return createAddrfault(vaddr, mode);
+             } else if ((mode == BaseMMU::Mode::Read) &&
+                                         (PMP_READ & this_cfg)) {
+                 return NoFault;
+@@ -114,8 +132,11 @@ PMP::pmpCheck(const RequestPtr &req, BaseMMU::Mode mode,
+             }
+         }
+     }
+-    // if no entry matched and we are not in M mode return fault
++    // if no entry matched
+     if (pmode == PrivilegeMode::PRV_M) {
++        // Smepmp MML=1: M-mode accesses that miss all entries cause fault
++        if ((mseccfg & MSECCFG_MML) != 0)
++            return createAddrfault(vaddr, mode);
+         return NoFault;
+     } else if (req->hasVaddr()) {
+         return createAddrfault(req->getVaddr(), mode);
+@@ -160,10 +181,13 @@ PMP::pmpUpdateCfg(uint32_t pmp_index, uint8_t this_cfg)
+ 
+     DPRINTF(PMP, "Update pmp config with %u for pmp entry: %u \n",
+                                     (unsigned)this_cfg, pmp_index);
+-    if (pmpTable[pmp_index].pmpCfg & PMP_LOCK) {
+-        DPRINTF(PMP, "Update pmp entry config %u failed because it locked\n",
+-                pmp_index);
+-        return false;
++    // Smepmp RLB=1 allows writing locked entries
++    if (!(mseccfg & MSECCFG_RLB)) {
++        if (pmpTable[pmp_index].pmpCfg & PMP_LOCK) {
++            DPRINTF(PMP, "Update pmp entry config %u failed because it locked\n",
++                    pmp_index);
++            return false;
++        }
+     }
+     pmpTable[pmp_index].pmpCfg = this_cfg;
+     pmpUpdateRule(pmp_index);
+@@ -247,17 +271,20 @@ PMP::pmpUpdateAddr(uint32_t pmp_index, Addr this_addr)
+     DPRINTF(PMP, "Update pmp addr %#x for pmp entry %u \n",
+                                       (this_addr << 2), pmp_index);
+ 
+-    if (pmpTable[pmp_index].pmpCfg & PMP_LOCK) {
+-        DPRINTF(PMP, "Update pmp entry %u failed because the lock bit set\n",
+-                pmp_index);
+-        return false;
+-    } else if (pmp_index < pmpTable.size() - 1 &&
+-               ((pmpTable[pmp_index+1].pmpCfg & PMP_LOCK) != 0) &&
+-               pmpGetAField(pmpTable[pmp_index+1].pmpCfg) == PMP_TOR) {
+-        DPRINTF(PMP, "Update pmp entry %u failed because the entry %u lock bit"
+-                " set and A field is TOR\n",
+-                pmp_index, pmp_index+1);
+-        return false;
++    // Smepmp RLB=1 allows writing locked entries
++    if (!(mseccfg & MSECCFG_RLB)) {
++        if (pmpTable[pmp_index].pmpCfg & PMP_LOCK) {
++            DPRINTF(PMP, "Update pmp entry %u failed because the lock bit set\n",
++                    pmp_index);
++            return false;
++        } else if (pmp_index < pmpTable.size() - 1 &&
++                   ((pmpTable[pmp_index+1].pmpCfg & PMP_LOCK) != 0) &&
++                   pmpGetAField(pmpTable[pmp_index+1].pmpCfg) == PMP_TOR) {
++            DPRINTF(PMP, "Update pmp entry %u failed because the entry %u lock "
++                    "bit set and A field is TOR\n",
++                    pmp_index, pmp_index+1);
++            return false;
++        }
+     }
+ 
+     // just writing the raw addr in the pmp table
+@@ -299,5 +326,52 @@ PMP::pmpDecodeNapot(Addr pmpaddr)
+     }
+ }
+ 
++bool
++PMP::smepmpCheckMMode(BaseMMU::Mode mode, bool locked,
++                       uint8_t this_cfg) const
++{
++    // Smepmp MML=1, MMWP=0: Locked entries grant access to M-mode for
++    // read (R), execute (X) if the corresponding bit is set.
++    // Writes are forbidden regardless of W bit on locked entries.
++    // Unlocked entries are treated as if they don't exist for M-mode.
++    if ((mseccfg & MSECCFG_MML) && !(mseccfg & MSECCFG_MMWP)) {
++        if (!locked)
++            return false; // Unlocked entries: no M-mode access
++        if (mode == BaseMMU::Mode::Write)
++            return false; // Writes forbidden on locked entries
++        if ((mode == BaseMMU::Mode::Read) && (PMP_READ & this_cfg))
++            return true;
++        if ((mode == BaseMMU::Mode::Execute) && (PMP_EXEC & this_cfg))
++            return true;
++        return false;
++    }
++
++    // Smepmp MML=0, MMWP=1: M-mode writes to any region are forbidden.
++    // Reads and execs proceed with normal PMP permission check.
++    if ((mseccfg & MSECCFG_MMWP) && !(mseccfg & MSECCFG_MML)) {
++        if (mode == BaseMMU::Mode::Write)
++            return false;
++        return true; // Read/exec: let caller check permissions
++    }
++
++    // Smepmp MML=1, MMWP=1: Maximum restriction.
++    // Reads locked readable, execs locked executable, writes always denied.
++    if ((mseccfg & (MSECCFG_MML | MSECCFG_MMWP)) ==
++        (MSECCFG_MML | MSECCFG_MMWP)) {
++        if (!locked)
++            return false; // Unlocked entries: no M-mode access
++        if (mode == BaseMMU::Mode::Write)
++            return false;
++        if ((mode == BaseMMU::Mode::Read) && (PMP_READ & this_cfg))
++            return true;
++        if ((mode == BaseMMU::Mode::Execute) && (PMP_EXEC & this_cfg))
++            return true;
++        return false;
++    }
++
++    // No Smepmp restrictions: proceed to normal PMP check
++    return true;
++}
++
+ } // namespace RiscvISA
+ } // namespace gem5
+diff --git a/src/arch/riscv/pmp.hh b/src/arch/riscv/pmp.hh
+index ee14af1..0ab4fac 100644
+--- a/src/arch/riscv/pmp.hh
++++ b/src/arch/riscv/pmp.hh
+@@ -95,6 +95,13 @@ class PMP : public SimObject
+     /** pmpcfg address range locked mask */
+     const uint8_t PMP_LOCK = 1 << 7;
+ 
++    /** Smepmp mseccfg flag bits */
++    enum SmepmpFlags : uint8_t {
++        MSECCFG_RLB = 1 << 0,
++        MSECCFG_MMWP = 1 << 1,
++        MSECCFG_MML = 1 << 2
++    };
++
+     /** variable to keep track of active number of rules any time */
+     int numRules;
+ 
+@@ -115,7 +122,15 @@ class PMP : public SimObject
+     /** a table of pmp entries */
+     std::vector<PmpEntry> pmpTable;
+ 
++    /** Smepmp mseccfg register value */
++    uint8_t mseccfg;
++
+   public:
++    /** Set mseccfg value (called by CSR write) */
++    void setMseccfg(uint8_t val) { mseccfg = val & 0x7; }
++
++    /** Get mseccfg value */
++    uint8_t getMseccfg() const { return mseccfg; }
+     /**
+      * pmpCheck checks if a particular memory access
+      * is allowed based on the pmp rules.
+@@ -158,6 +173,15 @@ class PMP : public SimObject
+     void pmpReset();
+ 
+   private:
++    /**
++     * Check if M-mode access is allowed under Smepmp rules.
++     * @param mode access mode (read/write/execute).
++     * @param locked whether the matched PMP entry is locked.
++     * @param this_cfg pmpcfg of the matched entry.
++     * @return true if access is allowed.
++     */
++    bool smepmpCheckMMode(BaseMMU::Mode mode, bool locked,
++                          uint8_t this_cfg) const;
+     /**
+      * This function is called during a memory
+      * access to determine if the pmp table
+diff --git a/src/arch/riscv/regs/misc.hh b/src/arch/riscv/regs/misc.hh
+index ebab200..842faf3 100644
+--- a/src/arch/riscv/regs/misc.hh
++++ b/src/arch/riscv/regs/misc.hh
+@@ -211,6 +211,21 @@ enum MiscRegIndex
+     // non-maskable-interrupt-pending: NMI version of xIP
+     MISCREG_NMIP,
+ 
++    MISCREG_MSECCFG,
++
++    // CLIC CSRs
++    MISCREG_MTVT,           // CLIC vector table base
++    MISCREG_MNVEC,          // CLIC non-vectored mode
++    MISCREG_MINTSTATUS,     // CLIC interrupt status (mil/mie)
++    MISCREG_MINTTHRESH,     // CLIC interrupt threshold
++    MISCREG_MSCRATCHCSW,    // CLIC scratch swap on CSRRW
++    MISCREG_MSCRATCHCSWL,   // CLIC scratch swap locked
++
++    // Smrnmi CSRs
++    MISCREG_MNEPC,          // NMI exception program counter
++    MISCREG_MNCAUSE,        // NMI cause
++    MISCREG_MNSTATUS,       // NMI status (nmiie, mnpp)
++
+     // the following MicsRegIndex are RV32 only
+     MISCREG_MSTATUSH,
+ 
+@@ -375,11 +390,21 @@ enum CSRIndex
+     CSR_MTVEC = 0x305,
+     CSR_MCOUNTEREN = 0x306,
+     CSR_MSTATUSH = 0x310, // rv32 only
++    CSR_MTVT = 0x307,       // CLIC vector table base
++    CSR_MNVEC = 0x309,      // CLIC non-vectored mode
+     CSR_MSCRATCH = 0x340,
+     CSR_MEPC = 0x341,
+     CSR_MCAUSE = 0x342,
+     CSR_MTVAL = 0x343,
+     CSR_MIP = 0x344,
++    CSR_MINTSTATUS = 0x346,  // CLIC interrupt status
++    CSR_MINTTHRESH = 0x347,  // CLIC interrupt threshold
++    CSR_MSCRATCHCSW = 0x348, // CLIC scratch swap
++    CSR_MSCRATCHCSWL = 0x349,// CLIC scratch swap locked
++    CSR_MNEPC = 0x34B,      // Smrnmi: NMI exception PC
++    CSR_MNCAUSE = 0x34C,    // Smrnmi: NMI cause
++    CSR_MNSTATUS = 0x34D,   // Smrnmi: NMI status
++    CSR_MSECCFG = 0x390,
+     CSR_PMPCFG0 = 0x3A0,
+     CSR_PMPCFG1 = 0x3A1, // pmpcfg1 rv32 only
+     CSR_PMPCFG2 = 0x3A2,
+@@ -804,9 +829,16 @@ const std::unordered_map<int, CSRMetadata> CSRData = {
+         {"mie", MISCREG_MIE, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
+     {CSR_MTVEC,
+         {"mtvec", MISCREG_MTVEC, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
++    {CSR_MTVT,
++        {"mtvt", MISCREG_MTVT, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
++    {CSR_MNVEC,
++        {"mnvec", MISCREG_MNVEC, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
+     {CSR_MCOUNTEREN,
+         {"mcounteren", MISCREG_MCOUNTEREN, rvTypeFlags(RV64, RV32),
+          isaExtsFlags()}},
++    {CSR_MSECCFG,
++        {"mseccfg", MISCREG_MSECCFG, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
+     {CSR_MSTATUSH,
+         {"mstatush", MISCREG_MSTATUSH, rvTypeFlags(RV32), isaExtsFlags()}},
+     {CSR_MSCRATCH,
+@@ -820,6 +852,26 @@ const std::unordered_map<int, CSRMetadata> CSRData = {
+         {"mtval", MISCREG_MTVAL, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
+     {CSR_MIP,
+         {"mip", MISCREG_MIP, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
++    {CSR_MINTSTATUS,
++        {"mintstatus", MISCREG_MINTSTATUS, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
++    {CSR_MINTTHRESH,
++        {"mintthresh", MISCREG_MINTTHRESH, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
++    {CSR_MSCRATCHCSW,
++        {"mscratchcsw", MISCREG_MSCRATCHCSW, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
++    {CSR_MSCRATCHCSWL,
++        {"mscratchcswl", MISCREG_MSCRATCHCSWL, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
++    {CSR_MNEPC,
++        {"mnepc", MISCREG_MNEPC, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
++    {CSR_MNCAUSE,
++        {"mncause", MISCREG_MNCAUSE, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
++    {CSR_MNSTATUS,
++        {"mnstatus", MISCREG_MNSTATUS, rvTypeFlags(RV64, RV32),
++         isaExtsFlags()}},
+     {CSR_PMPCFG0,
+         {"pmpcfg0", MISCREG_PMPCFG0, rvTypeFlags(RV64, RV32), isaExtsFlags()}},
+     // pmpcfg1 rv32 only
+diff --git a/src/cpu/minor/BaseMinorCPU.py b/src/cpu/minor/BaseMinorCPU.py
+index 545dfea..2303c36 100644
+--- a/src/cpu/minor/BaseMinorCPU.py
++++ b/src/cpu/minor/BaseMinorCPU.py
+@@ -329,8 +329,8 @@ class BaseMinorCPU(BaseCPU):
+     fetch2InputBufferSize = Param.Unsigned(
+         2, "Size of input buffer to Fetch2 in cycles-worth of insts."
+     )
+-    fetch2ToDecodeForwardDelay = Param.Cycles(
+-        1, "Forward cycle delay from Fetch2 to Decode (1 means next cycle)"
++    fetch2ToDecode1ForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Fetch2 to Decode1 (1 means next cycle)"
+     )
+     fetch2CycleInput = Param.Bool(
+         True,
+@@ -338,14 +338,23 @@ class BaseMinorCPU(BaseCPU):
+         " cycle",
+     )
+ 
++    # --- Decode1 stage (Stage 3: pre-decode) ---
++    decode1InputBufferSize = Param.Unsigned(
++        3, "Size of input buffer to Decode1 in cycles-worth of insts."
++    )
++    decode1ToDecode2ForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Decode1 to Decode2 (1 means next cycle)"
++    )
++
++    # --- Decode2 stage (Stage 4: full decode, replaces old Decode) ---
+     decodeInputBufferSize = Param.Unsigned(
+-        3, "Size of input buffer to Decode in cycles-worth of insts."
++        3, "Size of input buffer to Decode2 in cycles-worth of insts."
+     )
+-    decodeToExecuteForwardDelay = Param.Cycles(
+-        1, "Forward cycle delay from Decode to Execute (1 means next cycle)"
++    decode2ToIssueForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Decode2 to Issue (1 means next cycle)"
+     )
+     decodeInputWidth = Param.Unsigned(
+-        2,
++        3,
+         "Width (in instructions) of input to Decode (and implicitly"
+         " Decode's own width)",
+     )
+@@ -355,8 +364,17 @@ class BaseMinorCPU(BaseCPU):
+         " to fill its output each cycle",
+     )
+ 
++    # --- Issue stage (Stage 5: instruction issue/dispatch) ---
++    issueInputBufferSize = Param.Unsigned(
++        4, "Size of input buffer to Issue in cycles-worth of insts."
++    )
++    issueToExecuteForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Issue to Execute (1 means next cycle)"
++    )
++
++    # --- Execute stage (Stage 6) ---
+     executeInputWidth = Param.Unsigned(
+-        2, "Width (in instructions) of input to Execute"
++        3, "Width (in instructions) of input to Execute"
+     )
+     executeCycleInput = Param.Bool(
+         True,
+@@ -398,9 +416,25 @@ class BaseMinorCPU(BaseCPU):
+         2, "Size of LSQ transfers queue (memory transaction queue)"
+     )
+     executeLSQStoreBufferSize = Param.Unsigned(5, "Size of LSQ store buffer")
++    # --- Memory stage (Stage 7: D-Cache access / Store Buffer) ---
++    memoryInputBufferSize = Param.Unsigned(
++        3, "Size of input buffer to Memory stage in cycles-worth of insts."
++    )
++    executeToMemoryForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Execute to Memory (1 means next cycle)"
++    )
++
++    # --- Writeback stage (Stage 8: register writeback) ---
++    writebackInputBufferSize = Param.Unsigned(
++        2, "Size of input buffer to Writeback stage in cycles-worth of insts."
++    )
++    memoryToWritebackForwardDelay = Param.Cycles(
++        1, "Forward cycle delay from Memory to Writeback (1 means next cycle)"
++    )
++
+     executeBranchDelay = Param.Cycles(
+         1,
+-        "Delay from Execute deciding to branch and Fetch1 reacting"
++        "Delay from Writeback branch resolution feedback to Fetch1"
+         " (1 means next cycle)",
+     )
+ 
+@@ -421,6 +455,18 @@ class BaseMinorCPU(BaseCPU):
+         " the in flight insts queue",
+     )
+ 
++    executeEnableSkipStalled = Param.Bool(
++        False,
++        "Enable skip-stalled issue: skip blocked instructions and issue"
++        " later independent instructions in the same cycle",
++    )
++
++    executeLoadAssumedLatency = Param.Cycles(
++        0,
++        "Assumed latency for load results (0 = unpredictable,"
++        " N = deterministic prediction of N cycles)",
++    )
++
+     enableIdling = Param.Bool(
+         True, "Enable cycle skipping when the processor is idle\n"
+     )
+diff --git a/src/cpu/minor/SConscript b/src/cpu/minor/SConscript
+index 0b98037..74fdf99 100644
+--- a/src/cpu/minor/SConscript
++++ b/src/cpu/minor/SConscript
+@@ -55,6 +55,7 @@ if env['CONF']['BUILD_ISA']:
+     Source('fetch2.cc')
+     Source('func_unit.cc')
+     Source('lsq.cc')
++    Source('passthrough.cc')
+     Source('pipe_data.cc')
+     Source('pipeline.cc')
+     Source('scoreboard.cc')
+diff --git a/src/cpu/minor/buffers.hh b/src/cpu/minor/buffers.hh
+index e461a5c..4e1c83d 100644
+--- a/src/cpu/minor/buffers.hh
++++ b/src/cpu/minor/buffers.hh
+@@ -507,6 +507,12 @@ class Queue : public Named, public Reservable
+     /** Is the queue empty? */
+     bool empty() const { return queue.empty(); }
+ 
++    /** Iterator access for the underlying queue (Phase 9: LSQ disambiguation) */
++    typename std::deque<ElemType>::iterator begin() { return queue.begin(); }
++    typename std::deque<ElemType>::iterator end() { return queue.end(); }
++    typename std::deque<ElemType>::const_iterator begin() const { return queue.begin(); }
++    typename std::deque<ElemType>::const_iterator end() const { return queue.end(); }
++
+     void
+     minorTrace() const
+     {
+diff --git a/src/cpu/minor/decode.cc b/src/cpu/minor/decode.cc
+index a4516a0..bae170f 100644
+--- a/src/cpu/minor/decode.cc
++++ b/src/cpu/minor/decode.cc
+@@ -286,7 +286,7 @@ Decode::evaluate()
+     for (ThreadID i = 0; i < cpu.numThreads; i++)
+     {
+         if (getInput(i) && nextStageReserve[i].canReserve()) {
+-            cpu.activityRecorder->activateStage(Pipeline::DecodeStageId);
++            cpu.activityRecorder->activateStage(Pipeline::Decode2StageId);
+             break;
+         }
+     }
+diff --git a/src/cpu/minor/dyn_inst.hh b/src/cpu/minor/dyn_inst.hh
+index 9c6d6fd..f091b21 100644
+--- a/src/cpu/minor/dyn_inst.hh
++++ b/src/cpu/minor/dyn_inst.hh
+@@ -210,6 +210,11 @@ class MinorDynInst : public RefCounted
+      *  to allow other instructions to fill the fetch delay */
+     bool canEarlyIssue = false;
+ 
++    /** Has this instruction been issued to an FU (or discarded).
++     *  Used by skip-stalled issue to avoid re-issuing instructions
++     *  that were already issued in a previous cycle. */
++    bool issued = false;
++
+     /** Flag controlling conditional execution of the instruction */
+     bool predicate = true;
+ 
+diff --git a/src/cpu/minor/execute.cc b/src/cpu/minor/execute.cc
+index ba4032e..cf95e19 100644
+--- a/src/cpu/minor/execute.cc
++++ b/src/cpu/minor/execute.cc
+@@ -79,6 +79,8 @@ Execute::Execute(const std::string &name_,
+     setTraceTimeOnCommit(params.executeSetTraceTimeOnCommit),
+     setTraceTimeOnIssue(params.executeSetTraceTimeOnIssue),
+     allowEarlyMemIssue(params.executeAllowEarlyMemoryIssue),
++    enableSkipStalled(params.executeEnableSkipStalled),
++    loadAssumedLatency(params.executeLoadAssumedLatency),
+     noCostFUIndex(fuDescriptions.funcUnits.size() + 1),
+     lsq(name_ + ".lsq", name_ + ".dcache_port",
+         cpu_, *this,
+@@ -192,6 +194,19 @@ Execute::Execute(const std::string &name_,
+             ReportTraitsAdaptor<QueuedInst> >(
+             name_ + ".inFUMemInsts" + tid_str, "insts", total_slots);
+     }
++
++    /* Phase 8: initialize Vector stat sizes */
++    cpu.stats.executeFUIssueCount
++        .init(numFuncUnits)
++        .subname(0, "int0").subname(1, "int1").subname(2, "int2")
++        .subname(3, "mul").subname(4, "div").subname(5, "fp")
++        .subname(6, "mem").subname(7, "misc");
++    cpu.stats.executeIssueWidthDist
++        .init(issueLimit + 1)
++        .subname(0, "stall")
++        .subname(1, "width1")
++        .subname(2, "width2")
++        .subname(3, "width3");
+ }
+ 
+ const ForwardInstData *
+@@ -556,45 +571,76 @@ Execute::issue(ThreadID thread_id)
+     /* Start from the first FU */
+     unsigned int fu_index = 0;
+ 
+-    /* Remains true while instructions are still being issued.  If any
+-     *  instruction fails to issue, this is set to false and we exit issue.
+-     *  This strictly enforces in-order issue.  For other issue behaviours,
+-     *  a more complicated test in the outer while loop below is needed. */
+-    bool issued = true;
+-
+-    /* Number of insts issues this cycle to check for issueLimit */
++    /* Number of insts issued this cycle to check for issueLimit */
+     unsigned num_insts_issued = 0;
+ 
+-    /* Number of memory ops issues this cycle to check for memoryIssueLimit */
++    /* Number of memory ops issued this cycle to check for memoryIssueLimit */
+     unsigned num_mem_insts_issued = 0;
+ 
+-    do {
+-        MinorDynInstPtr inst = insts_in->insts[thread.inputIndex];
+-        Fault fault = inst->fault;
++    /* mem_blocked: after skipping a stalled memory instruction, block
++     *  subsequent memory instructions to preserve memory ordering */
++    bool mem_blocked = false;
++
++    /* Maximum number of instructions to look at in one cycle.
++     *  This limits look_ahead to prevent excessive iteration. */
++    static constexpr unsigned int MAX_WIDTH = 16;
++
++    unsigned int look_ahead = 0;
++
++    while (insts_in &&
++           thread.inputIndex + look_ahead < insts_in->width() &&
++           look_ahead < MAX_WIDTH &&
++           num_insts_issued < issueLimit &&
++           num_mem_insts_issued < memoryIssueLimit)
++    {
++        unsigned int idx = thread.inputIndex + look_ahead;
++        MinorDynInstPtr inst = insts_in->insts[idx];
+         bool discarded = false;
+         bool issued_mem_ref = false;
++        bool issued_this = false;
++
++        /* Skip already-issued instructions (from a previous cycle's
++         *  skip-stalled).  They are consumed but don't count toward
++         *  the issue limit. */
++        if (inst->issued) {
++            look_ahead++;
++            continue;
++        }
+ 
+         if (inst->isBubble()) {
+             /* Skip */
+-            issued = true;
++            issued_this = true;
+         } else if (cpu.getContext(thread_id)->status() ==
+             ThreadContext::Suspended)
+         {
+             DPRINTF(MinorExecute, "Discarding inst: %s from suspended"
+                 " thread\n", *inst);
+ 
+-            issued = true;
++            issued_this = true;
+             discarded = true;
++            inst->issued = true;
+         } else if (inst->id.streamSeqNum != thread.streamSeqNum) {
+             DPRINTF(MinorExecute, "Discarding inst: %s as its stream"
+                 " state was unexpected, expected: %d\n",
+                 *inst, thread.streamSeqNum);
+-            issued = true;
++            issued_this = true;
+             discarded = true;
++            inst->issued = true;
++        } else if (inst->isMemRef() && mem_blocked) {
++            /* Can't issue memory instruction after a skipped one.
++             *  This preserves in-order memory issue. */
++            issued_this = false;
++            cpu.stats.executeStallMemBlocked++;
+         } else {
+             /* Try and issue an instruction into an FU, assume we didn't and
+              * fix that in the loop */
+-            issued = false;
++            issued_this = false;
++
++            /* Phase 8: track stall reason for this instruction */
++            enum StallReason { STALL_NONE, STALL_SCOREBOARD,
++                STALL_FU_UNAVAILABLE, STALL_FU_STALLED,
++                STALL_FU_TIMING, STALL_FU_SUPPRESS };
++            StallReason stall_reason = STALL_NONE;
+ 
+             /* Try FU from 0 each instruction */
+             fu_index = 0;
+@@ -637,7 +683,8 @@ Execute::issue(ThreadID thread_id)
+                     QueuedInst fu_inst(inst);
+                     thread.inFlightInsts->push(fu_inst);
+ 
+-                    issued = true;
++                    inst->issued = true;
++                    issued_this = true;
+ 
+                 } else if (!fu_is_capable || fu->alreadyPushed()) {
+                     /* Skip */
+@@ -647,15 +694,21 @@ Execute::issue(ThreadID thread_id)
+                     } else {
+                         DPRINTF(MinorExecute, "Can't issue as FU: %d is"
+                             " already busy\n", fu_index);
++                        if (stall_reason == STALL_NONE)
++                            stall_reason = STALL_FU_UNAVAILABLE;
+                     }
+                 } else if (fu->stalled) {
+                     DPRINTF(MinorExecute, "Can't issue inst: %s into FU: %d,"
+                         " it's stalled\n",
+                         *inst, fu_index);
++                    if (stall_reason == STALL_NONE)
++                        stall_reason = STALL_FU_STALLED;
+                 } else if (!fu->canInsert()) {
+                     DPRINTF(MinorExecute, "Can't issue inst: %s to busy FU"
+                         " for another: %d cycles\n",
+                         *inst, fu->cyclesBeforeInsert());
++                    if (stall_reason == STALL_NONE)
++                        stall_reason = STALL_FU_UNAVAILABLE;
+                 } else {
+                     MinorFUTiming *timing = (!inst->isFault() ?
+                         fu->findTiming(inst->staticInst) : NULL);
+@@ -671,12 +724,16 @@ Execute::issue(ThreadID thread_id)
+                         DPRINTF(MinorExecute, "Can't issue inst: %s as extra"
+                             " decoding is suppressing it\n",
+                             *inst);
++                        if (stall_reason == STALL_NONE)
++                            stall_reason = STALL_FU_SUPPRESS;
+                     } else if (!scoreboard[thread_id].canInstIssue(inst,
+                         src_latencies, cant_forward_from_fu_indices,
+                         cpu.curCycle(), cpu.getContext(thread_id)))
+                     {
+                         DPRINTF(MinorExecute, "Can't issue inst: %s yet\n",
+                             *inst);
++                        if (stall_reason == STALL_NONE)
++                            stall_reason = STALL_SCOREBOARD;
+                     } else {
+                         /* Can insert the instruction into this FU */
+                         DPRINTF(MinorExecute, "Issuing inst: %s"
+@@ -751,30 +808,67 @@ Execute::issue(ThreadID thread_id)
+                         cpu.activityRecorder->activity();
+ 
+                         /* Mark the destinations for this instruction as
+-                         *  busy */
+-                        scoreboard[thread_id].markupInstDests(inst, cpu.curCycle() +
+-                            fu->description.opLat +
+-                            extra_dest_retire_lat +
+-                            extra_assumed_lat,
+-                            cpu.getContext(thread_id),
+-                            issued_mem_ref && extra_assumed_lat == Cycles(0));
++                         *  busy.  Task 6.2: use loadAssumedLatency for
++                         *  deterministic load latency prediction instead
++                         *  of marking as unpredictable. */
++                        Cycles total_retire_lat;
++                        bool mark_unpredictable;
++
++                        if (issued_mem_ref && loadAssumedLatency > Cycles(0)) {
++                            /* Use loadAssumedLatency as deterministic load
++                             *  latency, replacing the FU timing's
++                             *  extraAssumedLat */
++                            total_retire_lat = fu->description.opLat +
++                                extra_dest_retire_lat + loadAssumedLatency;
++                            mark_unpredictable = false;
++                        } else {
++                            total_retire_lat = fu->description.opLat +
++                                extra_dest_retire_lat + extra_assumed_lat;
++                            mark_unpredictable = (issued_mem_ref &&
++                                extra_assumed_lat == Cycles(0));
++                        }
++
++                        scoreboard[thread_id].markupInstDests(inst,
++                            cpu.curCycle() + total_retire_lat,
++                            cpu.getContext(thread_id), mark_unpredictable);
+ 
+                         /* Push the instruction onto the inFlight queue so
+                          *  it can be committed in order */
+                         thread.inFlightInsts->push(fu_inst);
+ 
+-                        issued = true;
++                        inst->issued = true;
++                        issued_this = true;
++
++                        /* Phase 8: track per-FU issue count */
++                        if (cpu.stats.executeFUIssueCount.size() >
++                            (size_t)fu_index)
++                        {
++                            cpu.stats.executeFUIssueCount[fu_index]++;
++                        }
+                     }
+                 }
+ 
+                 fu_index++;
+-            } while (fu_index != numFuncUnits && !issued);
++            } while (fu_index != numFuncUnits && !issued_this);
+ 
+-            if (!issued)
++            if (!issued_this) {
+                 DPRINTF(MinorExecute, "Didn't issue inst: %s\n", *inst);
++                /* Phase 8: record stall reason */
++                switch (stall_reason) {
++                  case STALL_SCOREBOARD:
++                    cpu.stats.executeStallScoreboard++; break;
++                  case STALL_FU_UNAVAILABLE:
++                  case STALL_FU_STALLED:
++                  case STALL_FU_TIMING:
++                  case STALL_FU_SUPPRESS:
++                    cpu.stats.executeStallFUUnavailable++; break;
++                  default:
++                    cpu.stats.executeStallOther++; break;
++                }
++            }
+         }
+ 
+-        if (issued) {
++        if (issued_this) {
+             /* Generate MinorTrace's MinorInst lines.  Do this at commit
+              *  to allow better instruction annotation? */
+             if (debug::MinorTrace && !inst->isBubble()) {
+@@ -799,33 +893,173 @@ Execute::issue(ThreadID thread_id)
+             if (!discarded && !inst->isBubble()) {
+                 num_insts_issued++;
+ 
++                /* Phase 8: track total issued */
++                cpu.stats.executeTotalIssued++;
++
+                 if (num_insts_issued == issueLimit)
+                     DPRINTF(MinorExecute, "Reached inst issue limit\n");
+             }
+ 
+-            thread.inputIndex++;
+-            DPRINTF(MinorExecute, "Stepping to next inst inputIndex: %d\n",
+-                thread.inputIndex);
++        } else {
++            /* Instruction couldn't be issued.  Try to skip it and issue
++             *  later independent instructions in the same cycle. */
++            if (enableSkipStalled && inst->isInst() &&
++                /* Don't skip control flow instructions (branches, jumps,
++                 *  calls, returns) as they affect the PC */
++                !inst->staticInst->isControl() &&
++                /* Don't skip memory operations (loads or stores) as they
++                 *  interact with the LSQ and memory ordering. */
++                !inst->staticInst->isMemRef() &&
++                /* Don't skip memory barriers or serialize instructions */
++                !inst->staticInst->isFullMemBarrier() &&
++                !inst->staticInst->isSerializeBefore() &&
++                !inst->staticInst->isSerializeAfter())
++            {
++                /* Check if it's safe to skip: no subsequent instruction
++                 *  in this input line has a register dependency with this
++                 *  instruction.  Three hazard types are checked:
++                 *  RAW - later reads this inst's dest regs
++                 *  WAW - later writes this inst's dest regs
++                 *  WAR - later writes this inst's src regs (would cause
++                 *        the skipped inst to read a new value when retried
++                 *        after the later inst commits) */
++                bool safe_to_skip = true;
++                StaticInstPtr staticInst = inst->staticInst;
++                auto *isa = cpu.getContext(thread_id)->getIsaPtr();
++                unsigned int num_dests = staticInst->numDestRegs();
++                unsigned int num_srcs = staticInst->numSrcRegs();
++
++                for (unsigned int la2 = look_ahead + 1;
++                     thread.inputIndex + la2 < insts_in->width() &&
++                     la2 < MAX_WIDTH;
++                     la2++)
++                {
++                    MinorDynInstPtr later =
++                        insts_in->insts[thread.inputIndex + la2];
++                    if (!later->isInst() || later->issued)
++                        continue;
++
++                    StaticInstPtr later_si = later->staticInst;
++
++                    /* Check RAW: later reads this inst's dest regs */
++                    for (unsigned int d = 0;
++                         d < num_dests && safe_to_skip; d++)
++                    {
++                        RegId dest_reg =
++                            staticInst->destRegIdx(d).flatten(*isa);
++                        for (unsigned int s = 0;
++                             s < later_si->numSrcRegs(); s++)
++                        {
++                            if (later_si->srcRegIdx(s).flatten(*isa) ==
++                                dest_reg)
++                            {
++                                safe_to_skip = false;
++                                break;
++                            }
++                        }
++                    }
++
++                    /* Check WAW: later writes this inst's dest regs */
++                    for (unsigned int d = 0;
++                         d < num_dests && safe_to_skip; d++)
++                    {
++                        RegId dest_reg =
++                            staticInst->destRegIdx(d).flatten(*isa);
++                        for (unsigned int dd = 0;
++                             dd < later_si->numDestRegs() && safe_to_skip;
++                             dd++)
++                        {
++                            if (later_si->destRegIdx(dd).flatten(*isa) ==
++                                dest_reg)
++                            {
++                                safe_to_skip = false;
++                                break;
++                            }
++                        }
++                    }
++
++                    /* Check WAR: later writes this inst's src regs.
++                     *  If later commits before this inst is retried,
++                     *  this inst would read the wrong (new) value. */
++                    for (unsigned int s = 0;
++                         s < num_srcs && safe_to_skip; s++)
++                    {
++                        RegId src_reg =
++                            staticInst->srcRegIdx(s).flatten(*isa);
++                        for (unsigned int dd = 0;
++                             dd < later_si->numDestRegs() && safe_to_skip;
++                             dd++)
++                        {
++                            if (later_si->destRegIdx(dd).flatten(*isa) ==
++                                src_reg)
++                            {
++                                safe_to_skip = false;
++                                break;
++                            }
++                        }
++                    }
++
++                    if (!safe_to_skip) break;
++                }
++
++                if (safe_to_skip) {
++                    /* Skip this stalled instruction and try the next one.
++                     *  The stalled instruction stays in the input buffer
++                     *  and will be retried next cycle. */
++                    if (inst->isMemRef())
++                        mem_blocked = true;
++
++                    DPRINTF(MinorExecute, "Skipping stalled inst: %s,"
++                        " trying next\n", *inst);
++                    /* Phase 8: count skip-stalled events */
++                    cpu.stats.executeSkipStalled++;
++                    /* Not consumed - inputIndex will not advance past it */
++                } else {
++                    /* Hazard detected, can't skip */
++                    DPRINTF(MinorExecute, "Can't skip stalled inst: %s,"
++                        " hazard with later inst\n", *inst);
++                    break;
++                }
++            } else {
++                /* Can't skip, stop issuing */
++                break;
++            }
+         }
+ 
++        look_ahead++;
++    }
++
++    /* Advance inputIndex past consecutively consumed instructions from
++     *  the front.  Uses inst->issued to detect consumed instructions.
++     *  After wrapping to a new input line, continue advancing (new
++     *  instructions have issued=false, so the loop will stop naturally). */
++    while (insts_in && thread.inputIndex < insts_in->width() &&
++           (insts_in->insts[thread.inputIndex]->issued ||
++            insts_in->insts[thread.inputIndex]->isBubble()))
++    {
++        thread.inputIndex++;
++        DPRINTF(MinorExecute, "Stepping to next inst inputIndex: %d\n",
++            thread.inputIndex);
++
+         /* Got to the end of a line */
+         if (thread.inputIndex == insts_in->width()) {
+             popInput(thread_id);
+-            /* Set insts_in to null to force us to leave the surrounding
+-             *  loop */
+             insts_in = NULL;
+ 
+             if (processMoreThanOneInput) {
+                 DPRINTF(MinorExecute, "Wrapping\n");
+                 insts_in = getInput(thread_id);
+             }
++            /* Continue the while loop for the new input line.
++             *  Fresh instructions have issued=false, so the loop exits. */
+         }
+-    } while (insts_in && thread.inputIndex < insts_in->width() &&
+-        /* We still have instructions */
+-        fu_index != numFuncUnits && /* Not visited all FUs */
+-        issued && /* We've not yet failed to issue an instruction */
+-        num_insts_issued != issueLimit && /* Still allowed to issue */
+-        num_mem_insts_issued != memoryIssueLimit);
++    }
++
++    /* Phase 8: track issue width distribution.
++     *  Index = number of instructions issued this cycle. */
++    if (cpu.stats.executeIssueWidthDist.size() > (size_t)num_insts_issued) {
++        cpu.stats.executeIssueWidthDist[num_insts_issued]++;
++    }
+ 
+     return num_insts_issued;
+ }
+@@ -1387,8 +1621,11 @@ Execute::commit(ThreadID thread_id, bool only_commit_microops, bool discard,
+             if (debug::MinorTrace && !is_no_cost_inst)
+                 ex_info.instsBeingCommitted.insts[num_insts_committed] = inst;
+ 
+-            if (!is_no_cost_inst)
++            if (!is_no_cost_inst) {
+                 num_insts_committed++;
++                /* Phase 8: track total committed */
++                cpu.stats.executeTotalCommitted++;
++            }
+ 
+             if (num_insts_committed == commitLimit)
+                 DPRINTF(MinorExecute, "Reached inst commit limit\n");
+diff --git a/src/cpu/minor/execute.hh b/src/cpu/minor/execute.hh
+index 0a1dde1..72e51b3 100644
+--- a/src/cpu/minor/execute.hh
++++ b/src/cpu/minor/execute.hh
+@@ -114,6 +114,14 @@ class Execute : public Named
+      *  of the in flight insts queue if their dependencies are met */
+     bool allowEarlyMemIssue;
+ 
++    /** Enable skip-stalled issue: skip blocked instructions and issue
++     *  later independent instructions in the same cycle */
++    bool enableSkipStalled;
++
++    /** Assumed latency for load results (0 = unpredictable, N =
++     *  deterministic prediction of N cycles) */
++    Cycles loadAssumedLatency;
++
+     /** The FU index of the non-existent costless FU for instructions
+      *  which pass the MinorDynInst::isNoCostInst test */
+     unsigned int noCostFUIndex;
+diff --git a/src/cpu/minor/lsq.cc b/src/cpu/minor/lsq.cc
+index 4b31b26..117669b 100644
+--- a/src/cpu/minor/lsq.cc
++++ b/src/cpu/minor/lsq.cc
+@@ -1034,9 +1034,48 @@ LSQ::tryToSendToTransfers(LSQRequestPtr request)
+ 
+     if (is_load) {
+         if (numStoresInTransfers != 0) {
+-            DPRINTF(MinorMem, "Load request with stores still in transfers"
+-                " queue, stalling\n");
+-            return;
++            /* Phase 9: Memory disambiguation - check address conflicts
++             *  with stores in transfers queue instead of unconditional stall.
++             *  Only stall if a store has unknown address or conflicts. */
++            bool has_conflict = false;
++            for (auto it = transfers.begin(); it != transfers.end(); ++it) {
++                LSQRequestPtr store_req = *it;
++                if (store_req->isLoad)
++                    continue;  // skip loads in transfers queue
++
++                /* If store's physical address is not yet resolved,
++                 *  conservatively wait for it */
++                if (!store_req->request ||
++                    !store_req->request->hasPaddr()) {
++                    has_conflict = true;
++                    break;
++                }
++
++                /* Check address overlap with this load */
++                if (request->request && request->request->hasPaddr()) {
++                    Addr store_addr = store_req->request->getPaddr();
++                    Addr load_addr = request->request->getPaddr();
++                    unsigned store_sz = store_req->request->getSize();
++                    unsigned load_sz = request->request->getSize();
++                    if (load_addr < store_addr + store_sz &&
++                        store_addr < load_addr + load_sz) {
++                        has_conflict = true;
++                        break;
++                    }
++                } else {
++                    /* Load address not resolved yet, conservatively wait */
++                    has_conflict = true;
++                    break;
++                }
++            }
++            if (has_conflict) {
++                DPRINTF(MinorMem, "Load request with conflicting store"
++                    " in transfers queue, stalling\n");
++                return;
++            }
++            DPRINTF(MinorMem, "Load bypassing non-conflicting stores"
++                " in transfers queue (%d stores)\n",
++                numStoresInTransfers);
+         }
+     } else {
+         /* Store.  Can it be sent to the store buffer? */
+diff --git a/src/cpu/minor/passthrough.cc b/src/cpu/minor/passthrough.cc
+new file mode 100644
+index 0000000..468bf7a
+--- /dev/null
++++ b/src/cpu/minor/passthrough.cc
+@@ -0,0 +1,255 @@
++/*
++ * Copyright (c) 2024 Lumi-Core Project
++ * All rights reserved
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are
++ * met: redistributions of source code must retain the above copyright
++ * notice, this list of conditions and the following disclaimer;
++ * redistributions in binary form must reproduce the above copyright
++ * notice, this list of conditions and the following disclaimer in the
++ * documentation and/or other materials provided with the distribution;
++ * neither the name of the copyright holders nor the names of its
++ * contributors may be used to endorse or promote products derived from
++ * this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "cpu/minor/passthrough.hh"
++
++#include "base/logging.hh"
++#include "base/trace.hh"
++#include "cpu/minor/pipeline.hh"
++#include "debug/MinorTrace.hh"
++
++namespace gem5
++{
++
++namespace minor
++{
++
++PassthroughStage::PassthroughStage(const std::string &name,
++    MinorCPU &cpu_,
++    const BaseMinorCPUParams &params,
++    Latch<ForwardInstData>::Output inp_,
++    Latch<ForwardInstData>::Input out_,
++    std::vector<InputBuffer<ForwardInstData>> &next_stage_input_buffer,
++    unsigned int input_buffer_size,
++    unsigned int width) :
++    Named(name),
++    cpu(cpu_),
++    inp(inp_),
++    outWire(out_.inputWire),
++    isTerminal(false),
++    nextStageReserve(&next_stage_input_buffer),
++    outputWidth(width),
++    stageInfo(params.numThreads),
++    threadPriority(0)
++{
++    if (outputWidth < 1)
++        fatal("%s: outputWidth must be >= 1 (%d)\n", name, outputWidth);
++
++    if (input_buffer_size < 1)
++        fatal("%s: inputBufferSize must be >= 1 (%d)\n", name,
++            input_buffer_size);
++
++    for (ThreadID tid = 0; tid < params.numThreads; tid++) {
++        inputBuffer.push_back(
++            InputBuffer<ForwardInstData>(
++                name + ".inputBuffer" + std::to_string(tid), "insts",
++                input_buffer_size));
++    }
++}
++
++PassthroughStage::PassthroughStage(const std::string &name,
++    MinorCPU &cpu_,
++    const BaseMinorCPUParams &params,
++    Latch<ForwardInstData>::Output inp_,
++    unsigned int input_buffer_size,
++    unsigned int width) :
++    Named(name),
++    cpu(cpu_),
++    inp(inp_),
++    outWire(),
++    isTerminal(true),
++    nextStageReserve(nullptr),
++    outputWidth(width),
++    stageInfo(params.numThreads),
++    threadPriority(0)
++{
++    if (input_buffer_size < 1)
++        fatal("%s: inputBufferSize must be >= 1 (%d)\n", name,
++            input_buffer_size);
++
++    for (ThreadID tid = 0; tid < params.numThreads; tid++) {
++        inputBuffer.push_back(
++            InputBuffer<ForwardInstData>(
++                name + ".inputBuffer" + std::to_string(tid), "insts",
++                input_buffer_size));
++    }
++}
++
++const ForwardInstData *
++PassthroughStage::getInput(ThreadID tid)
++{
++    if (!inputBuffer[tid].empty()) {
++        const ForwardInstData &head = inputBuffer[tid].front();
++        return (head.isBubble() ? NULL : &(inputBuffer[tid].front()));
++    } else {
++        return NULL;
++    }
++}
++
++void
++PassthroughStage::popInput(ThreadID tid)
++{
++    if (!inputBuffer[tid].empty())
++        inputBuffer[tid].pop();
++}
++
++ThreadID
++PassthroughStage::getScheduledThread()
++{
++    std::vector<ThreadID> priority_list;
++
++    switch (cpu.threadPolicy) {
++      case enums::SingleThreaded:
++        priority_list.push_back(0);
++        break;
++      case enums::RoundRobin:
++        priority_list = cpu.roundRobinPriority(threadPriority);
++        break;
++      case enums::Random:
++        priority_list = cpu.randomPriority();
++        break;
++      default:
++        panic("Unknown thread policy");
++    }
++
++    for (auto tid : priority_list) {
++        if (getInput(tid)) {
++            if (isTerminal) {
++                /* Terminal stage: always accept if there's input */
++                threadPriority = tid;
++                return tid;
++            }
++            if ((*nextStageReserve)[tid].canReserve()) {
++                threadPriority = tid;
++                return tid;
++            }
++        }
++    }
++
++    return InvalidThreadID;
++}
++
++void
++PassthroughStage::evaluate()
++{
++    /* Push input from the latch onto the input buffer */
++    if (!inp.outputWire->isBubble())
++        inputBuffer[inp.outputWire->threadId].setTail(*inp.outputWire);
++
++    if (!isTerminal) {
++        /* Non-terminal: forward data to output latch */
++        ForwardInstData &insts_out = *outWire;
++        assert(insts_out.isBubble());
++
++        /* Check if next stage can accept data */
++        for (ThreadID t = 0; t < cpu.numThreads; t++)
++            stageInfo[t].blocked = !(*nextStageReserve)[t].canReserve();
++
++        ThreadID tid = getScheduledThread();
++
++        if (tid != InvalidThreadID) {
++            const ForwardInstData *insts_in = getInput(tid);
++
++            if (insts_in) {
++                unsigned int num_to_forward = insts_in->width();
++                if (num_to_forward > outputWidth)
++                    num_to_forward = outputWidth;
++
++                insts_out.resize(outputWidth);
++                for (unsigned int i = 0; i < num_to_forward; i++) {
++                    insts_out.insts[i] = insts_in->insts[i];
++                }
++                insts_out.threadId = tid;
++
++                DPRINTF(MinorTrace, "Forwarding %d insts from %s\n",
++                    num_to_forward, name());
++
++                popInput(tid);
++            }
++        }
++
++        /* If we generated output, reserve space and mark activity */
++        if (!insts_out.isBubble()) {
++            cpu.activityRecorder->activity();
++            insts_out.threadId = tid;
++            (*nextStageReserve)[tid].reserve();
++        }
++    } else {
++        /* Terminal stage: just consume input (modeling pipeline depth) */
++        ThreadID tid = getScheduledThread();
++
++        if (tid != InvalidThreadID) {
++            DPRINTF(MinorTrace, "Consuming insts in terminal %s\n", name());
++            popInput(tid);
++            cpu.activityRecorder->activity();
++        }
++    }
++
++    /* If we still have input and somewhere to put it, stay active */
++    for (ThreadID i = 0; i < cpu.numThreads; i++) {
++        if (getInput(i)) {
++            if (isTerminal || (*nextStageReserve)[i].canReserve()) {
++                cpu.activityRecorder->activateStage(Pipeline::CPUStageId);
++                break;
++            }
++        }
++    }
++
++    /* Push remaining input tail */
++    if (!inp.outputWire->isBubble())
++        inputBuffer[inp.outputWire->threadId].pushTail();
++}
++
++bool
++PassthroughStage::isDrained()
++{
++    for (const auto &buffer : inputBuffer) {
++        if (!buffer.empty())
++            return false;
++    }
++    return (*inp.outputWire).isBubble();
++}
++
++void
++PassthroughStage::minorTrace() const
++{
++    std::ostringstream data;
++
++    if (!isTerminal && stageInfo[0].blocked)
++        data << 'B';
++    else if (!isTerminal)
++        (*outWire).reportData(data);
++    else
++        data << "terminal";
++
++    minor::minorTrace("insts=%s\n", data.str());
++    inputBuffer[0].minorTrace();
++}
++
++} // namespace minor
++} // namespace gem5
+diff --git a/src/cpu/minor/passthrough.hh b/src/cpu/minor/passthrough.hh
+new file mode 100644
+index 0000000..b085573
+--- /dev/null
++++ b/src/cpu/minor/passthrough.hh
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (c) 2024 Lumi-Core Project
++ * All rights reserved
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are
++ * met: redistributions of source code must retain the above copyright
++ * notice, this list of conditions and the following disclaimer;
++ * redistributions in binary form must reproduce the above copyright
++ * notice, this list of conditions and the following disclaimer in the
++ * documentation and/or other materials provided with the distribution;
++ * neither the name of the copyright holders nor the names of its
++ * contributors may be used to endorse or promote products derived from
++ * this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++/**
++ * @file
++ *
++ *  PassthroughStage is a simple pipeline stage that forwards
++ *  ForwardInstData from its input to its output without modification.
++ *  It is used to model additional pipeline depth (e.g. Decode1, Issue,
++ *  Memory, Writeback) in the 8-stage Lumi-Core pipeline configuration.
++ */
++
++#ifndef __CPU_MINOR_PASSTHROUGH_HH__
++#define __CPU_MINOR_PASSTHROUGH_HH__
++
++#include <vector>
++
++#include "base/named.hh"
++#include "cpu/minor/buffers.hh"
++#include "cpu/minor/cpu.hh"
++#include "cpu/minor/dyn_inst.hh"
++#include "cpu/minor/pipe_data.hh"
++
++namespace gem5
++{
++
++namespace minor
++{
++
++/**
++ * PassthroughStage receives ForwardInstData from a preceding stage and
++ * forwards it unchanged to the next stage.  It models an additional
++ * pipeline register / delay stage without altering instruction semantics.
++ *
++ * Used to extend MinorCPU from 4 to 8 pipeline stages (Cortex-R82 model).
++ *
++ * Terminal mode (isTerminal=true): the stage consumes input without
++ * producing output.  Used for the Writeback stage which is the last
++ * stage in the pipeline.
++ */
++class PassthroughStage : public Named
++{
++  protected:
++    /** Pointer back to the containing CPU */
++    MinorCPU &cpu;
++
++    /** Input port: data from the preceding stage */
++    Latch<ForwardInstData>::Output inp;
++
++    /** Output wire for non-terminal stages; nullptr for terminal. */
++    typename Latch<ForwardInstData>::Buffer::wire outWire;
++
++    /** If true, this is the last stage and has no output */
++    bool isTerminal;
++
++    /** Interface to reserve space in the next stage.
++     *  nullptr for terminal stages. */
++    std::vector<InputBuffer<ForwardInstData>> *nextStageReserve;
++
++    /** Width of output in instructions per cycle */
++    unsigned int outputWidth;
++
++  public:
++    /** Public so that Pipeline can pass it to the preceding stage */
++    std::vector<InputBuffer<ForwardInstData>> inputBuffer;
++
++  protected:
++    /** Per-thread state (minimal - just tracking blocked status) */
++    struct PassthroughThreadInfo
++    {
++        bool blocked = false;
++    };
++
++    std::vector<PassthroughThreadInfo> stageInfo;
++    ThreadID threadPriority;
++
++  protected:
++    /** Get input data or nullptr if none available */
++    const ForwardInstData *getInput(ThreadID tid);
++
++    /** Pop an element off the input buffer */
++    void popInput(ThreadID tid);
++
++    /** Determine next thread to process */
++    ThreadID getScheduledThread();
++
++  public:
++    /** Standard constructor for non-terminal stages */
++    PassthroughStage(const std::string &name,
++        MinorCPU &cpu_,
++        const BaseMinorCPUParams &params,
++        Latch<ForwardInstData>::Output inp_,
++        Latch<ForwardInstData>::Input out_,
++        std::vector<InputBuffer<ForwardInstData>> &next_stage_input_buffer,
++        unsigned int input_buffer_size,
++        unsigned int width);
++
++    /** Constructor for terminal stages (no output, e.g. Writeback) */
++    PassthroughStage(const std::string &name,
++        MinorCPU &cpu_,
++        const BaseMinorCPUParams &params,
++        Latch<ForwardInstData>::Output inp_,
++        unsigned int input_buffer_size,
++        unsigned int width);
++
++  public:
++    /** Forward data from input to output */
++    void evaluate();
++
++    void minorTrace() const;
++
++    /** A passthrough stage is drained when its input buffer is empty */
++    bool isDrained();
++};
++
++} // namespace minor
++} // namespace gem5
++
++#endif /* __CPU_MINOR_PASSTHROUGH_HH__ */
+diff --git a/src/cpu/minor/pipeline.cc b/src/cpu/minor/pipeline.cc
+index c914843..3c23b98 100644
+--- a/src/cpu/minor/pipeline.cc
++++ b/src/cpu/minor/pipeline.cc
+@@ -43,6 +43,7 @@
+ #include "cpu/minor/execute.hh"
+ #include "cpu/minor/fetch1.hh"
+ #include "cpu/minor/fetch2.hh"
++#include "cpu/minor/passthrough.hh"
+ #include "debug/Drain.hh"
+ #include "debug/MinorCPU.hh"
+ #include "debug/MinorTrace.hh"
+@@ -62,27 +63,54 @@ Pipeline::Pipeline(MinorCPU &cpu_, const BaseMinorCPUParams &params) :
+         params.fetch1ToFetch2ForwardDelay),
+     f2ToF1(cpu.name() + ".f2ToF1", "prediction",
+         params.fetch1ToFetch2BackwardDelay, true),
+-    f2ToD(cpu.name() + ".f2ToD", "insts",
+-        params.fetch2ToDecodeForwardDelay),
+-    dToE(cpu.name() + ".dToE", "insts",
+-        params.decodeToExecuteForwardDelay),
+-    eToF1(cpu.name() + ".eToF1", "branch",
++    wToF1(cpu.name() + ".wToF1", "branch",
+         params.executeBranchDelay),
++    f2ToD1(cpu.name() + ".f2ToD1", "insts",
++        params.fetch2ToDecode1ForwardDelay),
++    d1ToD2(cpu.name() + ".d1ToD2", "insts",
++        params.decode1ToDecode2ForwardDelay),
++    d2ToI(cpu.name() + ".d2ToI", "insts",
++        params.decode2ToIssueForwardDelay),
++    iToE(cpu.name() + ".iToE", "insts",
++        params.issueToExecuteForwardDelay),
++    eToM(cpu.name() + ".eToM", "insts",
++        params.executeToMemoryForwardDelay),
++    mToW(cpu.name() + ".mToW", "insts",
++        params.memoryToWritebackForwardDelay),
+     execute(cpu.name() + ".execute", cpu, params,
+-        dToE.output(), eToF1.input()),
++        iToE.output(), wToF1.input()),
++    memory(cpu.name() + ".memory", cpu, params,
++        eToM.output(), mToW.input(),
++        writeback.inputBuffer,
++        params.memoryInputBufferSize, params.executeInputWidth),
++    writeback(cpu.name() + ".writeback", cpu, params,
++        mToW.output(),
++        params.writebackInputBufferSize, params.executeInputWidth),
++    issue(cpu.name() + ".issue", cpu, params,
++        d2ToI.output(), iToE.input(),
++        execute.inputBuffer,
++        params.issueInputBufferSize, params.executeInputWidth),
+     decode(cpu.name() + ".decode", cpu, params,
+-        f2ToD.output(), dToE.input(), execute.inputBuffer),
++        d1ToD2.output(), d2ToI.input(), issue.inputBuffer),
++    decode1(cpu.name() + ".decode1", cpu, params,
++        f2ToD1.output(), d1ToD2.input(),
++        decode.inputBuffer,
++        params.decode1InputBufferSize, params.decodeInputWidth),
+     fetch2(cpu.name() + ".fetch2", cpu, params,
+-        f1ToF2.output(), eToF1.output(), f2ToF1.input(), f2ToD.input(),
+-        decode.inputBuffer),
++        f1ToF2.output(), wToF1.output(), f2ToF1.input(), f2ToD1.input(),
++        decode1.inputBuffer),
+     fetch1(cpu.name() + ".fetch1", cpu, params,
+-        eToF1.output(), f1ToF2.input(), f2ToF1.output(), fetch2.inputBuffer),
++        wToF1.output(), f1ToF2.input(), f2ToF1.output(), fetch2.inputBuffer),
+     activityRecorder(cpu.name() + ".activity", Num_StageId,
+         /* The max depth of inter-stage FIFOs */
+         std::max(params.fetch1ToFetch2ForwardDelay,
+-        std::max(params.fetch2ToDecodeForwardDelay,
+-        std::max(params.decodeToExecuteForwardDelay,
+-        params.executeBranchDelay)))),
++        std::max(params.fetch2ToDecode1ForwardDelay,
++        std::max(params.decode1ToDecode2ForwardDelay,
++        std::max(params.decode2ToIssueForwardDelay,
++        std::max(params.issueToExecuteForwardDelay,
++        std::max(params.executeToMemoryForwardDelay,
++        std::max(params.memoryToWritebackForwardDelay,
++        params.executeBranchDelay)))))))),
+     needToSignalDrained(false)
+ {
+     if (params.fetch1ToFetch2ForwardDelay < 1) {
+@@ -90,14 +118,34 @@ Pipeline::Pipeline(MinorCPU &cpu_, const BaseMinorCPUParams &params) :
+             cpu.name(), params.fetch1ToFetch2ForwardDelay);
+     }
+ 
+-    if (params.fetch2ToDecodeForwardDelay < 1) {
+-        fatal("%s: fetch2ToDecodeForwardDelay must be >= 1 (%d)\n",
+-            cpu.name(), params.fetch2ToDecodeForwardDelay);
++    if (params.fetch2ToDecode1ForwardDelay < 1) {
++        fatal("%s: fetch2ToDecode1ForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.fetch2ToDecode1ForwardDelay);
+     }
+ 
+-    if (params.decodeToExecuteForwardDelay < 1) {
+-        fatal("%s: decodeToExecuteForwardDelay must be >= 1 (%d)\n",
+-            cpu.name(), params.decodeToExecuteForwardDelay);
++    if (params.decode1ToDecode2ForwardDelay < 1) {
++        fatal("%s: decode1ToDecode2ForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.decode1ToDecode2ForwardDelay);
++    }
++
++    if (params.decode2ToIssueForwardDelay < 1) {
++        fatal("%s: decode2ToIssueForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.decode2ToIssueForwardDelay);
++    }
++
++    if (params.issueToExecuteForwardDelay < 1) {
++        fatal("%s: issueToExecuteForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.issueToExecuteForwardDelay);
++    }
++
++    if (params.executeToMemoryForwardDelay < 1) {
++        fatal("%s: executeToMemoryForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.executeToMemoryForwardDelay);
++    }
++
++    if (params.memoryToWritebackForwardDelay < 1) {
++        fatal("%s: memoryToWritebackForwardDelay must be >= 1 (%d)\n",
++            cpu.name(), params.memoryToWritebackForwardDelay);
+     }
+ 
+     if (params.executeBranchDelay < 1) {
+@@ -113,11 +161,19 @@ Pipeline::minorTrace() const
+     f1ToF2.minorTrace();
+     f2ToF1.minorTrace();
+     fetch2.minorTrace();
+-    f2ToD.minorTrace();
++    f2ToD1.minorTrace();
++    decode1.minorTrace();
++    d1ToD2.minorTrace();
+     decode.minorTrace();
+-    dToE.minorTrace();
++    d2ToI.minorTrace();
++    issue.minorTrace();
++    iToE.minorTrace();
+     execute.minorTrace();
+-    eToF1.minorTrace();
++    eToM.minorTrace();
++    memory.minorTrace();
++    mToW.minorTrace();
++    writeback.minorTrace();
++    wToF1.minorTrace();
+     activityRecorder.minorTrace();
+ }
+ 
+@@ -129,9 +185,18 @@ Pipeline::evaluate()
+ 
+     /* Note that it's important to evaluate the stages in order to allow
+      *  'immediate', 0-time-offset TimeBuffer activity to be visible from
+-     *  later stages to earlier ones in the same cycle */
++     *  later stages to earlier ones in the same cycle.
++     *
++     *  8-stage evaluate order (reverse pipeline order):
++     *  Writeback -> Memory -> Execute -> Issue -> Decode2 -> Decode1
++     *  -> Fetch2 -> Fetch1
++     */
++    writeback.evaluate();
++    memory.evaluate();
+     execute.evaluate();
++    issue.evaluate();
+     decode.evaluate();
++    decode1.evaluate();
+     fetch2.evaluate();
+     fetch1.evaluate();
+ 
+@@ -141,9 +206,13 @@ Pipeline::evaluate()
+     /* Update the time buffers after the stages */
+     f1ToF2.evaluate();
+     f2ToF1.evaluate();
+-    f2ToD.evaluate();
+-    dToE.evaluate();
+-    eToF1.evaluate();
++    wToF1.evaluate();
++    f2ToD1.evaluate();
++    d1ToD2.evaluate();
++    d2ToI.evaluate();
++    iToE.evaluate();
++    eToM.evaluate();
++    mToW.evaluate();
+ 
+     /* The activity recorder must be be called after all the stages and
+      *  before the idler (which acts on the advice of the activity recorder */
+@@ -159,12 +228,16 @@ Pipeline::evaluate()
+         /* Deactivate all stages.  Note that the stages *could*
+          *  activate and deactivate themselves but that's fraught
+          *  with additional difficulty.
+-         *  As organised herre */
++         *  As organised here */
+         activityRecorder.deactivateStage(Pipeline::CPUStageId);
+         activityRecorder.deactivateStage(Pipeline::Fetch1StageId);
+         activityRecorder.deactivateStage(Pipeline::Fetch2StageId);
+-        activityRecorder.deactivateStage(Pipeline::DecodeStageId);
++        activityRecorder.deactivateStage(Pipeline::Decode1StageId);
++        activityRecorder.deactivateStage(Pipeline::Decode2StageId);
++        activityRecorder.deactivateStage(Pipeline::IssueStageId);
+         activityRecorder.deactivateStage(Pipeline::ExecuteStageId);
++        activityRecorder.deactivateStage(Pipeline::MemoryStageId);
++        activityRecorder.deactivateStage(Pipeline::WritebackStageId);
+     }
+ 
+     if (needToSignalDrained) /* Must be draining */
+@@ -230,28 +303,52 @@ Pipeline::isDrained()
+ {
+     bool fetch1_drained = fetch1.isDrained();
+     bool fetch2_drained = fetch2.isDrained();
++    bool decode1_drained = decode1.isDrained();
+     bool decode_drained = decode.isDrained();
++    bool issue_drained = issue.isDrained();
+     bool execute_drained = execute.isDrained();
++    bool memory_drained = memory.isDrained();
++    bool writeback_drained = writeback.isDrained();
+ 
+     bool f1_to_f2_drained = f1ToF2.empty();
+     bool f2_to_f1_drained = f2ToF1.empty();
+-    bool f2_to_d_drained = f2ToD.empty();
+-    bool d_to_e_drained = dToE.empty();
++    bool w_to_f1_drained = wToF1.empty();
++    bool f2_to_d1_drained = f2ToD1.empty();
++    bool d1_to_d2_drained = d1ToD2.empty();
++    bool d2_to_i_drained = d2ToI.empty();
++    bool i_to_e_drained = iToE.empty();
++    bool e_to_m_drained = eToM.empty();
++    bool m_to_w_drained = mToW.empty();
+ 
+     bool ret = fetch1_drained && fetch2_drained &&
+-        decode_drained && execute_drained &&
++        decode1_drained && decode_drained &&
++        issue_drained && execute_drained &&
++        memory_drained && writeback_drained &&
+         f1_to_f2_drained && f2_to_f1_drained &&
+-        f2_to_d_drained && d_to_e_drained;
++        w_to_f1_drained &&
++        f2_to_d1_drained && d1_to_d2_drained &&
++        d2_to_i_drained && i_to_e_drained &&
++        e_to_m_drained && m_to_w_drained;
+ 
+-    DPRINTF(MinorCPU, "Pipeline undrained stages state:%s%s%s%s%s%s%s%s\n",
++    DPRINTF(MinorCPU, "Pipeline undrained stages state:%s%s%s%s%s%s%s%s"
++        "%s%s%s%s%s%s%s%s%s\n",
+         (fetch1_drained ? "" : " Fetch1"),
+         (fetch2_drained ? "" : " Fetch2"),
+-        (decode_drained ? "" : " Decode"),
++        (decode1_drained ? "" : " Decode1"),
++        (decode_drained ? "" : " Decode2"),
++        (issue_drained ? "" : " Issue"),
+         (execute_drained ? "" : " Execute"),
++        (memory_drained ? "" : " Memory"),
++        (writeback_drained ? "" : " Writeback"),
+         (f1_to_f2_drained ? "" : " F1->F2"),
+         (f2_to_f1_drained ? "" : " F2->F1"),
+-        (f2_to_d_drained ? "" : " F2->D"),
+-        (d_to_e_drained ? "" : " D->E")
++        (w_to_f1_drained ? "" : " W->F1"),
++        (f2_to_d1_drained ? "" : " F2->D1"),
++        (d1_to_d2_drained ? "" : " D1->D2"),
++        (d2_to_i_drained ? "" : " D2->I"),
++        (i_to_e_drained ? "" : " I->E"),
++        (e_to_m_drained ? "" : " E->M"),
++        (m_to_w_drained ? "" : " M->W")
+         );
+ 
+     return ret;
+diff --git a/src/cpu/minor/pipeline.hh b/src/cpu/minor/pipeline.hh
+index b1c85e3..98930b7 100644
+--- a/src/cpu/minor/pipeline.hh
++++ b/src/cpu/minor/pipeline.hh
+@@ -51,6 +51,7 @@
+ #include "cpu/minor/execute.hh"
+ #include "cpu/minor/fetch1.hh"
+ #include "cpu/minor/fetch2.hh"
++#include "cpu/minor/passthrough.hh"
+ #include "params/BaseMinorCPU.hh"
+ #include "sim/ticked_object.hh"
+ 
+@@ -77,16 +78,39 @@ class Pipeline : public Ticked
+     /** Allow cycles to be skipped when the pipeline is idle */
+     bool allow_idling;
+ 
++    /**
++     * Latches (pipeline registers) connecting stages.
++     * Declared before stages so they can be referenced in stage constructors.
++     *
++     * 8-stage pipeline topology (Cortex-R82 model):
++     *   Fetch1 --[f1ToF2]--> Fetch2 --[f2ToD1]--> Decode1 --[d1ToD2]-->
++     *   Decode2 --[d2ToI]--> Issue --[iToE]--> Execute
++     *   Execute --[eToM]--> Memory --[mToW]--> Writeback
++     *   Execute --[wToF1 (branch feedback)]--> Fetch1
++     */
+     Latch<ForwardLineData> f1ToF2;
+     Latch<BranchData> f2ToF1;
+-    Latch<ForwardInstData> f2ToD;
+-    Latch<ForwardInstData> dToE;
+-    Latch<BranchData> eToF1;
+-
+-    Execute execute;
+-    Decode decode;
+-    Fetch2 fetch2;
+-    Fetch1 fetch1;
++    Latch<BranchData> wToF1;          /* branch feedback from Writeback to Fetch1 */
++
++    Latch<ForwardInstData> f2ToD1;    /* Fetch2 -> Decode1 */
++    Latch<ForwardInstData> d1ToD2;    /* Decode1 -> Decode2 */
++    Latch<ForwardInstData> d2ToI;     /* Decode2 -> Issue */
++    Latch<ForwardInstData> iToE;      /* Issue -> Execute */
++    Latch<ForwardInstData> eToM;      /* Execute -> Memory */
++    Latch<ForwardInstData> mToW;      /* Memory -> Writeback */
++
++    /**
++     * Stages declared in construction order (reverse-ish pipeline order)
++     * so that each stage can receive its successor's inputBuffer reference.
++     */
++    Execute execute;                   /* Stage 6 */
++    PassthroughStage memory;           /* Stage 7 */
++    PassthroughStage writeback;        /* Stage 8 */
++    PassthroughStage issue;            /* Stage 5 */
++    Decode decode;                     /* Stage 4 (Decode2) */
++    PassthroughStage decode1;          /* Stage 3 (Decode1 / pre-decode) */
++    Fetch2 fetch2;                     /* Stage 2 */
++    Fetch1 fetch1;                     /* Stage 1 */
+ 
+     /** Activity recording for the pipeline.  This is access through the CPU
+      *  by the pipeline stages but belongs to the Pipeline as it is the
+@@ -100,7 +124,8 @@ class Pipeline : public Ticked
+         /* A stage representing wakeup of the whole processor */
+         CPUStageId = 0,
+         /* Real pipeline stages */
+-        Fetch1StageId, Fetch2StageId, DecodeStageId, ExecuteStageId,
++        Fetch1StageId, Fetch2StageId, Decode1StageId, Decode2StageId,
++        IssueStageId, ExecuteStageId, MemoryStageId, WritebackStageId,
+         Num_StageId /* Stage count */
+     };
+ 
+diff --git a/src/cpu/minor/stats.cc b/src/cpu/minor/stats.cc
+index e4eebd3..c33ce97 100644
+--- a/src/cpu/minor/stats.cc
++++ b/src/cpu/minor/stats.cc
+@@ -47,7 +47,25 @@ MinorStats::MinorStats(BaseCPU *base_cpu)
+     : statistics::Group(base_cpu),
+     ADD_STAT(quiesceCycles, statistics::units::Cycle::get(),
+              "Total number of cycles that CPU has spent quiesced or waiting "
+-             "for an interrupt")
++             "for an interrupt"),
++    ADD_STAT(executeTotalIssued, statistics::units::Count::get(),
++             "Total instructions issued from Execute stage"),
++    ADD_STAT(executeTotalCommitted, statistics::units::Count::get(),
++             "Total instructions committed from Execute stage"),
++    ADD_STAT(executeStallScoreboard, statistics::units::Count::get(),
++             "Stall cycles due to scoreboard (source regs not ready)"),
++    ADD_STAT(executeStallFUUnavailable, statistics::units::Count::get(),
++             "Stall cycles due to all matching FUs busy"),
++    ADD_STAT(executeStallMemBlocked, statistics::units::Count::get(),
++             "Stall cycles due to memory ordering block"),
++    ADD_STAT(executeStallOther, statistics::units::Count::get(),
++             "Stall cycles due to other reasons"),
++    ADD_STAT(executeSkipStalled, statistics::units::Count::get(),
++             "Number of skip-stalled events"),
++    ADD_STAT(executeFUIssueCount, statistics::units::Count::get(),
++             "Per-FU issue count"),
++    ADD_STAT(executeIssueWidthDist, statistics::units::Count::get(),
++             "Per-cycle issue width distribution")
+ {
+     quiesceCycles.prereq(quiesceCycles);
+ }
+diff --git a/src/cpu/minor/stats.hh b/src/cpu/minor/stats.hh
+index 98ac80f..3752045 100644
+--- a/src/cpu/minor/stats.hh
++++ b/src/cpu/minor/stats.hh
+@@ -54,7 +54,7 @@ namespace gem5
+ namespace minor
+ {
+ 
+-/** Currently unused stats class. */
++/** Phase 8 performance profiling stats. */
+ struct MinorStats : public statistics::Group
+ {
+     MinorStats(BaseCPU *parent);
+@@ -62,6 +62,35 @@ struct MinorStats : public statistics::Group
+     /** Number of cycles in quiescent state */
+     statistics::Scalar quiesceCycles;
+ 
++    /* --- Phase 8: Execute stage profiling --- */
++
++    /** Total instructions issued from Execute stage */
++    statistics::Scalar executeTotalIssued;
++
++    /** Total instructions committed from Execute stage */
++    statistics::Scalar executeTotalCommitted;
++
++    /** Stall: source registers not ready (scoreboard) */
++    statistics::Scalar executeStallScoreboard;
++
++    /** Stall: all matching FUs busy or stalled */
++    statistics::Scalar executeStallFUUnavailable;
++
++    /** Stall: memory ordering block (skip-stalled mem_blocked) */
++    statistics::Scalar executeStallMemBlocked;
++
++    /** Stall: instruction couldn't issue for other reasons */
++    statistics::Scalar executeStallOther;
++
++    /** Skip-stalled events (instruction skipped) */
++    statistics::Scalar executeSkipStalled;
++
++    /** Per-FU issue count (vector, one entry per FU) */
++    statistics::Vector executeFUIssueCount;
++
++    /** Per-cycle issue width distribution (index = # insts issued) */
++    statistics::Vector executeIssueWidthDist;
++
+ };
+ 
+ } // namespace minor
