@@ -19,11 +19,9 @@ rule_fields:
     - audit_role        # QA 审计时是否检查此规则 (true/false)
 
 valid_roles:
-  - pm
-  - hw-arch
+  - pm-infra
+  - hw-design
   - hw-ver
-  - sw-arch
-  - ai-infra
   - qa-audit
 
 valid_categories:

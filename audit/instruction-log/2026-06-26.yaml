@@ -1,0 +1,344 @@
+# Lumi 指令日志 — 2026-06-26
+
+date: "2026-06-26"
+entries:
+  # ──────────────────────────────────────────────
+  # 指令 1：设计产品需求文档 (PRD) 模板
+  # ──────────────────────────────────────────────
+  - timestamp: "10:00:00"
+    role: pm-infra
+    session_mode: main
+    action: create_template
+    details:
+      description: "从处理器 IP 的产品需求出发，设计一个 HTML 格式的产品需求文档 (PRD) 模板，采用表格形式管理需求条目，包含状态栏、版本追溯和需求基线管理。"
+      user_request: >
+        帮我从处理器IP的产品需求出发，设计一个产品需求文档的模版，等我来填。
+        这个模版最好是表格形式的，加入各种需求的状态栏，方便每条需求的版本管理和追溯。
+        当需求定版以后，需要把所有需求的版本号都打上一个tag，这个需求集需要另一个版本号维护。
+      options_and_decisions:
+        - topic: "文档格式"
+          options: ["HTML（项目规则 [14] 要求）", "Markdown", "YAML + 渲染脚本"]
+          decision: "HTML（与现有 Lumi-Core-Profile.html 风格一致，支持彩色状态标签和响应式表格）"
+        - topic: "需求分类体系"
+          options: ["按处理器 IP 维度（ISA/性能/接口/安全/配置/软件/验证/非功能）", "按项目阶段", "按 RISC-V Profile 章节"]
+          decision: "按处理器 IP 维度（8 个分类，覆盖从 ISA 到交付全流程）"
+        - topic: "版本管理方案"
+          options: ["双层版本（需求自身版本 + 基线版本）", "仅基线版本", "语义版本 + git tag"]
+          decision: "双层版本：每条需求有自身版本号（v1.0/v1.1），需求集有独立基线版本号（BL-1.0），定版时统一打标"
+        - topic: "基线标签列设计"
+          options: ["表格内嵌基线标签列", "独立基线快照文件", "两者结合"]
+          decision: "表格内嵌基线标签列 + 独立基线记录表（列显示最新基线，记录表追溯历史）"
+      steps:
+        - "step 1: 分析项目现有文档结构和 HTML 风格（Lumi-Core-Profile.html）"
+        - "step 2: 设计 PRD 模板结构：文档元信息 + 8 类需求表格 + 状态/优先级定义 + 基线管理 + 追溯矩阵 + 变更历史"
+        - "step 3: 设计需求核心字段：REQ-ID、名称、优先级、状态、版本、基线标签、来源、关联文档、验收标准、变更日期、备注"
+        - "step 4: 设计基线管理机制：BL-x.x 版本号、定版规则、基线记录表（新增/变更/移除 REQ-ID）"
+        - "step 5: 实现 HTML 模板，包含完整 CSS（状态徽章颜色、响应式表格、打印优化）"
+        - "step 6: 每个分类预置 2-3 条灰色示例需求行"
+        - "step 7: 更新指令记录"
+      rules_checked: ["08", "14", "16"]
+    outcome: "成功。创建 docs/project/product-requirements.html（771 行），包含 8 类需求表格、双层版本管理、基线记录表和追溯矩阵。"
+
+  # ──────────────────────────────────────────────
+  # 指令 2：为 PRD 模板添加交互功能和批量导入
+  # ──────────────────────────────────────────────
+  - timestamp: "11:00:00"
+    role: pm-infra
+    session_mode: main
+    action: enhance_template
+    details:
+      description: "为 PRD HTML 模板添加内嵌 JavaScript 交互功能，支持在浏览器中直接增删改行、状态切换、筛选过滤、基线定版、导出 HTML、批量导入 CSV。"
+      user_request: "怎么修改这个 HTML 文件呢？好像文件是静态的。基于以上需求，同时加入批量导入功能，提供一个导入模板。"
+      options_and_decisions:
+        - topic: "交互方式"
+          options: ["内嵌 JavaScript（在浏览器中直接操作）", "数据+模板分离（YAML+Python 脚本）", "保持静态 HTML"]
+          decision: "内嵌 JavaScript（用户选择，直接在浏览器中编辑、筛选、导入导出）"
+      steps:
+        - "step 1: 添加 CSS 交互样式（固定工具栏、可编辑单元格、模态框、拖拽区域、打印隐藏）"
+        - "step 2: 为 8 个需求表格添加 data-cat 属性以支持 JS 定位"
+        - "step 3: 实现浮动工具栏（分类选择、添加行、筛选、基线定版、导入导出按钮）"
+        - "step 4: 实现行级操作（添加/删除/内联编辑、状态徽章点击循环切换、优先级切换）"
+        - "step 5: 实现筛选功能（按状态、优先级、文本搜索，重置筛选）"
+        - "step 6: 实现基线定版功能（输入基线版本号，为当前分类所有 Approved+ 需求统一打标）"
+        - "step 7: 实现导出功能（下载包含所有修改的完整 HTML 文件）"
+        - "step 8: 实现批量 CSV 导入（下载导入模板、拖拽/选择文件、CSV 解析、预览确认、导入到指定分类）"
+        - "step 9: 更新指令记录"
+      rules_checked: ["14", "16"]
+    outcome: "成功。PRD 模板升级为交互式 HTML（1271 行），新增工具栏、增删改行、状态循环、筛选、基线定版、导出 HTML、批量导入 CSV（含模板下载、拖拽上传、预览确认）。"
+
+files_created_or_modified:
+  - path: "docs/project/product-requirements.html"
+    action: created
+    summary: "产品需求文档 (PRD) HTML 模板，含 8 类需求表格、状态/优先级徽章、基线管理、追溯矩阵（771 行）"
+  - path: "docs/project/product-requirements.html"
+    action: modified
+    summary: "升级为交互式 HTML（+427 行），新增 CSS 工具栏样式、8 表格 data-cat 属性、JS 交互功能（增删改行、状态循环、筛选、基线定版、导出 HTML、批量 CSV 导入含模板下载）"
+
+  # ──────────────────────────────────────────────
+  # 指令 3：基线文件分离管理
+  # ──────────────────────────────────────────────
+  - timestamp: "14:00:00"
+    role: pm-infra
+    session_mode: main
+    action: baseline_separation
+    details:
+      description: "将 PRD 基线管理从 HTML 内嵌表格分离为独立 YAML 基线文件，定版时自动生成快照，并提供 YAML-to-HTML 可读化脚本。"
+      user_request: >
+        将独立的基线版本号分离出来，创建为单独的基线需求文件。
+        当需求池经过评审并冻结形成基线版本时，自动生成 baseline-{version}.yaml 文件。
+        设计脚本将 YAML 生成可读 HTML。基线文件作为下游流程的权威参考。
+      steps:
+        - "step 1: 创建 docs/project/baselines/ 目录"
+        - "step 2: 设计 YAML 基线文件 Schema（baseline 元数据 + statistics + requirements 快照）"
+        - "step 3: 创建示例基线文件 baseline-BL-EXAMPLE.yaml（5 条需求）"
+        - "step 4: 创建 YAML-to-HTML 转换脚本 generate_baseline_html.py（纯标准库，自带 YAML 解析器）"
+        - "step 5: 运行脚本生成 baseline-BL-EXAMPLE.html 验证正确性"
+        - "step 6: 修改 tagBaseline() JS 函数：收集全部 8 个分类的 Approved+ 需求，生成 YAML 并触发下载"
+        - "step 7: 工具栏新增基线说明和审批人输入框"
+        - "step 8: 简化基线记录表为只读索引表（链接到 baselines/ 目录的 YAML 和 HTML 文件）"
+        - "step 9: 更新 Section 4 管理规则说明，反映新的文件分离流程"
+        - "step 10: 更新指令记录"
+      rules_checked: ["10", "14", "16"]
+    outcome: "成功。创建 baselines/ 目录、示例 YAML、转换脚本。HTML 基线功能升级为文件导出模式，基线记录表简化为索引表。"
+
+files_created_or_modified:
+  - path: "docs/project/baselines/"
+    action: created
+    summary: "基线文件目录"
+  - path: "docs/project/baselines/baseline-BL-EXAMPLE.yaml"
+    action: created
+    summary: "示例基线 YAML 文件，展示完整 schema（5 条需求）"
+  - path: "docs/project/baselines/generate_baseline_html.py"
+    action: created
+    summary: "YAML-to-HTML 转换脚本（纯标准库，含统计图表、分类表格、彩色徽章）"
+  - path: "docs/project/baselines/baseline-BL-EXAMPLE.html"
+    action: created
+    summary: "示例基线 HTML 报告（由脚本自动生成）"
+  - path: "docs/project/product-requirements.html"
+    action: modified
+    summary: "基线功能升级：tagBaseline() 改为全分类收集+YAML导出，基线记录表改为索引表，工具栏新增基线说明/审批人输入"
+  - path: "audit/instruction-log/2026-06-26.yaml"
+    action: modified
+    summary: "追加指令 3（基线文件分离管理）记录"
+
+  # ──────────────────────────────────────────────
+  # 指令 4：基线 HTML 自动生成钩子机制
+  # ──────────────────────────────────────────────
+  - timestamp: "17:00:00"
+    role: pm-infra
+    session_mode: main
+    action: add_hooks
+    details:
+      description: "设计并实现基线 HTML 自动生成钩子机制：修改 generate_baseline_html.py 支持版本化输出（旧 HTML 自动归档到 archive/），创建 Git post-commit 钩子自动检测 YAML 变更并重新生成 HTML。"
+      user_request: "设计一个钩子机制，每次更新 yaml 文件自动生成新的 html 文件，而且不要覆盖老的文件。"
+      steps:
+        - "step 1: 修改 generate_baseline_html.py 的 generate_html() 函数，写入新 HTML 前检查旧文件是否存在，若存在则移动到 archive/ 目录并加时间戳后缀"
+        - "step 2: 创建 hooks/post-commit Git 钩子，检测 baseline-*.yaml 变更并调用生成脚本"
+        - "step 3: 创建 hooks/setup_hooks.sh 安装脚本，一键安装钩子并创建 archive/ 目录"
+        - "step 4: 手动运行两次生成脚本验证版本化归档功能正常"
+        - "step 5: 更新指令记录"
+      rules_checked: ["10", "16"]
+    outcome: "成功。generate_baseline_html.py 支持版本化归档，Git post-commit 钩子就绪。验证通过：旧 HTML 自动归档为 archive/baseline-BL-EXAMPLE_YYYYMMDD_HHMMSS.html。"
+
+files_created_or_modified:
+  - path: "docs/project/baselines/generate_baseline_html.py"
+    action: modified
+    summary: "generate_html() 新增版本化输出：旧 HTML 自动归档到 archive/ 目录（带时间戳后缀）"
+  - path: "hooks/post-commit"
+    action: created
+    summary: "Git post-commit 钩子，检测 baseline-*.yaml 变更并自动重新生成 HTML"
+  - path: "hooks/setup_hooks.sh"
+    action: created
+    summary: "一键安装脚本：安装 Git 钩子 + 创建 archive/ 目录"
+  - path: "docs/project/baselines/archive/"
+    action: created
+    summary: "历史 HTML 版本归档目录"
+  - path: "audit/instruction-log/2026-06-26.yaml"
+    action: modified
+    summary: "追加指令 4（基线 HTML 自动生成钩子）记录"
+
+  # ──────────────────────────────────────────────
+  # 指令 5：PRD 文档 12 章节结构重新设计
+  # ──────────────────────────────────────────────
+  - timestamp: "17:30:00"
+    role: pm-infra
+    session_mode: main
+    action: redesign_prd
+    details:
+      description: "按用户指定的 12 章节结构重新设计 PRD 模板，每章采用文字描述+需求表格形式，保留全部交互功能（增删改行、筛选、基线导出、CSV 导入）。"
+      user_request: "需求应该以文字描述+需求表格的方式呈现。按照 12 章节结构重新设计需求文档格式。"
+      steps:
+        - "step 1: 完整重写 product-requirements.html，12 章节结构，25 个分类需求表格"
+        - "step 2: 保留全部 JS 交互功能：addRow/deleteRow/editRow、状态/优先级循环、筛选、基线定版+YAML导出、CSV 导入/导出"
+        - "step 3: 验证文件结构完整性：12 章节 + 25 data-cat 分类 + JS init 动态添加操作列"
+        - "step 4: 更新指令记录"
+      rules_checked: ["14", "16"]
+    outcome: "成功。PRD 模板完全重写为 12 章节结构（638 行），25 个分类表格覆盖 PPA(6)/系统/RTL(5)/配置/增量/交付/功能安全/信息安全/软件(7)/废弃。"
+
+files_created_or_modified:
+  - path: "docs/project/product-requirements.html"
+    action: modified
+    summary: "完全重写为 12 章节结构：关于本文档、产品概述、硬件需求(PPA 6子分类+系统+RTL 5子分类+配置+增量)、交付物需求、功能安全需求、信息安全需求、依赖软件需求(7项)、项目里程碑、需求基线管理、需求追溯矩阵、变更历史、废弃需求"
+  - path: "audit/instruction-log/2026-06-26.yaml"
+    action: modified
+    summary: "追加指令 5（PRD 文档 12 章节结构重新设计）记录"
+
+  # ──────────────────────────────────────────────
+  # 指令 6：PRD 数据与展示分离（YAML + 生成器）
+  # ──────────────────────────────────────────────
+  - timestamp: "18:00:00"
+    role: pm-infra
+    session_mode: main
+    action: yaml_driven_prd
+    details:
+      description: "将 PRD 文档拆分为 YAML 数据文件（每章节一个）+ Python 生成器，HTML 自动从 YAML 生成，实现数据与展示分离。"
+      user_request: "这个html没有什么维护性，建议用 YAML 数据文件 + Python 生成器的方式维护。"
+      steps:
+        - "step 1: 创建 product-requirements/ 目录，编写 12 个 YAML 数据文件（每章节一个）"
+        - "step 2: 编写 generate_prd.py 生成器脚本（555 行），支持全量生成和 --validate 校验"
+        - "step 3: 创建 .venv 虚拟环境并安装 PyYAML 依赖"
+        - "step 4: 运行校验和生成，验证输出 HTML 完整性（12 章节 + 24 分类表格）"
+        - "step 5: 更新指令记录"
+      rules_checked: ["14", "16"]
+    outcome: "成功。PRD 模板迁移为 YAML 驱动架构：12 个 YAML 数据文件 + generate_prd.py 生成器。日常维护只需编辑 YAML 文件。"
+
+files_created_or_modified:
+  - path: "docs/project/product-requirements/"
+    action: created
+    summary: "YAML 数据目录，包含 12 个章节文件（01-about ~ 12-deprecated）"
+  - path: "docs/project/generate_prd.py"
+    action: created
+    summary: "PRD 生成器（555 行）：YAML→HTML，支持 --validate 校验和全量生成"
+  - path: "docs/project/.venv/"
+    action: created
+    summary: "Python 虚拟环境（已安装 PyYAML）"
+  - path: "docs/project/product-requirements.html"
+    action: modified
+    summary: "由生成器从 YAML 数据自动重新生成（559 行）"
+  - path: "audit/instruction-log/2026-06-26.yaml"
+    action: modified
+    summary: "追加指令 6（PRD 数据与展示分离）记录"
+
+# ── 指令 7: Lumi Req 需求导入到 YAML ──
+- timestamp: "2026-06-26T16:00:00+08:00"
+  type: execution
+  instruction: |
+    根据 docs/Lumi Req.rtf 文件内容，更新 YAML 数据文件，完善内容填好表格，生成 HTML。
+  files_changed:
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "从 Lumi Req 导入 27 条硬件需求（ISA/内存/接口/PPA/系统/功能特性/配置/增量）"
+    - path: "docs/project/product-requirements/04-deliverables.yaml"
+      action: modified
+      summary: "新增 DEL-003 Cycle Accurate Model 交付物"
+    - path: "docs/project/product-requirements/05-safety.yaml"
+      action: modified
+      summary: "PMP 从 16 条目更新为 8 Region（与 Lumi Req 一致）"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成（48 条需求，24 个分类表格）"
+
+# ── 指令 8: Lumi Req2 需求调整导入 ──
+- timestamp: "2026-06-29T10:00:00+08:00"
+  type: execution
+  instruction: |
+    根据 docs/Lumi Req2.txt 文件内容，更新 YAML 数据文件和首页元数据，生成 HTML。
+  files_changed:
+    - path: "docs/project/generate_prd.py"
+      action: modified
+      summary: "更新首页元数据（目标市场/日期/负责人）"
+    - path: "docs/project/product-requirements/01-about.yaml"
+      action: modified
+      summary: "参考文档 +4 条，术语 +10 条"
+    - path: "docs/project/product-requirements/02-overview.yaml"
+      action: modified
+      summary: "2.1~2.5 按 Req2 调整（竞品+场景+客户+依赖）"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成"
+
+# ── 指令 9: Lumi Req3 硬件需求重组 ──
+- timestamp: "2026-06-29T14:00:00+08:00"
+  type: execution
+  instruction: |
+    根据 docs/Lumi Req3.txt 文件内容，重组硬件需求章节，更新 YAML 并生成 HTML。
+  files_changed:
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "章节重组：移除SYS/PPA-CACHE，ISA扩充RV32GCBV，配置表15项，来源统一为Lumi原始需求"
+    - path: "docs/project/product-requirements/05-safety.yaml"
+      action: modified
+      summary: "移除寄存器ECC，新增双核异步互锁+总线Parity保护"
+    - path: "docs/project/generate_prd.py"
+      action: modified
+      summary: "工具栏移除SYS/PPA-CACHE，新增PPA-INT，RTL-FEAT改名为调试与跟踪"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成（65条需求，23个分类表格）"
+
+# ── 指令 10: Lumi Req4 调试跟踪章节拆分 ──
+- timestamp: "2026-06-29T16:00:00+08:00"
+  type: execution
+  instruction: |
+    根据 docs/Lumi Req4.txt，拆分调试与跟踪章节，新增其他RTL功能章节，移除虚拟化。
+  files_changed:
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "RTL-FEAT仅保留Debug/Trace/Trace-AXI4，新增RTL-OTHER(4条)，移除FEAT-004虚拟化"
+    - path: "docs/project/generate_prd.py"
+      action: modified
+      summary: "工具栏新增RTL-OTHER分类"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成（64条需求，24个分类表格）"
+
+# ── 指令 11: 配置表移末并改为信息表格 ──
+- timestamp: "2026-06-29T17:00:00+08:00"
+  type: execution
+  instruction: |
+    把"3.2 配置表"移到本章节最后，同时改为可选配置表格（非需求表格）。
+  files_changed:
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "CFG从分类表格改为信息表格（sub_sections），移至3.4末尾，RTL编号更新为3.2.x"
+    - path: "docs/project/generate_prd.py"
+      action: modified
+      summary: "render_section支持categories+sub_sections混合渲染，工具栏移除CFG"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成（49条需求+15行配置信息表）"
+
+# ── 指令 12: 移除Crypto标量 + 修正PLIC/CLIC中断数 ──
+- timestamp: "2026-06-29T18:00:00+08:00"
+  type: execution
+  instruction: |
+    移除"Crypto 标量加解密"配置项，PLIC中断数设为32~960，CLIC中断数设为1~240。
+  files_changed:
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "配置表移除Crypto标量行，新增PLIC中断数行，CLIC改为1~240；SYS-001/SYS-002验收标准同步更新"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成（49条需求+15行配置信息表）"
+
+# ── 指令 13: 补充REF-04/05/06本地文档 ──
+- timestamp: "2026-06-29T19:00:00+08:00"
+  type: execution
+  instruction: |
+    补充REF-04、REF-05、REF-06路径或链接信息，如果没有下载，把相关资料下载到本地然后加上索引。
+  files_changed:
+    - path: "docs/standards/riscv-specs/extensions/riscv-debug-specification.pdf"
+      action: created
+      summary: "下载 RISC-V Debug Spec V1.0.0 Ratified PDF (2.4MB)"
+    - path: "docs/standards/riscv-specs/extensions/riscv-nexus-trace.pdf"
+      action: created
+      summary: "下载 RISC-V Nexus Trace V1.0.0 Ratified PDF (550KB)"
+    - path: "docs/standards/riscv-specs/extensions/riscv-packed-simd.pdf"
+      action: created
+      summary: "下载 Packed SIMD Spec PDF (9.4MB)"
+    - path: "docs/project/product-requirements/01-about.yaml"
+      action: modified
+      summary: "REF-04/05/06路径从'--'更新为本地路径"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "由生成器重新生成"

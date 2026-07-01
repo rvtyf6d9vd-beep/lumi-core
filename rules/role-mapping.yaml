@@ -2,9 +2,9 @@
 # 定义每个角色可见的规则子集和文件权限
 
 roles:
-  pm:
-    display_name: "项目经理"
-    description: "市场分析、需求导入、项目计划制定与跟踪、里程碑 Sign-off、商业模式"
+  pm-infra:
+    display_name: "项目管理 / 基础设施"
+    description: "项目管理、需求导入、里程碑跟踪、基础设施维护、知识库管理、版本管理与日常文件操作"
     rules:
       - "03"
       - "07"
@@ -12,39 +12,45 @@ roles:
       - "10"
       - "13"
       - "14"
-      - "15"
       - "16"
+      - "17"
       - "18"
       - "19"
+      - "20"
+      - "21"
+      - "22"
       - "QA-1"
       - "B-1"
       - "B-2"
-      - "B-3"
-      - "B-4"
       - "B-5"
-      - "B-6"
-      - "B-7"
+      - "IT-1"
+      - "IT-2"
     permissions:
       read:
         - "docs/**"
         - "rules/**"
         - "audit/**"
-        - "agents/pm/**"
+        - "agents/pm-infra/**"
         - "knowledge/**"
-        - "infra/monitoring/**"
-        - "infra/token-budget/**"
+        - "infra/**"
+        - ".github/**"
       write:
         - "docs/project/**"
-        - "agents/pm/**"
+        - "agents/pm-infra/**"
         - "audit/instruction-log/**"
         - "audit/decision-log/**"
+        - "audit/errata/**"
+        - "infra/**"
+        - "knowledge/**"
+        - ".github/**"
+        - "rules/scripts/**"
+        - "skills/**"
 
-  hw-arch:
-    display_name: "硬件架构"
-    description: "架构设计、具体设计、性能/技术特性指标定义、关键节点通过判定"
+  hw-design:
+    display_name: "硬件设计"
+    description: "硬件架构设计、RTL 设计、底层软件开发、性能评估与基准测试"
     rules:
       - "03"
-      - "04"
       - "05"
       - "06"
       - "07"
@@ -57,6 +63,9 @@ roles:
       - "16"
       - "18"
       - "19"
+      - "20"
+      - "21"
+      - "22"
       - "HD-1"
       - "HD-2"
       - "HD-3"
@@ -65,27 +74,31 @@ roles:
         - "docs/**"
         - "rules/**"
         - "src/**"
-        - "agents/hw-arch/**"
+        - "sw/**"
+        - "agents/hw-design/**"
         - "perf/**"
         - "reference/**"
         - "knowledge/**"
       write:
         - "src/**"
+        - "sw/**"
         - "docs/architecture/**"
         - "docs/design/**"
         - "docs/standards/**"
-        - "agents/hw-arch/**"
+        - "docs/software/**"
+        - "agents/hw-design/**"
         - "perf/**"
         - "knowledge/design-decisions/**"
         - "knowledge/lessons-learned/**"
         - "audit/instruction-log/**"
+        - "audit/errata/**"
+        - "skills/**"
 
   hw-ver:
     display_name: "硬件验证"
-    description: "验证策略制定、FPGA 硬件验证、开发阶段以后的里程碑 Sign-off"
+    description: "验证策略制定、FPGA 硬件验证、测试平台开发与里程碑 Sign-off"
     rules:
       - "03"
-      - "04"
       - "05"
       - "07"
       - "09"
@@ -97,6 +110,9 @@ roles:
       - "16"
       - "18"
       - "19"
+      - "20"
+      - "21"
+      - "22"
       - "HV-1"
       - "HV-2"
     permissions:
@@ -114,74 +130,15 @@ roles:
         - "docs/verification/**"
         - "agents/hw-ver/**"
         - "audit/instruction-log/**"
-
-  sw-arch:
-    display_name: "软件架构"
-    description: "底层驱动软件、RTOS Kernel 移植、工具链开发与整合"
-    rules:
-      - "03"
-      - "04"
-      - "05"
-      - "07"
-      - "08"
-      - "10"
-      - "11"
-      - "13"
-      - "14"
-      - "16"
-      - "18"
-      - "19"
-    permissions:
-      read:
-        - "docs/**"
-        - "rules/**"
-        - "src/**"
-        - "sw/**"
-        - "agents/sw-arch/**"
-        - "reference/**"
-        - "knowledge/**"
-      write:
-        - "sw/**"
-        - "docs/software/**"
-        - "agents/sw-arch/**"
-        - "audit/instruction-log/**"
-
-  ai-infra:
-    display_name: "AI 基础设施"
-    description: "开发环境搭建、GitHub 版本维护、日常文件体系管理、MCP 脚本维护、知识库"
-    rules:
-      - "03"
-      - "04"
-      - "11"
-      - "12"
-      - "13"
-      - "14"
-      - "15"
-      - "16"
-      - "17"
-      - "19"
-      - "IT-1"
-      - "IT-2"
-      - "IT-3"
-    permissions:
-      read:
-        - "**"
-      write:
-        - "infra/**"
-        - "knowledge/**"
-        - ".github/**"
-        - "rules/scripts/**"
-        - "agents/ai-infra/**"
-        - "audit/instruction-log/**"
+        - "audit/errata/**"
+        - "skills/**"
 
   qa-audit:
     display_name: "QA 审计"
-    description: "独立审计：计划、执行过程、结果的第三方检查"
+    description: "独立审计：计划、执行过程、结果的第三方检查与合规审查"
     rules: "ALL"
     permissions:
       read:
         - "**"
       write:
-        - "audit/compliance-reports/**"
-        - "agents/qa-audit/**"
-        - "audit/instruction-log/**"
+        - "audit/**"

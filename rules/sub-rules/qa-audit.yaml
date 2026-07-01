@@ -6,7 +6,7 @@ rules:
     title: "第三方 Agent 审计"
     category: qa-audit
     severity: critical
-    applicable_roles: [pm, qa-audit]
+    applicable_roles: [pm-infra, qa-audit]
     applicable_phases: [architecture, design, implementation, verification, delivery]
     description: >
       计划、执行过程、结果都必须由第三方 Agent 审计，否则里程碑不能进入下一步。

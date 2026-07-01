@@ -1,0 +1,21 @@
+# Lumi Known Issue / Errata 登记簿 (规则 20: Errata/Known Issue 维护)
+# 所有已知问题必须记录在此，解决后更新为 resolved 但保留记录不删除
+
+version: "1.0"
+
+errata: []
+# 示例条目格式:
+# - id: "ERR-001"
+#   title: "CSR 模块某寄存器复位值错误"
+#   description: "..."
+#   discovered_date: "2026-06-24"
+#   discovered_by: hw-ver        # hw-design | hw-ver | pm-infra | qa-audit
+#   affected_modules: ["csr/csr_ctrl"]
+#   affected_versions: ["v0.1"]
+#   severity: major              # critical | major | minor | cosmetic
+#   status: open                 # open | resolved
+#   workaround: "软件初始化时手动写入正确值"
+#   resolved_date: null
+#   resolved_by: null
+#   resolution: null
+#   regression_test: null         # 关联的回归测试用例路径 (规则 21)

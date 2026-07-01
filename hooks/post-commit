@@ -1,0 +1,47 @@
+#!/bin/bash
+# ─────────────────────────────────────────────────────────────
+# Git post-commit hook: 自动检测 baseline YAML 变更并重新生成 HTML
+# 安装: cp hooks/post-commit .git/hooks/ && chmod +x .git/hooks/post-commit
+# ─────────────────────────────────────────────────────────────
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BASELINES_DIR="docs/project/baselines"
+GENERATOR="$BASELINES_DIR/generate_baseline_html.py"
+
+# 检查生成脚本是否存在
+if [ ! -f "$GENERATOR" ]; then
+    exit 0
+fi
+
+# 获取本次提交中变更的 baseline YAML 文件
+CHANGED_YAMLS=$(git diff --name-only --diff-filter=ACMR HEAD~1 HEAD 2>/dev/null | grep "^${BASELINES_DIR}/baseline-.*\.yaml$" || true)
+
+if [ -z "$CHANGED_YAMLS" ]; then
+    exit 0
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  [baseline-hook] 检测到基线 YAML 变更，自动重新生成 HTML..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+for yaml_file in $CHANGED_YAMLS; do
+    YAML_BASENAME=$(basename "$yaml_file")
+    echo ""
+    echo "  处理: $YAML_BASENAME"
+
+    # 运行生成脚本（脚本会自动归档旧 HTML）
+    cd "$REPO_ROOT"
+    if python3 "$GENERATOR" "$yaml_file"; then
+        HTML_BASENAME="${YAML_BASENAME%.yaml}.html"
+        echo "  [baseline-hook] 成功: $HTML_BASENAME"
+    else
+        echo "  [baseline-hook] 错误: 生成 $YAML_BASENAME 失败" >&2
+    fi
+done
+
+echo ""
+echo "  [baseline-hook] 完成。"
+echo ""

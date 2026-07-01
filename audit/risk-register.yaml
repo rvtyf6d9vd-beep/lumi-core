@@ -3,7 +3,26 @@
 
 version: "1.0"
 
-risks: []
+risks:
+  - id: "RISK-001"
+    title: "IRQ latency test deferred — SE mode limitation"
+    severity: medium
+    status: accepted
+    reported_by: perf-bench
+    reported_date: "2026-06-30"
+    assigned_to: hw-arch
+    description: >
+      Interrupt latency measurement (target <= 16 cycles) requires real hardware
+      interrupt injection which is not supported in gem5 SE (syscall emulation)
+      mode. The MinorCPU SE mode only supports system calls via ecall, not
+      external interrupt sources (CLIC/PLIC).
+    mitigation: >
+      Deferred to a future phase that implements gem5 FS (full-system) mode
+      with CLIC SW interrupt support. Alternatively, a custom m5 pseudo-op
+      could be added to inject a synthetic interrupt and measure the latency.
+    resolution: null
+    resolution_date: null
+
 # 示例条目格式:
 # - id: "RISK-001"
 #   title: "CSR 模块时序不满足"

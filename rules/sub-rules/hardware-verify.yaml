@@ -12,7 +12,7 @@ rules:
       每次展开工作都应检查更新，防止验证 Case 不匹配设计的变更。
     check_type: hybrid
     check_criteria:
-      - "角色切换到 hw-ver 时，Pre-Check 步骤检查 inbox/ 中是否有设计变更通知"
+      - "角色切换到 hw-ver 时，Pre-Check 步骤检查 change-notices/ 中是否有设计变更通知"
       - "验证用例版本与设计版本匹配"
     audit_role: true
 
@@ -27,7 +27,7 @@ rules:
       但修改的最后必须回退到测试前状态，最后把问题汇总并提交给硬件设计 Agent 接手处理。
     check_type: manual
     check_criteria:
-      - "验证发现的 Bug 有对应的 inbox 消息发送给 hw-arch"
+      - "验证发现的 Bug 有对应的变更通知发送给 hw-design"
       - "调试过程中的源代码修改已回退"
       - "问题汇总记录在 audit/instruction-log/ 中"
     audit_role: true

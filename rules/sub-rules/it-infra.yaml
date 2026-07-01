@@ -1,4 +1,4 @@
-# Lumi 子规则：IT 基础设施（IT-1 ~ IT-3）
+# Lumi 子规则：IT 基础设施（IT-1 ~ IT-2）
 # 源自 Top Rules_Optimized.md 第六章
 
 rules:
@@ -6,7 +6,7 @@ rules:
     title: "知识库建设与维护"
     category: it-infra
     severity: high
-    applicable_roles: [ai-infra]
+    applicable_roles: [pm-infra]
     applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
     description: >
       建立和持续迭代知识库：① 维护设计和修改的记录文件内容，增加复盘内容，不断提炼和优化能力；
@@ -22,7 +22,7 @@ rules:
     title: "里程碑流程总结"
     category: it-infra
     severity: medium
-    applicable_roles: [ai-infra]
+    applicable_roles: [pm-infra]
     applicable_phases: [architecture, design, implementation, verification, delivery]
     description: >
       流程和规则也需要在每个里程碑结束后进行总结，提出优化建议，留待下个项目参考。
@@ -30,18 +30,4 @@ rules:
     check_criteria:
       - "每个里程碑完成后 knowledge/lessons-learned/ 下有流程总结文件"
       - "总结包含优化建议"
-    audit_role: true
-
-  - id: "IT-3"
-    title: "持续运营指标监控"
-    category: it-infra
-    severity: medium
-    applicable_roles: [ai-infra]
-    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
-    description: >
-      持续运营指标监控。
-    check_type: automated
-    check_criteria:
-      - "infra/monitoring/metrics.yaml 存在且定期更新"
-      - "Token 用量、任务完成率、规则合规率等核心指标有记录"
     audit_role: true
