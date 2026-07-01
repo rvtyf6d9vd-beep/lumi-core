@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lumi 项目部署计划 v2.1 — Cowork 适配版</title>
+<title>Lumi 项目部署计划 v3.0 — Qoder 适配版</title>
 <style>
   :root {
     --primary: #1a56db;
@@ -89,7 +89,8 @@
   }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0; }
-  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
   .step {
     display: flex; align-items: flex-start; gap: 16px;
     padding: 16px 0; border-bottom: 1px dashed var(--border);
@@ -110,6 +111,19 @@
   .highlight-danger { background: var(--danger-light); border: 1px solid #fecaca; border-radius: 8px; padding: 14px 18px; margin: 12px 0; }
   hr.section-divider { border: none; height: 2px; background: linear-gradient(to right, var(--primary), transparent); margin: 48px 0 32px; }
   .vs-table td:first-child { font-weight: 600; white-space: nowrap; }
+  .tier-badge {
+    display: inline-block; width: 24px; height: 24px; border-radius: 50%;
+    text-align: center; line-height: 24px; font-size: .75em; font-weight: 700;
+    color: #fff; margin-right: 6px; vertical-align: middle;
+  }
+  .tier-1 { background: var(--danger); }
+  .tier-2 { background: var(--warn); }
+  .tier-3 { background: var(--accent); }
+  .score-bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin: 4px 0; }
+  .score-fill { height: 100%; border-radius: 4px; }
+  .score-pass { background: var(--accent); }
+  .score-warn { background: var(--warn); }
+  .score-fail { background: var(--danger); }
   @media print {
     body { max-width: 100%; padding: 12px; }
     .diagram { background: #fff; color: #000; border: 1px solid #000; }
@@ -121,15 +135,24 @@
 
 <h1>Lumi 项目部署计划</h1>
 <p style="color: var(--text-muted); font-size: 1.1em; margin-bottom: 4px;">
-  RISC-V 处理器 AI 驱动开发 — Cowork 平台适配版
+  RISC-V 处理器 AI 驱动开发 — Qoder 平台适配版
 </p>
 <p style="color: var(--text-muted); font-size: .9em;">
-  文档版本: v2.1 (Cowork 适配) &nbsp;|&nbsp; 生成日期: 2026-06-10 &nbsp;|&nbsp;
-  基于: v1.0 理想架构版 → v2.0 适配 → v2.1 模型修正 &nbsp;|&nbsp; 状态: <span class="badge badge-yellow">待评审</span>
+  文档版本: v3.0 (Qoder 适配 + 架构优化) &nbsp;|&nbsp; 更新日期: 2026-06-15 &nbsp;|&nbsp;
+  演进: v1.0 理想架构 → v2.1 Cowork 双引擎 → <strong>v3.0 Qoder 适配</strong> &nbsp;|&nbsp; 状态: <span class="badge badge-green">已评审</span>
 </p>
 
 <div class="highlight-info">
-<strong>v2.1 变更说明：</strong>v1.0 设计了六个独立长驻 Agent 并行协作的理想架构。经评估，Cowork 平台当前不支持持久 Agent 身份、Agent 间直接通信、角色内存隔离，且子 Agent 派生功能（Agent 工具）在当前环境中不可用。v2.1 采用<strong>纯角色切换 + 双引擎执行</strong>模式：复杂推理任务由 Cowork 主会话（当前默认模型）以角色切换方式串行执行，简单可控任务委派给 <code>qodercli --yolo</code>（轻量模型）并行执行。文件系统持久化状态和角色间通信。
+<strong>v3.0 变更总览（相对 v2.1）：</strong>
+<ol style="margin: 8px 0 0 20px; line-height: 2;">
+  <li><strong>角色合并</strong>：6 角色精简为 4 个（hw-arch + sw-arch → hw-design；pm + ai-infra → pm-infra）</li>
+  <li><strong>规则精简</strong>：34 条 → 26 条有效规则，移除无约束力的备忘条目</li>
+  <li><strong>分层加载</strong>：role-prompt 仅含角色专属规则，通用规则由 AGENTS.md 统一注入</li>
+  <li><strong>通信机制</strong>：inbox → 变更通知（change-notices），保留留痕、简化流程</li>
+  <li><strong>合规重设计</strong>：三级检查体系（实时 / 定时 / 里程碑）+ 合规评分模型</li>
+  <li><strong>知识库淘汰</strong>：引入 LRU 淘汰机制，取代硬性 256 条上限</li>
+  <li><strong>平台迁移</strong>：CLAUDE.md → AGENTS.md，qodercli → Task 子代理</li>
+</ol>
 </div>
 
 <!-- ══════════════════════════ TOC ══════════════════════════ -->
@@ -137,59 +160,46 @@
 <h2>目录</h2>
 <ol>
   <li><a href="#sec1">执行摘要</a></li>
-  <li><a href="#sec2">Cowork 平台能力与约束</a>
+  <li><a href="#sec2">Qoder 平台能力与约束</a>
     <ol>
       <li><a href="#sec2-1">平台能力清单</a></li>
-      <li><a href="#sec2-2">关键约束与 v1.0 差异</a></li>
-      <li><a href="#sec2-3">适配策略总览</a></li>
+      <li><a href="#sec2-2">v2.1 → v3.0 差异与适配</a></li>
     </ol>
   </li>
   <li><a href="#sec3">项目目录结构</a></li>
-  <li><a href="#sec4">Agent 架构（Cowork 双引擎）</a>
+  <li><a href="#sec4">Agent 架构（主调度 + 子代理）</a>
     <ol>
-      <li><a href="#sec4-1">双引擎执行模型</a></li>
-      <li><a href="#sec4-2">角色上下文切换机制</a></li>
-      <li><a href="#sec4-3">qodercli 委派协议</a></li>
-      <li><a href="#sec4-4">文件系统状态持久化</a></li>
-      <li><a href="#sec4-5">角色间协作：文件信箱</a></li>
-      <li><a href="#sec4-6">QA 审计的独立性保障</a></li>
-      <li><a href="#sec4-7">模型分层调用策略</a></li>
+      <li><a href="#sec4-1">执行模型：主调度 + Task 子代理</a></li>
+      <li><a href="#sec4-2">角色上下文注入协议</a></li>
+      <li><a href="#sec4-3">任务路由与分派</a></li>
+      <li><a href="#sec4-4">变更通知机制（替代 inbox）</a></li>
+      <li><a href="#sec4-5">QA 审计独立性保障</a></li>
     </ol>
   </li>
   <li><a href="#sec5">规则管理系统</a>
     <ol>
-      <li><a href="#sec5-1">规则文件格式与元数据</a></li>
-      <li><a href="#sec5-2">角色-规则映射矩阵</a></li>
-      <li><a href="#sec5-3">规则扩展体系</a></li>
-      <li><a href="#sec5-4">动态规则更新与同步</a></li>
+      <li><a href="#sec5-1">规则精简：34 → 26</a></li>
+      <li><a href="#sec5-2">角色-规则映射（4 角色）</a></li>
+      <li><a href="#sec5-3">分层加载策略</a></li>
     </ol>
   </li>
-  <li><a href="#sec6">规则执行引擎</a>
+  <li><a href="#sec6">合规检查体系（重设计）</a>
     <ol>
-      <li><a href="#sec6-1">任务级规则检查流程</a></li>
-      <li><a href="#sec6-2">里程碑门禁机制</a></li>
-      <li><a href="#sec6-3">自动化合规验证脚本</a></li>
+      <li><a href="#sec6-1">三级检查机制</a></li>
+      <li><a href="#sec6-2">合规评分模型</a></li>
+      <li><a href="#sec6-3">定时任务编排</a></li>
+      <li><a href="#sec6-4">里程碑门禁流程</a></li>
     </ol>
   </li>
-  <li><a href="#sec7">上下文感知的分工机制</a>
-    <ol>
-      <li><a href="#sec7-1">CLAUDE.md 与角色提示词分层</a></li>
-      <li><a href="#sec7-2">角色权限与规则访问控制</a></li>
-      <li><a href="#sec7-3">任务路由与分派</a></li>
-    </ol>
-  </li>
+  <li><a href="#sec7">知识库建设（含淘汰机制）</a></li>
   <li><a href="#sec8">监控与可追溯性</a>
     <ol>
-      <li><a href="#sec8-1">决策留痕与指令记录</a></li>
-      <li><a href="#sec8-2">合规性仪表盘</a></li>
-      <li><a href="#sec8-3">定时任务自动化</a></li>
+      <li><a href="#sec8-1">指令记录与决策留痕</a></li>
+      <li><a href="#sec8-2">Token/Credit 成本管理</a></li>
     </ol>
   </li>
-  <li><a href="#sec9">版本管理与 GitHub 工作流</a></li>
-  <li><a href="#sec10">知识库建设</a></li>
-  <li><a href="#sec11">分阶段部署步骤</a></li>
-  <li><a href="#sec12">规则覆盖率矩阵</a></li>
-  <li><a href="#sec13">风险与缓解</a></li>
+  <li><a href="#sec9">分阶段部署步骤</a></li>
+  <li><a href="#sec10">风险与缓解</a></li>
 </ol>
 </nav>
 
@@ -198,179 +208,148 @@
 <h2 id="sec1">一、执行摘要</h2>
 
 <div class="card card-primary">
-<p>本计划为 Lumi 项目在 <strong>Cowork 平台</strong>上建立一套<strong>规则驱动、角色切换、自动化合规</strong>的开发治理体系。核心架构是<strong>双引擎模式</strong>：Cowork 主会话（当前默认模型）作为主引擎，通过读取角色上下文文件实现「角色切换」，负责所有复杂推理任务；<code>qodercli --yolo</code> 作为轻量引擎，负责格式检查、文件整理、日志汇总等简单可控任务。文件系统实现「状态持久化」和「角色间通信」。所有 29 条规则被编码为结构化 YAML 数据，通过 CLAUDE.md 指令、合规脚本和 CI 管道三重机制确保执行。</p>
+<p>本计划为 Lumi 项目在 <strong>QoderWork</strong> 平台上建立一套<strong>规则驱动、子代理调度、三级合规</strong>的开发治理体系。核心架构是<strong>主调度 + Task 子代理</strong>模式：QoderWork 主会话通过 AGENTS.md 加载通用规则和任务路由，根据任务类型调度 Task 子代理注入角色专属上下文执行工作。文件系统持久化状态和跨角色变更通知。26 条有效规则编码为结构化 YAML，通过实时检查、定时扫描、里程碑门禁三重机制确保执行。</p>
 </div>
 
-<div class="grid-3">
+<div class="grid-4">
   <div class="card card-accent">
-    <strong>双引擎架构</strong><br>
-    <span style="color: var(--text-muted);">Cowork 主会话 + qodercli 轻量委派</span>
+    <strong>4 个角色</strong><br>
+    <span style="color: var(--text-muted); font-size:.9em;">PM-Infra / HW-Design / HW-Ver / QA-Audit</span>
   </div>
   <div class="card card-accent">
-    <strong>6 个角色上下文</strong><br>
-    <span style="color: var(--text-muted);">PM / HW-Arch / HW-Ver / SW-Arch / AI-Infra / QA-Audit</span>
+    <strong>26 条规则</strong><br>
+    <span style="color: var(--text-muted); font-size:.9em;">10 critical / 9 high / 5 medium / 2 low</span>
   </div>
   <div class="card card-accent">
-    <strong>29 条规则 · 3 层检查</strong><br>
-    <span style="color: var(--text-muted);">任务级 / 日构建级 / 里程碑级</span>
+    <strong>3 级合规</strong><br>
+    <span style="color: var(--text-muted); font-size:.9em;">实时 / 定时 / 里程碑门禁</span>
+  </div>
+  <div class="card card-accent">
+    <strong>分层加载</strong><br>
+    <span style="color: var(--text-muted); font-size:.9em;">通用规则 AGENTS.md + 角色专属按需注入</span>
   </div>
 </div>
 
 <!-- ══════════════════════════ §2 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec2">二、Cowork 平台能力与约束</h2>
+<h2 id="sec2">二、Qoder 平台能力与约束</h2>
 
 <h3 id="sec2-1">2.1 平台能力清单</h3>
 
 <table>
-<tr><th>能力</th><th>Cowork 实现</th><th>对 Lumi 的价值</th></tr>
-<tr><td>qodercli 委派</td><td><code>qodercli --yolo</code> 可在主机 Shell 中执行简单可控任务，使用轻量模型</td><td>格式检查、文件整理、日志汇总等常规操作</td></tr>
-<tr><td>CLAUDE.md 上下文</td><td>项目目录下的 CLAUDE.md 自动加载到每次会话中</td><td>顶层规则和通用行为约束自动注入</td></tr>
-<tr><td>持久记忆</td><td>文件系统 memory/ 目录，跨会话保留</td><td>项目状态、用户偏好、经验教训跨会话延续</td></tr>
-<tr><td>文件读写</td><td>Read / Write / Edit 工具，可操作项目目录下所有文件</td><td>角色上下文、规则文件、审计日志的读写</td></tr>
-<tr><td>Shell 执行</td><td>Bash 工具可执行脚本和命令</td><td>运行合规检查脚本、回归测试、git 操作</td></tr>
-<tr><td>定时任务</td><td>Scheduled Tasks 可设置定时或一次性自动执行</td><td>每日合规扫描、回归测试、文档时效检查</td></tr>
-<tr><td>双引擎分层</td><td>Cowork 主会话（默认模型）+ qodercli（轻量模型）</td><td>分层调用：推理决策用主会话，常规操作用 qodercli</td></tr>
+<tr><th>能力</th><th>Qoder 实现</th><th>对 Lumi 的价值</th></tr>
+<tr><td>AGENTS.md</td><td>项目目录下的 AGENTS.md 每次会话自动加载</td><td>顶层指令、通用规则、任务路由自动注入</td></tr>
+<tr><td>Task 子代理</td><td>可并行/独立的子任务代理，天然上下文隔离</td><td>角色执行隔离、QA 审计独立性</td></tr>
+<tr><td>定时任务 (cron)</td><td>支持一次性、周期、cron 表达式定时执行</td><td>每日合规扫描、HD-2 预警、知识库巡检</td></tr>
+<tr><td>持久记忆</td><td>MEMORY.md（自动加载）+ memory/*.md（按需召回）</td><td>跨会话知识、经验教训、项目状态</td></tr>
+<tr><td>文件操作</td><td>Read / Write / Edit / Glob / Grep 工具</td><td>规则文件、审计日志、变更通知读写</td></tr>
+<tr><td>Bash 执行</td><td>可执行任意脚本和命令</td><td>合规脚本、回归测试、git 操作</td></tr>
+<tr><td>Skills 技能库</td><td>可复用最佳实践流程封装</td><td>合规检查、角色切换等重复流程 Skill 化</td></tr>
+<tr><td>Credit 计费</td><td>跨平台共享 credit 用量可查</td><td>成本监控（替代 Token 预算跟踪）</td></tr>
 </table>
 
-<h3 id="sec2-2">2.2 关键约束与 v1.0 差异</h3>
+<h3 id="sec2-2">2.2 v2.1 → v3.0 差异与适配</h3>
 
 <table class="vs-table">
-<tr><th>维度</th><th>v1.0 理想设计</th><th>Cowork 实际能力</th><th>适配方案</th></tr>
+<tr><th>维度</th><th>v2.1 (Cowork)</th><th>v3.0 (Qoder)</th><th>变化原因</th></tr>
 <tr>
-  <td>Agent 持久性</td>
-  <td>6 个长驻 Agent，各自维持状态</td>
-  <td>子 Agent 是无状态的一次性实例，执行完即销毁</td>
-  <td>用文件系统持久化角色状态，每次派生时注入</td>
+  <td>顶层指令</td>
+  <td>CLAUDE.md</td>
+  <td>AGENTS.md</td>
+  <td>Qoder 原生支持 AGENTS.md 自动加载</td>
 </tr>
 <tr>
-  <td>Agent 间通信</td>
-  <td>Agent 之间直接发送结构化消息</td>
-  <td>子 Agent 之间无法直接通信，只能通过主会话中转</td>
-  <td>文件信箱机制：写入 agents/{role}/inbox/，主会话中转</td>
+  <td>执行引擎</td>
+  <td>Cowork 主会话 + qodercli --yolo</td>
+  <td>Qoder 主会话 + Task 子代理</td>
+  <td>qodercli 不可用，Task 子代理提供同等隔离</td>
 </tr>
 <tr>
-  <td>角色隔离</td>
-  <td>每个 Agent 独立的文件权限和内存空间</td>
-  <td>所有 Agent 共享同一文件系统，无沙箱隔离</td>
-  <td>CLAUDE.md 软约束 + CODEOWNERS 硬约束（PR 层面）</td>
+  <td>角色数量</td>
+  <td>6 个角色</td>
+  <td>4 个角色</td>
+  <td>减少上下文切换开销，合并职能相近角色</td>
 </tr>
 <tr>
-  <td>并行协作</td>
-  <td>6 个 Agent 同时在线，实时协作</td>
-  <td>子 Agent 派生不可用；qodercli 可后台并行执行简单任务</td>
-  <td>复杂任务串行角色切换；简单可控任务委派 qodercli 并行</td>
+  <td>角色提示词</td>
+  <td>role-prompt.md 含全部规则（5-11 KB）</td>
+  <td>role-prompt.md 仅含专属规则（1-3 KB）</td>
+  <td>通用规则已在 AGENTS.md 中加载，避免重复</td>
 </tr>
 <tr>
-  <td>记忆隔离</td>
-  <td>每个 Agent 独立的 context 目录</td>
-  <td>单一共享 memory 系统</td>
-  <td>memory 文件按角色前缀分类 + agents/{role}/context/ 文件</td>
+  <td>跨角色通信</td>
+  <td>inbox 消息队列</td>
+  <td>change-notices 变更通知</td>
+  <td>保留留痕追溯，简化队列机制</td>
 </tr>
 <tr>
-  <td>QA 独立性</td>
-  <td>QA-Audit 作为独立 Agent 运行</td>
-  <td>所有角色由同一主会话执行，QA 可能有偏见</td>
-  <td>QA 审计通过 qodercli 独立执行 + 标准化检查脚本 + 人类最终确认</td>
+  <td>合规检查</td>
+  <td>单脚本 check_compliance.py</td>
+  <td>三级体系 + 合规评分</td>
+  <td>覆盖更完整，有量化评分和自动化定时</td>
+</tr>
+<tr>
+  <td>知识库</td>
+  <td>硬性 256 条上限</td>
+  <td>LRU 淘汰 + 归档</td>
+  <td>动态管理，不丢失有价值的知识</td>
 </tr>
 </table>
-
-<h3 id="sec2-3">2.3 适配策略总览</h3>
-
-<div class="diagram">
-  v1.0 理想架构                              v2.1 Cowork 双引擎架构
-  ══════════════                              ══════════════════════
-
-  ┌─────┐ ┌─────┐ ┌─────┐                   ┌──────────────────────────────────────┐
-  │ PM  │ │HW-A │ │HW-V │                   │  引擎 1: Cowork 主会话 (默认模型)     │
-  │Agent│ │Agent│ │Agent│                   │  ┌──────────────────────────────┐    │
-  └──┬──┘ └──┬──┘ └──┬──┘                   │  │ 角色上下文切换                │    │
-     │       │       │                       │  │ PM ↔ HW-Arch ↔ HW-Ver       │    │
-  ┌──┴──┐ ┌──┴──┐    │                       │  │ ↔ SW-Arch ↔ AI-Infra        │    │
-  │SW-A │ │AI-I │    │                       │  └──────────────────────────────┘    │
-  │Agent│ │Agent│    │                       │  职责: 架构设计、详细设计、方案选型、 │
-  └──┬──┘ └──┬──┘    │                       │       验证策略、里程碑判定           │
-     │       │       │                       └───────────────┬──────────────────────┘
-     └───────┴───────┘                                       │ 委派简单任务
-     相互直接通信                                             ▼
-                                              ┌──────────────────────────────────────┐
-  ┌─────┐                                    │  引擎 2: qodercli --yolo (轻量模型)   │
-  │ QA  │ 独立运行                            │  · 格式检查、文件整理、日志汇总       │
-  │Audit│                                    │  · QA 审计的自动化脚本执行            │
-  └─────┘                                    │  · 合规扫描、inbox 消息分拣           │
-                                              │  · 可后台并行执行多个简单任务         │
-                                              └──────────────────────────────────────┘
-
-  持久状态: 各 Agent 内存                     持久状态: 文件系统
-  通信: 直接消息传递                          通信: 文件信箱 + 主会话编排
-  隔离: 独立运行环境                          隔离: CLAUDE.md 软约束 + qodercli 进程隔离
-</div>
 
 <!-- ══════════════════════════ §3 ══════════════════════════ -->
 <hr class="section-divider">
 <h2 id="sec3">三、项目目录结构</h2>
 
-<p>目录结构在 v1.0 基础上调整：<code>agents/</code> 目录不再承载独立 Agent 实例，而是作为<strong>角色上下文存储</strong>。新增 <code>inbox/</code> 子目录用于文件信箱通信。</p>
+<p>v3.0 目录结构的主要变化：角色从 6 个缩减为 4 个，<code>inbox/</code> 替换为 <code>change-notices/</code>，新增 <code>knowledge/archive/</code> 用于知识库淘汰归档。</p>
 
-<pre><code>FullAIFlowProjects/Lumi-core/
-├── CLAUDE.md                         # 项目顶层指令（每次 Cowork 会话自动加载）
+<pre><code>Lumi-core/
+├── AGENTS.md                          # 项目顶层指令（Qoder 每次会话自动加载）
+│                                      # 含：通用规则、任务路由、子代理调度协议
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci-regress.yml            # 持续集成：回归测试 (规则 11)
-│   │   ├── compliance-check.yml      # 合规性自动检查 (规则 10)
-│   │   └── milestone-gate.yml        # 里程碑门禁 (规则 10)
-│   └── CODEOWNERS                    # 角色-目录权限映射
+│   │   ├── ci-regress.yml             # 持续集成：回归测试 (规则 11)
+│   │   ├── compliance-check.yml       # 合规性自动检查
+│   │   └── milestone-gate.yml         # 里程碑门禁 (规则 10)
+│   └── CODEOWNERS
 │
-├── rules/                            # 规则管理系统（与 v1.0 相同）
-│   ├── schema.yaml                   # 规则元数据 schema 定义
-│   ├── top-rules.yaml                # 通用规则（17 条，结构化）
+├── rules/                             # 规则管理系统
+│   ├── schema.yaml                    # 规则元数据 schema
+│   ├── top-rules.yaml                 # 通用规则（精简后）
 │   ├── sub-rules/
-│   │   ├── hardware-design.yaml      # HD-1 ~ HD-4
-│   │   ├── hardware-verify.yaml      # HV-1 ~ HV-2
-│   │   ├── it-infra.yaml             # IT-1 ~ IT-3
-│   │   └── qa-audit.yaml             # QA-1
-│   ├── business-rules.yaml           # B-1 ~ B-7
-│   ├── role-mapping.yaml             # 角色 → 可见规则映射
-│   ├── changelog.md                  # 规则变更日志
+│   │   ├── hardware-design.yaml       # HD-1 ~ HD-4
+│   │   ├── hardware-verify.yaml       # HV-1 ~ HV-2
+│   │   └── qa-audit.yaml              # QA-1
+│   ├── role-mapping.yaml              # 角色 → 规则映射（4 角色）
+│   ├── changelog.md                   # 规则变更日志
 │   └── scripts/
-│       ├── validate_rules.py         # 规则格式校验
-│       ├── check_compliance.py       # 合规性检查引擎
-│       ├── generate_report.py        # 合规报告生成器
-│       └── role_prompt_builder.py    # [新] 根据角色生成完整提示词
+│       ├── validate_rules.py          # 规则格式校验
+│       ├── check_compliance.py        # [重写] 三级合规检查引擎
+│       ├── generate_report.py         # 合规报告生成器（HTML + 评分）
+│       └── role_prompt_builder.py     # [改] 分层角色提示词生成器
 │
-├── agents/                           # [改] 角色上下文存储（非独立 Agent）
-│   ├── pm/
-│   │   ├── role-prompt.md            # [改] PM 角色提示词（角色切换时加载）
-│   │   ├── context/                  # PM 角色持久化状态
-│   │   │   └── current-state.yaml    # 当前任务、进度、待决事项
-│   │   └── inbox/                    # [新] 接收其他角色的消息
-│   ├── hw-arch/
+├── agents/                            # 角色上下文（4 个角色）
+│   ├── pm-infra/                      # [合并] 项目管理 + AI 基础设施
+│   │   ├── role-prompt.md             # 仅含角色专属规则
+│   │   ├── context/
+│   │   │   └── current-state.yaml
+│   │   └── change-notices/            # [改] 变更通知（替代 inbox）
+│   ├── hw-design/                     # [合并] 硬件架构 + 软件架构
 │   │   ├── role-prompt.md
 │   │   ├── context/
 │   │   │   └── current-state.yaml
-│   │   └── inbox/
-│   ├── hw-ver/
+│   │   └── change-notices/
+│   ├── hw-ver/                        # [保留] 硬件验证
 │   │   ├── role-prompt.md
 │   │   ├── context/
 │   │   │   └── current-state.yaml
-│   │   └── inbox/
-│   ├── sw-arch/
-│   │   ├── role-prompt.md
-│   │   ├── context/
-│   │   │   └── current-state.yaml
-│   │   └── inbox/
-│   ├── ai-infra/
-│   │   ├── role-prompt.md
-│   │   ├── context/
-│   │   │   └── current-state.yaml
-│   │   └── inbox/
-│   └── qa-audit/
+│   │   └── change-notices/
+│   └── qa-audit/                      # [保留] QA 审计
 │       ├── role-prompt.md
 │       ├── context/
 │       │   └── current-state.yaml
-│       └── inbox/
+│       └── change-notices/
 │
-├── docs/                             # 文档体系（与 v1.0 相同）
+├── docs/
 │   ├── index.html
 │   ├── architecture/
 │   ├── design/
@@ -378,7 +357,8 @@
 │   ├── software/
 │   ├── project/
 │   │   ├── master-plan.html
-│   │   └── milestones/
+│   │   ├── milestones/
+│   │   └── notes/                     # [新] 备忘（从规则中剥离的内容）
 │   └── standards/
 │       ├── riscv-profile.html
 │       └── riscv-specs/
@@ -390,913 +370,590 @@
 ├── perf/
 │   ├── gem5-model/
 │   └── benchmarks/
-│       └── coremark/
 │
-├── knowledge/                        # 知识库（与 v1.0 相同）
+├── knowledge/
+│   ├── index.yaml                     # [改] 含 last_referenced 字段
 │   ├── lessons-learned/
 │   ├── design-decisions/
-│   └── index.yaml
+│   └── archive/                       # [新] 淘汰归档目录
+│       └── index.yaml                 # 归档条目索引
 │
-├── audit/                            # 审计日志（与 v1.0 相同）
-│   ├── decision-log/
-│   ├── compliance-reports/
-│   ├── instruction-log/
-│   └── risk-register.yaml
+├── audit/
+│   ├── instruction-log/               # 每日操作日志
+│   ├── compliance-reports/            # 合规报告（含评分）
+│   ├── risk-register.yaml             # 风险登记簿
+│   └── decision-log/                  # 决策记录
 │
 └── infra/
     ├── monitoring/
-    │   ├── dashboard.html
     │   └── metrics.yaml
-    └── token-budget/
+    └── credit-budget/                 # [改] Token → Credit
         └── tracker.py
 </code></pre>
 
 <!-- ══════════════════════════ §4 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec4">四、Agent 架构（Cowork 双引擎）</h2>
+<h2 id="sec4">四、Agent 架构（主调度 + 子代理）</h2>
 
-<h3 id="sec4-1">4.1 双引擎执行模型</h3>
+<h3 id="sec4-1">4.1 执行模型：主调度 + Task 子代理</h3>
 
-<p>Cowork 适配架构的核心是<strong>双引擎分工</strong>：Cowork 主会话（默认模型）处理所有需要推理的复杂任务，<code>qodercli --yolo</code>（轻量模型）处理简单可控的常规操作。</p>
+<p>v3.0 的核心架构变化是用 Qoder 的 <strong>Task 子代理</strong>替代 Claude 的"角色切换 + qodercli"双引擎。主会话充当调度中心，子代理负责具体的角色执行。</p>
 
 <div class="diagram">
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         Cowork 双引擎架构                               │
+│                     Qoder 主调度 + 子代理架构                          │
 │                                                                         │
 │  用户指令 ─▶ ┌──────────────────────────────────────┐                  │
-│              │  任务路由器 (CLAUDE.md)                │                  │
-│              │  · 识别任务所属角色                    │                  │
-│              │  · 判断任务复杂度                      │                  │
-│              │  · 选择执行引擎                        │                  │
-│              └──────┬───────────────┬────────────────┘                  │
-│                     │               │                                    │
-│          ┌──────────▼────────┐ ┌────▼─────────────────────┐            │
-│          │  引擎 A: 主会话    │ │  引擎 B: qodercli --yolo  │            │
-│          │  (默认模型)        │ │  (轻量模型, 主机 Shell)    │            │
-│          │                    │ │                            │            │
-│          │  · 角色切换执行    │ │  · 格式检查/lint           │            │
-│          │  · 架构设计/评审   │ │  · 文件整理/重命名         │            │
-│          │  · RTL 编码        │ │  · 日志汇总/inbox 分拣     │            │
-│          │  · 验证策略制定    │ │  · 合规脚本批量运行        │            │
-│          │  · 方案选型/决策   │ │  · git 状态检查            │            │
-│          │  · 里程碑 Sign-off │ │  · 文档格式转换            │            │
-│          │  · Bug 分析与修复  │ │  · QA 自动化检查清单       │            │
-│          │                    │ │                            │            │
-│          │  适用: 需要推理、   │ │  适用: 规则明确、           │            │
-│          │  多轮交互、判断    │ │  输入输出确定、可脚本化    │            │
-│          └──────────┬────────┘ └────┬─────────────────────┘            │
-│                     │               │                                    │
-│                     └───────┬───────┘                                    │
-│                             ▼                                            │
-│              ┌──────────────────────────────┐                           │
-│              │  结果处理 (主会话负责)         │                           │
-│              │  · 更新角色 context/ 状态文件  │                           │
-│              │  · 写入 audit/instruction-log/ │                           │
-│              │  · 投递消息到目标角色 inbox/   │                           │
-│              │  · 向用户报告结果              │                           │
-│              └──────────────────────────────┘                           │
+│              │  AGENTS.md (自动加载)                  │                  │
+│              │  · 通用规则（所有角色共享）             │                  │
+│              │  · 任务路由表                         │                  │
+│              │  · 子代理调度协议                     │                  │
+│              └──────┬───────────────────────────────┘                  │
+│                     │                                                    │
+│          ┌──────────▼─────────────────────────────────┐                │
+│          │  主会话：调度 + 协调                        │                │
+│          │  · 解析任务 → 确定目标角色                 │                │
+│          │  · Pre-Check: 读取 current-state.yaml      │                │
+│          │  · 调度 Task 子代理                        │                │
+│          │  · Post-Verify: 更新状态、写审计日志       │                │
+│          │  · 汇总多角色产出                          │                │
+│          └──┬────────┬────────┬────────┬─────────────┘                │
+│             │        │        │        │                                │
+│  ┌──────────▼──┐ ┌───▼────┐ ┌▼──────┐ ┌▼─────────┐                   │
+│  │ PM-Infra    │ │HW-Des  │ │HW-Ver │ │ QA-Audit │                   │
+│  │ 子代理      │ │子代理  │ │子代理 │ │ 子代理   │                   │
+│  │             │ │        │ │       │ │ (独立上下 │                   │
+│  │ 角色专属    │ │角色专属│ │角色专属│ │  文隔离) │                   │
+│  │ 规则+权限   │ │规则+权限│ │规则+权限│ │          │                   │
+│  └─────────────┘ └────────┘ └───────┘ └──────────┘                   │
+│                                                                         │
+│  持久状态: 文件系统 (agents/*/context/ + audit/)                        │
+│  通信: change-notices/ (结构化变更通知)                                  │
+│  隔离: Task 子代理天然上下文隔离                                        │
 └─────────────────────────────────────────────────────────────────────────┘
 </div>
 
-<h4>引擎选择决策表</h4>
+<h3 id="sec4-2">4.2 角色上下文注入协议</h3>
+
+<p>当用户下达任务时，主会话执行以下协议：</p>
+
+<div class="card card-primary">
+<h4>Step 1: 任务路由</h4>
+<p>根据 AGENTS.md 中的任务路由表，判断目标角色。路由关键词：</p>
 <table>
-<tr><th>场景</th><th>执行引擎</th><th>原因</th></tr>
-<tr><td>用户说「以 HW-Arch 角色做 XXX」</td><td>A: 主会话角色切换</td><td>需要推理和多轮交互</td></tr>
-<tr><td>编写一个模块的详细设计文档</td><td>A: 主会话角色切换</td><td>需要读取多个文件、多步推理、中间确认</td></tr>
-<tr><td>检查所有文档的日期标记是否合规</td><td>B: qodercli</td><td>规则明确、可脚本化、无需推理</td></tr>
-<tr><td>批量整理 inbox 中的消息文件</td><td>B: qodercli</td><td>简单文件操作</td></tr>
-<tr><td>运行合规检查脚本并汇总结果</td><td>B: qodercli</td><td>执行脚本 + 格式化输出</td></tr>
-<tr><td>里程碑门禁检查</td><td>A+B: 串行协作</td><td>主会话做判断和 Sign-off，qodercli 跑自动化脚本</td></tr>
-<tr><td>QA 独立审计</td><td>B: qodercli + 脚本</td><td>基于标准化检查清单执行，进程隔离确保独立性</td></tr>
-<tr><td>HW-Ver 发现 Bug 需要 HW-Arch 修复</td><td>A: 主会话角色切换</td><td>需要推理分析 Bug 根因</td></tr>
+<tr><th>任务关键词</th><th>目标角色</th><th>专属规则</th></tr>
+<tr><td>需求、计划、里程碑、商务、环境、CI/CD、知识库</td><td>pm-infra</td><td>B-1~B-5, IT-1~IT-2</td></tr>
+<tr><td>架构设计、RTL、模块设计、BSP、驱动、RTOS、工具链</td><td>hw-design</td><td>HD-1~HD-3</td></tr>
+<tr><td>验证、测试、FPGA、回归</td><td>hw-ver</td><td>HV-1~HV-2</td></tr>
+<tr><td>审计、Sign-off、合规检查</td><td>qa-audit</td><td>QA-1（全部规则可见）</td></tr>
 </table>
 
-<h3 id="sec4-2">4.2 角色上下文切换机制</h3>
+<h4>Step 2: Pre-Check</h4>
+<ul class="checklist">
+  <li>读取 <code>agents/{role}/context/current-state.yaml</code></li>
+  <li>检查 <code>agents/{role}/change-notices/</code> 中未处理通知</li>
+  <li>hw-design 专属：检查 HD-2 时间预警（active_tasks 中 started 距今 ≤ 2 天）</li>
+  <li>hw-ver 专属：检查是否有来自 hw-design 的设计变更通知 (HV-1)</li>
+</ul>
 
-<p>当主会话以某个角色工作时，需要加载该角色的完整上下文。以下是 CLAUDE.md 中定义的切换流程：</p>
+<h4>Step 3: 子代理调度</h4>
+<p>使用 Task 子代理，prompt 中注入：</p>
+<pre><code>1. 角色身份声明和职责范围
+2. role-prompt.md 中的角色专属规则（不含通用规则）
+3. 文件权限约束（可读/可写路径）
+4. Pre-Check 结果（当前状态、未处理通知摘要）
+5. 具体任务描述</code></pre>
 
-<pre><code># Lumi-core/CLAUDE.md 中的角色切换指令
-
-## 角色切换协议
-
-当用户要求以某个角色工作，或者任务明确属于某个角色时，执行：
-
-1. 读取 agents/{role}/role-prompt.md 获取该角色的规则绑定和行为约束
-2. 读取 agents/{role}/context/current-state.yaml 获取该角色的当前状态
-3. 读取 agents/{role}/inbox/ 目录下的所有未处理消息
-4. 在执行任务前，按照 role-prompt.md 中的 Pre-Check 流程检查前置条件
-5. 执行任务
-6. 任务完成后，更新 agents/{role}/context/current-state.yaml
-7. 如果任务产出需要通知其他角色，写入目标角色的 inbox/ 目录
-8. 写入 audit/instruction-log/YYYY-MM-DD.yaml
-
-## 可用角色
-| 角色标识 | 显示名称 | 提示词文件 |
-|---------|---------|-----------|
-| pm | 项目经理 | agents/pm/role-prompt.md |
-| hw-arch | 硬件架构 | agents/hw-arch/role-prompt.md |
-| hw-ver | 硬件验证 | agents/hw-ver/role-prompt.md |
-| sw-arch | 软件架构 | agents/sw-arch/role-prompt.md |
-| ai-infra | AI 基础设施 | agents/ai-infra/role-prompt.md |
-| qa-audit | QA 审计 | agents/qa-audit/role-prompt.md |
-</code></pre>
-
-<h4>角色状态文件示例</h4>
-<pre><code># agents/hw-arch/context/current-state.yaml
-
-role: hw-arch
-last_active: "2026-06-10T16:30:00+08:00"
-current_milestone: "M1-RTL-Design"
-
-active_tasks:
-  - id: "LUMI-042"
-    title: "CSR 模块详细设计"
-    status: in_progress
-    started: "2026-06-10"
-    hd2_deadline: "2026-06-12"   # HD-2: 两天期限预警
-    rules_applicable: ["08", "07", "HD-1", "HD-2"]
-
-pending_decisions: []
-
-unread_inbox: 1                  # inbox/ 中有未处理消息
-
-recent_lessons:                  # 最近记录的教训 (HD-3)
-  - "LL-003: AHB burst wrap 计算需要考虑 unaligned 起始地址"
-</code></pre>
-
-<h3 id="sec4-3">4.3 qodercli 委派协议</h3>
-
-<p>简单可控的常规任务通过 <code>qodercli --yolo</code> 在主机 Shell 中执行。qodercli 使用其默认轻量模型，运行在独立进程中，与 Cowork 主会话天然隔离。</p>
-
-<div class="highlight">
-<strong>委派原则（已有实践规则）：</strong>简单可控任务走 <code>qodercli --yolo</code>，复杂推理任务自己做。判断标准是「任务的输入输出是否确定」和「是否需要多步推理或人类确认」。
+<h4>Step 4: Post-Verify</h4>
+<ul class="checklist">
+  <li>更新 <code>agents/{role}/context/current-state.yaml</code></li>
+  <li>追加到 <code>audit/instruction-log/YYYY-MM-DD.yaml</code></li>
+  <li>如有跨角色影响，写入目标角色的 <code>change-notices/</code></li>
+  <li>hw-design 专属：失败思路写入 <code>knowledge/lessons-learned/</code> (HD-3)</li>
+</ul>
 </div>
 
-<h4>qodercli 委派示例</h4>
-<pre><code># 示例 1: 批量检查文档日期标记（规则 03）
-# 主会话通过 host_bash 工具委派给 qodercli
-qodercli --yolo -p "检查 docs/ 目录下所有 .html 文件是否包含 2026 年的日期标记，
-列出缺少日期标记的文件。只输出文件列表，不做修改。" \
---cwd /path/to/Lumi-core
+<h3 id="sec4-3">4.3 任务路由与分派</h3>
 
-# 示例 2: 汇总 inbox 未读消息
-qodercli --yolo -p "读取 agents/*/inbox/ 目录下所有 status: unread 的 yaml 文件，
-按角色分组汇总消息数量和优先级，输出为简洁表格。" \
---cwd /path/to/Lumi-core
+<p>以下场景使用<strong>主会话直接执行</strong>（无需子代理）：</p>
+<ul>
+  <li>跨角色的综合分析和决策</li>
+  <li>需要多轮人类确认的方案选型</li>
+  <li>简单查询和状态检查</li>
+</ul>
 
-# 示例 3: 运行合规检查脚本并格式化输出
-qodercli --yolo -p "运行 python rules/scripts/check_compliance.py，
-将输出格式化为 YAML 写入 audit/compliance-reports/2026-06-10.yaml" \
---cwd /path/to/Lumi-core
+<p>以下场景使用<strong>Task 子代理</strong>：</p>
+<ul>
+  <li>特定角色的专项设计和编码任务</li>
+  <li>验证执行和结果分析</li>
+  <li>QA 审计（强制独立上下文）</li>
+  <li>可并行的多角色任务（如同时检查不同模块的合规性）</li>
+</ul>
 
-# 示例 4: 知识库条目计数（IT-1: ≤256 条）
-qodercli --yolo -p "统计 knowledge/index.yaml 中的条目数量，
-如果超过 240 条则在输出中标记 WARNING。" \
---cwd /path/to/Lumi-core
+<h3 id="sec4-4">4.4 变更通知机制（替代 inbox）</h3>
 
-# 示例 5: git 工作区状态检查（规则 13）
-qodercli --yolo -p "检查 git status，如果有未提交的变更则列出文件清单，
-确认是否有遗漏的 Task-ID 关联。" \
---cwd /path/to/Lumi-core
-</code></pre>
+<p>原 inbox 机制简化为<strong>变更通知</strong>（Change Notice），保留留痕的核心价值，去掉消息队列的复杂性。</p>
 
-<h4>里程碑门禁中的双引擎协作</h4>
-<pre><code># 里程碑 M1 门禁：主会话 + qodercli 串行协作
+<div class="card card-accent">
+<h4>设计原则</h4>
+<ul>
+  <li><strong>只记录跨角色影响</strong>：不是所有操作都发通知，只有影响其他角色工作范围的变更才记录</li>
+  <li><strong>追加不消费</strong>：通知文件只追加新条目，不需要"读取后标记已读"的复杂状态管理</li>
+  <li><strong>可追溯</strong>：每条通知有完整的时间戳、来源、目标、关联规则</li>
+</ul>
 
-# 步骤 1: qodercli 执行自动化检查（轻量模型）
-qodercli --yolo -p "依次运行以下检查脚本并汇总结果：
-1. python rules/scripts/check_doc_completeness.py --milestone M1
-2. python rules/scripts/check_requirement_trace.py --milestone M1
-3. python rules/scripts/check_risk_register.py --no-unresolved
-4. python rules/scripts/check_doc_freshness.py --milestone M1
-将所有结果汇总写入 audit/compliance-reports/M1-auto-check.yaml" \
---cwd /path/to/Lumi-core
+<h4>通知格式</h4>
+<pre><code># agents/{target}/change-notices/YYYY-MM-DD.yaml
+notices:
+  - id: "CN-20260615-001"
+    from: hw-design
+    to: hw-ver
+    type: design-change     # design-change | bug-report | spec-update | review-request
+    priority: high
+    timestamp: "2026-06-15T14:30:00+08:00"
+    subject: "CSR 模块接口变更"
+    summary: "修改了 CSR 地址映射，影响验证用例地址范围"
+    related_rules: ["08", "HV-1"]
+    files_changed:
+      - "src/csr_map.sv"
+      - "docs/design/csr-spec.md"
+    action_required: "更新验证用例中的地址范围"
+    status: pending          # pending | acknowledged | resolved</code></pre>
 
-# 步骤 2: 主会话读取自动检查结果，以各角色串行 Sign-off
-#         （需要推理和判断的部分由主会话完成）
-
-# 步骤 3: qodercli 执行 QA 自动化审计（独立进程，天然隔离）
-qodercli --yolo -p "你是 QA 审计角色。阅读 agents/qa-audit/role-prompt.md 获取审计规则。
-阅读 audit/compliance-reports/M1-auto-check.yaml 获取自动检查结果。
-对照 rules/ 目录中的所有规则，独立验证每条规则的合规状态。
-将审计报告写入 audit/compliance-reports/M1-qa-audit.yaml" \
---cwd /path/to/Lumi-core
-
-# 步骤 4: 主会话读取 QA 审计报告，向人类项目负责人呈报最终结果
-</code></pre>
-
-<h3 id="sec4-4">4.4 文件系统状态持久化</h3>
-
-<div class="highlight">
-<strong>核心原则：</strong>在 Cowork 模式下，文件系统就是状态数据库。qodercli 进程无状态，Cowork 主会话上下文会压缩，但文件系统跨会话持久。所有角色状态、消息、决策都必须写入文件才能在下次会话中恢复。
-</div>
-
+<h4>通知触发条件</h4>
 <table>
-<tr><th>状态类型</th><th>存储位置</th><th>读取时机</th><th>写入时机</th></tr>
-<tr><td>角色当前任务和进度</td><td><code>agents/{role}/context/current-state.yaml</code></td><td>角色切换或 qodercli 委派时</td><td>每次任务完成后</td></tr>
-<tr><td>角色间消息</td><td><code>agents/{role}/inbox/{timestamp}.yaml</code></td><td>角色切换时检查</td><td>需要通知其他角色时</td></tr>
-<tr><td>决策和指令日志</td><td><code>audit/instruction-log/YYYY-MM-DD.yaml</code></td><td>审计或复盘时</td><td>每次操作后 (规则 16)</td></tr>
-<tr><td>风险登记</td><td><code>audit/risk-register.yaml</code></td><td>门禁检查时</td><td>发现问题时 (规则 18)</td></tr>
-<tr><td>经验教训</td><td><code>knowledge/lessons-learned/</code></td><td>类似任务开始前</td><td>设计思路证明不正确时 (HD-3)</td></tr>
-<tr><td>项目级记忆</td><td>Cowork memory/ 目录</td><td>每次会话自动加载 MEMORY.md</td><td>学到跨会话有用的信息时</td></tr>
+<tr><th>场景</th><th>来源角色</th><th>目标角色</th><th>通知类型</th></tr>
+<tr><td>RTL 接口变更</td><td>hw-design</td><td>hw-ver</td><td>design-change</td></tr>
+<tr><td>验证发现 Bug</td><td>hw-ver</td><td>hw-design</td><td>bug-report</td></tr>
+<tr><td>架构说明书更新</td><td>hw-design</td><td>pm-infra, hw-ver</td><td>spec-update</td></tr>
+<tr><td>需求变更</td><td>pm-infra</td><td>hw-design</td><td>spec-update</td></tr>
+<tr><td>里程碑 Sign-off 请求</td><td>任意</td><td>qa-audit</td><td>review-request</td></tr>
 </table>
-
-<h3 id="sec4-5">4.5 角色间协作：文件信箱</h3>
-
-<p>v1.0 中 Agent 间的结构化消息传递，在 Cowork 中通过<strong>文件信箱 (Inbox)</strong> 机制实现。</p>
-
-<pre><code># 消息投递：HW-Ver 发现 Bug，写入 HW-Arch 的 inbox
-# agents/hw-arch/inbox/2026-06-10T14-00-00_bug-report.yaml
-
-type: BugReport
-from: hw-ver
-to: hw-arch
-timestamp: "2026-06-10T14:00:00+08:00"
-priority: critical
-status: unread                   # unread → read → resolved
-content:
-  bug_id: "BUG-007"
-  source: "回归测试 rv32i-add"
-  description: "ADD 指令在 rs1=rs2 时结果错误"
-  evidence: "tb/regression/logs/rv32i-add-fail.log"
-rules_triggered: ["HV-2", "18"]
-action_required: "定位并修复，修复后通知 hw-ver 重跑验证"
-</code></pre>
-
-<h4>信箱处理流程</h4>
-<div class="diagram">
-  HW-Ver 角色工作             文件系统                 HW-Arch 角色工作
-  ┌───────────────┐                                   ┌───────────────┐
-  │ 发现 Bug       │                                   │               │
-  │ (HV-2: 先自查) │                                   │               │
-  └───────┬───────┘                                   │               │
-          │                                            │               │
-          │  写入文件                                   │               │
-          ├──────────▶  agents/hw-arch/inbox/           │               │
-          │             2026-06-10_bug.yaml             │               │
-          │                                            │               │
-          │  同时写入                                   │               │
-          ├──────────▶  audit/instruction-log/          │               │
-          │             (规则 16 留痕)                   │               │
-          │                                            │               │
-          │                    ┌────────────────────┐   │               │
-          │                    │ 下次用户以 hw-arch  │   │               │
-          │                    │ 角色工作时，主会话  │──▶│ 读取 inbox    │
-          │                    │ 自动提示有未读消息  │   │ 处理 Bug      │
-          │                    └────────────────────┘   │ 修复后写入    │
-          │                                            │ hw-ver/inbox  │
-          │  agents/hw-ver/inbox/                       │               │
-          │  2026-06-11_fix-done.yaml  ◀───────────────┤               │
-          │                                            └───────────────┘
-</code></pre>
 </div>
 
-<h3 id="sec4-6">4.6 QA 审计的独立性保障</h3>
+<h3 id="sec4-5">4.5 QA 审计独立性保障</h3>
 
-<div class="highlight-danger">
-<strong>QA-1 规则：</strong>计划、执行过程、结果都必须由第三方 Agent 审计。在单会话架构中，QA 审计由同一个 Cowork 主会话执行，存在「自己审自己」的风险。v2.1 通过 <strong>qodercli 进程隔离 + 标准化检查清单 + 人类最终确认</strong> 三重保障确保审计独立性。
-</div>
-
-<div class="card card-danger">
-<h4>QA 独立性保障措施</h4>
-<div class="step">
-  <div class="step-num">1</div>
-  <div>
-    <strong>进程级上下文隔离</strong> — QA 审计通过 <code>qodercli --yolo</code> 在独立进程中执行。qodercli 进程<strong>不继承</strong>主会话的对话历史和角色执行细节（设计思路、调试过程等），天然实现上下文隔离。QA 只看到文件系统中的产出物（文档、代码、测试结果），不看到产出过程。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">2</div>
-  <div>
-    <strong>标准化检查清单</strong> — QA 审计基于 <code>rules/</code> 中的结构化规则和可量化检查标准（如回归通过率 100%、需求覆盖率 100%），而非主观判断。qodercli 的 prompt 中内嵌完整的检查清单模板，确保审计覆盖面不遗漏。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">3</div>
-  <div>
-    <strong>审计报告可追溯</strong> — qodercli 产出的审计报告存入 <code>audit/compliance-reports/</code>，包含每条规则的检查结果和证据引用，供人类项目负责人复核。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">4</div>
-  <div>
-    <strong>人类最终签署</strong> — QA 审计报告需要人类项目负责人最终确认，作为门禁通过的最后一道关卡。任何审计结论均不自动生效。
-  </div>
-</div>
-</div>
-
-<div class="highlight-info">
-<strong>为什么 qodercli 隔离优于子 Agent 隔离？</strong> 子 Agent 由主会话派生，理论上主会话可以在 prompt 中注入执行上下文。而 qodercli 是独立进程，只能通过文件系统获取输入，物理上无法接触主会话的对话历史——这是比 prompt 级隔离更强的<strong>进程级隔离</strong>。
-</div>
-
-<h3 id="sec4-7">4.7 模型分层调用策略（双引擎）</h3>
-
-<div class="highlight">
-<strong>对应规则 B-7：</strong>用最聪明的模型制定计划，用操作损耗最低的方式完成常规操作。v2.1 采用<strong>双引擎分层</strong>：Cowork 主会话（默认模型）处理需要深度推理的任务，qodercli（其默认模型）处理简单可控任务。
-</div>
-
-<table>
-<tr><th>引擎</th><th>调用方式</th><th>任务层级</th><th>场景示例</th></tr>
-<tr>
-  <td><span class="badge badge-red">Cowork 主会话</span></td>
-  <td>用户直接交互 / 主会话内执行</td>
-  <td>战略决策 + 设计执行</td>
-  <td>架构评审、方案选型、RTL 编码、文档撰写、验证用例编写、Bug 分析、里程碑 Sign-off 判定</td>
-</tr>
-<tr>
-  <td><span class="badge badge-green">qodercli --yolo</span></td>
-  <td><code>qodercli --yolo -p "..." --cwd ...</code></td>
-  <td>常规操作 + QA 审计</td>
-  <td>格式检查、文件整理、日志汇总、inbox 消息分拣、标准化合规审计、回归测试触发</td>
-</tr>
-</table>
-
-<div class="highlight-info">
-<strong>成本优化效果：</strong>qodercli 使用其默认的轻量模型，Token 成本远低于主会话模型。将 50%+ 的常规操作委派给 qodercli，可显著降低 B-2 规则要求的 Token 成本预算压力。
+<p>QA 审计通过 Task 子代理实现<strong>上下文级隔离</strong>：</p>
+<div class="highlight-success">
+<strong>隔离机制：</strong>
+<ul style="margin: 8px 0 0 20px; line-height: 2;">
+  <li>QA 子代理<strong>不继承</strong>主会话的对话历史——看不到设计思路、调试过程等执行细节</li>
+  <li>QA 子代理<strong>只读取</strong>文件系统中的产出物（代码、文档、测试结果、审计报告）</li>
+  <li>通过 <code>contextDirs</code> 参数限定可访问目录范围</li>
+  <li>基于标准化检查清单（rules/ 中的 check_criteria）逐项审计</li>
+  <li>审计报告存入 <code>audit/compliance-reports/</code>，每条规则有检查结果和证据引用</li>
+  <li>最终由人类项目负责人签署确认</li>
+</ul>
 </div>
 
 <!-- ══════════════════════════ §5 ══════════════════════════ -->
 <hr class="section-divider">
 <h2 id="sec5">五、规则管理系统</h2>
 
-<p>规则管理系统的设计与 v1.0 基本一致——它本质上是文件和脚本，不依赖多 Agent 基础设施。以下保留核心设计并标注 Cowork 适配点。</p>
+<h3 id="sec5-1">5.1 规则精简：34 → 26</h3>
 
-<h3 id="sec5-1">5.1 规则文件格式与元数据</h3>
+<p>原 34 条中有 8 条被移除或合并，原因如下：</p>
 
-<p>所有规则存储为结构化 YAML，每条包含 id、title、category、severity、applicable_roles、applicable_phases、description、check_type、check_criteria 等字段。格式与 v1.0 相同，此处不再重复。</p>
-
-<div class="highlight-info">
-<strong>Cowork 适配点：</strong>v1.0 中 <code>sync_agents.py</code> 用于更新各 Agent 的 CLAUDE.md。在 v2.0 中替换为 <code>role_prompt_builder.py</code>：根据 <code>role-mapping.yaml</code> 动态生成每个角色的 <code>role-prompt.md</code>，确保角色提示词始终与最新规则同步。
-</div>
-
-<pre><code>#!/usr/bin/env python3
-"""role_prompt_builder.py — 根据角色映射生成角色提示词文件"""
-
-import yaml
-from pathlib import Path
-
-def build_role_prompt(project_root, role_id):
-    root = Path(project_root)
-
-    # 1. 加载角色映射
-    with open(root / "rules/role-mapping.yaml") as f:
-        mapping = yaml.safe_load(f)
-    role = mapping["roles"][role_id]
-
-    # 2. 加载该角色适用的规则全文
-    applicable_rules = []
-    for rule_file in (root / "rules").glob("**/*.yaml"):
-        if rule_file.name in ("schema.yaml", "role-mapping.yaml"):
-            continue
-        with open(rule_file) as f:
-            data = yaml.safe_load(f)
-        for r in data.get("rules", []):
-            if r["id"] in role["rules"] or "ALL" in role["rules"]:
-                applicable_rules.append(r)
-
-    # 3. 组装提示词
-    prompt = f"# {role['display_name']} — 角色提示词\n\n"
-    prompt += f"## 角色定义\n你正在以 **{role['display_name']}** 角色执行任务。\n\n"
-    prompt += "## 适用规则\n"
-    for r in applicable_rules:
-        prompt += f"### [{r['id']}] {r['title']}\n{r['description']}\n\n"
-    prompt += f"## 文件权限\n"
-    prompt += f"- 可读: {role['permissions']['read']}\n"
-    prompt += f"- 可写: {role['permissions']['write']}\n"
-    # ... Pre-Check / Post-Verify 流程
-
-    # 4. 写入角色提示词文件
-    out = root / f"agents/{role_id}/role-prompt.md"
-    out.write_text(prompt)
-    print(f"已更新 {out}")
-</code></pre>
-
-<h3 id="sec5-2">5.2 角色-规则映射矩阵</h3>
-
-<p>映射矩阵与 v1.0 完全相同。每个角色只看到与自己职责相关的规则子集。</p>
-
+<div class="card card-warn">
+<h4>移除条目（备忘性质，迁移到 docs/project/notes/）</h4>
 <table>
-<tr>
-  <th>规则 ID</th><th>规则简称</th>
-  <th>PM</th><th>HW-Arch</th><th>HW-Ver</th><th>SW-Arch</th><th>AI-Infra</th><th>QA-Audit</th>
-</tr>
-<tr><td>03</td><td>工作留痕</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔍</td></tr>
-<tr><td>04</td><td>RISC-V 文档本地化</td><td>—</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔍</td></tr>
-<tr><td>05</td><td>RISC-V Profile</td><td>—</td><td>✅</td><td>✅</td><td>✅</td><td>—</td><td>🔍</td></tr>
-<tr><td>06</td><td>性能评估模型</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>🔍</td></tr>
-<tr><td>07</td><td>平台架构说明书</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td><td>🔍</td></tr>
-<tr><td>08</td><td>编码前写文档</td><td>—</td><td>✅</td><td>—</td><td>✅</td><td>—</td><td>🔍</td></tr>
-<tr><td>09</td><td>验证方案框架</td><td>✅</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>🔍</td></tr>
-<tr><td>10</td><td>里程碑门禁</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td><td>✅</td></tr>
-<tr><td>11</td><td>每日集成回归</td><td>—</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔍</td></tr>
-<tr><td>12</td><td>基准测试统一</td><td>—</td><td>✅</td><td>✅</td><td>—</td><td>✅</td><td>🔍</td></tr>
-<tr><td>13</td><td>GitHub 版本管理</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔍</td></tr>
-<tr><td>14</td><td>HTML 文档格式</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔍</td></tr>
-<tr><td>15</td><td>单一管理文件+索引</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>🔍</td></tr>
-<tr><td>16</td><td>指令记录</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><td>17</td><td>批量删除须确认</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>🔍</td></tr>
-<tr><td>18</td><td>问题不允许跳过</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td><td>✅</td></tr>
-<tr><td>19</td><td>里程碑文档检查</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr style="background:#f8fafc;"><td colspan="2" style="font-weight:600;">子规则</td><td colspan="6"></td></tr>
-<tr><td>HD-1~3</td><td>硬件设计</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>🔍</td></tr>
-<tr><td>HV-1~2</td><td>硬件验证</td><td>—</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>🔍</td></tr>
-<tr><td>IT-1~3</td><td>IT 基础设施</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>🔍</td></tr>
-<tr><td>QA-1</td><td>第三方审计</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+<tr><th>原编号</th><th>标题</th><th>移除原因</th></tr>
+<tr><td>B-3</td><td>价值维度定义</td><td>无 check_criteria，属商业备忘而非规则</td></tr>
+<tr><td>B-4</td><td>合作方私有算力部署</td><td>无 check_criteria，属商务备忘</td></tr>
+<tr><td>B-6</td><td>持续运营指标</td><td>与 IT-3 重复，且内容模糊</td></tr>
+<tr><td>IT-3</td><td>持续运营指标监控</td><td>description 为空泛的一句话，无实质约束</td></tr>
+<tr><td>HD-4</td><td>预留</td><td>预留空位，无实际内容</td></tr>
 </table>
 
-<h3 id="sec5-3">5.3 规则扩展体系</h3>
-
-<p>新增规则流程与 v1.0 基本相同（起草 → Schema 校验 → 更新映射 → 编写检查脚本 → 记录变更 → 人类审批），唯一的变化是第 6 步从「运行 sync_agents.py」改为「运行 role_prompt_builder.py」来重新生成受影响角色的 role-prompt.md。</p>
-
-<h3 id="sec5-4">5.4 动态规则更新与同步</h3>
-
-<div class="diagram">
-                    规则更新同步流程（Cowork 适配）
-                    ══════════════════════════════
-
-  用户/AI-Infra 角色        rules/ 目录          角色提示词
-  ┌─────────────┐          ┌───────────┐        ┌───────────────────────┐
-  │ 1. 修改规则  │ ────────▶│ 2. Schema │──ok──▶ │ 3. role_prompt_       │
-  │    YAML      │          │    校验    │        │    builder.py         │
-  └─────────────┘          └─────┬─────┘        │    重新生成            │
-                                 │ fail          │    agents/*/           │
-                                 ▼               │    role-prompt.md      │
-                           ┌───────────┐        └──────────┬────────────┘
-                           │ 拒绝并报告│                    │
-                           └───────────┘                    ▼
-                                                ┌───────────────────────┐
-                                                │ 4. 写入变更通知到      │
-                                                │    各角色的 inbox/     │
-                                                │    (文件信箱)          │
-                                                └──────────┬────────────┘
-                                                           │
-                                                ┌──────────▼────────────┐
-                                                │ 5. 下次以该角色工作时 │
-                                                │    自动加载新版       │
-                                                │    role-prompt.md     │
-                                                └───────────────────────┘
+<h4>合并条目</h4>
+<table>
+<tr><th>原编号</th><th>标题</th><th>处理</th></tr>
+<tr><td>B-2 + B-7</td><td>Token 成本预算 + 模型调用分层</td><td>合并为 <strong>B-2: 成本与模型分层策略</strong></td></tr>
+<tr><td>规则 15</td><td>单一管理文件+索引</td><td>合并入 <strong>规则 14: HTML 文档格式与索引</strong></td></tr>
+<tr><td>规则 04</td><td>RISC-V 文档本地化</td><td>合并入 <strong>规则 05: RISC-V Profile 与文档</strong></td></tr>
+</table>
 </div>
 
-<div class="highlight-info">
-<strong>Cowork 实现细节：</strong>由于 Cowork 主会话每次都从文件系统重新读取角色提示词，规则更新<strong>天然同步</strong>——只要 role-prompt.md 文件已更新，下次角色切换时就自动生效。无需 v1.0 中的 rules_version 比对机制。
+<h4>精简后规则总览（26 条）</h4>
+
+<table>
+<tr><th>类别</th><th>编号</th><th>数量</th><th>严重度</th></tr>
+<tr><td>通用规则</td><td>03, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16, 17, 18, 19</td><td>15</td><td>8 critical / 5 high / 2 medium</td></tr>
+<tr><td>硬件设计</td><td>HD-1, HD-2, HD-3</td><td>3</td><td>1 critical / 2 high</td></tr>
+<tr><td>硬件验证</td><td>HV-1, HV-2</td><td>2</td><td>1 critical / 1 high</td></tr>
+<tr><td>IT 基础设施</td><td>IT-1, IT-2</td><td>2</td><td>1 high / 1 medium</td></tr>
+<tr><td>QA 审计</td><td>QA-1</td><td>1</td><td>1 critical</td></tr>
+<tr><td>商业规则</td><td>B-1, B-2, B-5</td><td>3</td><td>2 high / 1 medium</td></tr>
+<tr style="font-weight: 700; background: var(--primary-light);">
+  <td>合计</td><td></td><td>26</td><td>10 critical / 9 high / 5 medium / 2 low</td>
+</tr>
+</table>
+
+<h3 id="sec5-2">5.2 角色-规则映射（4 角色）</h3>
+
+<table>
+<tr><th>角色</th><th>显示名称</th><th>专属规则</th><th>通用规则（AGENTS.md 统一注入）</th></tr>
+<tr>
+  <td><code>pm-infra</code></td>
+  <td>项目管理 / 基础设施</td>
+  <td>B-1, B-2, B-5, IT-1, IT-2, QA-1</td>
+  <td>03, 07, 09, 10, 13, 14, 16, 17, 18, 19</td>
+</tr>
+<tr>
+  <td><code>hw-design</code></td>
+  <td>硬件设计（含软件）</td>
+  <td>HD-1, HD-2, HD-3</td>
+  <td>03, 05, 06, 07, 08, 10, 11, 12, 13, 14, 16, 18, 19</td>
+</tr>
+<tr>
+  <td><code>hw-ver</code></td>
+  <td>硬件验证</td>
+  <td>HV-1, HV-2</td>
+  <td>03, 05, 07, 09, 10, 11, 12, 13, 14, 16, 18, 19</td>
+</tr>
+<tr>
+  <td><code>qa-audit</code></td>
+  <td>QA 审计</td>
+  <td>QA-1</td>
+  <td>ALL（审计需要看到所有规则）</td>
+</tr>
+</table>
+
+<h3 id="sec5-3">5.3 分层加载策略</h3>
+
+<div class="card card-accent">
+<p><strong>核心原则</strong>：通用规则在 AGENTS.md 中加载一次，role-prompt.md 只包含角色专属规则。减少每次角色切换的上下文开销。</p>
+
+<h4>加载层次</h4>
+<table>
+<tr><th>层次</th><th>载体</th><th>内容</th><th>加载时机</th></tr>
+<tr><td><span class="tier-badge tier-1">L0</span> 全局</td><td>AGENTS.md</td><td>通用规则摘要、任务路由表、子代理协议、文件操作规范</td><td>每次会话自动加载</td></tr>
+<tr><td><span class="tier-badge tier-2">L1</span> 角色</td><td>role-prompt.md</td><td>角色定义、专属规则、文件权限、Pre/Post-Check 流程</td><td>调度子代理时注入 prompt</td></tr>
+<tr><td><span class="tier-badge tier-3">L2</span> 状态</td><td>current-state.yaml</td><td>当前任务、进度、待决事项</td><td>Pre-Check 时读取</td></tr>
+<tr><td><span class="tier-badge" style="background: var(--text-muted);">L3</span> 通知</td><td>change-notices/*.yaml</td><td>跨角色变更通知</td><td>Pre-Check 时检查最新条目</td></tr>
+</table>
+
+<h4>预估上下文开销对比</h4>
+<table>
+<tr><th></th><th>v2.1 (6 角色)</th><th>v3.0 (4 角色)</th><th>节省</th></tr>
+<tr><td>AGENTS.md (L0)</td><td>~4.8 KB</td><td>~3.5 KB</td><td>—</td></tr>
+<tr><td>最大 role-prompt (L1)</td><td>11.4 KB (qa-audit)</td><td>~2.5 KB (qa-audit)</td><td>~78%</td></tr>
+<tr><td>典型角色加载总量</td><td>~16 KB</td><td>~6 KB</td><td>~63%</td></tr>
+</table>
 </div>
 
 <!-- ══════════════════════════ §6 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec6">六、规则执行引擎</h2>
+<h2 id="sec6">六、合规检查体系（重设计）</h2>
 
-<h3 id="sec6-1">6.1 任务级规则检查流程</h3>
+<p>v3.0 将原来单一的 <code>check_compliance.py</code> 脚本升级为<strong>三级检查体系 + 合规评分模型</strong>，覆盖实时、定时、里程碑三个维度。</p>
 
-<p>三道检查（Pre-Check / Execution / Post-Verify）的逻辑与 v1.0 相同，但执行方式适配 Cowork：检查逻辑嵌入到<strong>角色提示词 role-prompt.md</strong> 和<strong>顶层 CLAUDE.md</strong> 中，由主会话在执行任务时自觉遵循，qodercli 委派时在 prompt 中注入对应检查逻辑。</p>
+<h3 id="sec6-1">6.1 三级检查机制</h3>
+
+<div class="card card-primary">
+<h4><span class="tier-badge tier-1">T1</span> Tier 1: 实时自动检查（每次任务执行时）</h4>
+<p>由主会话在 Post-Verify 阶段自动执行，耗时 &lt; 1 秒。</p>
+<table>
+<tr><th>检查项</th><th>对应规则</th><th>检查逻辑</th></tr>
+<tr><td>指令日志存在</td><td>03, 16</td><td>检查 <code>audit/instruction-log/YYYY-MM-DD.yaml</code> 是否存在今日文件</td></tr>
+<tr><td>风险项无跳过</td><td>18</td><td>检查 <code>risk-register.yaml</code> 中无 <code>status: skipped</code></td></tr>
+<tr><td>核心文件完整</td><td>—</td><td>检查 AGENTS.md、rules/schema.yaml 等核心文件存在</td></tr>
+<tr><td>变更通知处理</td><td>HV-1</td><td>hw-ver 角色检查是否有 pending 状态的 design-change 通知</td></tr>
+</table>
+
+<h4><span class="tier-badge tier-2">T2</span> Tier 2: 定时扫描（cron 驱动）</h4>
+<p>通过 Qoder 定时任务自动执行，结果写入 <code>audit/compliance-reports/</code>。</p>
+<table>
+<tr><th>频率</th><th>检查内容</th><th>对应规则</th></tr>
+<tr><td>每日 18:00</td><td>文档时效检查（所有 docs/ 文件最后更新日期）</td><td>14, 19</td></tr>
+<tr><td>每日 18:00</td><td>Git 提交活跃度检查</td><td>13</td></tr>
+<tr><td>每日 18:00</td><td>HTML 格式合规检查</td><td>14</td></tr>
+<tr><td>每日 18:00</td><td>HD-2 时间预警：active_tasks 中超过 2 天的任务</td><td>HD-2</td></tr>
+<tr><td>每周一 9:00</td><td>知识库规模 + 淘汰巡检</td><td>IT-1</td></tr>
+<tr><td>每周一 9:00</td><td>风险项老化检查（open &gt; 7 天）</td><td>18</td></tr>
+<tr><td>每周五 17:00</td><td>本周合规评分汇总</td><td>全部</td></tr>
+</table>
+
+<h4><span class="tier-badge tier-3">T3</span> Tier 3: 里程碑门禁（人工 + AI 联合）</h4>
+<p>每个里程碑达成时触发，需要人类最终确认。</p>
+<table>
+<tr><th>步骤</th><th>执行者</th><th>内容</th></tr>
+<tr><td>Step 1</td><td>自动化脚本</td><td>运行 T1 + T2 全部检查项，输出到 compliance-reports/</td></tr>
+<tr><td>Step 2</td><td>各角色子代理</td><td>串行执行 Sign-off 自查清单</td></tr>
+<tr><td>Step 3</td><td>QA 审计子代理</td><td>独立上下文审计（进程级隔离）</td></tr>
+<tr><td>Step 4</td><td>主会话</td><td>汇总报告 + 计算合规评分</td></tr>
+<tr><td>Step 5</td><td>人类</td><td>审阅报告，最终签署确认或驳回</td></tr>
+</table>
+</div>
+
+<h3 id="sec6-2">6.2 合规评分模型</h3>
+
+<div class="card card-accent">
+<p>每条规则根据严重度赋予权重，合规评分按加权通过率计算：</p>
+
+<table>
+<tr><th>严重度</th><th>权重</th><th>条目数</th><th>满分</th></tr>
+<tr><td>critical</td><td>4</td><td>10</td><td>40</td></tr>
+<tr><td>high</td><td>3</td><td>9</td><td>27</td></tr>
+<tr><td>medium</td><td>2</td><td>5</td><td>10</td></tr>
+<tr><td>low</td><td>1</td><td>2</td><td>2</td></tr>
+<tr style="font-weight: 700; background: var(--primary-light);">
+  <td colspan="2">总分</td><td>26</td><td>79</td>
+</tr>
+</table>
+
+<h4>评分公式</h4>
+<pre><code>合规评分 = Σ(已通过规则的权重) / Σ(全部规则的权重) × 100</code></pre>
+
+<h4>评分等级</h4>
+<table>
+<tr><th>等级</th><th>分数区间</th><th>含义</th><th>颜色</th></tr>
+<tr><td>PASS</td><td>≥ 90%</td><td>合规状态良好，可进入下一阶段</td><td style="color: var(--accent);">■ 绿色</td></tr>
+<tr><td>WARN</td><td>75% - 89%</td><td>存在风险项，需要关注并限期整改</td><td style="color: var(--warn);">■ 黄色</td></tr>
+<tr><td>FAIL</td><td>&lt; 75%</td><td>严重不合规，里程碑门禁不通过</td><td style="color: var(--danger);">■ 红色</td></tr>
+</table>
+
+<h4>评分报告示例</h4>
+<pre><code>═══════════════════════════════════════
+  Lumi 合规评分报告  2026-06-15
+═══════════════════════════════════════
+  总分: 71.2 / 79  (90.1%)    ■ PASS
+
+  Critical: 38/40  (95.0%)
+  High:     24/27  (88.9%)
+  Medium:    8/10  (80.0%)
+  Low:       1.2/2 (60.0%)
+
+  未通过项:
+  ✗ [HD-2] 两天期限预警 — 任务 TASK-012 已超期 3 天
+  ✗ [IT-1] 知识库条目 — 当前 248 条，超过 WARNING 阈值
+  △ [14]  HTML 格式 — 2 个非 HTML 文件在 docs/ 下
+═══════════════════════════════════════</code></pre>
+</div>
+
+<h3 id="sec6-3">6.3 定时任务编排</h3>
+
+<p>以下定时任务通过 Qoder 的 cron 功能配置：</p>
+
+<table>
+<tr><th>任务名称</th><th>频率</th><th>执行内容</th><th>输出</th></tr>
+<tr><td>每日合规扫描</td><td>每天 18:00</td><td>T2 全部检查项</td><td>audit/compliance-reports/daily-YYYYMMDD.yaml</td></tr>
+<tr><td>HD-2 时间预警</td><td>每天 9:00</td><td>扫描 active_tasks 超期项</td><td>通知到 IM 通道</td></tr>
+<tr><td>知识库巡检</td><td>每周一 9:00</td><td>知识库规模 + LRU 淘汰检查</td><td>knowledge/archive/ 归档 + 报告</td></tr>
+<tr><td>风险项老化</td><td>每周一 9:00</td><td>检查 open &gt; 7 天的风险项</td><td>通知到 IM 通道</td></tr>
+<tr><td>周度评分汇总</td><td>每周五 17:00</td><td>计算本周合规评分趋势</td><td>audit/compliance-reports/weekly-YYYYWW.yaml</td></tr>
+</table>
+
+<h3 id="sec6-4">6.4 里程碑门禁流程</h3>
 
 <div class="diagram">
-  ┌──────────────────────────────────────────────────────────────────────┐
-  │               任务生命周期 × 规则检查（Cowork 实现）                  │
-  │                                                                      │
-  │  ╔══════════════════╗  ╔════════════════╗  ╔══════════════════╗     │
-  │  ║ PRE-CHECK        ║  ║ EXECUTION      ║  ║ POST-VERIFY      ║     │
-  │  ║ 主会话在角色切换  ║  ║ 主会话或子     ║  ║ 主会话在任务完成  ║     │
-  │  ║ 后自动执行        ║─▶║ Agent 执行任务 ║─▶║ 后自动执行        ║     │
-  │  ╚══════════════════╝  ╚════════════════╝  ╚══════════════════╝     │
-  │        │                      │                     │                │
-  │        ▼                      ▼                     ▼                │
-  │  · 读取 role-prompt.md   · 遵循规则约束      · 更新 current-state   │
-  │  · 读取 current-state    · 问题不跳过(18)    · 写 instruction-log   │
-  │  · 检查 inbox            · HD-2 时间预警     · 写 inbox 通知        │
-  │  · 验证前置条件          · HV-2 验证自查     · 写 risk-register     │
-  │  · 输出检查清单                               · 更新 knowledge/     │
-  └──────────────────────────────────────────────────────────────────────┘
+  里程碑达成
+      │
+      ▼
+  ┌──────────────────────────┐
+  │  Step 1: 自动化检查       │  check_compliance.py --tier all
+  │  · 运行 T1 + T2 全部检查  │  输出: compliance-reports/gate-M{n}.yaml
+  │  · 计算合规评分           │
+  └────────────┬─────────────┘
+               │
+               ▼
+  ┌──────────────────────────┐
+  │  Step 2: 角色自查         │  串行切换 pm-infra / hw-design / hw-ver
+  │  · 各角色 Sign-off 清单   │  每个角色检查自身产出物完整性
+  │  · 确认交付物就绪         │
+  └────────────┬─────────────┘
+               │
+               ▼
+  ┌──────────────────────────┐
+  │  Step 3: QA 独立审计      │  Task 子代理 (独立上下文)
+  │  · 只看产出物              │  输出: compliance-reports/audit-M{n}.yaml
+  │  · 不看执行过程            │
+  │  · 基于规则逐条审计        │
+  └────────────┬─────────────┘
+               │
+               ▼
+  ┌──────────────────────────┐
+  │  Step 4: 汇总报告         │  主会话
+  │  · 合并三方结果            │  输出: compliance-reports/gate-M{n}-final.html
+  │  · 计算最终合规评分        │
+  │  · 生成门禁报告            │
+  └────────────┬─────────────┘
+               │
+               ▼
+  ┌──────────────────────────┐
+  │  Step 5: 人类确认         │  请求人类审阅
+  │  · 审阅门禁报告            │  通过 → 进入下一里程碑
+  │  · 签署确认或驳回          │  驳回 → 返回整改
+  └──────────────────────────┘
 </div>
-
-<h3 id="sec6-2">6.2 里程碑门禁机制</h3>
-
-<p>门禁检查项与 v1.0 完全相同（文档完整性、需求追溯、回归测试、问题闭环、文档时效、版本管理、Sign-off、第三方审计、标准合规、基准测试）。Cowork 适配点在于<strong>执行方式</strong>：</p>
-
-<div class="card card-danger">
-<h4>里程碑门禁在 Cowork 中的执行方式</h4>
-<div class="step">
-  <div class="step-num">1</div>
-  <div>
-    <strong>自动化脚本检查</strong> — 主会话通过 Bash 工具运行 <code>rules/scripts/check_compliance.py</code>，自动检查可量化的门禁项（回归通过率、文档覆盖率、风险项状态等）。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">2</div>
-  <div>
-    <strong>串行角色 Sign-off 检查</strong> — 主会话依次切换到各角色，加载对应 role-prompt.md 执行 Sign-off 检查。简单角色检查可委派给 <code>qodercli --yolo</code> 加速（如文档完整性、格式合规）。各角色独立产出 Sign-off 报告存入 <code>audit/signoff/</code>。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">3</div>
-  <div>
-    <strong>QA 独立审计（qodercli 进程隔离）</strong> — 通过 <code>qodercli --yolo</code> 在独立进程中运行 QA 审计。qodercli 只能通过文件系统读取产出物和规则清单，无法接触主会话的执行上下文，实现进程级隔离。
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">4</div>
-  <div>
-    <strong>结果汇总与人类确认</strong> — 主会话汇总所有检查结果，生成门禁报告存入 <code>audit/compliance-reports/</code>，请求人类项目负责人最终确认。
-  </div>
-</div>
-</div>
-
-<h3 id="sec6-3">6.3 自动化合规验证脚本</h3>
-
-<p>合规检查脚本（check_compliance.py）与 v1.0 完全相同——它是纯 Python 脚本，通过 Cowork 的 Bash 工具执行，不依赖多 Agent 基础设施。脚本可检查规则 03（留痕）、10（门禁）、17（批量删除）、18（问题不跳过）等可自动化的规则。</p>
 
 <!-- ══════════════════════════ §7 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec7">七、上下文感知的分工机制</h2>
+<h2 id="sec7">七、知识库建设（含淘汰机制）</h2>
 
-<h3 id="sec7-1">7.1 CLAUDE.md 与角色提示词分层</h3>
-
-<p>v1.0 设计了三层 CLAUDE.md 继承体系。在 Cowork 中，只有<strong>顶层 CLAUDE.md 被自动加载</strong>，角色专属的规则和上下文需要在角色切换时<strong>主动读取</strong>。</p>
-
-<div class="diagram">
-  ┌──────────────────────────────────────────────────────────────────┐
-  │  第一层: Lumi-core/CLAUDE.md (自动加载)                               │
-  │  · 每次 Cowork 会话启动时自动注入                                │
-  │  · 包含：角色切换协议、通用行为约束、文件操作规范                 │
-  │  · 包含：任务路由表、可用角色列表                                │
-  │  · 不包含角色专属规则（避免上下文过长）                          │
-  └─────────────────────────┬────────────────────────────────────────┘
-                            │ 主动读取（角色切换时）
-  ┌─────────────────────────▼────────────────────────────────────────┐
-  │  第二层: agents/{role}/role-prompt.md (按需加载)                  │
-  │  · 角色切换时读取；qodercli 委派时在 prompt 中注入关键规则        │
-  │  · 包含：角色定义、适用规则全文、文件权限、Pre-Check/Post-Verify │
-  │  · 由 role_prompt_builder.py 根据 role-mapping.yaml 自动生成     │
-  └─────────────────────────┬────────────────────────────────────────┘
-                            │ 主动读取（角色切换时）
-  ┌─────────────────────────▼────────────────────────────────────────┐
-  │  第三层: agents/{role}/context/ + inbox/ (按需加载)               │
-  │  · current-state.yaml：当前任务、进度、HD-2 时间预警              │
-  │  · inbox/*.yaml：来自其他角色的未处理消息                        │
-  │  · 每次角色切换后更新                                            │
-  └──────────────────────────────────────────────────────────────────┘
-
-  区别于 v1.0：
-  · 第一层仍然自动加载（Cowork 原生支持）
-  · 第二、三层改为主动读取（由 CLAUDE.md 中的角色切换协议驱动）
-  · 好处：顶层 CLAUDE.md 保持精简，只有实际执行时才加载角色规则
-</div>
-
-<h3 id="sec7-2">7.2 角色权限与规则访问控制</h3>
-
-<div class="grid-2">
 <div class="card card-primary">
-<h4>软约束：role-prompt.md 指令</h4>
-<p>每个角色的 role-prompt.md 明确列出可读写的目录。Cowork 主会话在执行时遵守这些约束，qodercli 委派时在 prompt 中明确约束范围。这是「行为指令」级别的约束，依赖模型的指令跟随能力。</p>
-<p>在 Cowork 中，这是<strong>主要的权限控制手段</strong>。Claude 模型对 CLAUDE.md 和系统提示中的行为指令跟随率很高。</p>
+<p>知识库引入 <strong>LRU（最近最少使用）淘汰机制</strong>，替代原来的硬性 256 条上限。</p>
+
+<h4>条目结构（增强版）</h4>
+<pre><code># knowledge/index.yaml
+entries:
+  - id: "LL-001"
+    title: "AHB burst wrap 计算需要考虑 unaligned 起始地址"
+    category: lessons-learned        # lessons-learned | design-decision | best-practice
+    source: "hw-design, M1 阶段"
+    date: "2026-06-10"
+    last_referenced: "2026-06-14"    # [新] 最近引用日期
+    reference_count: 3               # [新] 引用次数
+    file: "lessons-learned/LL-001.md"</code></pre>
+
+<h4>淘汰策略</h4>
+<table>
+<tr><th>阈值</th><th>触发条件</th><th>动作</th></tr>
+<tr><td>正常</td><td>条目数 ≤ 200</td><td>正常运行</td></tr>
+<tr><td>WARNING</td><td>条目数 &gt; 200</td><td>提醒合并相似条目</td></tr>
+<tr><td>淘汰</td><td>条目数 &gt; 240 或 每月巡检</td><td>自动归档 last_referenced 距今 &gt; 90 天的条目</td></tr>
+<tr><td>强制</td><td>条目数 &gt; 256</td><td>按 last_referenced 升序归档最旧的条目直到 ≤ 240</td></tr>
+</table>
+
+<h4>归档机制</h4>
+<ul>
+  <li>被淘汰条目移动到 <code>knowledge/archive/</code>，原始 .md 文件保留</li>
+  <li><code>knowledge/archive/index.yaml</code> 记录所有归档条目，可搜索</li>
+  <li>归档条目<strong>不删除</strong>，可随时恢复到活跃知识库</li>
+  <li>归档条目在 memory_search 中仍可被发现，但优先级低于活跃条目</li>
+</ul>
+
+<h4>定时巡检（cron 每周一 9:00）</h4>
+<pre><code>1. 统计活跃条目数，检查 WARNING/淘汰/强制阈值
+2. 扫描 last_referenced &gt; 90 天的条目 → 候选归档
+3. 生成巡检报告 → 通知人类确认归档操作
+4. 确认后执行归档，更新 index.yaml 和 archive/index.yaml</code></pre>
 </div>
-<div class="card card-accent">
-<h4>硬约束：GitHub CODEOWNERS</h4>
-<p>通过 <code>.github/CODEOWNERS</code> 在 PR 层面实现硬性权限控制。即使 Agent 在本地修改了不属于自己的文件，PR 审查时也会被拦截。</p>
-<pre><code># .github/CODEOWNERS
-/src/              @hw-arch-team
-/tb/               @hw-ver-team
-/sw/               @sw-arch-team
-/docs/project/     @pm-team
-/rules/            @ai-infra-team
-/audit/            @qa-audit-team
-</code></pre>
-</div>
-</div>
-
-<h3 id="sec7-3">7.3 任务路由与分派</h3>
-
-<p>任务路由逻辑嵌入到顶层 CLAUDE.md 中。当用户下达任务时，主会话根据关键词自动判断应该切换到哪个角色：</p>
-
-<pre><code># Lumi-core/CLAUDE.md 中的任务路由规则
-
-## 任务路由表
-| 任务关键词/领域             | 目标角色     | 附加规则      |
-|---------------------------|-------------|--------------|
-| 架构设计, RTL, 模块设计     | hw-arch     | HD-1~3       |
-| 验证, 测试, FPGA, 回归     | hw-ver      | HV-1~2       |
-| BSP, 驱动, RTOS, 工具链    | sw-arch     | 无专属子规则   |
-| 环境, CI/CD, 知识库, 版本  | ai-infra    | IT-1~3       |
-| 审计, Sign-off, 合规检查   | qa-audit    | QA-1         |
-| 需求, 计划, 里程碑, 商务    | pm          | B-1~7        |
-| 门禁 (多角色)              | 串行切换+qodercli | 全部适用  |
-</code></pre>
 
 <!-- ══════════════════════════ §8 ══════════════════════════ -->
 <hr class="section-divider">
 <h2 id="sec8">八、监控与可追溯性</h2>
 
-<h3 id="sec8-1">8.1 决策留痕与指令记录</h3>
+<h3 id="sec8-1">8.1 指令记录与决策留痕</h3>
 
-<p>指令记录机制（规则 16）与 v1.0 相同：每日一个 YAML 文件记录所有操作。在 Cowork 中，写入操作由主会话在角色切换协议的 Post-Verify 步骤中执行。</p>
+<div class="card card-accent">
+<p>保持 v2.1 的留痕机制，核心不变：</p>
+<ul>
+  <li><code>audit/instruction-log/YYYY-MM-DD.yaml</code> — 每日操作日志</li>
+  <li><code>audit/decision-log/</code> — 重要决策记录（选项、选择、理由）</li>
+  <li><code>audit/risk-register.yaml</code> — 风险登记簿（status 不允许 skipped）</li>
+</ul>
 
-<pre><code># audit/instruction-log/2026-06-10.yaml — 与 v1.0 格式相同
-
-date: "2026-06-10"
+<h4>增强：结构化指令日志</h4>
+<pre><code># audit/instruction-log/2026-06-15.yaml
+date: "2026-06-15"
+session_id: "mqel75g7q5vu8wat"
 entries:
-  - timestamp: "09:15:00"
-    role: pm                       # [改] 用 "role" 替代 "agent"
-    session_mode: role-switch      # [新] 标记是角色切换还是 qodercli 委派
-    action: task_assign
-    details:
-      task_id: "LUMI-042"
-      assigned_to: hw-arch
-      description: "完成 CSR 模块详细设计文档"
-      rules_checked: ["08", "07", "HD-1"]
-
-  - timestamp: "10:30:00"
-    role: hw-arch
-    session_mode: role-switch
-    action: design_decision
-    details:
-      topic: "CSR 地址映射方案选型"
-      options:
-        - id: A
-          description: "统一线性地址空间"
-        - id: B
-          description: "分组分段地址空间"
-      selected: B
-      rationale: "考虑到未来可能增加自定义 CSR 组"
-      decided_by: "human-user"
-
-  - timestamp: "14:00:00"
-    role: hw-ver
-    session_mode: role-switch
-    action: bug_report
-    details:
-      bug_id: "BUG-007"
-      inbox_written_to: "agents/hw-arch/inbox/"   # [新] 文件信箱
-</code></pre>
-
-<h3 id="sec8-2">8.2 合规性仪表盘</h3>
-
-<p>仪表盘（<code>infra/monitoring/dashboard.html</code>）的设计与 v1.0 相同。数据来源于合规检查脚本的输出和审计日志。主会话可通过 Bash 工具运行脚本生成最新仪表盘。</p>
-
-<h3 id="sec8-3">8.3 定时任务自动化</h3>
-
-<div class="highlight-info">
-<strong>Cowork 独有能力：</strong>Cowork 支持定时任务（Scheduled Tasks），可以实现 v1.0 中无法做到的自动化定期检查。
+  - timestamp: "14:30:00+08:00"
+    role: hw-design
+    action: "RTL 设计"
+    task: "实现 CSR 地址映射模块"
+    rules_applied: ["08", "HD-1"]
+    files_changed:
+      - "src/csr_map.sv"
+    change_notice: "CN-20260615-001"    # [新] 关联变更通知 ID
+    credit_cost: 0.5                   # [新] 本次操作 credit 消耗</code></pre>
 </div>
 
-<table>
-<tr><th>定时任务</th><th>Cron 表达式</th><th>执行内容</th><th>对应规则</th></tr>
-<tr><td>每日合规扫描</td><td><code>0 9 * * *</code></td><td>运行 check_compliance.py，将报告写入 compliance-reports/</td><td>全部</td></tr>
-<tr><td>每日回归触发</td><td><code>0 8 * * 1-5</code></td><td>触发 CI 回归测试，检查是否有未测试的提交</td><td>11</td></tr>
-<tr><td>文档时效检查</td><td><code>0 10 * * 1</code></td><td>扫描 docs/ 下超过 7 天未更新的文件，生成提醒</td><td>19</td></tr>
-<tr><td>知识库容量检查</td><td><code>0 10 1 * *</code></td><td>统计 knowledge/index.yaml 条目数，240 条预警</td><td>IT-1</td></tr>
-<tr><td>Token 成本周报</td><td><code>0 9 * * 1</code></td><td>汇总上周 Token 消耗，检查是否接近 1/5 售价预算</td><td>B-2</td></tr>
-<tr><td>RISC-V 标准更新检查</td><td><code>0 10 1 * *</code></td><td>检查 RISC-V 标准是否有新 Ratified 更新，提醒用户决定</td><td>04, 05</td></tr>
-</table>
+<h3 id="sec8-2">8.2 Token/Credit 成本管理</h3>
+
+<div class="card card-warn">
+<p>v2.1 的 B-2 规则（Token 成本预算）适配为 Qoder 的 credit 体系：</p>
+<ul>
+  <li><code>infra/credit-budget/tracker.py</code> 记录每次操作的 credit 消耗</li>
+  <li>通过 <code>qoderwork.usage</code> 查询实时用量</li>
+  <li>成本预警阈值：达到月预算的 80% 时通知</li>
+  <li>模型分层策略保持：<strong>主会话</strong>处理复杂推理（高质量模型），<strong>子代理</strong>处理常规任务（标准模型）</li>
+</ul>
+</div>
 
 <!-- ══════════════════════════ §9 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec9">九、版本管理与 GitHub 工作流</h2>
+<h2 id="sec9">九、分阶段部署步骤</h2>
 
-<p>版本管理策略（分支策略、提交规范、PR 审查流程、CI 工作流）与 v1.0 完全相同。这些机制基于 GitHub 和 CI/CD，不受 Cowork Agent 模型的影响。</p>
+<div class="card card-primary">
+<h4>Phase 1: 基础迁移（预计 2 小时）</h4>
+<div class="step"><div class="step-num">1</div><div><strong>CLAUDE.md → AGENTS.md</strong><br>改写顶层指令：替换 qodercli 委派为 Task 子代理协议，更新任务路由表（4 角色），保留通用规则摘要和文件操作规范。</div></div>
+<div class="step"><div class="step-num">2</div><div><strong>合并角色目录</strong><br>pm/ + ai-infra/ → pm-infra/，hw-arch/ + sw-arch/ → hw-design/，hw-ver/ 和 qa-audit/ 保留。更新 role-mapping.yaml。</div></div>
+<div class="step"><div class="step-num">3</div><div><strong>规则精简</strong><br>移除 B-3/B-4/B-6/IT-3/HD-4，合并 B-2+B-7、规则 15→14、规则 04→05。将移除内容迁移到 docs/project/notes/。更新 schema.yaml 和 changelog.md。</div></div>
+<div class="step"><div class="step-num">4</div><div><strong>脚本适配</strong><br>check_compliance.py 中 CLAUDE.md 引用改为 AGENTS.md；validate_rules.py 更新 valid_roles 为 4 角色。</div></div>
+</div>
 
-<p>唯一的 Cowork 适配点：Cowork 主会话通过 Bash 工具执行 git 操作，遵循 CLAUDE.md 中定义的提交规范（commit message 格式、Task-ID 关联、Rules-Checked 标注）。</p>
+<div class="card card-accent">
+<h4>Phase 2: 架构适配（预计 3 小时）</h4>
+<div class="step"><div class="step-num">5</div><div><strong>分层 role-prompt</strong><br>重写 role_prompt_builder.py，生成仅含角色专属规则的 role-prompt.md（1-3 KB）。验证 4 个角色的生成结果。</div></div>
+<div class="step"><div class="step-num">6</div><div><strong>变更通知机制</strong><br>将 inbox/ 重命名为 change-notices/，更新通知格式模板，修改 Pre-Check/Post-Verify 流程中的通知读写逻辑。</div></div>
+<div class="step"><div class="step-num">7</div><div><strong>子代理调度协议</strong><br>在 AGENTS.md 中编写完整的子代理调度指令，包括 prompt 模板、contextDirs 配置、并行调度规则。</div></div>
+</div>
+
+<div class="card card-warn">
+<h4>Phase 3: 合规体系升级（预计 3 小时）</h4>
+<div class="step"><div class="step-num">8</div><div><strong>重写 check_compliance.py</strong><br>实现三级检查（T1 实时 / T2 定时 / T3 门禁）+ 合规评分模型 + HTML 报告增强（含评分条和趋势图）。</div></div>
+<div class="step"><div class="step-num">9</div><div><strong>配置定时任务</strong><br>通过 Qoder cron 配置每日合规扫描、HD-2 预警、知识库巡检、风险项老化检查、周度汇总。</div></div>
+<div class="step"><div class="step-num">10</div><div><strong>知识库淘汰机制</strong><br>更新 index.yaml schema 添加 last_referenced/reference_count 字段，编写淘汰脚本（archive_stale.py），配置每月巡检 cron。</div></div>
+</div>
+
+<div class="card card-danger">
+<h4>Phase 4: 端到端验证（预计 2 小时）</h4>
+<div class="step"><div class="step-num">11</div><div><strong>全流程测试</strong><br>模拟一个完整的里程碑门禁流程：任务路由 → 角色调度 → Pre-Check → 执行 → Post-Verify → 变更通知 → 合规检查 → QA 审计 → 人类确认。</div></div>
+<div class="step"><div class="step-num">12</div><div><strong>上下文开销验证</strong><br>测量各角色的实际 prompt 大小，确认分层加载后总量 ≤ 6 KB / 角色。</div></div>
+<div class="step"><div class="step-num">13</div><div><strong>定时任务验证</strong><br>手动触发所有 cron 任务，确认执行成功、报告生成正确、通知送达。</div></div>
+</div>
 
 <!-- ══════════════════════════ §10 ══════════════════════════ -->
 <hr class="section-divider">
-<h2 id="sec10">十、知识库建设</h2>
-
-<p>知识库的结构、知识条目格式、规模控制机制（≤256 条）与 v1.0 完全相同。</p>
-
-<div class="highlight-info">
-<strong>Cowork 协同点：</strong>Cowork 自身的 memory/ 系统与 Lumi 项目的 knowledge/ 目录分工明确。memory/ 存储跨项目的用户偏好和工作方式（如「exec summary 不要 hedge」），knowledge/ 存储项目内的技术经验和设计决策。两者互不重叠。
-</div>
-
-<!-- ══════════════════════════ §11 ══════════════════════════ -->
-<hr class="section-divider">
-<h2 id="sec11">十一、分阶段部署步骤</h2>
-
-<h3>Phase 0: 基础设施搭建（第 1-3 天）</h3>
-
-<div class="card card-primary">
-<div class="step">
-  <div class="step-num">1</div>
-  <div>
-    <strong>创建项目目录结构</strong><br>
-    在 Cowork 中执行 Bash 脚本，按照第三节的目录树创建完整目录结构。包括 agents/ 下每个角色的 context/、inbox/ 子目录。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork Bash</span>
-      <span class="badge badge-green">规则 13</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">2</div>
-  <div>
-    <strong>编写顶层 CLAUDE.md</strong><br>
-    包含角色切换协议、任务路由表、通用行为约束、可用角色列表。这是 Cowork 每次会话自动加载的文件，必须精简且准确。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork 编辑</span>
-      <span class="badge badge-green">全部通用规则</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">3</div>
-  <div>
-    <strong>编写规则 YAML 文件和角色映射</strong><br>
-    将 Top Rules 转化为结构化 YAML。编写 schema.yaml 和 role-mapping.yaml。运行 role_prompt_builder.py 生成 6 个角色的 role-prompt.md。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork 编辑 + Bash</span>
-      <span class="badge badge-green">全部规则</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">4</div>
-  <div>
-    <strong>初始化 GitHub 仓库</strong><br>
-    创建仓库、配置分支保护、设置 CODEOWNERS、配置 CI 工作流。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork Bash (git)</span>
-      <span class="badge badge-green">规则 13</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">5</div>
-  <div>
-    <strong>部署合规检查脚本</strong><br>
-    实现 validate_rules.py、check_compliance.py、role_prompt_builder.py、generate_report.py。通过 Cowork Bash 工具验证脚本可运行。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork 编辑 + Bash</span>
-      <span class="badge badge-green">规则 10, 11</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">6</div>
-  <div>
-    <strong>配置 Cowork 定时任务</strong><br>
-    设置每日合规扫描、回归触发、文档时效检查等定时任务（见 §8.3）。
-    <div class="tags">
-      <span class="badge badge-blue">Cowork 定时任务</span>
-      <span class="badge badge-green">规则 11, 19, IT-3</span>
-    </div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">7</div>
-  <div>
-    <strong>端到端验证</strong><br>
-    执行一次完整的角色切换测试：以 hw-arch 角色工作 → 写入 hw-ver inbox → 切换到 hw-ver 角色 → 确认收到消息。验证 Post-Verify 步骤正确写入 audit/instruction-log/。
-    <div class="tags">
-      <span class="badge badge-red">验证</span>
-    </div>
-  </div>
-</div>
-</div>
-
-<h3>Phase 1: 需求与架构定义（第 4-14 天）</h3>
-
-<div class="card card-accent">
-<div class="step">
-  <div class="step-num">8</div>
-  <div>
-    <strong>制定项目主计划</strong> — 切换到 PM 角色，创建 master-plan.html。
-    <div class="tags"><span class="badge badge-blue">角色: PM</span><span class="badge badge-green">规则 15, 14</span></div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">9</div>
-  <div>
-    <strong>定义 RISC-V Profile</strong> — 切换到 HW-Arch 角色，基于 RVM23 制定 Profile（只纳入 Ratified），需用户确认。
-    <div class="tags"><span class="badge badge-blue">角色: HW-Arch</span><span class="badge badge-green">规则 05</span></div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">10</div>
-  <div>
-    <strong>建立性能评估模型</strong> — HW-Arch 角色搭建 GEM5+ Cycle Model。
-    <div class="tags"><span class="badge badge-blue">角色: HW-Arch</span><span class="badge badge-green">规则 06</span></div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">11</div>
-  <div>
-    <strong>编写平台架构说明书</strong> — HW-Arch 角色创建 platform-spec.html，包含硬件需求清单。
-    <div class="tags"><span class="badge badge-blue">角色: HW-Arch</span><span class="badge badge-green">规则 07</span></div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">12</div>
-  <div>
-    <strong>制定验证策略</strong> — 切换到 HW-Ver 角色，创建验证方案框架。
-    <div class="tags"><span class="badge badge-blue">角色: HW-Ver</span><span class="badge badge-green">规则 09</span></div>
-  </div>
-</div>
-<div class="step">
-  <div class="step-num">13</div>
-  <div>
-    <strong>里程碑 M0 门禁</strong> — 主会话串行切换各角色执行 Sign-off 检查 + qodercli 进程隔离运行 QA 独立审计，人类最终确认。
-    <div class="tags"><span class="badge badge-red">门禁 (双引擎协作)</span><span class="badge badge-green">规则 10, QA-1</span></div>
-  </div>
-</div>
-</div>
-
-<h3>Phase 2 &amp; 3: 设计开发与验证交付</h3>
-
-<p>Phase 2（详细设计与 RTL 开发）和 Phase 3（验证与交付）的<strong>任务内容</strong>与 v1.0 完全相同，区别仅在执行方式：所有「XX Agent 执行」改为「切换到 XX 角色执行」，简单可控任务委派给 <code>qodercli --yolo</code>。详细任务列表请参考 v1.0 的 Phase 2/3 部分（步骤 15-25），此处不再重复。</p>
-
-<!-- ══════════════════════════ §12 ══════════════════════════ -->
-<hr class="section-divider">
-<h2 id="sec12">十二、规则覆盖率矩阵</h2>
-
-<p>v2.0 对所有 27 条可执行规则的覆盖措施进行了 Cowork 适配，但<strong>覆盖率仍为 100%</strong>。以下仅列出实施措施有变化的规则：</p>
+<h2 id="sec10">十、风险与缓解</h2>
 
 <table>
-<tr><th>规则 ID</th><th>v1.0 实施措施</th><th>v2.0 适配变化</th><th>覆盖状态</th></tr>
-<tr><td>03</td><td>git commit 关联任务 ID + audit log</td><td>无变化（文件操作不依赖 Agent 模型）</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>10</td><td>6 个 Agent 各自 Sign-off</td><td>主会话串行切换角色执行检查 + 简单检查委派 qodercli，主会话汇总</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>16</td><td>Agent 间消息自动记录</td><td>角色切换协议的 Post-Verify 步骤写入 + 文件信箱记录</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>19</td><td>里程碑时各 Agent 检查文档</td><td>Cowork 定时任务每周自动检查文档时效 + 门禁时全面检查</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>QA-1</td><td>独立 QA Agent 运行审计</td><td>qodercli 进程隔离审计 + 标准化检查清单 + 人类最终确认</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>HV-1</td><td>DesignChange 消息订阅</td><td>HW-Arch 写入 hw-ver/inbox，下次 HW-Ver 工作时检查</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>HV-2</td><td>BugReport 消息发送</td><td>HW-Ver 写入 hw-arch/inbox + audit/instruction-log</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td>IT-3, B-6</td><td>运营指标仪表盘</td><td>新增 Cowork 定时任务自动生成周报</td><td><span class="badge badge-green">✓</span></td></tr>
-<tr><td colspan="2">其他所有规则</td><td>无变化（基于文件和脚本，不依赖 Agent 模型）</td><td><span class="badge badge-green">✓</span></td></tr>
-</table>
-
-<div class="highlight-success">
-<strong>覆盖率统计：</strong>27/27 条可执行规则在 Cowork 适配后仍全部覆盖。覆盖率 <strong>100%</strong>。
-</div>
-
-<!-- ══════════════════════════ §13 ══════════════════════════ -->
-<hr class="section-divider">
-<h2 id="sec13">十三、风险与缓解</h2>
-
-<table>
-<tr><th>风险</th><th>影响</th><th>概率</th><th>缓解措施</th><th>Cowork 特有?</th></tr>
+<tr><th>风险</th><th>影响</th><th>概率</th><th>缓解措施</th></tr>
 <tr>
-  <td>角色切换时遗忘加载上下文</td>
-  <td>高</td><td>中</td>
-  <td>CLAUDE.md 中的角色切换协议强制要求读取 role-prompt.md 和 current-state.yaml。如果忘记读取，Post-Verify 会发现缺少状态更新而报错。</td>
-  <td><span class="badge badge-yellow">是</span></td>
+  <td>子代理上下文窗口不足</td>
+  <td>复杂角色的规则 + 任务描述可能超出有效上下文</td>
+  <td>中</td>
+  <td>分层加载已大幅缩减（~63%）；必要时按任务动态裁剪非相关规则</td>
 </tr>
 <tr>
-  <td>qodercli 输出不符合预期格式</td>
-  <td>中</td><td>中</td>
-  <td>qodercli prompt 中明确要求输出结构化结果（YAML 格式）并指定输出文件路径。主会话执行后检查输出文件是否存在且格式正确，异常时重试或手动处理。</td>
-  <td><span class="badge badge-yellow">是</span></td>
+  <td>子代理无法"感知"角色切换流程</td>
+  <td>子代理不知道 Pre-Check / Post-Verify 的完整协议</td>
+  <td>高</td>
+  <td>主会话负责 Pre/Post，子代理只执行核心任务；在 prompt 中明确边界</td>
 </tr>
 <tr>
-  <td>文件信箱消息被遗漏</td>
-  <td>中</td><td>中</td>
-  <td>角色切换协议的 Pre-Check 步骤强制检查 inbox/ 目录。Cowork 定时任务每日扫描所有 inbox/ 汇总未读消息。</td>
-  <td><span class="badge badge-yellow">是</span></td>
+  <td>AGENTS.md 过大消耗上下文</td>
+  <td>通用规则 + 路由表 + 协议可能超过 4 KB</td>
+  <td>中</td>
+  <td>AGENTS.md 只放摘要和路由，规则详情保留在 YAML 中按需读取</td>
 </tr>
 <tr>
-  <td>QA 审计独立性不足（自己审自己）</td>
-  <td>高</td><td>低</td>
-  <td>qodercli 进程级隔离（物理上无法接触主会话对话历史）+ 标准化检查清单 + 人类最终确认。比 v2.0 的 prompt 级隔离更强。</td>
-  <td><span class="badge badge-yellow">是</span></td>
+  <td>定时任务执行失败无人知晓</td>
+  <td>合规扫描静默失败，风险积累</td>
+  <td>低</td>
+  <td>定时任务结果发送到 IM 通道；连续 2 次失败触发高优先级通知</td>
 </tr>
 <tr>
-  <td>顶层 CLAUDE.md 过长导致上下文压力</td>
-  <td>中</td><td>低</td>
-  <td>CLAUDE.md 只放协议和路由表，规则全文在 role-prompt.md 中按需加载。保持 CLAUDE.md &lt; 200 行。</td>
-  <td><span class="badge badge-yellow">是</span></td>
+  <td>知识库淘汰误归档重要条目</td>
+  <td>90 天未引用不代表无价值</td>
+  <td>中</td>
+  <td>归档不删除，可恢复；淘汰操作需人类确认；reference_count 高的条目豁免</td>
 </tr>
 <tr>
-  <td>Agent 执行时未严格遵守权限约束</td>
-  <td>中</td><td>低</td>
-  <td>role-prompt.md 软约束 + CODEOWNERS PR 硬约束 + QA 审计覆盖。</td>
-  <td>—</td>
-</tr>
-<tr>
-  <td>知识库增长超过 256 条</td>
-  <td>低</td><td>中</td>
-  <td>Cowork 月度定时任务检查条目数 + 240 条预警 + 里程碑后强制精简。</td>
-  <td>—</td>
-</tr>
-<tr>
-  <td>Token 成本超支</td>
-  <td>高</td><td>中</td>
-  <td>模型分层调用 + Cowork 定时任务周报 + 15% 预警阈值。</td>
-  <td>—</td>
-</tr>
-<tr>
-  <td>规则更新后角色提示词未同步</td>
-  <td>中</td><td>低</td>
-  <td>规则更新后立即运行 role_prompt_builder.py；Cowork 从文件系统读取，天然同步。</td>
-  <td>—</td>
+  <td>合规评分虚高</td>
+  <td>自动化检查覆盖面不足，manual 项默认 PASS</td>
+  <td>高</td>
+  <td>manual 检查项在评分中标记为 UNCHECKED 而非 PASS；总分分母排除未检查项</td>
 </tr>
 </table>
 
 <hr class="section-divider">
-
-<div class="card card-primary" style="text-align: center; padding: 32px;">
-  <h3 style="margin: 0 0 12px;">Lumi 项目部署计划 v2.1 — 双引擎适配版</h3>
-  <p style="color: var(--text-muted); margin: 0;">
-    本文档基于 Cowork 主会话 + qodercli 双引擎架构重新设计了执行和协作机制，<br>
-    将理想化的多 Agent 并行体系适配为单编排者 + 按需派生 + 文件持久化模式。<br>
-    规则覆盖率仍为 100%，所有 27 条可执行规则均有落地措施。<br><br>
-    <span class="badge badge-yellow">待评审</span> — 请项目负责人审阅后确认。
-  </p>
-</div>
+<p style="text-align: center; color: var(--text-muted); margin-top: 40px; font-size: .85em;">
+  Lumi 项目部署计划 v3.0 &nbsp;|&nbsp; Qoder 适配版 &nbsp;|&nbsp; 2026-06-15 &nbsp;|&nbsp;
+  由 QoderWork 生成
+</p>
 
 </body>
 </html>
