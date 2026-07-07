@@ -65,6 +65,62 @@ entries:
       成功。Lumi-core 推送 128 个文件变更 (19770 行新增) 到 GitHub。
       母项目 riscv-workspace 子模块引用更新并推送，新增 workspace README。
 
+  # ──────────────────────────────────────────────
+  # 指令 3：M2-S1 Task 0 微架构详细审查
+  # ──────────────────────────────────────────────
+  - timestamp: "20:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_microarch_review
+    details:
+      description: >
+        在进入 14 份模块详细设计文档之前，对 M1 定版的微架构进行全面审查。
+        审查流水线划分、模块边界、接口定义和数据通路，确认是否需要调整，避免设计阶段返工。
+      user_request: >
+        在进行具体的模块设计文档之前，先做一轮微架构的详细审查，看看从模块划分或者流水线设计上是否需要调整。
+      steps:
+        - "Step 1: 流水线架构审查 — 8 级流水线深度、FU 配比、LTAGE 分支预测、旁路网络、冒险处理"
+        - "Step 2: 模块划分审查 — 14 份设计文档的模块边界合理性"
+        - "Step 3: 模块间接口审查 — 8 组关键接口完整性"
+        - "Step 4: GEM5 性能模型交叉校验 — gem5 参数与 platform-spec 一致性"
+        - "Step 5: 输出审查报告 HTML + 指令记录 + Change Notices"
+      key_findings:
+        - "D-001 (中): Spec D 级对应 GEM5 Decode1+Decode2，E1+E2 对应 GEM5 Execute 单级 (命名差异)"
+        - "D-002 (关键): Spec FU 配比严重落后 GEM5 优化模型 (3xALU vs 4xALU, MUL 3c vs 1c, 1xLSU vs 2xLSU)"
+        - "D-003 (低): Spec 误判率 <1%，GEM5 实测 CoreMark 1.19%"
+        - "D-004 (中): Spec 旁路遗漏 W→D 和 FPU→D 路径"
+        - "D-005 (中): Spec 未记录推测性 Load 延迟预测和 skip-stalled 机制"
+        - "D-006 (关键): Vector 扩展流水线交互完全未定义"
+        - "D-007 (关键): Debug halt/resume、FPU/Vector 同步、锁步比较器接入点 3 个接口缺失"
+        - "D-008 (关键): Dhrystone 目标 3.8 vs 实测 1.65 DMIPS/MHz 差距巨大"
+      options_and_decisions:
+        - topic: "FU 配比差异处理"
+          options:
+            - "更新架构说明书 (将 spec 对齐到 GEM5 优化后的配置)"
+            - "更新 GEM5 模型 (回退 GEM5 优化，对齐 spec 原始配置)"
+            - "各自保留，在文档中说明差异"
+          decision: "更新架构说明书 (将 spec §4.3 对齐到 GEM5 优化后的配置)"
+        - topic: "文档拆分方案"
+          options:
+            - "保持原 14 份 (不拆分)"
+            - "拆分为 16 份 (interrupt-clic-plic 拆为 2 份, multicore-dft 拆为 2 份)"
+          decision: "拆分为 16 份 (interrupt-clic-plic → clic-plic.html + exception-handling.html, multicore-dft → multicore-lockstep.html + dft-security.html)"
+      decisions_executed:
+        - "DEC-001: platform-spec.html §4.3 FU 配比更新为 4xALU + 1xMUL + 1xDIV + 2xLSU + 1xFPU + 1xMISC"
+        - "DEC-002: interrupt-clic-plic.html 拆分为 clic-plic.html + exception-handling.html"
+        - "DEC-003: multicore-dft.html 拆分为 multicore-lockstep.html + dft-security.html"
+        - "DEC-004: platform-spec.html §4.6.1 补充 W→D 和 FPU→D 旁路路径"
+        - "DEC-005: platform-spec.html §4.6.3 补充 skip-stalled 机制和推测性 Load 延迟预测说明"
+        - "DEC-006: Dhrystone 目标下调 — 待用户后续决策"
+        - "DEC-007: 3 个缺失接口定义 — 待 M2-S1 设计文档中定义"
+      rules_checked: ["03", "06", "16", "20", "22"]
+    outcome: >
+      审查完成。生成了微架构审查报告 HTML (m2-s1-microarch-review.html)，
+      更新了 platform-spec.html v1.0.2 (FU 配比、旁路网络、冒险处理、误判率)，
+      追加了 risk-register.yaml (RISK-006~010)，
+      向 4 个角色发送了 Change Notices。
+      M2-S1 模块设计文档清单从 14 份冻结为 16 份。
+
 files_created_or_modified:
   - path: "audit/compliance-reports/m1-20260702.yaml"
     action: modified
@@ -94,5 +150,471 @@ files_created_or_modified:
     action: created
     summary: "Lumi-core 项目 README (技术规格/里程碑/仓库结构/快速导航)"
   - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 3: M2-S1 Task 0 微架构详细审查"
+  - path: "docs/architecture/m2-s1-microarch-review.html"
     action: created
-    summary: "本日志文件"
+    summary: "微架构审查报告 HTML (7 章节: 流水线/模块划分/接口/GEM5校验/决策/文档清单/风险)"
+  - path: "docs/architecture/platform-spec.html"
+    action: modified
+    summary: "v1.0.2 — §4.3 FU 配比对齐 GEM5, §4.4 误判率更新, §4.5 发射策略更新, §4.6.1 补充旁路, §4.6.3 补充冒险处理"
+  - path: "audit/risk-register.yaml"
+    action: modified
+    summary: "追加 RISK-006~010 (Dhrystone 目标/Vector 交互/Debug 接口/锁步接口/Smepmp 限制)"
+  - path: "agents/hw-design/change-notices/2026-07-07.yaml"
+    action: created
+    summary: "Change Notice: FU 配比更新 + 文档清单冻结为 16 份"
+  - path: "agents/hw-ver/change-notices/2026-07-07.yaml"
+    action: created
+    summary: "Change Notice: 3 个缺失接口需在验证策略中覆盖"
+  - path: "agents/pm-infra/change-notices/2026-07-07.yaml"
+    action: created
+    summary: "Change Notice: 文档清单从 14 份调整为 16 份, M2-S1 计划需更新"
+  - path: "agents/qa-audit/change-notices/2026-07-07.yaml"
+    action: created
+    summary: "Change Notice: 审查报告已归档, DEC-006 待用户决策"
+
+  # ──────────────────────────────────────────────
+  # 指令 4：M2-S1 Task 0 双审融合审查 + 执行计划实施
+  # ──────────────────────────────────────────────
+  - timestamp: "21:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_dual_review_fusion_and_task0_execution
+    details:
+      description: >
+        执行双审融合审查 (MiniMax D-001~D-015 + Deepseek D-016~D-022),
+        生成融合报告 v2.0, 更新 spec v1.0.3, 追加风险登记,
+        并实施 M2-S1 执行计划 Task 0 全部子任务。
+      user_request: >
+        Implement the plan as specified (M2-S1 详细设计执行计划 v2.0).
+      steps:
+        - "Step 1: 生成双审融合报告 m2-s1-microarch-review-v2.html (LUMI-ARCH-002 v2.0)"
+        - "Step 2: 更新 platform-spec.html v1.0.2 → v1.0.3 (D-009/D-010/D-014/D-015)"
+        - "Step 3: 更新 risk-register.yaml 追加 RISK-011~RISK-014"
+        - "Step 4: 更新 instruction-log/2026-07-07.yaml 追加指令 4"
+        - "Step 5: 更新 agents/*/change-notices/ 通知各角色"
+        - "Step 6: 更新 milestone-plan.yaml M2 gates 反映 16 份文档"
+        - "Step 7: 更新 .qoder/specs M2-S1 执行计划 spec 文件"
+      key_findings:
+        - "D-016 (Deepseek, 中): tck 异步跨时钟域延迟量化"
+        - "D-017 (Deepseek, 中): 旁路 mux 关键路径瓶颈 (80~100ps)"
+        - "D-018 (Deepseek, 低): 面积预估上限 ~0.36mm² 可能超标"
+        - "D-019 (Deepseek, 关键): Dhrystone 低于所有三发射竞品"
+        - "D-020 (Deepseek, 中): 62 条需求覆盖率 100% 验证通过"
+        - "D-021 (Deepseek, 中): Profile 合规 Mandatory 全合规, Smepmp/Smrnmi 待 RTL 验证"
+        - "D-022 (Deepseek, 关键): Vector 与 in-order 流水线实质可行性存疑"
+      decisions_executed:
+        - "platform-spec.html v1.0.3: D-009 端口压力分析, D-010 JALR 延迟, D-014 MUL/DIV 吞吐, D-015 skip-stalled 顺序声明"
+        - "risk-register.yaml: 追加 RISK-011~RISK-014 (旁路/面积/时序/锁步粒度)"
+      rules_checked: ["03", "06", "16", "18", "20", "22", "23"]
+    outcome: >
+      双审融合审查完成。生成融合报告 v2.0 (22 项发现, 6 关键/12 中等/2 低/2 信息),
+      21 项双审一致, 1 项分歧 (D-011 锁步比较器粒度)。
+      platform-spec.html 升级到 v1.0.3, risk-register 追加 4 项新风险。
+      M2-S1 执行计划 Task 0 前置闭合全部完成。
+
+files_created_or_modified_v2:
+  - path: "docs/architecture/m2-s1-microarch-review-v2.html"
+    action: created
+    summary: "双审融合审查报告 v2.0 (LUMI-ARCH-002 v2.0, 12 章完整)"
+  - path: "docs/architecture/platform-spec.html"
+    action: modified
+    summary: "v1.0.2 → v1.0.3 (D-009 端口压力, D-010 JALR 延迟, D-014 吞吐模型, D-015 顺序声明)"
+  - path: "audit/risk-register.yaml"
+    action: modified
+    summary: "追加 RISK-011~RISK-014 (旁路瓶颈/面积超标/时序紧凑/锁步粒度)"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 4: 双审融合审查 + Task 0 执行"
+  - path: "agents/hw-design/change-notices/2026-07-07-v2.yaml"
+    action: created
+    summary: "Change Notice v2: 双审融合审查结论 + spec v1.0.3 + 新风险"
+  - path: "agents/hw-ver/change-notices/2026-07-07-v2.yaml"
+    action: created
+    summary: "Change Notice v2: RTL-only 测试项需求 + 验证覆盖矩阵"
+  - path: "agents/pm-infra/change-notices/2026-07-07-v2.yaml"
+    action: created
+    summary: "Change Notice v2: 执行计划更新 + milestone-plan 同步"
+  - path: "agents/qa-audit/change-notices/2026-07-07-v2.yaml"
+    action: created
+    summary: "Change Notice v2: 融合报告归档 + 审查一致性评估"
+  - path: "docs/project/milestone-plan.yaml"
+    action: modified
+    summary: "M2 gates: 14 份 → 16 份模块设计文档"
+  - path: ".qoder/specs/M2-S1_详细设计执行计划_task-b9e.md"
+    action: modified
+    summary: "更新为 v2.0 执行计划 (16 份文档 + Task 0 前置闭合 + 审查约束)"
+
+  # ──────────────────────────────────────────────
+  # 指令 5：M2-S1 Batch-1 设计文档编写
+  # ──────────────────────────────────────────────
+  - timestamp: "22:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_batch1_design_docs
+    details:
+      description: >
+        创建 Batch-1 核心流水线 5 份设计文档 (docs/design/)，
+        每份包含 7 标准章节 + 审查约束响应。
+      user_request: >
+        继续执行 M2-S1 执行计划 Batch-1 设计文档。
+      steps:
+        - "Step 1: 创建 fetch-bpred.html (LUMI-DESIGN-001, 363 行) — F1/F2+LTAGE+BTB/RAS, D-012 审查约束"
+        - "Step 2: 创建 decode-issue.html (LUMI-DESIGN-002, 325 行) — D/I级三发射+冒险+skip-stalled, D-015/D-009"
+        - "Step 3: 创建 execute-alu.html (LUMI-DESIGN-003, 404 行) — E1/E2 ALU+MUL/DIV, D-014/D-010"
+        - "Step 4: 创建 writeback-csr.html (LUMI-DESIGN-004, 399 行) — W级+CSR+HPM"
+        - "Step 5: 创建 regfile.html (LUMI-DESIGN-005, 356 行) — 整数/浮点/向量寄存器堆, D-009"
+        - "Step 6: 更新 docs/index.html 添加设计文档索引"
+        - "Step 7: 更新 instruction-log 追加指令 5"
+      rules_checked: ["03", "08", "14", "16"]
+    outcome: >
+      Batch-1 全部 5 份设计文档创建完成，覆盖 8 级流水线核心模块。
+      总计 1847 行 HTML。每份文档含 7 标准章节 + 审查约束响应表。
+      51 个 Cover Group 定义。审查约束 D-009/D-010/D-012/D-014/D-015 全部响应。
+
+files_created_or_modified_batch1:
+  - path: "docs/design/fetch-bpred.html"
+    action: created
+    summary: "LUMI-DESIGN-001: F1/F2+LTAGE+BTB/RAS (363 行, D-012)"
+  - path: "docs/design/decode-issue.html"
+    action: created
+    summary: "LUMI-DESIGN-002: D/I级三发射+冒险+skip-stalled (325 行, D-015/D-009)"
+  - path: "docs/design/execute-alu.html"
+    action: created
+    summary: "LUMI-DESIGN-003: E1/E2 ALU+MUL/DIV (404 行, D-014/D-010)"
+  - path: "docs/design/writeback-csr.html"
+    action: created
+    summary: "LUMI-DESIGN-004: W级+CSR+HPM (399 行)"
+  - path: "docs/design/regfile.html"
+    action: created
+    summary: "LUMI-DESIGN-005: 整数/浮点/向量寄存器堆 (356 行, D-009)"
+  - path: "docs/index.html"
+    action: modified
+    summary: "添加 M2-S1 Batch-1 设计文档索引区"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 5: Batch-1 设计文档编写"
+
+  # ──────────────────────────────────────────────
+  # 指令 6：M2-S1 Batch-2 设计文档编写
+  # ──────────────────────────────────────────────
+  - timestamp: "23:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_batch2_design_docs
+    details:
+      description: >
+        创建 Batch-2 内存与接口 3 份设计文档 (docs/design/)，
+        每份包含 7 标准章节 + 审查约束响应。
+      user_request: >
+        执行 Batch-2
+      steps:
+        - "Step 1: 创建 tcm.html (LUMI-DESIGN-006, 453 行) — ITCM/DTCM+ECC+DMA, 审查约束: TCM 延迟切换"
+        - "Step 2: 创建 cache.html (LUMI-DESIGN-007, 563 行) — L1 I/D-Cache+ECC+RVWMO, 审查约束: 替换策略 (PLRU)"
+        - "Step 3: 创建 pma-axi.html (LUMI-DESIGN-008, 543 行) — PMA+AXI总线+FFP, 审查约束: PMA+PMP 联合"
+        - "Step 4: 更新 docs/index.html 添加 Batch-2 索引"
+        - "Step 5: 更新 instruction-log 追加指令 6"
+      rules_checked: ["03", "08", "14", "16"]
+    outcome: >
+      Batch-2 全部 3 份设计文档创建完成，覆盖内存子系统与总线接口。
+      总计 1559 行 HTML。36 个 Cover Group 定义。
+      审查约束: TCM 延迟切换 (pipeline drain 安全切换)、替换策略 (PLRU 选型分析)、
+      PMA+PMP 联合 (AND 逻辑+时序关系) 全部响应。
+      承接需求: LUMI-MEM-002~009, LUMI-IF-001~003, LUMI-FEAT-003, LUMI-SYS-006/007, LUMI-SEC-005。
+
+files_created_or_modified_batch2:
+  - path: "docs/design/tcm.html"
+    action: created
+    summary: "LUMI-DESIGN-006: ITCM/DTCM+ECC+DMA (453 行, TCM 延迟切换)"
+  - path: "docs/design/cache.html"
+    action: created
+    summary: "LUMI-DESIGN-007: L1 I/D-Cache+ECC+RVWMO (563 行, 替换策略 PLRU)"
+  - path: "docs/design/pma-axi.html"
+    action: created
+    summary: "LUMI-DESIGN-008: PMA+AXI总线+FFP (543 行, PMA+PMP 联合)"
+  - path: "docs/index.html"
+    action: modified
+    summary: "添加 M2-S1 Batch-2 设计文档索引区"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 6: Batch-2 设计文档编写"
+
+  # ──────────────────────────────────────────────
+  # 指令 7：M2-S1 Batch-3 设计文档编写
+  # ──────────────────────────────────────────────
+  - timestamp: "2026-07-07T09:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_batch3_design_docs
+    details:
+      description: >
+        创建 Batch-3 中断/特权/调试 4 份设计文档 (docs/design/)，
+        每份包含 7 标准章节 + 审查约束响应。
+      user_request: >
+        继续执行 M2-S1 执行计划 Batch-3 设计文档。
+      steps:
+        - "Step 1: 创建 clic-plic.html (LUMI-DESIGN-009, 444 行) — CLIC+PLIC两层中断, D-013 延时预算"
+        - "Step 2: 创建 exception-handling.html (LUMI-DESIGN-010, 356 行) — 精确异常+委托+NMI"
+        - "Step 3: 创建 privilege-pmp.html (LUMI-DESIGN-011, 307 行) — M/S/U+PMP+Smepmp, ERR-004"
+        - "Step 4: 创建 debug-trace.html (LUMI-DESIGN-012, 354 行) — JTAG DM+Trace, DEC-007-1/D-016"
+        - "Step 5: 更新 docs/index.html 添加 Batch-3 索引"
+        - "Step 6: 更新 instruction-log 追加指令 7"
+      rules_checked: ["03", "08", "14", "16"]
+    outcome: >
+      Batch-3 全部 4 份设计文档创建完成，覆盖中断系统、异常处理、特权架构和调试接口。
+      总计 1461 行 HTML。38 个 Cover Group 定义。
+      审查约束: D-013 (16cycle 中断延时分解)、异常优先级 (11级排序)、
+      ERR-004 (Smepmp MML+MMWP LUT 策略)、DEC-007-1 (halt/resume 接口)、D-016 (3级安全) 全部响应。
+      承接需求: LUMI-SYS-001~003, LUMI-PROF-002, LUMI-MEM-001, LUMI-SEC-004, LUMI-FEAT-001~004。
+
+files_created_or_modified_batch3:
+  - path: "docs/design/clic-plic.html"
+    action: created
+    summary: "LUMI-DESIGN-009: CLIC+PLIC两层中断控制器 (444 行, D-013)"
+  - path: "docs/design/exception-handling.html"
+    action: created
+    summary: "LUMI-DESIGN-010: 异常处理+陷阱委托+NMI (356 行, 异常优先级)"
+  - path: "docs/design/privilege-pmp.html"
+    action: created
+    summary: "LUMI-DESIGN-011: 特权+PMP+Smepmp (307 行, ERR-004)"
+  - path: "docs/design/debug-trace.html"
+    action: created
+    summary: "LUMI-DESIGN-012: JTAG Debug+Trace (354 行, DEC-007-1/D-016)"
+  - path: "docs/index.html"
+    action: modified
+    summary: "添加 M2-S1 Batch-3 设计文档索引区"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 7: Batch-3 设计文档编写"
+
+  # ──────────────────────────────────────────────
+  # 指令 8：M2-S1 Batch-4 设计文档编写
+  # ──────────────────────────────────────────────
+  - timestamp: "2026-07-07T10:00:00"
+    role: hw-design
+    session_mode: main
+    action: m2_s1_batch4_design_docs
+    details:
+      description: >
+        创建 Batch-4 扩展 4 份设计文档 (docs/design/)，
+        每份包含 7 标准章节 + 审查约束响应。
+      user_request: >
+        继续执行 M2-S1 执行计划 Batch-4 设计文档。
+      steps:
+        - "Step 1: 创建 fpu-vector.html (LUMI-DESIGN-013, 556 行) — FPU+Vector+D-006a/b/c+DEC-007-2"
+        - "Step 2: 创建 power-reset.html (LUMI-DESIGN-014, 485 行) — WFI/WRS+Clock Gating+CDC+UPF, WFI延迟约束"
+        - "Step 3: 创建 multicore-lockstep.html (LUMI-DESIGN-015, 450 行) — 多核拓扑+锁步比较器, DEC-007-3+D-011"
+        - "Step 4: 创建 dft-security.html (LUMI-DESIGN-016, 394 行) — Scan+MBIST+JTAG+安全+SDC, 扫描链覆盖率"
+        - "Step 5: 更新 docs/index.html 添加 Batch-4 索引"
+        - "Step 6: 更新 instruction-log 追加指令 8"
+      rules_checked: ["03", "08", "14", "16"]
+    outcome: >
+      Batch-4 全部 4 份设计文档创建完成，覆盖 FPU/Vector、功耗/复位、多核/锁步、DFT/安全。
+      总计 1885 行 HTML。54 个 Cover Group 定义。
+      审查约束: D-006a/b/c (Vector-FU/LSQ/RegFile 三子问题)、DEC-007-2 (FPU/Vector 同步接口)、
+      WFI 延迟 (唤醒 ≤8 cycle)、DEC-007-3 (锁步比较器 W 级基线+M 级预留)、
+      D-011 (双级比较分歧融合)、扫描链覆盖率 (&ge;98%) 全部响应。
+      承接需求: LUMI-ISA-004/007/009/010, LUMI-SYS-004/005/008, LUMI-MCORE-001/002,
+      LUMI-DFT-001~003, LUMI-SEC-001~005, LUMI-TIMING-001/002, LUMI-QUAL-001~003。
+
+files_created_or_modified_batch4:
+  - path: "docs/design/fpu-vector.html"
+    action: created
+    summary: "LUMI-DESIGN-013: FPU+Vector (556 行, D-006a/b/c+DEC-007-2)"
+  - path: "docs/design/power-reset.html"
+    action: created
+    summary: "LUMI-DESIGN-014: 低功耗+复位+时钟域 (485 行, WFI 延迟)"
+  - path: "docs/design/multicore-lockstep.html"
+    action: created
+    summary: "LUMI-DESIGN-015: 多核+锁步 (450 行, DEC-007-3+D-011)"
+  - path: "docs/design/dft-security.html"
+    action: created
+    summary: "LUMI-DESIGN-016: DFT+安全+物理约束 (394 行, 扫描链覆盖率)"
+  - path: "docs/index.html"
+    action: modified
+    summary: "添加 M2-S1 Batch-4 设计文档索引区, 更新日期"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 8: Batch-4 设计文档编写"
+
+  - id: 9
+    type: execute
+    source: user
+    timestamp: "2026-07-07T09:00:00+08:00"
+    summary: "Task-1 模块设计文档双视角审查与修正"
+    details:
+      背景: "Task-1 生成 16 份模块设计文档后, 用户要求独立检查逻辑性和完整性"
+      审查视角:
+        - "Qoder: 结构完整性/章节一致性/需求追溯"
+        - "GLM: 跨文档逻辑衔接/接口一致性/GEM5 关联"
+      审查发现:
+        P0_关键: 5 项 (dft-security 8章节, privilege-pmp 缺§3, debug-trace 缺§1.3+§3, writeback-csr 缺审查约束, exception-handling 缺需求承接)
+        P1_重要: 8 项 (缺交叉引用, 缺关键需求, 接口表格不统一, 缺审查报告引用, 缺验证策略引用, 缺GEM5关联, Vector接口混用格式)
+        P2_可选: 4 项 (标题不统一, 版本号缺失, 编号跳跃, 验证子节不一致)
+      修正操作:
+        Phase1_P0:
+          - "Task 1.1: dft-security.html 重构为 7 章节标准结构"
+          - "Task 1.2: privilege-pmp.html 补充关联模块+审查依据+验证策略+GEM5 (§3 已存在, 审查误报)"
+          - "Task 1.3: debug-trace.html 补 §1.3 设计约束+关联模块+审查依据+验证策略+GEM5 (§3 已存在, 审查误报)"
+          - "Task 1.4: writeback-csr.html 补 D-013 审查约束响应+关联模块+审查依据+验证策略+GEM5+LUMI-IPC-002"
+          - "Task 1.5: exception-handling.html 补 LUMI-SYS-002/003 需求承接+关联模块+审查依据+验证策略+GEM5"
+        Phase2_P1:
+          - "Task 2.1: 4 份文档补关键需求 (writeback-csr:LUMI-IPC-002, dft-security:LUMI-AREA-001, power-reset:LUMI-PWR-001/002, fetch-bpred:LUMI-AREA-001)"
+          - "Task 2.2: 16 份文档全部补充关联模块段落 (含跨文档 href)"
+          - "Task 2.3: 16 份文档接口表格统一为 4 列 (信号|方向|位宽|描述), 5 份 '说明'→'描述', 4 份 3列→4列"
+          - "Task 2.4: 15 份文档补充审查报告引用 (m2-s1-microarch-review-v2.html)"
+          - "Task 2.5: 16 份文档补充验证策略引用 (verification-strategy.html)"
+          - "Task 2.6: 8 份文档补充 GEM5 参数关联"
+        Phase3_P2:
+          - "Task 3.1: 5 份 Batch-1 文档 '需求追溯表' → '需求追溯'"
+          - "Task 3.2: 3 份 Batch-4 文档补充版本号 (版本: 1.0 | 更新: 2026-07-07)"
+          - "Task 3.3: 检查确认无编号跳跃"
+        Phase4_审计:
+          - "Task 4.1: risk-register.yaml 新增 RISK-015/016/017 (均 resolved)"
+          - "Task 4.2: 追加指令 9 到 instruction-log/2026-07-07.yaml"
+          - "Task 4.3: 更新 docs/index.html 日期"
+      选择类决策:
+        - 决策点: "P0-2/P0-3 审查发现 §3 缺失"
+          选项: ["插入新 §3", "确认 §3 已存在 (审查误报)"]
+          选择: "确认 §3 已存在, 仅补充缺失元素"
+          理由: "privilege-pmp 和 debug-trace 实际已有 §3 接口定义, 审查时因 h2 编号跳跃误判"
+      文件变更:
+        - docs/design/dft-security.html (重构 7 章节 + 审查依据 + 验证策略 + GEM5 + LUMI-AREA-001)
+        - docs/design/privilege-pmp.html (关联模块 + 审查依据 + 验证策略 + GEM5)
+        - docs/design/debug-trace.html (§1.3 + 关联模块 + 审查依据 + 验证策略 + GEM5)
+        - docs/design/writeback-csr.html (D-013 约束 + 关联模块 + 审查依据 + 验证策略 + GEM5 + LUMI-IPC-002 + 说明→描述)
+        - docs/design/exception-handling.html (LUMI-SYS-002/003 + 关联模块 + 审查依据 + 验证策略 + GEM5 + 说明→描述)
+        - docs/design/fetch-bpred.html (关联模块 + 审查依据 + 验证策略 + LUMI-AREA-001 + 需求追溯表→需求追溯)
+        - docs/design/decode-issue.html (关联模块 + 审查依据 + 验证策略 + 需求追溯表→需求追溯)
+        - docs/design/execute-alu.html (关联模块 + 审查依据 + 验证策略 + 需求追溯表→需求追溯)
+        - docs/design/regfile.html (关联模块 + 审查依据 + 验证策略 + 需求追溯表→需求追溯)
+        - docs/design/tcm.html (关联模块 + 审查依据 + 验证策略 + GEM5)
+        - docs/design/cache.html (关联模块 + 审查依据 + 验证策略 + GEM5)
+        - docs/design/pma-axi.html (关联模块 + 审查依据 + 验证策略 + GEM5)
+        - docs/design/clic-plic.html (关联模块 + 审查依据 + 验证策略)
+        - docs/design/fpu-vector.html (关联模块 + 审查依据 + 验证策略 + GEM5 + 版本号 + Vector接口3列→4列)
+        - docs/design/multicore-lockstep.html (关联模块 + 审查依据 + 验证策略 + GEM5 + 版本号 + 多核接口3列→4列 + M级表4列重构)
+        - docs/design/power-reset.html (关联模块 + 审查依据 + 验证策略 + GEM5 + 版本号 + LUMI-PWR-001/002 + 接口3列→4列 + 说明→描述)
+        - audit/risk-register.yaml (新增 RISK-015/016/017)
+        - audit/instruction-log/2026-07-07.yaml (追加指令 9)
+        - docs/index.html (更新日期)
+      验证标准:
+        - "16 份文档均为 7 章节结构"
+        - "所有接口表为 4 列 信号|方向|位宽|描述"
+        - "LUMI-IPC-002/AREA-001/PWR-001/002 在对应文档有引用"
+        - "每份文档有关联模块段落"
+        - "16 份文档引用审查报告和验证策略"
+        - "无 h2 编号跳跃"
+
+  # ──────────────────────────────────────────────
+  # 指令 10：M2-S1 GEM5+ 扩展与 RTL 骨架执行
+  # ──────────────────────────────────────────────
+  - id: 10
+    type: execute
+    source: user
+    timestamp: "2026-07-07T22:30:00+08:00"
+    summary: "M2-S1 GEM5+ 扩展与 RTL 骨架最终计划执行 (v4 DeepSeek 终审)"
+    details:
+      背景: "按计划执行 M2-S1 Task 2 (GEM5 扩展) + Task 3 (RTL 骨架)"
+      plan_file: "M2-S1_GEM5+RTL_同步推进_task-80e.md (v4)"
+      执行阶段:
+        Task_3A_基础设施:
+          files_created:
+            - "src/rtl/include/lumi_types_pkg.sv (157 行, 全局类型包+fu_type_e+HPM参数)"
+            - "src/rtl/include/lumi_interfaces.sv (239 行, pipeline/axi4/mem_req/interrupt/jtag)"
+            - "src/rtl/Makefile (184 行, lint+synth 目标)"
+            - "src/rtl/lumi_core.f (61 行, 28 文件 filelist)"
+        Task_3B_核心流水线:
+          files_created:
+            - "src/rtl/core/lumi_fetch.sv (102 行, F1/F2+LTAGE+BTB)"
+            - "src/rtl/core/lumi_decode_issue.sv (89 行, D/I级+fu_type_e+skip-stalled)"
+            - "src/rtl/core/lumi_execute.sv (106 行, E1/E2+旁路mux+branch feedback)"
+            - "src/rtl/core/lumi_memory_stage.sv (105 行, M级+Store Buffer)"
+            - "src/rtl/core/lumi_writeback.sv (95 行, W级+commit+trap+irq)"
+            - "src/rtl/core/lumi_core_top.sv (251 行, 8级级联)"
+            - "src/rtl/core/lumi_bypass.sv (72 行, D-017旁路网络)"
+        Task_3C_存储总线:
+          files_created:
+            - "src/rtl/memory/lumi_tcm.sv (96 行, ITCM/DTCM+ECC+DMA)"
+            - "src/rtl/memory/lumi_cache.sv (122 行, I/D-Cache+RVWMO)"
+            - "src/rtl/bus/lumi_pma_checker.sv (84 行, 3区域硬编码)"
+            - "src/rtl/bus/lumi_axi_wrapper.sv (173 行, AXI4+FFP+CDC)"
+        Task_3D_辅助模块:
+          files_created:
+            - "src/rtl/csr/lumi_csr_unit.sv (101 行, CSR+HPM 29事件)"
+            - "src/rtl/csr/lumi_regfile.sv (36 行, IRF/FRF/VRF+ECC)"
+            - "src/rtl/interrupt/lumi_clic.sv (45 行, 16cycle delay FSM)"
+            - "src/rtl/interrupt/lumi_plic.sv (38 行, 外部中断路由)"
+            - "src/rtl/interrupt/lumi_exception.sv (33 行, 异常+委托+NMI)"
+            - "src/rtl/debug/lumi_debug_module.sv (36 行, JTAG DMI)"
+            - "src/rtl/debug/lumi_trace.sv (32 行, Nexus Trace)"
+            - "src/rtl/fpu/lumi_fpu.sv (39 行, 7 FU骨架)"
+            - "src/rtl/fpu/lumi_vector.sv (44 行, 8 FU骨架)"
+            - "src/rtl/power/lumi_power_mgmt.sv (44 行, WFI/ICG/复位)"
+            - "src/rtl/multicore/lumi_multicore_top.sv (27 行, 多核互联)"
+            - "src/rtl/multicore/lumi_lockstep.sv (31 行, D-011双级比较)"
+            - "src/rtl/dft/lumi_dft_ctrl.sv (41 行, Scan/MBIST/JTAG)"
+        Task_3E_顶层集成:
+          files_created:
+            - "src/rtl/top/lumi_soc_top.sv (343 行, SoC顶层+generate)"
+            - "src/rtl/top/lumi_soc_tb_stub.sv (138 行, TB stub+AXI BFM)"
+        Task_2A_GEM5_P0:
+          files_created:
+            - "lumi-lib/lumi_clic_latency.py (108 行, CLIC 16cycle统计建模)"
+            - "lumi-lib/lumi_pma.py (221 行, 3区域PMA检查器)"
+          files_modified:
+            - "lumi-core.py (添加 --enable-pma/--clic-latency/--btb-entries/--ras-entries, 移除 --bp-global/--bp-local)"
+        Task_2B_GEM5_P1:
+          files_modified:
+            - "lumi_cpu.py (添加 7 个 FPU FU 类, 替换 MinorDefaultFloatSimdFU, +enable_vector)"
+            - "lumi_tcm.py (添加 itcm_latency/dtcm_latency 参数)"
+            - "lumi_cache.py (添加 size/assoc 参数)"
+            - "lumi-core.py (添加 --fpu-div-latency/--fpu-sqrt-latency/--icache-size/--dcache-size/--cache-assoc/--tcm-itcm-lat/--tcm-dtcm-lat)"
+        Task_2C_GEM5_P2:
+          files_created:
+            - "lumi-lib/lumi_vector.py (122 行, 8 Vector FU + 创建函数)"
+            - "lumi-lib/lumi_power.py (190 行, WFI/WRS/ICG统计+PowerDomain)"
+            - "lumi-lib/lumi_hpm.py (174 行, 29 HPM事件映射+JSON导出)"
+          files_modified:
+            - "lumi_cpu.py (enable_vector 参数, FU Pool 扩展)"
+            - "lumi-core.py (添加 --enable-vector/--enable-hpm)"
+        Task_4_审计测试:
+          files_modified:
+            - "test_smoke.py (添加 PMA/FPU/Vector/CLIC/HPM/Power 6 项冒烟测试)"
+            - "test_regression.py (添加 M2-S1 6 项回归测试)"
+      选择类决策:
+        - 决策点: "FPU opClass 命名 (DS-D1 致命验证)"
+          选项:
+            - "使用带位宽后缀 (SimdFloatAdd32/SimdFloatAdd64) — MiniMax 方案"
+            - "使用真实 gem5 opClass (FloatAdd/SimdFloatAdd) — DeepSeek 验证"
+          选择: "使用真实 gem5 opClass (不加位宽后缀)"
+          理由: "gem5/src/cpu/FuncUnit.py L57-79 确认不存在带位宽后缀的 opClass"
+        - 决策点: "低功耗建模方式"
+          选项:
+            - "C++ SimObject 完整实现 (需修改 gem5 源码)"
+            - "Python 统计层近似 (WFI/ICG 事件收集)"
+          选择: "Python 统计层近似"
+          理由: "SimObject 需 C++ 实现, 推迟到 M3; M2-S1 仅需统计数据"
+      rules_checked: ["03", "06", "08", "10", "14", "16", "22", "23"]
+    outcome: >
+      M2-S1 GEM5+ 扩展与 RTL 骨架全部完成。
+      RTL: 28 个 .sv 骨架文件 (端口+FSM+信号, 无功能实现), filelist + Makefile。
+      GEM5: 5 个新 .py + 5 个修改 .py (PMA/CLIC/FPU 7FU/Vector 8FU/Power/HPM)。
+      测试: test_smoke 6 项冒烟 + test_regression 6 项回归。
+      关键约束: FPU/Vector 全部使用 gem5 真实 opClass (DS-D1 验证通过)。
+      待办: verilator lint 验证 (需环境), Yosys 综合估算, git commit 分批提交。
+
+files_created_or_modified_m2s1_exec:
+  - path: "src/rtl/ (28 .sv + 1 .f + 1 Makefile)"
+    action: created
+    summary: "RTL 骨架 28 文件 + filelist + Makefile"
+  - path: "perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/ (5 new .py)"
+    action: created
+    summary: "GEM5 新增: clic_latency/pma/vector/power/hpm"
+  - path: "perf/gem5-model/configs/gem5-overlay/configs/ (5 modified .py)"
+    action: modified
+    summary: "GEM5 修改: lumi-core/lumi_cpu/lumi_tcm/lumi_cache/test_smoke+test_regression"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 10: M2-S1 GEM5+RTL 执行"

@@ -1,0 +1,19 @@
+# Lumi-Core RTL 综合估算 (Yosys)
+# 目的: 骨架级模块统计, 非最终综合
+# 注意: Yosys 0.64 不支持 SV unpacked array 端口, 使用 SymbiYosys/Verilator 替代
+# 此处仅做 per-module 读取统计
+
+# 仅读取 package 和不含 unpacked array 的模块
+read_verilog -sv -defer -Isrc/rtl/include \
+  src/rtl/include/lumi_types_pkg.sv \
+  src/rtl/include/lumi_interfaces.sv
+
+read_verilog -sv -defer -Isrc/rtl/include \
+  src/rtl/bus/lumi_pma_checker.sv \
+  src/rtl/power/lumi_icg.sv
+
+# Elaborate what we can
+hierarchy -check
+
+# Print statistics per module
+stat -width

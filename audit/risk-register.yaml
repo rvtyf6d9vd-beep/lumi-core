@@ -111,6 +111,229 @@ risks:
     resolution: "Merged into RISK-001"
     resolution_date: "2026-07-01"
 
+  # ──────────────────────────────────────────────
+  # M2-S1 Task 0 微架构审查新增风险 (2026-07-07)
+  # ──────────────────────────────────────────────
+  - id: "RISK-006"
+    title: "Dhrystone performance target gap (3.8 vs 1.65 DMIPS/MHz)"
+    severity: high
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-arch
+    description: >
+      M2-S1 微架构审查发现 Dhrystone 目标 >=3.8 DMIPS/MHz 与 GEM5 RV32 实测
+      1.65 DMIPS/MHz 差距巨大 (2.3x)。对于顺序执行三发射处理器，3.8 DMIPS/MHz
+      是非常激进的目标 (ARM Cortex-R82 公开数据约 2.5 DMIPS/MHz)。
+      CoreMark 目标 5.5 CM/MHz 已达成 (实测 6.97)，但 Dhrystone 差距显著。
+    mitigation: >
+      建议将 Dhrystone 目标下调为 >=2.0 DMIPS/MHz (仍优于典型双发射)，
+      或在 PRD 中标注为 "Stretch Goal"。待用户决策 (DEC-006)。
+      用户决策 (2026-07-07): 保持 3.8 DMIPS/MHz 不变。后续通过 RTL 优化
+      或编译器优化尝试接近目标。RISK-006 保持 open 状态。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-007"
+    title: "Vector extension pipeline interaction undefined"
+    severity: high
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      M2-S1 微架构审查发现 Vector 扩展的流水线交互完全未定义。Vector 指令
+      可能需要多周期执行，与顺序流水线的同步机制 (stall/skip) 未在 spec 中描述。
+      GEM5 MinorCPU 未建模 Vector FU，Vector 指令行为未知。
+    mitigation: >
+      M2-S1 设计文档 fpu-vector.html 必须定义 Vector 指令的流水线交互机制：
+      执行延迟、stall 策略、与 Issue 级的 busy 信号握手、异常处理。
+      RTL 验证阶段需覆盖 Vector 指令的边界情况。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-008"
+    title: "Debug halt/resume pipeline interaction undefined"
+    severity: medium
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      M2-S1 微架构审查发现 Debug halt/resume 与流水线的交互接口完全未定义。
+      Debug halt 在哪个流水线级生效？Resume 后流水线如何重新填充？
+      这些问题必须在设计文档中明确。
+    mitigation: >
+      M2-S1 设计文档 debug-trace.html 必须定义 halt 在 W 级生效
+      (指令提交后)，Resume 后从 halt PC 重新取指。
+      需定义 halt 信号传播路径和流水线 flush 策略。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-009"
+    title: "Lockstep comparator接入点未定义"
+    severity: medium
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      M2-S1 微架构审查发现锁步比较器接入点完全未定义。比较器接入哪个流水线级？
+      比较哪些信号 (PC? 寄存器? 内存写?)？比较失败后的处理机制？
+    mitigation: >
+      M2-S1 设计文档 multicore-lockstep.html 必须定义比较在 W 级
+      (写回前)，比较 PC + 目标寄存器号 + 写入数据。
+      比较失败触发 NMI 或自定义异常。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-010"
+    title: "gem5 lacks Smepmp/Smrnmi extension support (ERR-004/005)"
+    severity: low
+    status: accepted
+    reported_by: hw-ver
+    reported_date: "2026-07-07"
+    assigned_to: hw-arch
+    description: >
+      gem5 24.1 不支持 Smepmp (Enhanced PMP) 和 Smrnmi (Resumable NMI) 扩展。
+      访问相关 CSR 触发 illegal-instruction trap。已在 ERR-004/005 登记。
+      微架构审查确认这些扩展的 CSR 访问路径需在 RTL 验证阶段覆盖。
+    mitigation: >
+      PMP 测试跳过 Smepmp CSR 访问，Smrnmi 测试跳过所有 CSR 访问。
+      完整测试需 RTL 或 RTL-accurate simulator。
+      M2-S1 privilege-pmp.html 设计文档需标注 gem5 已知限制。
+    resolution: null
+    resolution_date: null
+
+  # ──────────────────────────────────────────────
+  # M2-S1 双审融合审查新增风险 (2026-07-07, Deepseek)
+  # ──────────────────────────────────────────────
+  - id: "RISK-011"
+    title: "RTL critical path bottleneck at bypass mux (Issue stage)"
+    severity: medium
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      双审融合审查 (Deepseek D-017) 发现 5 路旁路 mux (5→1, 32bit = 160bit)
+      在 I 级可能成为关键路径瓶颈。预估延迟 80~100ps, 占 1GHz 时序预算 (125ps)
+      的 64~80%。若不优化可能导致时序违例。
+    mitigation: >
+      RTL 骨架中预留流水化分割点, 必要时将旁路 mux 拆为 2 级
+      (I 级前半 + D 级后半)。设计文档 decode-issue.html 需描述旁路
+      mux 的物理设计策略。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-012"
+    title: "Area overrun risk (Core+TCM+Cache ~0.22~0.36mm² vs target ≤0.32mm²)"
+    severity: medium
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      双审融合审查 (Deepseek D-018) 面积预估上限 (~0.36mm²) 可能超过
+      0.32mm² 目标。主要风险来自 LTAGE 12 表 (256Kbits) 和 TCM/Cache 容量。
+      Core 部分约 0.15~0.25mm², 加 TCM/Cache 后接近目标上限。
+    mitigation: >
+      RTL 骨架完成后进行综合预估, 若超标需评估: (1) LTAGE 表数从 12
+      缩减至 8; (2) Cache 容量从 16KB 降至 8KB; (3) 采用高密度 SRAM macro。
+      面积超标时作为关键决策点触发用户评审。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-013"
+    title: "1GHz timing tight (F2/M stage SRAM ~88% of budget)"
+    severity: medium
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      双审融合审查 (Deepseek 5.3) 分析 TSMC 28HPC 1GHz 时序可行性:
+      F2 级 (ICache SRAM 读出) 和 M 级 (DCache SRAM 读出) 是最紧张的级,
+      预估 90~110ps, 占 125ps 预算的 72~88%。整体评估可行但紧凑。
+    mitigation: >
+      需在 RTL 实现中关注 F2/M 级 SRAM macro 选型。优先选用高密度
+      low-Vt SRAM macro, 必要时考虑将 F2/M 级拆分为 1.5 级。
+      power-reset.html 设计文档需包含时钟域和时序约束分析。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-014"
+    title: "Lockstep comparator dual-level granularity complexity"
+    severity: low
+    status: open
+    reported_by: hw-design
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      双审融合审查分歧项 (D-011): MiniMax 建议仅 W 级比较, Deepseek 建议
+      W+M 双级比较。双级比较更全面但 Store Buffer 同步策略复杂, 可能增加
+      设计复杂度和验证工作量。
+    mitigation: >
+      M2-S1 设计文档 multicore-lockstep.html 先以 W 级比较为基线设计,
+      预留 M 级扩展接口。若 M+W 双级比较复杂度过高, 向用户提出简化方案
+      (仅 W 级)。比较失败触发 NMI。
+    resolution: null
+    resolution_date: null
+
+  # ──────────────────────────────────────────────
+  # M2-S1 Task-1 文档审查修正新增风险 (2026-07-07)
+  # ──────────────────────────────────────────────
+  - id: "RISK-015"
+    title: "Task-1 文档结构不一致 — dft-security 8 章节非标准"
+    severity: medium
+    status: resolved
+    reported_by: qa-audit
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      Task-1 双视角审查发现 dft-security.html 采用 8 章节结构 (其他 15 份均为
+      7 章节), 且接口定义在 ch5 而非标准的 ch3。影响 M2 门禁结构一致性检查。
+    mitigation: >
+      已重构为标准 7 章节结构: ch2 合并 DFT+安全+物理约束, ch3 移前为接口
+      定义, 新增 ch4 数据通路。导航栏从 8 锥点改为 7 锥点。
+    resolution: "dft-security.html 重构为 7 章节标准结构"
+    resolution_date: "2026-07-07"
+
+  - id: "RISK-016"
+    title: "12 份模块文档缺失交叉引用与关键需求未承接"
+    severity: low
+    status: resolved
+    reported_by: qa-audit
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      Task-1 双视角审查发现 12 份文档缺关联模块交叉引用, 且关键需求
+      LUMI-IPC-002 (Dhrystone), LUMI-AREA-001 (面积), LUMI-PWR-001/002 (功耗)
+      无设计文档承接。影响需求追溯链完整性。
+    mitigation: >
+      已在 16 份文档中补充关联模块段落; 4 份文档补充关键需求引用;
+      15 份文档补充审查报告引用; 16 份文档补充验证策略引用;
+      8 份文档补充 GEM5 参数关联。
+    resolution: "全部交叉引用与需求承接已补全"
+    resolution_date: "2026-07-07"
+
+  - id: "RISK-017"
+    title: "接口表格格式不统一 (3列/4列混用, 列名不一致)"
+    severity: low
+    status: resolved
+    reported_by: qa-audit
+    reported_date: "2026-07-07"
+    assigned_to: hw-design
+    description: >
+      Task-1 双视角审查发现接口表格存在 3 列 (缺位宽) 与 4 列混用,
+      且列名 "说明" 与 "描述" 不统一。影响 RTL 骨架接口定义提取。
+    mitigation: >
+      已统一为 4 列标准 (信号|方向|位宽|描述): 5 份文档 “说明”→"描述",
+      4 份文档 3 列→ 4 列 (补位宽), multicore-lockstep M 级表 4 列 (含状态)
+      重构为标准 4 列。
+    resolution: "全部接口表格统一为 4 列标准格式"
+    resolution_date: "2026-07-07"
+
 # 示例条目格式:
 # - id: "RISK-001"
 #   title: "CSR 模块时序不满足"

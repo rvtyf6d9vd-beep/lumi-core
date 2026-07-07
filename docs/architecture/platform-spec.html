@@ -63,7 +63,7 @@
     <h1>Lumi-Core 平台架构说明书</h1>
     <p class="subtitle">Platform Architecture Specification</p>
     <div class="meta">
-        <p><strong>文档编号:</strong> LUMI-ARCH-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0</p>
+        <p><strong>文档编号:</strong> LUMI-ARCH-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0.3</p>
         <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>状态:</strong> 定版</p>
         <p><strong>负责人:</strong> 架构组 (hw-design)</p>
     </div>
@@ -287,19 +287,30 @@
 <h2>4.3 功能单元 (Functional Units)</h2>
 <table>
     <tr><th>FU 类型</th><th>数量</th><th>操作延迟</th><th>支持操作</th></tr>
-    <tr><td>ALU</td><td>3</td><td>1 cycle</td><td>整数运算、比较、移位、位操作</td></tr>
-    <tr><td>MUL/DIV</td><td>1</td><td>MUL: 3 cycle / DIV: 迭代</td><td>整数乘除法</td></tr>
-    <tr><td>Load/Store (LSU)</td><td>1</td><td>Load: 1 cycle (TCM) / 1+ cycle (Cache)</td><td>内存访问、AMO</td></tr>
-    <tr><td>FPU (可选)</td><td>1</td><td>FADD: 4 cycle / FMUL: 4 cycle / FDIV: 迭代</td><td>单/双精度浮点</td></tr>
-    <tr><td>Branch</td><td>1</td><td>1 cycle</td><td>分支判断与跳转</td></tr>
+    <tr><td>ALU</td><td>4</td><td>1 cycle (opLat=1)</td><td>整数运算、比较、移位、位操作、分支判断</td></tr>
+    <tr><td>MUL</td><td>1</td><td>1 cycle (opLat=1, 流水线化)</td><td>整数乘法 (mul/mulh/mulhsu/mulhu)，吞吐 1 条/cycle (v1.0.3: D-014 吞吐模型)</td></tr>
+    <tr><td>DIV</td><td>1</td><td>9 cycle (opLat=9, 迭代式)</td><td>整数除法/取余 (div/divu/rem/remu)，in-flight 9 cycle，期间 DIV FU 不可用但其他 FU 可并行 (v1.0.3: D-014)</td></tr>
+    <tr><td>Load/Store (LSU)</td><td>2 (三发射模式)</td><td>Load: 1 cycle (TCM) / 1+ cycle (Cache)</td><td>内存访问、AMO</td></tr>
+    <tr><td>FPU (可选)</td><td>1</td><td>6 cycle (opLat=6)</td><td>单/双精度浮点</td></tr>
+    <tr><td>MISC</td><td>1</td><td>1 cycle (opLat=1)</td><td>系统指令 (ECALL/EBREAK/FENCE/SFENCE 等)</td></tr>
 </table>
+
+<div class="note"><strong>更新说明 (v1.0.2, 2026-07-07):</strong> FU 配比已与 GEM5 MinorCPU 实际配置对齐 (DEC-001)。<br>
+&bull; ALU 3&rarr;4 (Phase 10 优化，减少 FU 竞争)<br>
+&bull; MUL 延迟 3cycle&rarr;1cycle (Phase 7 优化，流水线化乘法器)<br>
+&bull; MUL 与 DIV 从共享 FU 改为独立 FU<br>
+&bull; LSU 1&rarr;2 (Phase 11 优化，三发射模式添加第二 MEM FU)<br>
+&bull; Branch FU 取消 (分支通过 ALU 执行)<br>
+&bull; 新增 MISC FU (系统指令专用)<br>
+参考: <a href="m2-s1-microarch-review.html">M2-S1 微架构审查报告 &sect;1.2</a></div>
 
 <h2>4.4 分支预测</h2>
 <ul>
     <li><strong>预测器</strong>：LTAGE (TAGE + Loop Predictor)，12 张 TAGE 表，minHist=4, maxHist=640, 总量 256Kbits</li>
     <li><strong>BTB</strong>：SimpleBTB, 8192 条目</li>
     <li><strong>RAS</strong>：Return Address Stack, 32 条目，支持函数调用快速返回</li>
-    <li><strong>误判率</strong>：TournamentBP 2.39% &rarr; LTAGE 显著降低，Loop Predictor 对紧密循环近乎零误判</li>
+    <li><strong>误判率</strong>：TournamentBP 2.39% &rarr; LTAGE 显著降低，RV32 CoreMark 实测 1.19%，Loop Predictor 对紧密循环近乎零误判</li>
+    <li><strong>误判率目标</strong>：典型工作负载 &le;2%，CoreMark 紧密循环 &le;1.5% (v1.0.2 更新，基于 GEM5 实测数据)</li>
     <li><strong>fetch1ToFetch2BackwardDelay</strong> = 0（已优化，消除分支惩罚）</li>
 </ul>
 
@@ -309,7 +320,7 @@
     <li>指令按程序顺序发射到可用 FU</li>
     <li>同一 FU 类型不可超额分配（如 3 条 ALU 指令可同时发射，但 4 条不可）</li>
     <li>Load/Store 指令独占 LSU</li>
-    <li>当前主瓶颈：ALU FU contention（FU 饱和时性能受限）</li>
+    <li>当前主瓶颈：Load-Use stall 与 Cache miss 延迟 (Phase 10 后 ALU FU 已扩展至 4 个，竞争不再是主瓶颈)</li>
 </ul>
 
 <div class="warn"><strong>架构约束:</strong> 明确禁止乱序执行、超过三发射、更深流水线。这些是 Lumi-Core 的硬性设计约束，不可通过配置突破。</div>
@@ -319,8 +330,8 @@
 <h3>4.6.1 数据冒险 (Data Hazards)</h3>
 <table>
     <tr><th>冒险类型</th><th>处理策略</th><th>代价</th></tr>
-    <tr><td>RAW (读后写)</td><td>全程数据旁路 (Forwarding/Bypass) 网络，E1&rarr;D, E2&rarr;D, M&rarr;D</td><td>0 cycle (旁路命中时)</td></tr>
-    <tr><td>Load-Use RAW</td><td>Load 数据在 M 级才可用，若后指令 D 级需要，插入 1 个 stall cycle</td><td>1 cycle stall</td></tr>
+    <tr><td>RAW (读后写)</td><td>全程数据旁路 (Forwarding/Bypass) 网络，E1&rarr;D, E2&rarr;D, M&rarr;D, W&rarr;D, FPU&rarr;D</td><td>0 cycle (旁路命中时)</td></tr>
+    <tr><td>Load-Use RAW</td><td>Load 数据在 M 级才可用，若后指令 D 级需要，插入 1 个 stall cycle。GEM5 使用推测性 Load 延迟预测 (executeLoadAssumedLatency=1)，假设 L1D 命中，miss 时回滚</td><td>1 cycle stall (推测命中时 0 cycle)</td></tr>
     <tr><td>WAW (写后写)</td><td>顺序提交保证 WAW 不发生</td><td>0</td></tr>
     <tr><td>WAR (写后读)</td><td>顺序执行自然消除 WAR</td><td>0</td></tr>
 </table>
@@ -331,14 +342,16 @@
     <li><strong>误预测惩罚</strong>：3 cycle flush (F2 + D + I 级)</li>
     <li><strong>LTAGE 优化</strong>：典型误判率 &lt;1%，Loop Predictor 对紧密循环近乎零误判</li>
     <li><strong>JAL/JALR</strong>：JAL 在 F1 级即可解析目标，JALR 需等 E1 级寄存器值</li>
+    <li><strong>JALR 解析延迟</strong>：2 cycle (D 级读 rs1 + E1 级算地址) + 1 cycle (branch feedback)，总计 3 cycle 误预测惩罚 (v1.0.3 补充, D-010)</li>
 </ul>
 
 <h3>4.6.3 结构冒险 (Structural Hazards)</h3>
 <ul>
-    <li><strong>FU 冲突</strong>：同一周期内同类 FU 请求超过可用数量时，发射级仲裁并 stall</li>
-    <li><strong>当前瓶颈</strong>：ALU FU contention (3x ALU 饱和时性能受限)</li>
-    <li><strong>LSU 独占</strong>：Load/Store 指令独占 LSU，同周期只允许 1 条内存访问</li>
-    <li><strong>MUL/DIV 多周期</strong>：乘法 3 cycle，除法迭代式，期间 FU 不可用</li>
+    <li><strong>FU 冲突</strong>：同一周期内同类 FU 请求超过可用数量时，发射级仲裁并 stall。GEM5 使用 skip-stalled 机制 (skip-stalled=True)，允许非冲突指令越过 stall 指令继续发射。<strong>skip-stalled 不破坏程序顺序 (in-order commit)</strong>：被跳过的指令仍在队列中等待，后续指令仅在同一 FU 不冲突时才越过发射，所有指令仍按程序顺序提交 (v1.0.3 补充, D-015)</li>
+    <li><strong>ALU 充足</strong>：4x ALU 已满足三发射需求，ALU 竞争不再是瓶颈 (Phase 10 优化后)</li>
+    <li><strong>LSU 双通道</strong>：三发射模式下 2x LSU，同周期最多允许 2 条 Load/Store 指令 (Phase 11 优化后)</li>
+    <li><strong>MUL 流水线化</strong>：乘法 1 cycle (opLat=1)，流水线化，不阻塞后续指令 (Phase 7 优化后)</li>
+    <li><strong>DIV 多周期</strong>：除法 9 cycle (opLat=9, 迭代式)，期间 DIV FU 不可用但其他 FU 可继续执行</li>
 </ul>
 
 <h2 id="s47">4.7 寄存器堆架构 (Register File Architecture)</h2>
@@ -354,6 +367,12 @@
     <tr><td>x0 处理</td><td>读恒为 0，写忽略</td><td>节省 1 个写端口使能</td></tr>
     <tr><td>读延迟</td><td>1 cycle (D 级读)</td><td>旁路网络可转发从 E1/E2/M/W 读出</td></tr>
 </table>
+
+<div class="warn"><strong>端口压力分析 (v1.0.3, D-009):</strong> 三发射模式下整数寄存器堆 3R/2W 端口的最坏情况分析：<br>
+&bull; <strong>读端口需求</strong>：当 3 条指令同时需要读取 6 个不同源寄存器时 (如 2 条 ALU + 1 条 Load)，3R 端口不足，需分 2 个 cycle 完成寄存器读取<br>
+&bull; <strong>写端口需求</strong>：最多同时 2 条指令写回 (如 1 条 ALU + 1 条 Load)，2W 端口满足<br>
+&bull; <strong>仲裁规则</strong>：当读端口不足时，发射级 stall 第三条指令直到前 2 条完成 D 级读；优先级按程序顺序 (先发射的指令优先占用端口)<br>
+&bull; <strong>实际影响</strong>：典型工作负载下端口冲突概率低 (大部分指令仅需 1~2 个源寄存器)，极端场景 (密集三发射 + 不同寄存器) 才会触发 stall</div>
 
 <h3>4.7.2 浮点寄存器堆 (Floating-Point Register File)</h3>
 <table>
@@ -1124,7 +1143,7 @@
 <div class="footer">
     <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
     <p>Lumi-Core Platform Architecture Specification &mdash; CONFIDENTIAL<br>
-    文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0.1 &nbsp;|&nbsp; 更新: 2026-07-06<br>
+    文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0.3 &nbsp;|&nbsp; 更新: 2026-07-07<br>
     承接: <a href="../project/product-requirements.html">PRD (product-requirements.html)</a> &nbsp;|&nbsp;
     引用: <a href="../profile/Lumi-Core-Profile.html">Profile (Lumi-Core-Profile.html)</a></p>
 </div>

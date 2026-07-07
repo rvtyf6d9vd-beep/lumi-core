@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>低功耗管理 &amp; 复位 &amp; 时钟域模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>低功耗管理 &amp; 复位 &amp; 时钟域模块设计文档</h1>
+    <p class="subtitle">WFI/WRS Low-Power + Clock Gating + Multi-Domain Reset + UPF Power Intent</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-014 &nbsp;|&nbsp; <strong>批次:</strong> Batch-4 (P2) &nbsp;|&nbsp; <strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;8.2~&sect;8.3, &sect;8.9</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">WFI 延迟</span> (WFI 唤醒到首条指令执行 &le;8 cycle)</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>低功耗 &amp; 复位 &amp; 时钟域模块管理 Lumi-Core 的<strong>功耗状态</strong>、<strong>时钟门控</strong>和<strong>复位域</strong>：</p>
+<ul>
+    <li><strong>低功耗管理</strong>：WFI/WRS 指令触发的低功耗状态 (Active/Sleep/Deep Sleep)</li>
+    <li><strong>Clock Gating</strong>：细粒度 ICG 门控 + WFI 触发门控 + SoC 强制门控</li>
+    <li><strong>复位域</strong>：Cold/Warm/Debug/Power-on 四级复位域划分</li>
+    <li><strong>时钟域</strong>：clk_core / clk_bus / clk_tcm / tck / clk_trace 多域管理</li>
+    <li><strong>UPF 电源约束</strong>：电源域划分 + 隔离策略 + Retention 寄存器</li>
+    <li><strong>启动序列</strong>：复位释放 → Boot 初始化流程</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>WFI/WRS 低功耗状态机</td><td>中断控制器 (属于 clic-plic.html)</td></tr>
+    <tr><td>Clock Gating 控制逻辑 (ICG 使能生成)</td><td>ICG cell 物理实现 (标准单元库)</td></tr>
+    <tr><td>复位域划分 + 复位释放顺序</td><td>Debug Module 内部复位 (属于 debug-trace.html)</td></tr>
+    <tr><td>时钟域 CDC 同步器</td><td>PLL 物理实现 (SoC 级)</td></tr>
+    <tr><td>UPF 电源域定义 + 隔离/Retention</td><td>电压调节器 (PMU 物理 IP)</td></tr>
+    <tr><td>启动序列 (复位向量 → Bootloader)</td><td>Bootloader 固件 (软件层)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="clic-plic.html">clic-plic.html</a> (WFI 唤醒中断源) | <a href="debug-trace.html">debug-trace.html</a> (tck 时钟域/Debug 复位) | <a href="tcm.html">tcm.html</a> (TCM 时钟域) | <a href="dft-security.html">dft-security.html</a> (Scan/MBIST 复位)</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 低功耗状态 <span class="req-tag">LUMI-SYS-004</span> <span class="req-tag">LUMI-SYS-008</span> <span class="req-tag">LUMI-PWR-001</span> <span class="req-tag">LUMI-PWR-002</span></h2>
+
+<h3>2.1.1 功耗状态定义 <span class="req-tag">LUMI-PWR-003</span></h3>
+<table>
+    <tr><th>状态</th><th>触发条件</th><th>行为</th><th>唤醒源</th><th>唤醒延迟</th></tr>
+    <tr><td><strong>Active</strong></td><td>正常运行</td><td>全模块工作</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td><strong>Sleep (WFI)</strong></td><td>WFI 指令执行</td><td>Core Clock 门控, 中断检测保持</td><td>中断/NMI/Debug</td><td>&le;8 cycle</td></tr>
+    <tr><td><strong>Deep Sleep</strong></td><td>SoC 信号 <code>deep_sleep_req</code></td><td>PLL 关闭, 仅 Retention 寄存器保持</td><td>外部唤醒信号</td><td>PLL 锁定时间 (&mu;s 级)</td></tr>
+</table>
+
+<h3>2.1.2 WFI 执行流程 <span class="constraint-tag">审查约束: WFI 延迟</span></h3>
+<pre>
+// WFI 执行状态机
+//
+// ┌─────────┐  WFI decode  ┌──────────┐  pipeline  ┌─────────┐
+// │ Active  │─────────────►│ WFI_ARM  │───────────►│  Sleep  │
+// └─────────┘              └──────────┘  drain     └────┬────┘
+//      ▲                                                │
+//      │         wake_event                             │
+//      └────────────────────────────────────────────────┘
+
+function wfi_execute():
+    // 1. WFI 在 D 级解码
+    // 2. WFI 提交 (W 级) 后进入低功耗:
+    //    a. 等待流水线排空 (F2/D/I/E1/E2/M 全部完成)
+    //    b. 关闭 Core Clock 域 (clk_gate_enable = 1)
+    //    c. 仅保留中断检测逻辑运行
+    
+    if pending_interrupt():
+        // WFI 作为 NOP: 有待处理中断时不进入 Sleep
+        return
+    
+    pipeline_drain()  // 等待所有 in-flight 指令完成
+    core_clk_gate(1)  // 关闭 Core Clock
+    power_state = SLEEP
+
+// WFI 唤醒流程
+function wfi_wake(wake_source):
+    // 唤醒源: 中断 / NMI / Debug halt / SoC 强制唤醒
+    core_clk_gate(0)  // 恢复 Core Clock
+    
+    // 唤醒序列:
+    // cycle 1: clk_gate 释放, 时钟恢复
+    // cycle 2: F1 级开始取指 (从 WFI 下一条指令 PC)
+    // cycle 3: F2 级 ICache 读出
+    // cycle 4~8: D/I/E1/E2/M/W 流水线填充
+    // 首条指令在 WFI 唤醒后 ≤8 cycle 到达 W 级
+    
+    power_state = ACTIVE
+    // 如果是中断唤醒, 进入中断处理流程
+    if wake_source == INTERRUPT:
+        handle_interrupt()
+</pre>
+
+<div class="crit"><strong>审查约束 — WFI 延迟:</strong>
+<ul>
+    <li><strong>要求:</strong> WFI 唤醒后首条指令到执行 &le;8 cycle (platform-spec §8.9.2)</li>
+    <li><strong>分解:</strong> 1 cycle (clk gate release) + 1 cycle (F1) + 1 cycle (F2) + 1 cycle (D) + 1 cycle (I) + 1 cycle (E1) + 1 cycle (E2) + 1 cycle (M→W) = 8 cycle</li>
+    <li><strong>ICache 影响:</strong> 如果唤醒后首条指令 ICache miss，额外增加 Cache refill 延迟 (不在 8 cycle 预算内)</li>
+    <li><strong>TCM 无影响:</strong> TCM 访问延迟恒定 (0/1 cycle)，WFI 不影响 TCM 内容</li>
+    <li><strong>WRS 差异:</strong> WRS 等待 reservation set，唤醒条件为内存写入到监控地址，唤醒延迟相同</li>
+    <li><strong>验证:</strong> Cover Group <code>cg_wfi_latency</code> 覆盖唤醒 cycle 计数</li>
+</ul>
+</div>
+
+<h3>2.1.3 WRS (Wait for Reservation Set)</h3>
+<pre>
+// WRS 执行流程 (Zawrs 扩展)
+function wrs_execute():
+    // 1. WRS 检查当前 hart 的 reservation 是否有效
+    // 2. 如果 reservation 有效 → 进入等待 (类似 WFI)
+    // 3. 等待条件: 其他 hart/设备写入到 reservation 地址
+    // 4. 唤醒: reservation 被清除 (外部写入) 或中断
+    
+    if not reservation_valid:
+        return  // reservation 无效, WRS 作为 NOP
+    
+    pipeline_drain()
+    core_clk_gate(1)  // 进入 Sleep
+    // 唤醒条件: reservation_invalidate 信号
+</pre>
+
+<h2>2.2 Clock Gating 策略 <span class="req-tag">LUMI-CLK-002</span></h2>
+
+<h3>2.2.1 门控层级</h3>
+<table>
+    <tr><th>层级</th><th>门控对象</th><th>控制信号</th><th>恢复延迟</th></tr>
+    <tr><td>细粒度 (ICG cell)</td><td>每级流水线寄存器</td><td>空闲检测逻辑 (per-stage idle)</td><td>0 cycle (组合逻辑使能)</td></tr>
+    <tr><td>模块级</td><td>FPU / Vector / TCM / Cache</td><td>模块空闲信号</td><td>0~1 cycle</td></tr>
+    <tr><td>Core 级 (WFI)</td><td>整个 Core Clock 域</td><td>WFI 触发 clk_gate_enable</td><td>1 cycle</td></tr>
+    <tr><td>SoC 级</td><td>Core Clock (强制)</td><td><code>core_clk_gate_req</code> (外部)</td><td>1 cycle (请求到响应)</td></tr>
+    <tr><td>深度睡眠</td><td>PLL (SoC 关闭)</td><td><code>deep_sleep_req</code></td><td>PLL 锁定 (&mu;s)</td></tr>
+</table>
+
+<h3>2.2.2 细粒度门控逻辑</h3>
+<pre>
+// ICG (Integrated Clock Gating) 控制
+//
+// 每级流水线寄存器前有 ICG cell:
+//   clk_gated = clk_core &amp; icg_enable
+//
+// icg_enable 生成:
+//   icg_enable_F1 = not (stall_F1 or flush_F1 or sleep_mode)
+//   icg_enable_F2 = not (stall_F2 or flush_F2 or sleep_mode)
+//   icg_enable_D  = not (stall_D or sleep_mode)
+//   ...
+//   icg_enable_W  = not (sleep_mode)  // W 级在 sleep 前完成所有指令
+//
+// 模块级门控:
+//   icg_enable_FPU = not (fpu_idle and fpu_no_pending)
+//   icg_enable_VEC = not (vec_idle and vec_no_pending)
+//   icg_enable_TCM = not (tcm_no_access and tcm_no_dma)
+</pre>
+
+<h2>2.3 时钟域架构 <span class="req-tag">LUMI-CLK-001</span></h2>
+
+<h3>2.3.1 时钟域划分</h3>
+<table>
+    <tr><th>时钟域</th><th>信号名</th><th>默认频率</th><th>描述</th></tr>
+    <tr><td>CPU Core</td><td><code>clk_core</code></td><td>&ge;1.0 GHz</td><td>Hart + FPU + Vector + ICG</td></tr>
+    <tr><td>Bus</td><td><code>clk_bus</code></td><td>同主频或分频</td><td>AXI 接口 + PLIC + CLIC MMIO</td></tr>
+    <tr><td>TCM</td><td><code>clk_tcm</code></td><td>同 clk_core</td><td>TCM 存储阵列 (同步访问)</td></tr>
+    <tr><td>Debug TCK</td><td><code>tck</code></td><td>10~50 MHz (异步)</td><td>JTAG TAP 控制器</td></tr>
+    <tr><td>Trace (可选)</td><td><code>clk_trace</code></td><td>同 clk_core</td><td>Trace Encoder</td></tr>
+</table>
+
+<h3>2.3.2 跨时钟域同步</h3>
+<pre>
+// CDC (Clock Domain Crossing) 策略
+//
+// 1. clk_core ↔ clk_bus (同步/分频关系):
+//    - 使用 2-FF 同步器传递控制信号
+//    - 使用 Async FIFO 传递数据 (深度可配, 默认 4 entry)
+//    - AXI handshake 信号使用 2-FF 同步
+//
+// 2. tck ↔ clk_core (完全异步):
+//    - DMI 接口使用 req/ack 异步握手协议
+//    - dmi_req → 2-FF 同步到 clk_core → 处理 → 2-FF 同步 dmi_ack 回 tck
+//    - 延迟: 2~4 clk_core cycle + 2~4 tck cycle
+//
+// 3. clk_core ↔ clk_trace (可选, 通常同步):
+//    - 如果 clk_trace = clk_core: 直接连接
+//    - 如果异步: 2-FF 同步 + Async FIFO (默认 8 entry)
+//
+// CDC 验证: LUMI-QUAL-001 覆盖 (SpyGlass CDC / Conformal CDC)
+</pre>
+
+<h2>2.4 复位域 <span class="req-tag">LUMI-CLK-003</span> <span class="req-tag">LUMI-BOOT-001</span></h2>
+
+<h3>2.4.1 复位域划分</h3>
+<table>
+    <tr><th>复位域</th><th>信号名</th><th>触发源</th><th>影响范围</th></tr>
+    <tr><td>Power-on Reset</td><td><code>por_n</code></td><td>外部 SoC (可选)</td><td>全模块复位 + 模拟初始化</td></tr>
+    <tr><td>Cold Reset</td><td><code>reset_n</code></td><td>外部 SoC</td><td>全模块复位, PC=复位向量</td></tr>
+    <tr><td>Core Reset</td><td><code>core_rst_n</code></td><td>由 reset_n 派生</td><td>Hart + CSR + FPU 复位, TCM/Cache 内容保留</td></tr>
+    <tr><td>Bus Reset</td><td><code>bus_rst_n</code></td><td>由 reset_n 派生</td><td>AXI 接口 + PLIC + CLIC 寄存器复位</td></tr>
+    <tr><td>Debug Reset</td><td><code>ndmreset</code></td><td>Debug Module</td><td>仅 Hart 复位, 不影响 TCM/外设</td></tr>
+</table>
+
+<h3>2.4.2 复位释放顺序</h3>
+<pre>
+// 复位释放顺序 (确保系统稳定启动)
+//
+// 1. por_n 释放 (Power-on Reset, 最先)
+// 2. reset_n 释放 (Cold Reset)
+// 3. bus_rst_n 先释放 (AXI 互联稳定)
+// 4. core_rst_n 后释放 (Hart 开始取指, 此时 AXI 已就绪)
+// 5. ndmreset 可在任意时刻由 Debug Module 触发
+//
+// 复位释放同步器:
+//   每个复位域使用 2-FF 释放同步器, 防止复位释放时的亚稳态
+//   reset_sync = FF2(reset_n_async, clk_target_domain)
+</pre>
+
+<h2>2.5 启动序列 <span class="req-tag">LUMI-BOOT-002</span> <span class="req-tag">LUMI-BOOT-003</span></h2>
+<pre>
+// 启动序列 (Cold Reset 后)
+//
+// 1. reset_n 拉低 → 全模块复位
+// 2. reset_n 拉高 → Hart 从复位向量开始执行:
+//    - PC = reset_vector (可配: 0x0000_0000 ITCM / 0x8000_0000 DDR / Boot ROM)
+//    - mstatus.MPP = M-mode, mstatus.MIE = 0
+//    - mtvec = 0 (待软件初始化)
+//    - PMP: 全 Region OFF (待软件配置)
+//
+// 3. M-mode 初始化 (Bootloader/固件):
+//    a. 配置 PMP (Smepmp: mseccfg.MML=1, MMWP=1)
+//    b. 配置 mtvec (vectored 模式, 中断向量表)
+//    c. 初始化 TCM: ITCM/DTCM 加载 Bootloader
+//    d. 使能 Cache: I-Cache/D-Cache 开启
+//    e. 初始化 CLIC/PLIC
+//
+// 4. 可选: 切换到 S-mode (RTOS) 或 U-mode (应用)
+//
+// Boot ROM (可选, LUMI-BOOT-003):
+// - 内置 4~32KB Boot ROM, 映射到复位向量地址
+// - 包含最小化初始化代码 (PMP 配置 + TCM 加载 + 跳转)
+// - 支持固件签名验证 (RSA-2048/ECDSA-P256, LUMI-SEC-001)
+</pre>
+
+<h2>2.6 UPF 电源约束 <span class="req-tag">LUMI-PWR-004</span> <span class="req-tag">LUMI-PWR-005</span></h2>
+
+<h3>2.6.1 电源域划分</h3>
+<table>
+    <tr><th>电源域</th><th>包含模块</th><th>电压</th><th>描述</th></tr>
+    <tr><td><code>PD_CORE</code></td><td>Hart + FPU + Vector + CSR + ICG</td><td>VDD_CORE</td><td>默认单域; Deep Sleep 时关闭</td></tr>
+    <tr><td><code>PD_CACHE</code> (可选)</td><td>L1 I-Cache + D-Cache</td><td>VDD_MEM</td><td>独立电压域, 支持 Cache 独立保持</td></tr>
+    <tr><td><code>PD_TCM</code> (可选)</td><td>ITCM + DTCM0 + DTCM1</td><td>VDD_MEM</td><td>独立电压域, TCM 在 Sleep 时保持</td></tr>
+    <tr><td><code>PD_ALWAYS_ON</code></td><td>唤醒逻辑 + Retention 控制 + 中断检测</td><td>VDD_AON</td><td>始终供电</td></tr>
+</table>
+
+<h3>2.6.2 隔离与 Retention</h3>
+<pre>
+// 隔离策略 (跨电源域信号)
+// - 跨域信号使用 isolation cell (默认 clamp 0)
+// - iso_en 信号由 Always-On 域控制
+// - Deep Sleep 进入时: iso_en = 1 (clamp 所有跨域信号)
+// - Deep Sleep 退出时: iso_en = 0 (恢复正常信号)
+
+// Retention 寄存器 (Deep Sleep 状态保持)
+// 关键 CSR 使用 retention register:
+//   - mstatus, mepc, mtvec, mcause
+//   - pmpcfg0~3, pmpaddr0~7
+//   - mseccfg
+// Retention 寄存器在 Deep Sleep 时由 VDD_AON 供电保持
+// 唤醒后自动恢复, 无需软件重新配置
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 低功耗接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>wfi_active</code></td><td>Out (to SoC)</td><td>1</td><td>Hart 处于 WFI Sleep 状态</td></tr>
+    <tr><td><code>core_clk_gate_req</code></td><td>In (from SoC)</td><td>1</td><td>SoC 强制 Core Clock 门控请求</td></tr>
+    <tr><td><code>core_clk_gate_ack</code></td><td>Out (to SoC)</td><td>1</td><td>Core Clock 门控确认</td></tr>
+    <tr><td><code>deep_sleep_req</code></td><td>In (from SoC)</td><td>1</td><td>深度睡眠请求</td></tr>
+    <tr><td><code>deep_sleep_ack</code></td><td>Out (to SoC)</td><td>1</td><td>深度睡眠确认 (iso_en 已置位)</td></tr>
+    <tr><td><code>wake_event</code></td><td>In (from SoC/中断)</td><td>1</td><td>唤醒事件</td></tr>
+    <tr><td><code>power_state[1:0]</code></td><td>Out</td><td>2</td><td>当前功耗状态 (00=Active, 01=Sleep, 11=Deep Sleep)</td></tr>
+</table>
+
+<h2>3.2 时钟/复位接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>In</td><td>1</td><td>CPU Core 主时钟</td></tr>
+    <tr><td><code>clk_bus</code></td><td>In</td><td>1</td><td>Bus 时钟</td></tr>
+    <tr><td><code>clk_tcm</code></td><td>In</td><td>1</td><td>TCM 时钟</td></tr>
+    <tr><td><code>tck</code></td><td>In</td><td>1</td><td>JTAG Debug 时钟 (异步)</td></tr>
+    <tr><td><code>clk_trace</code></td><td>In (可选)</td><td>1</td><td>Trace 时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>In</td><td>1</td><td>Cold Reset (低有效)</td></tr>
+    <tr><td><code>por_n</code></td><td>In (可选)</td><td>1</td><td>Power-on Reset (低有效)</td></tr>
+    <tr><td><code>ndmreset</code></td><td>In (from Debug)</td><td>1</td><td>Debug Module 暖复位</td></tr>
+    <tr><td><code>iso_en</code></td><td>Out (to SoC)</td><td>1</td><td>电源域隔离使能</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 WFI 低功耗状态机</h2>
+<pre>
+// WFI 状态机 (RTL 框架)
+//
+// States:
+//   ACTIVE    — 正常运行
+//   DRAIN     — 流水线排空中
+//   SLEEP     — Core Clock 门控, 等待唤醒
+//   WAKEUP    — 时钟恢复, 流水线重新填充
+//
+// Transitions:
+//   ACTIVE → DRAIN:   wfi_commit (WFI 指令在 W 级提交)
+//   DRAIN → SLEEP:    pipeline_empty (所有 in-flight 指令完成)
+//   SLEEP → WAKEUP:   wake_event (中断/NMI/Debug/SoC)
+//   WAKEUP → ACTIVE:  wakeup_done (首条指令进入 F1)
+//   ACTIVE → ACTIVE:  wfi_commit + pending_interrupt (WFI 作为 NOP)
+//
+// 输出:
+//   core_clk_gate_en = (state == SLEEP)
+//   wfi_active       = (state == SLEEP or state == DRAIN)
+</pre>
+
+<h2>4.2 复位释放同步器</h2>
+<pre>
+// 复位释放同步器 (per-domain)
+//
+// module reset_sync (
+//     input  wire clk,        // 目标时钟域
+//     input  wire rst_async,  // 异步复位 (低有效)
+//     output wire rst_sync    // 同步复位 (低有效)
+// );
+//     reg ff1, ff2;
+//     always @(posedge clk or negedge rst_async) begin
+//         if (!rst_async) begin
+//             ff1 &lt;= 1'b0;
+//             ff2 &lt;= 1'b0;
+//         end else begin
+//             ff1 &lt;= 1'b1;
+//             ff2 &lt;= ff1;
+//         end
+//     end
+//     assign rst_sync = ff2;
+// endmodule
+//
+// 使用:
+//   reset_sync u_core_rst (.clk(clk_core), .rst_async(reset_n), .rst_sync(core_rst_n));
+//   reset_sync u_bus_rst  (.clk(clk_bus),  .rst_async(reset_n), .rst_sync(bus_rst_n));
+//   // bus_rst_n 先释放 (通过延迟链), core_rst_n 后释放
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>可选值</th><th>默认值</th><th>影响</th></tr>
+    <tr><td>功耗状态数</td><td>2 (Active/Sleep) / 3 (+ Deep Sleep)</td><td>3</td><td>Deep Sleep 需要 Retention + 隔离</td></tr>
+    <tr><td>复位向量地址</td><td>0x0000_0000 / 0x8000_0000 / 自定义</td><td>0x0000_0000</td><td>ITCM / DDR / Boot ROM 启动</td></tr>
+    <tr><td>Boot ROM</td><td>Yes / No</td><td>No</td><td>4~32KB, 含签名验证</td></tr>
+    <tr><td>多电源域</td><td>Yes / No</td><td>No</td><td>PD_CACHE/PD_TCM 独立域</td></tr>
+    <tr><td>CSR Retention</td><td>Yes / No</td><td>No</td><td>mstatus/mepc/mtvec 等 Deep Sleep 保持</td></tr>
+    <tr><td>WFI 唤醒延迟</td><td>&le;8 cycle (固定)</td><td>8 cycle</td><td>硬件保证上限</td></tr>
+    <tr><td>clk_bus 分频比</td><td>1:1 / 1:2 / 1:4</td><td>1:1</td><td>SoC 级配置</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证策略</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+<blockquote><strong>GEM5 参数关联:</strong> GEM5 WFI 功耗状态建模为 P2 任务。当前 GEM5 MinorCPU 将 WFI 作为 NOP 处理，功耗状态转换需通过自定义 SimObject 扩展。<code>power_state</code> 枚举映射到 GEM5 <code>PowerState</code> 枚举。</blockquote>
+
+<h2>6.1 Cover Groups</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_wfi_latency</code></td><td>WFI 唤醒到首条指令 cycle 计数 (≤8)</td><td>wake_to_first_commit_cycles</td></tr>
+    <tr><td><code>cg_wfi_wake_source</code></td><td>WFI 唤醒源 (中断/NMI/Debug/SoC)</td><td>wake_source_type</td></tr>
+    <tr><td><code>cg_wfi_nop</code></td><td>WFI 作为 NOP (有 pending interrupt 时)</td><td>wfi_commit × pending_irq</td></tr>
+    <tr><td><code>cg_power_states</code></td><td>功耗状态转换 (Active↔Sleep↔Deep Sleep)</td><td>power_state_transition</td></tr>
+    <tr><td><code>cg_clk_gate</code></td><td>Clock Gating 使能/释放 × 各级</td><td>icg_enable × pipeline_stage</td></tr>
+    <tr><td><code>cg_reset_domains</code></td><td>复位域独立触发 × 影响范围</td><td>reset_type × affected_modules</td></tr>
+    <tr><td><code>cg_reset_release_order</code></td><td>复位释放顺序 (bus → core)</td><td>bus_rst_release_time vs core_rst_release_time</td></tr>
+    <tr><td><code>cg_cdc_paths</code></td><td>跨时钟域路径 (core↔bus, tck↔core)</td><td>cdc_src_domain × cdc_dst_domain</td></tr>
+    <tr><td><code>cg_deep_sleep</code></td><td>Deep Sleep 进入/退出序列</td><td>deep_sleep_phase × iso_en_state</td></tr>
+    <tr><td><code>cg_retention</code></td><td>Retention 寄存器保持/恢复</td><td>csr_name × retention_valid</td></tr>
+</table>
+
+<h2>6.2 关键验证场景</h2>
+<ul>
+    <li><strong>WFI 延迟:</strong> 精确测量 WFI 唤醒到首条指令提交 cycle 数 ≤ 8</li>
+    <li><strong>WFI 竞争:</strong> WFI 执行同时中断到达 (WFI 作为 NOP vs 进入 Sleep)</li>
+    <li><strong>复位顺序:</strong> 验证 bus_rst_n 先于 core_rst_n 释放</li>
+    <li><strong>Debug 复位:</strong> ndmreset 在 Sleep 状态触发 (应唤醒并复位 Hart)</li>
+    <li><strong>Deep Sleep:</strong> 完整进入/退出序列 + Retention 验证</li>
+    <li><strong>CDC:</strong> 全跨域路径 SpyGlass CDC 验证通过</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<h2>7.1 承接需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求</th><th>本文档章节</th></tr>
+    <tr><td>LUMI-SYS-004</td><td>WFI/WRS 低功耗指令</td><td>&sect;2.1.2 (WFI), &sect;2.1.3 (WRS)</td></tr>
+    <tr><td>LUMI-SYS-005</td><td>多时钟域多电压域管理</td><td>&sect;2.3 (时钟域), &sect;2.6 (UPF)</td></tr>
+    <tr><td>LUMI-SYS-008</td><td>低功耗状态管理接口</td><td>&sect;2.1.1 (状态定义), &sect;3.1 (接口)</td></tr>
+    <tr><td>LUMI-PWR-003</td><td>功耗状态定义与切换</td><td>&sect;2.1.1 (三态定义)</td></tr>
+    <tr><td>LUMI-PWR-004</td><td>电源域划分与 UPF 交付</td><td>&sect;2.6.1 (电源域), &sect;2.6.2 (隔离/Retention)</td></tr>
+    <tr><td>LUMI-PWR-005</td><td>关键 CSR Retention 寄存器</td><td>&sect;2.6.2 (Retention)</td></tr>
+    <tr><td>LUMI-CLK-001</td><td>多时钟域架构</td><td>&sect;2.3 (时钟域 + CDC)</td></tr>
+    <tr><td>LUMI-CLK-002</td><td>Clock Gating 策略</td><td>&sect;2.2 (门控层级 + 细粒度)</td></tr>
+    <tr><td>LUMI-CLK-003</td><td>复位域划分</td><td>&sect;2.4 (复位域 + 释放顺序)</td></tr>
+    <tr><td>LUMI-BOOT-001</td><td>复位类型支持</td><td>&sect;2.4.1 (四级复位)</td></tr>
+    <tr><td>LUMI-BOOT-002</td><td>启动流程与向量表</td><td>&sect;2.5 (启动序列)</td></tr>
+    <tr><td>LUMI-BOOT-003</td><td>Boot ROM 支持</td><td>&sect;2.5 (Boot ROM)</td></tr>
+    <tr><td>LUMI-SEC-001</td><td>安全启动 ROM</td><td>&sect;2.5 (固件签名验证引用)</td></tr>
+</table>
+
+<h2>7.2 审查约束响应</h2>
+<table>
+    <tr><th>约束</th><th>响应章节</th><th>状态</th></tr>
+    <tr><td>WFI 延迟 (唤醒 ≤8 cycle)</td><td>&sect;2.1.2 (WFI 唤醒流程 + cycle 分解)</td><td>已响应</td></tr>
+</table>
+
+<h2>7.3 关联文档</h2>
+<ul>
+    <li><a href="clic-plic.html">clic-plic.html</a>: 中断唤醒 WFI 的中断源</li>
+    <li><a href="debug-trace.html">debug-trace.html</a>: Debug halt 可唤醒 WFI + ndmreset</li>
+    <li><a href="tcm.html">tcm.html</a>: TCM 在 Sleep 时保持, Deep Sleep 时依赖电源域</li>
+    <li><a href="cache.html">cache.html</a>: Cache 在 Sleep 时保持, 独立电源域可选</li>
+    <li><a href="../architecture/platform-spec.html">platform-spec.html</a>: §8.2~8.3 低功耗/复位, §8.9 时钟复位架构</li>
+</ul>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-014 &nbsp;|&nbsp; 低功耗 &amp; 复位 &amp; 时钟域 &nbsp;|&nbsp; Batch-4 (P2) &nbsp;|&nbsp; 2026-07-07</p>
+</div>
+
+</body>
+</html>

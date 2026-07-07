@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 模块设计文档索引</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --card-bg: #fff; --accent: #16213e; --text: #333;
+            --link: #0d47a1; --border: #e0e0e0; --note: #546e7a;
+            --status-active: #2e7d32; --status-planned: #1976d2; --status-completed: #757575;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--bg); max-width: 960px; margin: 0 auto; padding: 2rem; }
+        header { text-align: center; padding: 2rem 0; border-bottom: 3px solid var(--accent); margin-bottom: 2.5rem; }
+        header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 0.5rem; }
+        header .subtitle { color: var(--note); font-size: 1.05rem; }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; padding: 0.3rem 0.8rem; background: #f0f4f8; border: 1px solid var(--border); border-radius: 4px; color: var(--link); text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+        .back-link:hover { background: #e3eaf3; }
+        .section { margin-bottom: 2.5rem; }
+        .section h2 { font-size: 1.3rem; color: var(--accent); padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.2rem; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+        .card { background: var(--card-bg); border-radius: 8px; padding: 1.3rem; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
+        .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .card h3 { font-size: 1.0rem; color: #1a3a5c; margin-bottom: 0.4rem; }
+        .card h3 a { color: var(--link); text-decoration: none; }
+        .card h3 a:hover { text-decoration: underline; }
+        .card .desc { font-size: 0.85rem; color: var(--note); line-height: 1.6; }
+        .card .doc-id { font-family: "SF Mono", Menlo, monospace; font-size: 0.75rem; color: #90a4ae; margin-top: 0.4rem; }
+        .batch-badge { display: inline-block; background: var(--accent); color: #fff; padding: 0.15rem 0.6rem; border-radius: 3px; font-size: 0.75rem; font-weight: 600; margin-left: 0.3rem; vertical-align: middle; }
+        .summary-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 2rem; font-size: 0.92rem; color: var(--note); }
+        .summary-box strong { color: var(--text); }
+        .footer { text-align: center; color: #90a4ae; font-size: 0.85rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>模块设计文档索引</h1>
+    <p class="subtitle">M2-S1 Detailed Design Documents &mdash; LUMI-DESIGN-001 ~ 016</p>
+</header>
+
+<a class="back-link" href="../index.html">&larr; 返回主页文档地图</a>
+
+<div class="summary-box">
+    <strong>概览:</strong> 16 份模块设计文档，分 4 个 Batch 交付，覆盖 Lumi-Core RV32 8 级超标量流水线全部子模块。
+    每份文档遵循统一 7 章节结构（概述 / 功能 / 接口 / 数据通路 / 可配置 / 验证 / 需求追溯），
+    接口表格统一为 4 列标准格式（信号 / 方向 / 位宽 / 描述）。
+    <br><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a>
+    &nbsp;|&nbsp; <strong>验证策略:</strong> <a href="../verification/verification-strategy.html">verification-strategy.html</a>
+</div>
+
+<!-- ═══ 审查报告 ═══ -->
+<div class="section">
+    <h2>审查报告</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="../architecture/m2-s1-microarch-review-v2.html">双审融合审查报告 v2.0</a></h3>
+            <p class="desc">LUMI-ARCH-002。22 项发现 (6 关键 / 12 中等 / 2 低 / 2 信息)，16 份文档清单，审查约束响应。</p>
+        </div>
+        <div class="card">
+            <h3><a href="../architecture/m2-s1-microarch-review.html">微架构审查报告 v1.0</a></h3>
+            <p class="desc">LUMI-ARCH-002 初版。流水线 / FU / 旁路 / 冒险 / GEM5 交叉校验。</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Batch-1: 流水线核心 ═══ -->
+<div class="section">
+    <h2>Batch-1: 流水线核心模块 <span class="batch-badge">5 docs</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="fetch-bpred.html">Fetch &amp; Branch Predictor</a></h3>
+            <p class="desc">F1/F2 级取指 + LTAGE 分支预测 + BTB/RAS。双发射取指，分支误预测惩罚 &le;3 cycle。</p>
+            <p class="doc-id">LUMI-DESIGN-001</p>
+        </div>
+        <div class="card">
+            <h3><a href="decode-issue.html">Decode &amp; Issue</a></h3>
+            <p class="desc">D/I 级三发射解码 + 冒险检测 + skip-stalled 优化。支持 RV32IMACFV 全指令集。</p>
+            <p class="doc-id">LUMI-DESIGN-002</p>
+        </div>
+        <div class="card">
+            <h3><a href="execute-alu.html">Execute (ALU/MUL/DIV)</a></h3>
+            <p class="desc">E1/E2 级 ALU + MUL/DIV 执行单元。旁路网络 + 多周期除法状态机。</p>
+            <p class="doc-id">LUMI-DESIGN-003</p>
+        </div>
+        <div class="card">
+            <h3><a href="writeback-csr.html">Writeback &amp; CSR/HPM</a></h3>
+            <p class="desc">W 级写回 + CSR 寄存器堆 + 29 个 HPM 事件计数器。D-013 中断可见性约束。</p>
+            <p class="doc-id">LUMI-DESIGN-004</p>
+        </div>
+        <div class="card">
+            <h3><a href="regfile.html">Register File</a></h3>
+            <p class="desc">整数 (x0~x31) / 浮点 (f0~f31) / 向量 (v0~v31, VLEN=128) 寄存器堆。D-006c 物理端口约束。</p>
+            <p class="doc-id">LUMI-DESIGN-005</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Batch-2: 存储与总线 ═══ -->
+<div class="section">
+    <h2>Batch-2: 存储与总线接口 <span class="batch-badge">3 docs</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="tcm.html">TCM (Tightly Coupled Memory)</a></h3>
+            <p class="desc">ITCM/DTCM 紧耦合内存，ECC 保护 + DMA 引擎。gem5 延迟 ITCM=2/DTCM=3。</p>
+            <p class="doc-id">LUMI-DESIGN-006</p>
+        </div>
+        <div class="card">
+            <h3><a href="cache.html">L1 Cache (I-Cache / D-Cache)</a></h3>
+            <p class="desc">L1 I/D-Cache 各 16KB，4 路组相联，ECC + RVWMO 一致性。</p>
+            <p class="doc-id">LUMI-DESIGN-007</p>
+        </div>
+        <div class="card">
+            <h3><a href="pma-axi.html">PMA &amp; AXI Bus Interface</a></h3>
+            <p class="desc">PMA 检查器 + AXI4 总线接口 + FFP 快速路径。8 区域 PMA 配置。</p>
+            <p class="doc-id">LUMI-DESIGN-008</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Batch-3: 中断、异常、特权、调试 ═══ -->
+<div class="section">
+    <h2>Batch-3: 中断 / 异常 / 特权 / 调试 <span class="batch-badge">4 docs</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="clic-plic.html">CLIC + PLIC 中断控制器</a></h3>
+            <p class="desc">两层中断仲裁，CLIC 16 cycle 硬件延时，PLIC 兼容模式。64 级优先级。</p>
+            <p class="doc-id">LUMI-DESIGN-009</p>
+        </div>
+        <div class="card">
+            <h3><a href="exception-handling.html">异常处理与陷阱委托</a></h3>
+            <p class="desc">精确异常 + M/S 级委托 + NMI 不可屏蔽中断。LUMI-SYS-002/003 延时约束。</p>
+            <p class="doc-id">LUMI-DESIGN-010</p>
+        </div>
+        <div class="card">
+            <h3><a href="privilege-pmp.html">特权架构 &amp; PMP</a></h3>
+            <p class="desc">M/S/U 三级特权 + PMP 物理内存保护 + Smepmp ePMP 增强。16 区域 PMP 条目。</p>
+            <p class="doc-id">LUMI-DESIGN-011</p>
+        </div>
+        <div class="card">
+            <h3><a href="debug-trace.html">Debug &amp; Trace</a></h3>
+            <p class="desc">JTAG Debug Module + Nexus Trace + Trigger Module。DMI 接口 + 硬件断点。</p>
+            <p class="doc-id">LUMI-DESIGN-012</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Batch-4: 扩展功能 ═══ -->
+<div class="section">
+    <h2>Batch-4: 扩展功能模块 <span class="batch-badge">4 docs</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="fpu-vector.html">FPU &amp; Vector 单元</a></h3>
+            <p class="desc">F/D 双精度浮点 + RVV 1.0 向量扩展。D-006a/b/c FU 约束 + DEC-007-2 三接口。</p>
+            <p class="doc-id">LUMI-DESIGN-013</p>
+        </div>
+        <div class="card">
+            <h3><a href="power-reset.html">低功耗 &amp; 复位 &amp; 时钟域</a></h3>
+            <p class="desc">WFI/WRS 低功耗 + ICG 时钟门控 + 多域复位 + UPF Power Intent。LUMI-PWR-001/002。</p>
+            <p class="doc-id">LUMI-DESIGN-014</p>
+        </div>
+        <div class="card">
+            <h3><a href="multicore-lockstep.html">多核互联 &amp; 双核锁步</a></h3>
+            <p class="desc">1~4 核互联 + 双核锁步比较器。D-011 双级比较约束 + Cache Coherence 占位。</p>
+            <p class="doc-id">LUMI-DESIGN-015</p>
+        </div>
+        <div class="card">
+            <h3><a href="dft-security.html">DFT &amp; 安全 &amp; 物理约束</a></h3>
+            <p class="desc">Scan Chain + MBIST + JTAG + SDC 时序约束。LUMI-AREA-001 面积约束。</p>
+            <p class="doc-id">LUMI-DESIGN-016</p>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <p><a href="../index.html" class="back-link">&larr; 返回主页文档地图</a></p>
+    <p>Lumi-Core Design Document Index &mdash; LUMI-DESIGN-001 ~ 016<br>
+    最后更新: 2026-07-07</p>
+</div>
+
+</body>
+</html>

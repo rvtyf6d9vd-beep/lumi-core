@@ -2,7 +2,7 @@
 # 定义项目三层结构：Milestone → Stage → Phase
 
 version: "1.1"
-last_updated: "2026-07-01 (M2 status updated)"
+last_updated: "2026-07-07 (M2 gates updated: 14→16 docs, dual-review fusion)"
 
 # ──────────────────────────────────────────────
 # Milestone 定义 (MS)
@@ -36,7 +36,7 @@ milestones:
     target_date: "2026-12"
     status: in_progress
     gates:
-      - "14 份模块设计文档完成"
+      - "16 份模块设计文档完成"
       - "验证方案定版"
       - "GEM5+ 微架构模型完成"
       - "RTL 骨架搭建完成"
@@ -100,7 +100,7 @@ stages:
     title: "详细设计"
     milestone: "M2"
     tasks:
-      - "T2.1 模块设计文档 x14"
+      - "T2.1 模块设计文档 x16"
       - "T2.3 GEM5+ 微架构"
       - "T2.4 RTL 骨架搭建"
     duration: "2026-10 ~ 2026-12"

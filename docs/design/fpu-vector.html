@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPU &amp; Vector 单元模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>FPU &amp; Vector 单元模块设计文档</h1>
+    <p class="subtitle">Floating-Point Unit (F/D) + RISC-V Vector Extension (V 1.0) + Optional Crypto/SIMD</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-013 &nbsp;|&nbsp; <strong>批次:</strong> Batch-4 (P2) &nbsp;|&nbsp; <strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;2.2~&sect;2.3, &sect;4.3, &sect;4.7.2~&sect;4.7.3</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">D-006a</span> (Vector-FU 交互) &nbsp; <span class="constraint-tag">D-006b</span> (Vector-LSQ 交互) &nbsp; <span class="constraint-tag">D-006c</span> (Vector RegFile 冲突) &nbsp; <span class="constraint-tag">DEC-007-2</span> (FPU/Vector 同步接口)</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>FPU &amp; Vector 模块实现 Lumi-Core 的<strong>浮点运算</strong>和<strong>向量处理</strong>能力：</p>
+<ul>
+    <li><strong>FPU (F/D 扩展)</strong>：单/双精度浮点运算，IEEE 754-2008 合规</li>
+    <li><strong>Vector 单元 (V 1.0)</strong>：RISC-V 向量扩展，VLEN=128/256 bit，含 zvfh/zvfbf</li>
+    <li><strong>FPU 流水线</strong>：6 级流水线化 (opLat=6)，支持 FMA/除法/平方根多周期</li>
+    <li><strong>Vector 执行</strong>：分步执行模型 (SEW/LMUL 自适应)，多周期占用 Vector FU</li>
+    <li><strong>可选扩展</strong>：Vector Crypto (zvkg/zvkn) + Packed SIMD (v0.9.4)</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>FPU 运算单元 (FADD/FMUL/FMA/FDIV/FSQRT)</td><td>整数 ALU/MUL/DIV (属于 execute-alu.html)</td></tr>
+    <tr><td>Vector 数据通路 + 控制逻辑</td><td>整数寄存器堆 (属于 regfile.html)</td></tr>
+    <tr><td>浮点寄存器堆 (32×64bit)</td><td>向量寄存器堆物理实现 (属于 regfile.html)</td></tr>
+    <tr><td>Vector Load/Store 地址生成 (AGU)</td><td>标量 Load/Store (属于 execute-alu.html)</td></tr>
+    <tr><td>FPU↔Issue busy 信号握手</td><td>Issue 级发射仲裁 (属于 decode-issue.html)</td></tr>
+    <tr><td>Vector Crypto / Packed SIMD 功能定义</td><td>CSR fflags/frm/vcsr 存储 (属于 writeback-csr.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="decode-issue.html">decode-issue.html</a> (FU 分配与 busy 握手) | <a href="writeback-csr.html">writeback-csr.html</a> (fflags/frm 聚合) | <a href="regfile.html">regfile.html</a> (FP/Vector 寄存器堆) | <a href="execute-alu.html">execute-alu.html</a> (标量↔浮点转换旁路)</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 FPU 浮点单元 <span class="req-tag">LUMI-ISA-004</span></h2>
+
+<h3>2.1.1 FPU 规格</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>精度支持</td><td>FP32 (单精度) + FP64 (双精度)</td></tr>
+    <tr><td>流水线深度</td><td>6 级 (opLat=6, 全流水线化)</td></tr>
+    <tr><td>吞吐</td><td>1 条 FADD/FMUL per cycle (流水线化); FMA 1/cycle; FDIV 12~28 cycle (迭代); FSQRT 18~28 cycle</td></tr>
+    <tr><td>舍入模式</td><td>RNE/RTZ/RDN/RUP/RMM (frm CSR 控制)</td></tr>
+    <tr><td>异常标志</td><td>NX/UF/OF/DZ/IV (fflags CSR)</td></tr>
+    <tr><td>NaN 处理</td><td>IEEE 754-2008 default NaN, NaN-Boxing (FP32 in FP64 reg)</td></tr>
+    <tr><td>FU 数量</td><td>1 个 FPU (复合 FU，内含 FADD/FMUL/FMA/FDIV/FSQRT 子单元)</td></tr>
+    <tr><td>FMV/FCVT</td><td>整数↔浮点移动和转换，1~6 cycle</td></tr>
+</table>
+
+<h3>2.1.2 FPU 流水线化</h3>
+<pre>
+// FPU 6 级流水线
+//
+// Stage 1: 操作数准备 (unpack, NaN-Box check, special case detect)
+// Stage 2: 指数对齐 (FADD) / Booth 编码部分积 (FMUL)
+// Stage 3: 尾数加法 (FADD) / 部分积累加 (FMUL)
+// Stage 4: 归一化 (FADD/FMUL) / SRT 迭代步 (FDIV/FSQRT)
+// Stage 5: 舍入 (round + overflow/underflow check)
+// Stage 6: Pack + 异常标志生成 + 写回
+
+// FMA (Fused Multiply-Add) 流水线
+// f[rd] = f[rs1] * f[rs2] + f[rs3]
+// 6 级流水线: unpack → multiply → align+add → normalize → round → pack
+// 关键: 中间结果不 round, 仅在最终 stage 做一次舍入 (精确 FMA)
+
+// FDIV / FSQRT (非流水线化, 迭代式)
+// SRT radix-4 除法: 12~28 cycle (依赖精度和操作数值)
+// FDIV: ~14 cycle (FP32), ~28 cycle (FP64)
+// FSQRT: ~18 cycle (FP32), ~28 cycle (FP64)
+// 迭代期间 FPU FU busy, 不接受新 FPU 指令 (stall 后序 FPU 指令)
+// 非 FPU 指令 (整数/分支) 可在其他 FU 上继续执行
+</pre>
+
+<h3>2.1.3 FPU 指令覆盖</h3>
+<table>
+    <tr><th>指令组</th><th>操作</th><th>延迟</th></tr>
+    <tr><td>算术</td><td>fadd.s/d, fsub.s/d, fmul.s/d, fmadd/fmsub/fnmadd/fnmsub.s/d</td><td>6 cycle</td></tr>
+    <tr><td>除法/开方</td><td>fdiv.s/d, fsqrt.s/d</td><td>14~28 cycle (迭代)</td></tr>
+    <tr><td>比较</td><td>feq/flt/fle.s/d</td><td>2 cycle (FPU→整数结果)</td></tr>
+    <tr><td>分类/符号</td><td>fclass.s/d, fsgnj/fsgnjn/fsgnjx.s/d</td><td>1 cycle</td></tr>
+    <tr><td>转换</td><td>fcvt.w/wu/s/d, fcvt.s/d.w/wu</td><td>3~6 cycle</td></tr>
+    <tr><td>移动</td><td>fmv.x.w/d, fmv.w/d.x</td><td>1 cycle</td></tr>
+    <tr><td>Min/Max</td><td>fmin/fmax.s/d</td><td>2 cycle</td></tr>
+</table>
+
+<h2>2.2 Vector 向量单元 <span class="req-tag">LUMI-ISA-007</span></h2>
+
+<h3>2.2.1 Vector 规格</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>标准</td><td>RISC-V Vector Extension V 1.0 (Ratified)</td></tr>
+    <tr><td>VLEN</td><td>128 bit (默认) / 256 bit (可配)</td></tr>
+    <tr><td>ELEN</td><td>64 bit (支持最大 FP64 元素)</td></tr>
+    <tr><td>SEW</td><td>8/16/32/64 bit (运行时 vtype 配置)</td></tr>
+    <tr><td>LMUL</td><td>1/2/4/8 (寄存器分组, 有效 VL = VLEN*LMUL/SEW)</td></tr>
+    <tr><td>子扩展</td><td>zvfh (半精度 FP vector) + zvfbf (BF16 vector)</td></tr>
+    <tr><td>掩码</td><td>v0 作为掩码寄存器, mask-aware 指令</td></tr>
+    <tr><td>执行模型</td><td>分步 (chaining-aware): VLEN/ datapath_width 步, 步间可 chain</td></tr>
+</table>
+
+<h3>2.2.2 Vector 执行模型 <span class="constraint-tag">D-006a: Vector-FU 交互</span></h3>
+<pre>
+// Vector 指令分步执行模型
+//
+// 数据通路宽度: 128 bit (VLEN=128 时 1 步完成, VLEN=256 时 2 步)
+//
+// 每条向量指令的执行:
+// 1. Issue 级发射向量指令到 Vector FU
+// 2. Vector FU 计算所需步数: steps = ceil(VL * SEW / datapath_width) / LMUL
+// 3. 逐步执行, 每步处理 datapath_width 位数据
+// 4. 步间可 chaining: 前一步结果可在下一步作为源操作数使用
+// 5. 最后一步完成后, Vector FU 释放 busy 信号
+
+// Vector FU busy 信号握手 (DEC-007-2)
+function vector_issue_handshake(inst):
+    // Issue 级向 Vector FU 发送指令
+    if vector_fu_busy:
+        return STALL  // 同类型 FU 阻塞, 后续向量指令等待
+    
+    // 计算执行步数
+    steps = compute_steps(inst.vl, inst.sew, inst.lmul)
+    vector_fu_busy = 1
+    vector_fu_steps_remaining = steps
+    
+    return ACCEPT
+
+// 每步完成后
+function vector_step_complete():
+    vector_fu_steps_remaining -= 1
+    if vector_fu_steps_remaining == 0:
+        vector_fu_busy = 0  // 释放 FU, 可接受新指令
+        // 写回结果 (如果是向量运算)
+        vector_writeback()
+</pre>
+
+<div class="ok"><strong>审查约束响应 — D-006a (Vector-FU 交互):</strong>
+<ul>
+    <li><strong>执行延迟:</strong> 与 VLEN/SEW/LMUL 相关，steps = ceil(VL * SEW / 128) / LMUL</li>
+    <li><strong>Stall 策略:</strong> Vector FU busy 时后续向量指令 stall；整数/标量 FPU 指令可继续在其他 FU 执行</li>
+    <li><strong>Busy 握手:</strong> Issue 级检测 vector_fu_busy 信号，busy=1 时不发射新向量指令</li>
+    <li><strong>Chaining:</strong> 相邻向量指令若有 RAW 依赖但目标寄存器不同，可通过 chaining 重叠执行</li>
+</ul>
+</div>
+
+<h3>2.2.3 Vector Load/Store <span class="constraint-tag">D-006b: Vector-LSQ 交互</span></h3>
+<pre>
+// Vector Load/Store 地址生成
+//
+// 三种向量内存操作:
+// 1. Unit-stride (连续): 地址 = base + element_index * SEW/8
+// 2. Stride (步长): 地址 = base + element_index * stride
+// 3. Indexed (scatter/gather): 地址 = base + vs2[element_index]
+
+// Vector LSQ 设计
+//
+// 向量 Load/Store 使用独立的 Vector LSQ (V-LSQ), 与标量 LSQ 分离:
+// - V-LSQ 深度: 8 entry (可配)
+// - 每个 entry 跟踪一条向量内存指令的全部 element 访问
+// - 向量地址生成单元 (V-AGU): 逐步计算每个 element 的物理地址
+//
+// V-AGU 地址生成伪代码:
+function vector_address_gen(inst):
+    base = rs1_value  // 基址 (标量寄存器)
+    
+    for step in 0..steps-1:
+        for elem in step_elements:
+            case inst.type:
+                UNIT_STRIDE: addr[elem] = base + elem * (SEW/8)
+                STRIDE:       addr[elem] = base + elem * stride_value
+                INDEXED:      addr[elem] = base + vs2_data[elem]  // vs2 从向量寄存器读
+            
+            // 发送到 Memory 子系统 (DCache/TCM)
+            memory_request(addr[elem], inst.op, SEW/8)
+</pre>
+
+<div class="warn"><strong>审查约束响应 — D-006b (Vector-LSQ 交互):</strong>
+<ul>
+    <li><strong>Scatter/Gather:</strong> Indexed Load/Store 通过 V-AGU 逐个计算地址，每个 element 独立发起内存访问</li>
+    <li><strong>LSQ 分离:</strong> 向量使用独立 V-LSQ (8 entry)，标量使用 Scalar LSQ；两者通过仲裁共享 DCache 端口</li>
+    <li><strong>V-AGU:</strong> 专用地址生成单元，每 cycle 生成 1 个 element 地址 (VLEN/SEW 个 cycle 完成全部)</li>
+    <li><strong>冲突处理:</strong> 向量与标量同时访问 DCache 时，标量优先 (保证标量流水线不被长时间阻塞)</li>
+</ul>
+</div>
+
+<h3>2.2.4 Vector 寄存器堆冲突 <span class="constraint-tag">D-006c: Vector RegFile 冲突</span></h3>
+<pre>
+// 向量寄存器堆 Bank 结构
+//
+// VLEN=128, 4 banks:
+//   Bank 0: v0, v4, v8,  v12, v16, v20, v24, v28
+//   Bank 1: v1, v5, v9,  v13, v17, v21, v25, v29
+//   Bank 2: v2, v6, v10, v14, v18, v22, v26, v30
+//   Bank 3: v3, v7, v11, v15, v19, v23, v27, v31
+//
+// VLEN=256, 4 banks:
+//   每 Bank 存储 8 个向量寄存器的 256bit 数据
+//
+// LMUL>1 时的 Bank 映射:
+//   LMUL=2: v0-v1 组成一组, 跨 Bank 0+1 并行读写
+//   LMUL=4: v0-v3 组成一组, 跨 Bank 0+1+2+3 并行读写
+//   LMUL=8: v0-v7 组成一组, 全部 4 Bank 并行 (最大并行度)
+
+// 跨 Bank 冲突策略
+function vector_regfile_access(vs1, vs2, vd, lmul):
+    banks_src1 = get_banks(vs1, lmul)
+    banks_src2 = get_banks(vs2, lmul)
+    banks_dst  = get_banks(vd, lmul)
+    
+    // 检测 Bank 冲突
+    conflict = false
+    if banks_src1 ∩ banks_src2 ≠ ∅:
+        conflict = true  // 两个源操作数访问同一 Bank
+    if banks_src1 ∩ banks_dst ≠ ∅:
+        conflict = true  // 源和目的访问同一 Bank (WAR 场景)
+    
+    if conflict:
+        // 分 2 个 cycle 完成: 先读 src1, 再读 src2/写 dst
+        return SPLIT_ACCESS  // 性能损失 1 cycle
+    else:
+        // 同一 cycle 内并行访问不同 Bank
+        return PARALLEL_ACCESS
+</pre>
+
+<div class="ok"><strong>审查约束响应 — D-006c (Vector RegFile 冲突):</strong>
+<ul>
+    <li><strong>Bank 结构:</strong> 4 banks (默认)，每 Bank 1R/1W 端口，支持跨 Bank 并行</li>
+    <li><strong>Bank 数与 VLEN:</strong> VLEN=128 时 4 banks 足够 (32bit/bank/step)；VLEN=256 时可选 8 banks</li>
+    <li><strong>冲突策略:</strong> 同 Bank 访问分 2 cycle (SPLIT_ACCESS)；不同 Bank 并行 (0 penalty)</li>
+    <li><strong>LMUL 影响:</strong> LMUL 越大，跨 Bank 并行度越高，但可用寄存器组数减少</li>
+    <li><strong>仲裁:</strong> 读端口冲突时 src1 优先；写端口冲突时延迟 1 cycle 写入</li>
+</ul>
+</div>
+
+<h2>2.3 DEC-007-2: FPU/Vector 多周期同步接口</h2>
+<pre>
+// FPU/Vector ↔ Core 同步接口定义
+//
+// === FPU 接口 ===
+// Out: fpu_busy          — FPU 正在执行多周期操作 (FDIV/FSQRT)
+// In:  fpu_issue_valid   — Issue 级发射新 FPU 指令
+// Out: fpu_issue_ready   — FPU 可接受新指令 (busy=0 或流水线有空位)
+// Out: fpu_result_valid  — FPU 结果就绪 (W 级写回)
+// Out: fpu_result_data[63:0] — FPU 运算结果
+// Out: fpu_fflags[4:0]  — 异常标志 (NX/UF/OF/DZ/IV)
+//
+// === Vector 接口 ===
+// Out: vector_fu_busy    — Vector FU 正在执行多步操作
+// In:  vector_issue_valid — Issue 级发射新 Vector 指令
+// Out: vector_issue_ready — Vector FU 可接受新指令
+// Out: vector_result_valid — Vector 结果就绪
+// Out: vector_vstart     — 异常中断时的 vstart 值 (精确恢复)
+//
+// === 同步规则 ===
+// 1. FPU busy 回传 Issue 级: 同类 FU stall, 其他 FU 不受影响
+// 2. Vector busy 回传 Issue 级: 仅向量指令 stall, 标量指令继续
+// 3. FPU/Vector 异常 (fflags) 在 W 级合并到 fflags CSR
+// 4. FPU 与 Vector 共享 fflags CSR: 两者异常标志取 OR
+</pre>
+
+<div class="crit"><strong>审查约束响应 — DEC-007-2 (FPU/Vector 同步接口):</strong>
+<ul>
+    <li><strong>接口定义:</strong> fpu_busy + vector_fu_busy 双向握手，Issue 级 stall 逻辑明确</li>
+    <li><strong>与 Issue 级连接:</strong> fpu_issue_ready = !fpu_busy || fpu_pipeline_has_slot; vector_issue_ready = !vector_fu_busy</li>
+    <li><strong>fflags 合并:</strong> FPU 和 Vector 各自产生 fflags，W 级取 OR 合并写入 CSR</li>
+    <li><strong>精确异常:</strong> Vector 异常 (如 element 访问错误) 记录 vstart，支持精确恢复</li>
+</ul>
+</div>
+
+<h2>2.4 可选扩展</h2>
+
+<h3>2.4.1 Vector Crypto <span class="req-tag">LUMI-ISA-009</span> (Optional)</h3>
+<table>
+    <tr><th>子扩展</th><th>功能</th><th>实现方式</th></tr>
+    <tr><td>Zvkg</td><td>向量 Galois 域乘法 (GCM/GHASH)</td><td>在 Vector ALU 上扩展 GF(2^128) 乘法指令</td></tr>
+    <tr><td>Zvkn</td><td>向量 NIST 加密套件 (AES/SHA2/SM4)</td><td>专用加密功能单元或 Vector ALU 扩展指令</td></tr>
+</table>
+<p>Vector Crypto 为可选扩展 (Could)，在基准 RTL 配置中默认禁用。使能后在 Vector FU 内新增专用加密子单元。</p>
+
+<h3>2.4.2 Packed SIMD <span class="req-tag">LUMI-ISA-010</span> (Optional)</h3>
+<p>Packed SIMD 扩展 (v0.9.4) 在标量整数寄存器上执行 SIMD 运算，利用 FPU 数据通路：</p>
+<ul>
+    <li><strong>操作:</strong> 2×16bit / 4×8bit 整数 SIMD 加减乘</li>
+    <li><strong>实现:</strong> 复用 FPU 数据通路 (FMUL 阵列)，在 FPU 内新增 SIMD 子单元</li>
+    <li><strong>寄存器:</strong> 使用浮点寄存器堆 (f0~f31) 存储 SIMD 数据</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 FPU 接口信号</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>fpu_issue_valid</code></td><td>In (from Issue)</td><td>1</td><td>FPU 指令发射请求</td></tr>
+    <tr><td><code>fpu_issue_ready</code></td><td>Out (to Issue)</td><td>1</td><td>FPU 可接受新指令</td></tr>
+    <tr><td><code>fpu_opcode[5:0]</code></td><td>In</td><td>6</td><td>FPU 操作码 (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP)</td></tr>
+    <tr><td><code>fpu_fmt[1:0]</code></td><td>In</td><td>2</td><td>格式 (00=FP32, 01=FP64)</td></tr>
+    <tr><td><code>fpu_rm[2:0]</code></td><td>In</td><td>3</td><td>舍入模式</td></tr>
+    <tr><td><code>fpu_rs1_data[63:0]</code></td><td>In</td><td>64</td><td>源操作数 1</td></tr>
+    <tr><td><code>fpu_rs2_data[63:0]</code></td><td>In</td><td>64</td><td>源操作数 2</td></tr>
+    <tr><td><code>fpu_rs3_data[63:0]</code></td><td>In</td><td>64</td><td>源操作数 3 (FMA)</td></tr>
+    <tr><td><code>fpu_result_valid</code></td><td>Out (to W)</td><td>1</td><td>结果就绪</td></tr>
+    <tr><td><code>fpu_result_data[63:0]</code></td><td>Out</td><td>64</td><td>运算结果</td></tr>
+    <tr><td><code>fpu_fflags[4:0]</code></td><td>Out</td><td>5</td><td>异常标志 (NV/DZ/OF/UF/NX)</td></tr>
+    <tr><td><code>fpu_busy</code></td><td>Out (to Issue)</td><td>1</td><td>FPU 多周期操作进行中</td></tr>
+</table>
+
+<h2>3.2 Vector 接口信号</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>vec_issue_valid</code></td><td>In (from Issue)</td><td>1</td><td>Vector 指令发射请求</td></tr>
+    <tr><td><code>vec_issue_ready</code></td><td>Out (to Issue)</td><td>1</td><td>Vector FU 可接受新指令</td></tr>
+    <tr><td><code>vec_opcode[6:0]</code></td><td>In</td><td>7</td><td>Vector 操作码</td></tr>
+    <tr><td><code>vec_vl[31:0]</code></td><td>In</td><td>32</td><td>向量长度 (vl CSR)</td></tr>
+    <tr><td><code>vec_vtype[15:0]</code></td><td>In</td><td>16</td><td>类型 (SEW/LMUL/ta/vma)</td></tr>
+    <tr><td><code>vec_vs1_data[VLEN-1:0]</code></td><td>In</td><td>VLEN</td><td>源向量 1</td></tr>
+    <tr><td><code>vec_vs2_data[VLEN-1:0]</code></td><td>In</td><td>VLEN</td><td>源向量 2</td></tr>
+    <tr><td><code>vec_mask[VLEN/SEW-1:0]</code></td><td>In</td><td>VL</td><td>掩码位 (v0)</td></tr>
+    <tr><td><code>vec_result_valid</code></td><td>Out (to W)</td><td>1</td><td>向量结果就绪</td></tr>
+    <tr><td><code>vec_result_data[VLEN-1:0]</code></td><td>Out</td><td>VLEN</td><td>运算结果</td></tr>
+    <tr><td><code>vec_fu_busy</code></td><td>Out (to Issue)</td><td>1</td><td>Vector FU 多步操作进行中</td></tr>
+    <tr><td><code>vec_vstart[31:0]</code></td><td>Out</td><td>32</td><td>异常时 vstart 值</td></tr>
+</table>
+
+<h2>3.3 Vector Load/Store 接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>vlsu_req_valid</code></td><td>Out → Memory</td><td>1</td><td>向量 Load/Store 请求</td></tr>
+    <tr><td><code>vlsu_req_addr[31:0]</code></td><td>Out</td><td>32</td><td>当前 element 物理地址</td></tr>
+    <tr><td><code>vlsu_req_data[63:0]</code></td><td>Out</td><td>64</td><td>Store 数据</td></tr>
+    <tr><td><code>vlsu_req_size[2:0]</code></td><td>Out</td><td>3</td><td>访问大小 (SEW/8)</td></tr>
+    <tr><td><code>vlsu_resp_data[63:0]</code></td><td>In ← Memory</td><td>64</td><td>Load 返回数据</td></tr>
+    <tr><td><code>vlsu_resp_valid</code></td><td>In</td><td>1</td><td>Load 数据有效</td></tr>
+    <tr><td><code>vlsu_arb_grant</code></td><td>In ← Arbiter</td><td>1</td><td>DCache 端口仲裁授权 (标量优先)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 FPU 数据通路</h2>
+<pre>
+// FPU 数据通路框图
+//
+// ┌─ rs1_data[63:0] ─┐   ┌─ rs2_data[63:0] ─┐   ┌─ rs3_data[63:0] ─┐
+// │  Unpack + NaN     │   │  Unpack + NaN     │   │  Unpack (FMA)     │
+// └────────┬──────────┘   └────────┬──────────┘   └────────┬──────────┘
+//          │                       │                       │
+//          ▼                       ▼                       │
+//  ┌───────────────┐    ┌──────────────┐                   │
+//  │ Align (FADD)  │    │ Booth Encode │                   │
+//  │ / Exponent    │    │ / Partial    │                   │
+//  │   Sub         │    │   Products   │                   │
+//  └───────┬───────┘    └──────┬───────┘                   │
+//          │                   │                           │
+//          ▼                   ▼                           │
+//  ┌───────────────┐    ┌──────────────┐                   │
+//  │ Mantissa Add  │    │ Carry Save   │                   │
+//  │ (FADD result) │    │ Adder Tree   │                   │
+//  └───────┬───────┘    └──────┬───────┘                   │
+//          │                   │                           │
+//          └─────┬─────────────┘                           │
+//                ▼                                         ▼
+//        ┌───────────────┐    ┌──────────────┐
+//        │ FMA Merge:    │    │ FDIV/FSQRT   │
+//        │ Mul + Add     │    │ SRT Iterator │
+//        └───────┬───────┘    └──────┬───────┘
+//                │                   │
+//                ▼                   │
+//        ┌───────────────┐          │
+//        │ Normalize     │          │
+//        └───────┬───────┘          │
+//                │                  │
+//                ▼                  │
+//        ┌───────────────┐          │
+//        │ Round + Pack  │◄─────────┘
+//        │ + fflags gen  │
+//        └───────┬───────┘
+//                │
+//                ▼
+//          result_data[63:0] + fflags[4:0]
+</pre>
+
+<h2>4.2 Vector 数据通路</h2>
+<pre>
+// Vector 数据通路 (VLEN=128, 4 banks)
+//
+// ┌─ vs1_data[127:0] ─┐   ┌─ vs2_data[127:0] ─┐   ┌─ mask ─┐
+// │ Bank0│Bank1│Bank2│Bank3│ │ Bank0│Bank1│Bank2│Bank3│ │ v0 bits│
+// └──┬───┴──┬──┴──┬──┴──┬──┘ └──┬───┴──┬──┴──┬──┴──┬──┘ └───┬────┘
+//    │      │     │     │       │      │     │     │         │
+//    ▼      ▼     ▼     ▼       ▼      ▼     ▼     ▼         │
+//  ┌──────────────────────────────────────────────────┐       │
+//  │            Vector ALU (4 lanes)                   │       │
+//  │  Lane0   Lane1   Lane2   Lane3                    │       │
+//  │  [31:0] [63:32] [95:64][127:96]                  │◄──────┘
+//  │  +Int +FP +Shift +Compare +Reduce                 │  mask
+//  └──────────────────────┬───────────────────────────┘
+//                         │
+//                         ▼
+//               ┌──────────────────┐
+//               │ Writeback Mux    │
+//               │ + Tail/Mask agnostic │
+//               └──────┬───────────┘
+//                      │
+//                      ▼
+//                vd_data[127:0] → Vector RegFile (Bank 分配写入)
+</pre>
+
+<h2>4.3 FPU↔整数寄存器堆数据通路</h2>
+<p>FMV/FCVT 指令需要 FPU 与整数寄存器堆之间的数据搬运：</p>
+<ul>
+    <li><code>fmv.x.w</code>：FP reg → Int reg (1 cycle, 直接连线)</li>
+    <li><code>fmv.w.x</code>：Int reg → FP reg (1 cycle, NaN-Box 扩展到 64bit)</li>
+    <li><code>fcvt.w.s/d</code>：FP → Int 转换 (3 cycle, FPU 内完成)</li>
+    <li><code>fcvt.s/d.w/wu</code>：Int → FP 转换 (3 cycle, FPU 内完成)</li>
+    <li><strong>旁路路径:</strong> FPU→D 旁路 (W 级 FPU 结果直接转发到 D 级)，已在 platform-spec §4.6.1 定义 (DEC-004)</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>可选值</th><th>默认值</th><th>影响</th></tr>
+    <tr><td>FPU 使能</td><td>Yes / No</td><td>Yes</td><td>No 时移除 FPU FU + FP 寄存器堆</td></tr>
+    <tr><td>Vector 使能</td><td>Yes / No</td><td>Yes</td><td>No 时移除 Vector FU + V 寄存器堆</td></tr>
+    <tr><td>VLEN</td><td>128 / 256 bit</td><td>128 bit</td><td>影响 Vector 数据通路宽度、寄存器堆大小、执行步数</td></tr>
+    <tr><td>Vector Bank 数</td><td>4 / 8</td><td>4</td><td>VLEN=256 时可选 8 banks 减少冲突</td></tr>
+    <tr><td>Vector Crypto</td><td>Yes / No</td><td>No</td><td>使能后新增 GF/SIMD 加密子单元</td></tr>
+    <tr><td>Packed SIMD</td><td>Yes / No</td><td>No</td><td>使能后 FPU 内新增 SIMD 子单元</td></tr>
+    <tr><td>FDIV/FSQRT Radix</td><td>Radix-4 / Radix-16</td><td>Radix-4</td><td>Radix-16 更快但面积更大</td></tr>
+    <tr><td>V-LSQ 深度</td><td>4 / 8 / 16</td><td>8</td><td>影响向量内存指令 in-flight 数量</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证策略</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+<blockquote><strong>GEM5 参数关联:</strong> MinorCPU FPU FU <code>opLat=6</code> 参数对应 FPU 6 级流水线。FDIV/FSQRT 的 <code>opLat</code> 需按精度分别配置 (FP32: 14, FP64: 28)。Vector FU 在 GEM5 中通过自定义 FU 建模，<code>opLat</code> 按 steps 动态计算。</blockquote>
+
+<h2>6.1 Cover Groups</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_fpu_ops</code></td><td>全部 FPU 操作类型 × 精度 (FP32/FP64)</td><td>fpu_opcode × fmt</td></tr>
+    <tr><td><code>cg_fpu_rounding</code></td><td>全部舍入模式 × FPU 操作</td><td>rm × opcode</td></tr>
+    <tr><td><code>cg_fpu_special</code></td><td>特殊值 (±0, ±Inf, NaN, Subnormal) × 操作</td><td>rs1_class × rs2_class × opcode</td></tr>
+    <tr><td><code>cg_fpu_fflags</code></td><td>全部异常标志组合</td><td>fflags[4:0]</td></tr>
+    <tr><td><code>cg_fpu_fdiv_sqr</code></td><td>FDIV/FSQRT 迭代次数分布</td><td>iteration_count × fmt</td></tr>
+    <tr><td><code>cg_fpu_fma</code></td><td>FMA 四变体 × 精度 × 舍入</td><td>fmadd/fmsub/fnmadd/fnmsub × fmt × rm</td></tr>
+    <tr><td><code>cg_fpu_cvt</code></td><td>FCVT 全转换路径 (w↔s, wu↔s, w↔d, wu↔d, s↔d)</td><td>src_fmt × dst_fmt</td></tr>
+    <tr><td><code>cg_vec_ops</code></td><td>向量操作类型 (算术/逻辑/移位/归约/排列/掩码)</td><td>vec_opcode</td></tr>
+    <tr><td><code>cg_vec_config</code></td><td>SEW × LMUL × VL 全组合</td><td>vtype.sew × vtype.lmul × vl</td></tr>
+    <tr><td><code>cg_vec_mask</code></td><td>掩码模式 (mask/nomask) × 掩码值分布</td><td>vm × mask_pattern</td></tr>
+    <tr><td><code>cg_vec_mem</code></td><td>向量 Load/Store 三种模式 × SEW</td><td>mem_type(unit/stride/indexed) × sew</td></tr>
+    <tr><td><code>cg_vec_bank_conflict</code></td><td>Bank 冲突场景 (同 Bank/跨 Bank)</td><td>vs1_bank × vs2_bank × vd_bank</td></tr>
+    <tr><td><code>cg_vec_chaining</code></td><td>Chaining 场景 (相邻向量指令 RAW/无依赖)</td><td>prev_inst_type × next_inst_type × dependency</td></tr>
+    <tr><td><code>cg_fpu_vec_sharing</code></td><td>FPU 与 Vector 交替使用 (busy 切换)</td><td>fpu_busy × vec_busy × transition</td></tr>
+</table>
+
+<h2>6.2 关键验证场景</h2>
+<ul>
+    <li><strong>FPU 精度:</strong> IEEE 754 合规测试套件 (全舍入模式 × 全特殊值)</li>
+    <li><strong>Vector 正确性:</strong> RVV 1.0 合规测试 (全 SEW × LMUL × VL 组合)</li>
+    <li><strong>多周期交互:</strong> FDIV 执行期间标量指令继续 + 向量指令等待</li>
+    <li><strong>V-LSQ 仲裁:</strong> 向量 Load 与标量 Store 同时访问 DCache</li>
+    <li><strong>Bank 冲突:</strong> 构造 vs1/vs2/vd 在同一 Bank 的最坏场景</li>
+    <li><strong>精确异常:</strong> 向量执行中发生异常 → vstart 正确记录 → 恢复执行</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<h2>7.1 承接需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求</th><th>本文档章节</th></tr>
+    <tr><td>LUMI-ISA-004</td><td>F/D 双精度浮点扩展</td><td>&sect;2.1 (FPU 规格/指令/流水线)</td></tr>
+    <tr><td>LUMI-ISA-007</td><td>V 向量扩展 + zvfh/zvfbf</td><td>&sect;2.2 (Vector 规格/执行模型/V-LSQ)</td></tr>
+    <tr><td>LUMI-ISA-009</td><td>Vector Crypto (Optional)</td><td>&sect;2.4.1 (Zvkg/Zvkn)</td></tr>
+    <tr><td>LUMI-ISA-010</td><td>Packed SIMD (Optional)</td><td>&sect;2.4.2 (SIMD 复用 FPU)</td></tr>
+</table>
+
+<h2>7.2 审查约束响应</h2>
+<table>
+    <tr><th>约束</th><th>响应章节</th><th>状态</th></tr>
+    <tr><td>D-006a (Vector-FU 交互)</td><td>&sect;2.2.2 (执行模型 + busy 握手)</td><td>已响应</td></tr>
+    <tr><td>D-006b (Vector-LSQ 交互)</td><td>&sect;2.2.3 (V-LSQ + V-AGU)</td><td>已响应</td></tr>
+    <tr><td>D-006c (Vector RegFile 冲突)</td><td>&sect;2.2.4 (Bank 结构 + 冲突策略)</td><td>已响应</td></tr>
+    <tr><td>DEC-007-2 (FPU/Vector 同步接口)</td><td>&sect;2.3 (接口定义 + 同步规则)</td><td>已响应</td></tr>
+</table>
+
+<h2>7.3 关联文档</h2>
+<ul>
+    <li><a href="execute-alu.html">execute-alu.html</a>: 整数 FU 定义，FPU 作为独立 FU 与整数 FU 并行</li>
+    <li><a href="decode-issue.html">decode-issue.html</a>: Issue 级发射仲裁，FPU/Vector busy stall 逻辑</li>
+    <li><a href="regfile.html">regfile.html</a>: 浮点/向量寄存器堆物理实现</li>
+    <li><a href="writeback-csr.html">writeback-csr.html</a>: fflags/frm/vcsr CSR 存储</li>
+    <li><a href="../architecture/platform-spec.html">platform-spec.html</a>: §2.2~2.3 ISA, §4.3 FU, §4.7.2~4.7.3 寄存器堆</li>
+</ul>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-013 &nbsp;|&nbsp; FPU &amp; Vector &nbsp;|&nbsp; Batch-4 (P2) &nbsp;|&nbsp; 2026-07-07</p>
+</div>
+
+</body>
+</html>

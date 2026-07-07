@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decode &amp; Issue 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Decode &amp; Issue 模块设计文档</h1>
+    <p class="subtitle">D/I Stage Triple-Issue + Hazard Handling + Skip-Stalled</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-002 &nbsp;|&nbsp; <strong>批次:</strong> Batch-1 (P0)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;4.5~&sect;4.6</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> D-015 (skip-stalled 顺序声明), D-009 (寄存器读端口仲裁)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Decode &amp; Issue 模块覆盖 Lumi-Core 8 级流水线的 <strong>D (Decode)</strong> 和 <strong>I (Issue)</strong> 两级：</p>
+<ul>
+    <li><strong>D 级</strong>：完整指令解码、寄存器读取 (从寄存器堆)、操作数准备</li>
+    <li><strong>I 级</strong>：指令发射到 FU、数据旁路 (Forwarding)、发射仲裁 (含 skip-stalled)</li>
+</ul>
+<blockquote><strong>GEM5 映射:</strong> Spec 的 D 级对应 GEM5 的 Decode1 (预解码) + Decode2 (完整解码+寄存器读)；Spec 的 I 级对应 GEM5 的 Issue 级。</blockquote>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>完整 RV32 指令解码 (含 M/A/F/D/C/B/V/Zce 扩展)</td><td>指令取指 (属于 fetch-bpred.html)</td></tr>
+    <tr><td>三发射仲裁与 skip-stalled 机制</td><td>FU 执行 (属于 execute-alu.html)</td></tr>
+    <tr><td>数据旁路网络 (5 路: E1/E2/M/W/FPU&rarr;D)</td><td>寄存器堆存储阵列 (属于 regfile.html)</td></tr>
+    <tr><td>冒险检测与 stall 逻辑</td><td>旁路数据来源 (由各级 FU 输出)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="fetch-bpred.html">fetch-bpred.html</a> (取指结果) | <a href="execute-alu.html">execute-alu.html</a> (FU 分配) | <a href="regfile.html">regfile.html</a> (读端口仲裁) | <a href="writeback-csr.html">writeback-csr.html</a> (CSR 指令) | <a href="fpu-vector.html">fpu-vector.html</a> (FPU/Vector FU 分配)</p>
+
+<h2>1.3 性能约束</h2>
+<table>
+    <tr><th>指标</th><th>约束</th><th>来源</th></tr>
+    <tr><td>发射宽度</td><td>&le;3 条/cycle (Triple-issue)</td><td><span class="req-tag">LUMI-IPC-001</span></td></tr>
+    <tr><td>D 级延迟</td><td>1 cycle</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>I 级延迟</td><td>1 cycle (含旁路 mux)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>执行顺序</td><td>严格顺序执行 (in-order), 不允许乱序</td><td>硬约束 &sect;1.3</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 D 级：指令解码</h2>
+<h3>2.1.1 解码逻辑</h3>
+<table>
+    <tr><th>字段</th><th>位域</th><th>解码输出</th></tr>
+    <tr><td>opcode[6:0]</td><td>inst[6:0]</td><td>指令大类 (OP/OP-IMM/LOAD/STORE/BRANCH/SYSTEM 等)</td></tr>
+    <tr><td>rd[4:0]</td><td>inst[11:7]</td><td>目标寄存器号</td></tr>
+    <tr><td>funct3[2:0]</td><td>inst[14:12]</td><td>子操作类型</td></tr>
+    <tr><td>rs1[4:0]</td><td>inst[19:15]</td><td>源寄存器 1 号</td></tr>
+    <tr><td>rs2[4:0]</td><td>inst[24:20]</td><td>源寄存器 2 号</td></tr>
+    <tr><td>funct7[6:0]</td><td>inst[31:25]</td><td>扩展子操作 (MULDIV/FPU/AMO 等)</td></tr>
+    <tr><td>imm</td><td>按格式提取</td><td>立即数 (I/S/B/U/J 格式)</td></tr>
+</table>
+
+<h3>2.1.2 寄存器读取</h3>
+<p>D 级同时从寄存器堆读取操作数，每个 cycle 最多读 3 条指令的源寄存器：</p>
+<table>
+    <tr><th>发射槽</th><th>读端口需求</th><th>描述</th></tr>
+    <tr><td>Slot 0</td><td>rs1 + rs2 (2R)</td><td>第一条指令</td></tr>
+    <tr><td>Slot 1</td><td>rs1 + rs2 (2R)</td><td>第二条指令</td></tr>
+    <tr><td>Slot 2</td><td>rs1 + rs2 (2R)</td><td>第三条指令 (可能 stall)</td></tr>
+</table>
+
+<div class="warn"><strong>D-009 端口压力 <span class="constraint-tag">D-009</span>:</strong> 3 条指令 &times; 2 源 = 6 读请求，但整数寄存器堆仅 3R 端口。最坏情况需分 2 cycle 完成。<strong>仲裁规则:</strong> 程序顺序优先 (Slot 0 > Slot 1 > Slot 2)，端口不足时 Slot 2 stall 1 cycle。</div>
+
+<h3>2.1.3 寄存器读端口仲裁伪代码 <span class="constraint-tag">D-009</span></h3>
+<pre>
+// 整数寄存器堆 3R/2W 端口仲裁
+function regfile_read_arbitrate(slot0, slot1, slot2):
+    read_ports_available = 3  // 3R ports
+    granted = []
+
+    // 按程序顺序依次授权
+    for slot in [slot0, slot1, slot2]:
+        needed_ports = count_unique_rs(slot)  // 1 or 2
+        if needed_ports <= read_ports_available:
+            granted.append(slot)
+            read_ports_available -= needed_ports
+        else:
+            stall(slot)  // 端口不足, stall 该指令
+            break
+
+    return granted
+</pre>
+
+<h2>2.2 I 级：指令发射</h2>
+
+<h3>2.2.1 发射仲裁</h3>
+<p>每条解码后的指令根据类型分配到对应 FU：</p>
+<table>
+    <tr><th>指令类型</th><th>目标 FU</th><th>可用数量</th></tr>
+    <tr><td>ALU (add/sub/and/or/xor/slt/shift)</td><td>LumiIntFU</td><td>4</td></tr>
+    <tr><td>MUL (mul/mulh/mulhsu/mulhu)</td><td>LumiIntMulFU</td><td>1</td></tr>
+    <tr><td>DIV (div/divu/rem/remu)</td><td>MinorDefaultIntDivFU</td><td>1</td></tr>
+    <tr><td>LOAD/STORE (lb/lh/lw/sb/sh/sw/AMO)</td><td>MinorDefaultMemFU</td><td>2</td></tr>
+    <tr><td>FPU (fadd/fmul/fdiv/fsqrt/fmadd...)</td><td>MinorDefaultFloatSimdFU</td><td>1</td></tr>
+    <tr><td>SYSTEM (ECALL/EBREAK/FENCE/SFENCE)</td><td>MinorDefaultMiscFU</td><td>1</td></tr>
+    <tr><td>BRANCH (beq/bne/blt/bge/bltu/bgeu)</td><td>LumiIntFU (复用)</td><td>4</td></tr>
+</table>
+
+<h3>2.2.2 Skip-Stalled 机制 <span class="constraint-tag">D-015</span></h3>
+<div class="ok"><strong>skip-stalled 不破坏程序顺序 (in-order commit):</strong> 被跳过的指令仍在发射队列中等待，后续指令仅在同一 FU 类型不冲突时才越过发射，所有指令仍按程序顺序提交 (W 级)。</div>
+
+<pre>
+// Skip-Stalled 发射伪代码
+function issue_arbitrate(inst_queue[0..2]):
+    for i in range(3):
+        inst = inst_queue[i]
+        target_fu = classify(inst)
+
+        if fu_available(target_fu):
+            issue(inst, target_fu)
+            mark_fu_busy(target_fu)
+        elif skip_stalled_enabled:
+            // 跳过该指令, 检查后续指令是否可以使用不同 FU
+            mark_inst_stalled(inst)
+            continue  // 检查下一条
+        else:
+            // 不启用 skip-stalled, 整体 stall
+            stall_pipeline()
+            break
+</pre>
+
+<h3>2.2.3 数据旁路网络</h3>
+<p>I 级实现 5 路数据旁路 (Forwarding/Bypass)，消除大部分 RAW 冒险：</p>
+<table>
+    <tr><th>旁路路径</th><th>来源级</th><th>目标</th><th>数据</th></tr>
+    <tr><td>E1&rarr;D</td><td>Execute 1 级</td><td>Decode 级寄存器读</td><td>ALU/Branch 运算结果</td></tr>
+    <tr><td>E2&rarr;D</td><td>Execute 2 级</td><td>Decode 级寄存器读</td><td>MUL 中间/最终结果</td></tr>
+    <tr><td>M&rarr;D</td><td>Memory 级</td><td>Decode 级寄存器读</td><td>Load 返回数据</td></tr>
+    <tr><td>W&rarr;D</td><td>Writeback 级</td><td>Decode 级寄存器读</td><td>最终写回数据</td></tr>
+    <tr><td>FPU&rarr;D</td><td>FPU 结果</td><td>Decode 级寄存器读</td><td>FPU 运算结果</td></tr>
+</table>
+
+<div class="warn"><strong>D-017 RTL 关键路径约束:</strong> 5 路旁路 mux (5&rarr;1, 32bit = 160bit) 延迟约 80~100ps，占 I 级 125ps 预算的 64~80%。RTL 骨架中预留流水化分割点。</div>
+
+<h2>2.3 冒险处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>检测方式</th><th>处理策略</th><th>代价</th></tr>
+    <tr><td>RAW (旁路命中)</td><td>rs1/rs2 与前序指令 rd 匹配</td><td>旁路转发</td><td>0 cycle</td></tr>
+    <tr><td>Load-Use RAW</td><td>前序为 Load + rs 匹配</td><td>1 stall (推测命中时 0)</td><td>0~1 cycle</td></tr>
+    <tr><td>FU 冲突</td><td>同类型 FU 超额请求</td><td>skip-stalled / stall</td><td>0~N cycle</td></tr>
+    <tr><td>DIV 占用</td><td>DIV FU busy (9 cycle)</td><td>其他 FU 继续, DIV FU stall</td><td>0 (其他 FU)</td></tr>
+    <tr><td>WAW/WAR</td><td>顺序执行天然消除</td><td>无需处理</td><td>0</td></tr>
+</table>
+
+<h2>2.4 推测性 Load 延迟预测</h2>
+<p>GEM5 参数 <code>executeLoadAssumedLatency=1</code>：Load 指令在 D 级推测 L1D Cache 命中 (延迟 1 cycle)，后续指令不 stall。若实际 Cache miss，在 M 级检测并回滚 (flush + stall)。</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 D 级接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>d_instructions[2:0]</code></td><td>In &larr; F2</td><td>32&times;3</td><td>待解码指令 (最多 3 条)</td></tr>
+    <tr><td><code>d_inst_valid[2:0]</code></td><td>In &larr; F2</td><td>3</td><td>指令有效标志</td></tr>
+    <tr><td><code>d_decoded[2:0]</code></td><td>Out &rarr; I</td><td>--</td><td>解码结果 (类型/寄存器号/立即数)</td></tr>
+    <tr><td><code>d_rs1_data[2:0]</code></td><td>Out</td><td>32&times;3</td><td>rs1 操作数 (寄存器堆读出或旁路)</td></tr>
+    <tr><td><code>d_rs2_data[2:0]</code></td><td>Out</td><td>32&times;3</td><td>rs2 操作数</td></tr>
+    <tr><td><code>regfile_rs1_addr[2:0]</code></td><td>Out &rarr; RegFile</td><td>5&times;3</td><td>rs1 地址</td></tr>
+    <tr><td><code>regfile_rs2_addr[2:0]</code></td><td>Out &rarr; RegFile</td><td>5&times;3</td><td>rs2 地址</td></tr>
+    <tr><td><code>regfile_rs1_data[2:0]</code></td><td>In &larr; RegFile</td><td>32&times;3</td><td>寄存器堆读出数据</td></tr>
+</table>
+
+<h2>3.2 I 级接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>i_issue[2:0]</code></td><td>Out &rarr; FU</td><td>--</td><td>发射到各 FU 的指令包</td></tr>
+    <tr><td><code>i_issue_valid[2:0]</code></td><td>Out &rarr; FU</td><td>3</td><td>发射有效</td></tr>
+    <tr><td><code>bypass_e1_data[2:0]</code></td><td>In &larr; E1</td><td>32&times;3</td><td>E1 级旁路数据</td></tr>
+    <tr><td><code>bypass_m_data[2:0]</code></td><td>In &larr; M</td><td>32&times;3</td><td>M 级旁路数据</td></tr>
+    <tr><td><code>bypass_w_data[2:0]</code></td><td>In &larr; W</td><td>32&times;3</td><td>W 级旁路数据</td></tr>
+    <tr><td><code>bypass_fpu_data</code></td><td>In &larr; FPU</td><td>64</td><td>FPU 旁路数据</td></tr>
+    <tr><td><code>fu_busy[9:0]</code></td><td>In &larr; FU Pool</td><td>10</td><td>各 FU 忙信号</td></tr>
+    <tr><td><code>stall_out</code></td><td>Out &rarr; D 级</td><td>1</td><td>整体 stall 信号 (反馈到 D 级)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 D 级到 I 级数据流</h2>
+<pre>
+F2 输出 ──→ D级解码 ──→ 寄存器读取 ──→ 操作数准备 ──→ I级发射仲裁 ──→ FU
+                │              │                              │
+                ├─ inst_type   ├─ rs1_data                    ├─ bypass_mux
+                ├─ rd/rs1/rs2  ├─ rs2_data (或旁路)           ├─ fu_select
+                ├─ imm         └─ (3R端口仲裁)               └─ skip_stalled
+                └─ pred_info
+</pre>
+
+<h2>4.2 旁路 mux 选择逻辑</h2>
+<pre>
+// 每个源操作数的旁路选择 (5→1 mux)
+function bypass_select(rs_addr, rs_regfile_data):
+    if (e1_valid &amp;&amp; e1_rd == rs_addr):
+        return e1_result           // E1→D 旁路 (最高优先级)
+    elif (e2_valid &amp;&amp; e2_rd == rs_addr):
+        return e2_result           // E2→D 旁路
+    elif (m_valid &amp;&amp; m_rd == rs_addr):
+        return m_result            // M→D 旁路
+    elif (w_valid &amp;&amp; w_rd == rs_addr):
+        return w_result            // W→D 旁路
+    elif (fpu_valid &amp;&amp; fpu_rd == rs_addr):
+        return fpu_result          // FPU→D 旁路
+    else:
+        return rs_regfile_data     // 无旁路, 使用寄存器堆读出值
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>默认值</th><th>范围</th><th>描述</th></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>3</td><td>2, 3</td><td>发射宽度</td></tr>
+    <tr><td><code>SKIP_STALLED</code></td><td>True</td><td>True/False</td><td>是否启用 skip-stalled</td></tr>
+    <tr><td><code>LOAD_ASSUMED_LATENCY</code></td><td>1</td><td>0, 1</td><td>推测 Load 延迟 (0=不推测)</td></tr>
+    <tr><td><code>DECODE_BUFFER_SIZE</code></td><td>6</td><td>4, 6, 8</td><td>D 级输入缓冲深度</td></tr>
+    <tr><td><code>ISSUE_BUFFER_SIZE</code></td><td>9</td><td>6, 9, 12</td><td>I 级输入缓冲深度</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证要点</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>描述</th><th>目标</th></tr>
+    <tr><td><code>cg_triple_issue</code></td><td>三发射全满 (3 条同时发射)</td><td>100%</td></tr>
+    <tr><td><code>cg_skip_stalled</code></td><td>skip-stalled 越过 stall 指令发射</td><td>100%</td></tr>
+    <tr><td><code>cg_skip_stalled_order</code></td><td>skip-stalled 不破坏程序顺序 (W 级提交顺序验证)</td><td>100%</td></tr>
+    <tr><td><code>cg_port_arbitration</code></td><td>寄存器读端口仲裁 (3R 端口不足时的 stall)</td><td>100%</td></tr>
+    <tr><td><code>cg_bypass_forwarding</code></td><td>5 路旁路各路径覆盖</td><td>100%</td></tr>
+    <tr><td><code>cg_load_use_stall</code></td><td>Load-Use RAW stall (推测命中/miss 回滚)</td><td>100%</td></tr>
+    <tr><td><code>cg_fu_contention</code></td><td>FU 冲突 (4 条 ALU 指令竞争)</td><td>100%</td></tr>
+    <tr><td><code>cg_div_busy</code></td><td>DIV 9 cycle 占用期间其他 FU 继续执行</td><td>100%</td></tr>
+    <tr><td><code>cg_decode_all_isa</code></td><td>所有 ISA 扩展指令解码正确</td><td>100%</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求描述</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark &ge;5.5 CM/MHz (三发射)</td><td>&sect;2.2 发射仲裁</td><td>性能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-001</span></td><td>RV32I 基础整数指令</td><td>&sect;2.1.1 解码逻辑</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-002</span></td><td>M 扩展 (乘除法)</td><td>&sect;2.2.1 FU 分配</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-003</span></td><td>A 扩展 (原子操作)</td><td>&sect;2.2.1 LSU 分配</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-004</span></td><td>F/D 扩展 (浮点)</td><td>&sect;2.2.1 FPU 分配</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-005</span></td><td>C 压缩指令</td><td>F2 级展开 (fetch-bpred)</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-006</span></td><td>B 位操作</td><td>&sect;2.1.1 解码逻辑</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-008</span></td><td>Zce 代码压缩</td><td>F2 级展开 (fetch-bpred)</td><td>功能仿真</td></tr>
+</table>
+
+<h2>7.1 审查约束响应</h2>
+<table>
+    <tr><th>审查编号</th><th>约束内容</th><th>本文档响应</th></tr>
+    <tr><td><span class="constraint-tag">D-015</span></td><td>skip-stalled 不破坏程序顺序声明</td><td>&sect;2.2.2 明确声明 + 伪代码实现; 验证 cg_skip_stalled_order</td></tr>
+    <tr><td><span class="constraint-tag">D-009</span></td><td>寄存器读端口仲裁规则</td><td>&sect;2.1.2 端口需求分析; &sect;2.1.3 仲裁伪代码 (程序顺序优先); 验证 cg_port_arbitration</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Design Document: Decode &amp; Issue &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-DESIGN-002 &nbsp;|&nbsp; 批次: Batch-1 (P0) &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html v1.0.3</a> &nbsp;|&nbsp;
+    审查: <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+</div>
+
+</body>
+</html>

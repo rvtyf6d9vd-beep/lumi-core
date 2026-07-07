@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug &amp; Trace 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Debug &amp; Trace 模块设计文档</h1>
+    <p class="subtitle">JTAG Debug Module + RISC-V Nexus Trace + Abstract Commands + cJTAG</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-012 &nbsp;|&nbsp; <strong>批次:</strong> Batch-3 (P1)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;6.1~&sect;6.3</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">DEC-007-1</span> (Debug halt/resume 与流水线同步接口) &nbsp; <span class="constraint-tag">D-016</span> (Debug 安全性等级)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Debug &amp; Trace 模块提供 Lumi-Core 的<strong>在线调试</strong>和<strong>指令跟踪</strong>能力：</p>
+<ul>
+    <li><strong>Debug Module</strong>：JTAG 访问的调试模块，支持断点、单步、寄存器/内存读写</li>
+    <li><strong>Trigger Module</strong>：硬件断点/观察点 (mtrigger/strigger)</li>
+    <li><strong>Abstract Commands</strong>：通过 DMI 执行调试命令 (无需 halt 即可读寄存器)</li>
+    <li><strong>System Bus Access</strong>：通过 Debug Module 访问系统总线 (不经过 Hart)</li>
+    <li><strong>Trace Encoder</strong>：RISC-V Nexus Trace 指令流压缩编码</li>
+    <li><strong>Trace AXI4 写出</strong>：Trace 数据通过 AXI4 写出到外部存储</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>Debug Module + DMI 接口</td><td>JTAG TAP 物理层 (标准 IP)</td></tr>
+    <tr><td>Hart halt/resume 控制</td><td>异常/Trap 处理 (属于 exception-handling.html)</td></tr>
+    <tr><td>Abstract Command 执行</td><td>CSR 存储阵列 (属于 writeback-csr.html)</td></tr>
+    <tr><td>Trigger Module (硬件断点)</td><td>软件断点 (EBREAK 指令)</td></tr>
+    <tr><td>Trace Encoder + FIFO</td><td>AXI4 写出总线接口 (属于 pma-axi.html)</td></tr>
+    <tr><td>cJTAG 接口 (可选)</td><td></td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="fetch-bpred.html">fetch-bpred.html</a> (halt 时取指控制) | <a href="writeback-csr.html">writeback-csr.html</a> (halt W 级 + CSR 访问) | <a href="power-reset.html">power-reset.html</a> (tck 时钟域 + 复位) | <a href="pma-axi.html">pma-axi.html</a> (Trace AXI4 写出) | <a href="dft-security.html">dft-security.html</a> (JTAG TAP 复用 + 调试安全)</p>
+
+<h2>1.3 设计约束</h2>
+<table>
+    <tr><th>约束项</th><th>规格</th><th>来源</th></tr>
+    <tr><td>tck 时钟频率</td><td>10~50 MHz (异步于 clk_core)</td><td>RISC-V Debug V1.0.0</td></tr>
+    <tr><td>DMI 速率</td><td>&le;50 MHz (tck 限制), 实际吞吐取决于 DMI 握手</td><td>DMI 协议</td></tr>
+    <tr><td>Trace 带宽</td><td>Instruction Trace: &le;100 Mbps; Data Trace: &le;500 Mbps (可配)</td><td>Nexus Trace V1.0</td></tr>
+    <tr><td>halt 延迟</td><td>0~8 cycle (halt_req 到 hart_halted)</td><td>DEC-007-1</td></tr>
+    <tr><td>Abstract Command 超时</td><td>1000 cycle (超时上报 cmderr)</td><td>RISC-V Debug V1.0.0</td></tr>
+    <tr><td>GEM5 关联</td><td>gem5 DebugModule 参数: <code>debug_system</code> + <code>dmi_addr_size=7</code></td><td>perf/gem5-model</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 Debug Module 架构</h2>
+
+<h3>2.1.1 DMI 接口</h3>
+<p>Debug Module 通过 DMI (Debug Module Interface) 与外部 JTAG 调试器通信：</p>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>dmi_req_valid</code></td><td>JTAG→DM</td><td>1</td><td>DMI 请求有效</td></tr>
+    <tr><td><code>dmi_req_ready</code></td><td>DM→JTAG</td><td>1</td><td>DMI 就绪</td></tr>
+    <tr><td><code>dmi_req_addr[6:0]</code></td><td>JTAG→DM</td><td>7</td><td>DMI 地址</td></tr>
+    <tr><td><code>dmi_req_op[1:0]</code></td><td>JTAG→DM</td><td>2</td><td>操作类型 (READ/WRITE)</td></tr>
+    <tr><td><code>dmi_req_data[31:0]</code></td><td>JTAG→DM</td><td>32</td><td>写数据</td></tr>
+    <tr><td><code>dmi_resp_valid/data/op</code></td><td>DM→JTAG</td><td>1+32+2</td><td>响应 (valid + data + op)</td></tr>
+</table>
+
+<h3>2.1.2 DM 关键寄存器</h3>
+<table>
+    <tr><th>DMI 地址</th><th>寄存器</th><th>描述</th></tr>
+    <tr><td>0x10</td><td><code>dmcontrol</code></td><td>控制: dmactive, ndmreset, haltreq, resumereq</td></tr>
+    <tr><td>0x11</td><td><code>dmstatus</code></td><td>状态: allhalted, allrunning, allunavail</td></tr>
+    <tr><td>0x17</td><td><code>abstractcs</code></td><td>Abstract CS: cmderr, busy, datacount</td></tr>
+    <tr><td>0x18</td><td><code>command</code></td><td>Abstract Command 定义</td></tr>
+    <tr><td>0x38</td><td><code>sbcs</code></td><td>System Bus Access 控制</td></tr>
+    <tr><td>0x04</td><td><code>data0</code></td><td>Abstract Data 传递寄存器</td></tr>
+    <tr><td>0x20~0x27</td><td><code>progbuf0~7</code></td><td>Program Buffer (8 字)</td></tr>
+</table>
+
+<h2>2.2 Hart Halt/Resume 接口 <span class="constraint-tag">DEC-007-1</span></h2>
+
+<h3>2.2.1 Halt 机制</h3>
+<pre>
+// Debug halt 请求流程
+function debug_halt_request():
+    // 1. Debug Module 设置 dmcontrol.haltreq = 1
+    // 2. Hart 在当前指令完成后进入 halt 状态
+    halt_pending = 1
+
+function debug_halt_check():  // W 级检查
+    if halt_pending and current_instruction_committed:
+        // 精确 halt: 当前指令已提交, 后续指令不取
+        hart_state = HALTED
+        halt_pending = 0
+        dmstatus.allhalted = 1
+        // 流水线 flush (F2/D/I/E1/E2/M)
+        pipeline_flush()
+        // Hart 等待 Debug Module 命令
+
+// Debug resume 流程
+function debug_resume():
+    // dmcontrol.resumereq = 1
+    hart_state = RUNNING
+    dmstatus.allrunning = 1
+    // 从 halt PC 继续执行
+    PC = halted_pc
+</pre>
+
+<div class="ok"><strong>审查约束响应 — DEC-007-1 (Debug halt/resume 接口):</strong>
+<ul>
+    <li><strong>接口定义:</strong> <code>debug_halt_req</code> (In) + <code>debug_halted</code> (Out) + <code>debug_resume_req</code> (In)</li>
+    <li><strong>同步机制:</strong> halt 在 W 级检测，保证精确断点 (当前指令已提交)</li>
+    <li><strong>与中断互斥:</strong> halt pending 时不接受新中断 (mstatus.MIE 隐式置 0)</li>
+    <li><strong>与 NMI 关系:</strong> NMI 可打断 halt (NMI 优先级 > halt)</li>
+    <li><strong>时序:</strong> halt 请求到 Hart 实际 halted: 0~8 cycle (取决于当前指令类型)</li>
+</ul>
+</div>
+
+<h2>2.3 Abstract Command 执行</h2>
+
+<h3>2.3.1 Access Register (cmdtype=0)</h3>
+<pre>
+// Abstract Command: Access Register
+function abstract_access_register(cmd):
+    regno  = cmd[31:16]  // 寄存器编号
+    write  = cmd[15]     // 0=read, 1=write
+    size   = cmd[14:12]  // 访问大小 (2=32bit, 3=64bit)
+    transfer = cmd[17]   // 是否传输数据
+    postexec = cmd[18]   // 执行后运行 progbuf
+
+    if transfer:
+        if write:
+            // 从 data0 写入寄存器
+            register_write(regno, data0)
+        else:
+            // 从寄存器读到 data0
+            data0 = register_read(regno)
+
+    if postexec:
+        // 执行 progbuf 中的指令
+        execute_progbuf()
+</pre>
+
+<h3>2.3.2 Quick Access (cmdtype=1)</h3>
+<p>Quick Access 允许<strong>不 halt Hart</strong> 即可执行 progbuf 中的指令序列，用于低侵入性内存访问。</p>
+
+<h2>2.4 Trigger Module (硬件断点)</h2>
+<table>
+    <tr><th>触发器类型</th><th>功能</th><th>数量</th></tr>
+    <tr><td>mcontrol (type 2)</td><td>地址/数据匹配断点</td><td>2~4 个</td></tr>
+    <tr><td>icount (type 3)</td><td>指令计数触发</td><td>1 个</td></tr>
+    <tr><td>itrigger (type 4)</td><td>中断触发</td><td>1 个</td></tr>
+    <tr><td>etrigger (type 5)</td><td>异常触发</td><td>1 个</td></tr>
+</table>
+
+<h2>2.5 Trace Encoder</h2>
+
+<h3>2.5.1 Trace 架构</h3>
+<pre>
+// Trace 数据流
+//
+// Hart 指令退休 (W 级)
+//     │
+//     ▼
+// [Trace Encoder]
+//     │ Nexus Trace 压缩编码
+//     │ - 顺序 PC: 不输出 (隐含)
+//     │ - 分支/跳转: 输出目标 PC
+//     │ - 异常/中断: 输出事件标记
+//     ▼
+// [Trace FIFO]
+//     │ 深度: 256 entry (可配)
+//     ▼
+// [AXI4 写出接口]
+//     │ 连接到 pma-axi.html
+//     ▼
+// 外部存储 (DDR/SRAM)
+</pre>
+
+<h3>2.5.2 Trace 模式</h3>
+<table>
+    <tr><th>模式</th><th>描述</th><th>带宽需求</th></tr>
+    <tr><td>Instruction Trace</td><td>跟踪指令流 (分支/跳转 PC)</td><td>低 (仅非顺序 PC)</td></tr>
+    <tr><td>Data Trace (可选)</td><td>跟踪 Load/Store 地址和数据</td><td>高 (每次访问输出)</td></tr>
+</table>
+
+<h2>2.6 调试安全 <span class="constraint-tag">D-016</span></h2>
+<table>
+    <tr><th>安全等级</th><th>能力</th><th>控制方式</th></tr>
+    <tr><td>Level 0: 完全锁定</td><td>禁止所有调试操作</td><td><code>debug_lock</code> 引脚或 dmcontrol</td></tr>
+    <tr><td>Level 1: 仅断点</td><td>允许 halt/单步/断点, 禁止内存读写</td><td>CSR 配置</td></tr>
+    <tr><td>Level 2: 完全开放</td><td>允许所有调试操作</td><td>默认</td></tr>
+</table>
+
+<div class="ok"><strong>审查约束响应 — D-016 (Debug 安全性):</strong> 已在 &sect;2.6 定义 3 级安全等级。锁定状态下禁止 Abstract Command、System Bus Access 和 Program Buffer 执行。解锁不可通过软件绕过，需硬件复位或密钥认证。Cover Group <code>cg_debug_security</code> 覆盖 3 级安全模式。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">JTAG 物理接口</td></tr>
+    <tr><td><code>tck</code></td><td>In</td><td>1</td><td>JTAG 时钟 (异步)</td></tr>
+    <tr><td><code>tms</code></td><td>In</td><td>1</td><td>JTAG 模式选择</td></tr>
+    <tr><td><code>tdi</code></td><td>In</td><td>1</td><td>JTAG 数据输入</td></tr>
+    <tr><td><code>tdo</code></td><td>Out</td><td>1</td><td>JTAG 数据输出</td></tr>
+    <tr><td><code>trst_n</code></td><td>In</td><td>1</td><td>JTAG 复位</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">Debug Module → Hart 控制</td></tr>
+    <tr><td><code>debug_halt_req</code></td><td>In</td><td>1</td><td>Halt 请求</td></tr>
+    <tr><td><code>debug_halted</code></td><td>Out</td><td>1</td><td>Hart 已 halt</td></tr>
+    <tr><td><code>debug_resume_req</code></td><td>In</td><td>1</td><td>Resume 请求</td></tr>
+    <tr><td><code>debug_running</code></td><td>Out</td><td>1</td><td>Hart 正在运行</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">Abstract Command 接口</td></tr>
+    <tr><td><code>abs_cmd_valid</code></td><td>In</td><td>1</td><td>Abstract Command 有效</td></tr>
+    <tr><td><code>abs_cmd_data[31:0]</code></td><td>In</td><td>32</td><td>Command 数据</td></tr>
+    <tr><td><code>abs_resp[1:0]</code></td><td>Out</td><td>2</td><td>响应 (success/error)</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">Trace 接口</td></tr>
+    <tr><td><code>trace_insn_retired</code></td><td>In</td><td>1</td><td>指令退休信号 (W 级)</td></tr>
+    <tr><td><code>trace_pc[31:0]</code></td><td>In</td><td>32</td><td>退休指令 PC</td></tr>
+    <tr><td><code>trace_branch_taken</code></td><td>In</td><td>1</td><td>分支跳转标记</td></tr>
+    <tr><td><code>trace_exception</code></td><td>In</td><td>1</td><td>异常/中断标记</td></tr>
+    <tr><td><code>trace_axi_*</code></td><td>Out</td><td>--</td><td>AXI4 写出接口 (连接 pma-axi.html)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路与控制</h1>
+
+<h2>4.1 Debug Module 时钟域</h2>
+<p>Debug Module 工作在 <code>tck</code> 时钟域 (JTAG)，与核心 <code>clk_core</code> 异步：</p>
+<pre>
+// 跨时钟域处理
+//
+// tck 域 (JTAG, 10~50MHz)          clk_core 域 (1GHz)
+// ┌──────────────┐                  ┌──────────────┐
+// │ DMI Request  │ ── 2-FF Sync ──→│ DM Register  │
+// │ DMI Response │ ←── Async FIFO ─│ Access Logic │
+// └──────────────┘                  └──────────────┘
+//
+// CDC 策略:
+// - DMI req/resp: 异步握手 (req_valid → req_ack → resp_valid)
+// - halt/resume: 脉冲同步 (1-cycle pulse 跨域传递)
+// - data 传输: Async FIFO (深度 4)
+</pre>
+
+<h2>4.2 硬件断点匹配</h2>
+<pre>
+// Trigger Module: 地址匹配断点
+function trigger_match(pc, mem_addr, mem_data):
+    for i in 0..NUM_TRIGGERS-1:
+        t = mcontrol[i]
+        if not t.dmode or current_privilege == M:
+            // 检查 match 类型
+            if t.match == EQUAL and t.data_reg == pc:
+                return TRIGGER_HIT(i)
+            if t.match == NAPOT and napot_match(pc, t.data_reg):
+                return TRIGGER_HIT(i)
+    return TRIGGER_MISS
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>可选值</th><th>默认值</th><th>描述</th></tr>
+    <tr><td><code>DEBUG_EN</code></td><td>boolean</td><td>true/false</td><td>true</td><td>Debug Module 使能 <span class="req-tag">LUMI-FEAT-001</span></td></tr>
+    <tr><td><code>TRACE_EN</code></td><td>boolean</td><td>true/false</td><td>false</td><td>Trace Encoder 使能 <span class="req-tag">LUMI-FEAT-002</span></td></tr>
+    <tr><td><code>TRACE_AXI_EN</code></td><td>boolean</td><td>true/false</td><td>false</td><td>Trace AXI4 写出 <span class="req-tag">LUMI-FEAT-003</span></td></tr>
+    <tr><td><code>TRACE_FIFO_DEPTH</code></td><td>integer</td><td>64/128/256/512</td><td>256</td><td>Trace FIFO 深度</td></tr>
+    <tr><td><code>CJTAG_EN</code></td><td>boolean</td><td>true/false</td><td>false</td><td>cJTAG 接口 (IEEE 1149.7)</td></tr>
+    <tr><td><code>NUM_TRIGGERS</code></td><td>integer</td><td>2/4/8</td><td>4</td><td>硬件触发器数量</td></tr>
+    <tr><td><code>DEBUG_SECURITY_LEVELS</code></td><td>integer</td><td>2/3</td><td>3</td><td>调试安全等级数</td></tr>
+    <tr><td><code>PROGBUF_SIZE</code></td><td>integer</td><td>2/4/8</td><td>8</td><td>Program Buffer 大小 (word)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证覆盖</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_debug_halt_resume</code></td><td>Halt/Resume 全流程</td><td>haltreq → halted → resume → running</td></tr>
+    <tr><td><code>cg_debug_singlestep</code></td><td>单步执行</td><td>halt → step → halt (每次 1 条指令)</td></tr>
+    <tr><td><code>cg_abstract_reg_access</code></td><td>Abstract Command 寄存器读写</td><td>read/write GPR/CSR/FPR × 各 size</td></tr>
+    <tr><td><code>cg_abstract_quick</code></td><td>Quick Access (不 halt)</td><td>progbuf 执行 → data0 读回</td></tr>
+    <tr><td><code>cg_system_bus_access</code></td><td>System Bus 读写</td><td>SBA read/write × 各地址宽度</td></tr>
+    <tr><td><code>cg_trigger_bp</code></td><td>硬件断点触发</td><td>mcontrol match × PC</td></tr>
+    <tr><td><code>cg_trigger_wp</code></td><td>硬件观察点触发</td><td>mcontrol match × Load/Store addr</td></tr>
+    <tr><td><code>cg_trace_encode</code></td><td>Trace 编码正确性</td><td>顺序/分支/异常 trace 输出</td></tr>
+    <tr><td><code>cg_trace_fifo_overflow</code></td><td>Trace FIFO 溢出处理</td><td>FIFO 满 → 丢弃 + 计数</td></tr>
+    <tr><td><code>cg_debug_security</code></td><td>3 级安全模式</td><td>locked/bp_only/open × 各调试操作</td></tr>
+    <tr><td><code>cg_debug_cdc</code></td><td>JTAG↔Core 跨域通信</td><td>DMI 请求跨域正确性</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-FEAT-001</span></td><td>RISC-V Debug V1.0.0</td><td>&sect;2.1~&sect;2.4</td><td>Debug 规范合规测试</td></tr>
+    <tr><td><span class="req-tag">LUMI-FEAT-002</span></td><td>RISC-V Nexus Trace V1.0.0</td><td>&sect;2.5</td><td>Trace 编码合规测试</td></tr>
+    <tr><td><span class="req-tag">LUMI-FEAT-003</span></td><td>Trace AXI4 写出</td><td>&sect;2.5, &sect;3</td><td>AXI4 写出功能验证</td></tr>
+    <tr><td><span class="req-tag">LUMI-FEAT-004</span></td><td>JTAG/cJTAG 调试物理接口</td><td>&sect;3, &sect;5</td><td>JTAG TAP 协议验证</td></tr>
+    <tr><td><span class="req-tag">LUMI-SEC-003</span></td><td>安全调试策略</td><td>&sect;2.6</td><td>3 级安全模式覆盖</td></tr>
+</table>
+
+<div class="ok"><strong>审查约束响应 — DEC-007-1:</strong> 已在 &sect;2.2 定义 debug_halt_req/halted/resume_req 接口，halt 在 W 级精确检测，与中断/NMI 的互斥关系已明确。</div>
+<div class="ok"><strong>审查约束响应 — D-016:</strong> 已在 &sect;2.6 定义 3 级调试安全等级，锁定不可软件绕过。Cover Group <code>cg_debug_security</code> 覆盖。</div>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-012 &mdash; Debug &amp; Trace 设计文档 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html</a> &nbsp;|&nbsp;
+    批次: Batch-3 (P1) &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

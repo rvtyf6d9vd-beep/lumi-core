@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch &amp; Branch Predictor 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Fetch &amp; Branch Predictor 模块设计文档</h1>
+    <p class="subtitle">F1/F2 Stage + LTAGE Branch Prediction + BTB/RAS</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-001 &nbsp;|&nbsp; <strong>批次:</strong> Batch-1 (P0)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;4.1~&sect;4.4</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> D-012 (LTAGE GHR hash / 12 表流水化 / Loop-TAGE 仲裁)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Fetch &amp; Branch Predictor 模块覆盖 Lumi-Core 8 级流水线的 <strong>F1 (Fetch1)</strong> 和 <strong>F2 (Fetch2)</strong> 两级，负责：</p>
+<ul>
+    <li><strong>F1 级</strong>：PC 生成、分支预测目标计算、BTB 查找、ICache 地址送出</li>
+    <li><strong>F2 级</strong>：ICache 数据返回、指令预解码、压缩指令 (C 扩展) 展开、分支预测结果确认</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>PC 生成与更新逻辑</td><td>完整指令解码 (属于 decode-issue.html)</td></tr>
+    <tr><td>LTAGE 分支预测器 (12 张 TAGE 表 + Loop Predictor)</td><td>分支执行与判断 (属于 execute-alu.html)</td></tr>
+    <tr><td>BTB (8192 entries) + RAS (32 entries)</td><td>ICache 存储阵列 (属于 cache.html)</td></tr>
+    <tr><td>压缩指令展开 (C/Zce 扩展)</td><td>取指地址翻译 (PMP/PMA 检查属于 pma-axi.html)</td></tr>
+    <tr><td>取指缓冲 (Fetch Buffer)</td><td></td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="decode-issue.html">decode-issue.html</a> (C 展开→D 级) | <a href="writeback-csr.html">writeback-csr.html</a> (分支结果→W 级 CSR) | <a href="execute-alu.html">execute-alu.html</a> (JALR 反馈) | <a href="cache.html">cache.html</a> (ICache 取指) | <a href="pma-axi.html">pma-axi.html</a> (PMA/PMP 检查) | <a href="debug-trace.html">debug-trace.html</a> (halt 取指控制)</p>
+
+<h2>1.3 性能目标</h2>
+<table>
+    <tr><th>指标</th><th>目标</th><th>GEM5 实测</th><th>来源</th></tr>
+    <tr><td>取指带宽</td><td>&le;6 条/cycle (issue_width&times;2)</td><td>6 (fetch1FetchLimit=6)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>分支误判率</td><td>典型&le;2%, CoreMark&le;1.5%</td><td>1.19% (CoreMark)</td><td><span class="req-tag">LUMI-IPC-001</span></td></tr>
+    <tr><td>误预测惩罚</td><td>3 cycle (flush F2+D+I)</td><td>executeBranchDelay=1</td><td>spec &sect;4.4</td></tr>
+    <tr><td>分支反馈延迟</td><td>1 cycle (Execute&rarr;F1)</td><td>fetch1ToFetch2BackwardDelay=0</td><td>spec &sect;4.4</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 F1 级功能</h2>
+<h3>2.1.1 PC 生成</h3>
+<pre>
+// F1 级 PC 生成伪代码
+if (branch_redirect) {
+    next_pc = branch_target;      // 分支预测命中 → 跳转目标
+} else if (return_predict) {
+    next_pc = ras_pop();          // RAS 预测返回地址
+} else {
+    next_pc = current_pc + fetch_width;  // 顺序取指
+}
+// 对齐到 2 字节边界 (支持 C 扩展)
+next_pc = next_pc &amp; ~0x1;
+</pre>
+
+<h3>2.1.2 BTB 查找</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>条目数</td><td>8192 (SimpleBTB)</td></tr>
+    <tr><td>索引方式</td><td>PC[14:3] (直接映射)</td></tr>
+    <tr><td>每条目存储</td><td>tag (PC 高位) + target_addr + branch_type (conditional/unconditional/call/return)</td></tr>
+    <tr><td>查找延迟</td><td>0 cycle (与 PC 生成并行)</td></tr>
+</table>
+
+<h3>2.1.3 RAS 操作</h3>
+<table>
+    <tr><th>操作</th><th>触发</th><th>描述</th></tr>
+    <tr><td>Push</td><td>BTB 识别为 CALL 指令</td><td>压入返回地址 (PC + 指令长度)</td></tr>
+    <tr><td>Pop</td><td>BTB 识别为 RETURN 指令</td><td>弹出预测返回地址</td></tr>
+    <tr><td>容量</td><td>32 entries</td><td>支持 32 层嵌套调用</td></tr>
+</table>
+
+<h2>2.2 F2 级功能</h2>
+<h3>2.2.1 指令预解码与压缩展开</h3>
+<ul>
+    <li>从 ICache 返回的 128bit (16 bytes) 数据中识别指令边界</li>
+    <li>检测 16bit 压缩指令 (C/Zce 扩展) 并展开为 32bit 内部表示</li>
+    <li>每个 cycle 最多处理 <strong>6 条指令</strong> (fetch_width = issue_width &times; 2)</li>
+    <li>预解码输出: 指令类型 (branch/load/store/alu/csr/system) + 寄存器编号</li>
+</ul>
+
+<h3>2.2.2 LTAGE 分支预测器</h3>
+<p>LTAGE = TAGE (TAgged GEometric history length) + Loop Predictor，是 Lumi-Core 的核心性能组件。</p>
+
+<h3>2.2.2.1 TAGE 组件</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>描述</th></tr>
+    <tr><td>表数量</td><td>12 张</td><td>几何级数历史长度 (minHist=4, maxHist=640)</td></tr>
+    <tr><td>总容量</td><td>256 Kbits</td><td>分布到 12 张表 +  bimodal 基础表</td></tr>
+    <tr><td>Tag 宽度</td><td>8~12 bit (按表不同)</td><td>长历史表使用更宽 tag</td></tr>
+    <tr><td>计数器宽度</td><td>3 bit (saturating)</td><td>预测方向: &ge;4 taken, &lt;4 not-taken</td></tr>
+    <tr><td>有用性计数器</td><td>2 bit (useful)</td><td>替换策略依据</td></tr>
+</table>
+
+<div class="warn"><strong>D-012 审查约束:</strong> 640 bit 全局历史寄存器 (GHR) 远超 RV32 的 32 bit 地址空间，必须通过 hash 压缩。</div>
+
+<h3>2.2.2.2 GHR 折叠策略 <span class="constraint-tag">D-012</span></h3>
+<p>640 bit GHR 不能直接与 PC 进行 XOR 运算 (位宽不匹配)。采用 <strong>Folded History</strong> 策略：</p>
+<pre>
+// 32-bit Folded History 计算
+function compute_folded_history(ghr[639:0], table_idx):
+    hist_len = geometric_length(table_idx)  // 4, 6, 9, 14, 21, 32, 48, 72, 108, 162, 243, 364
+    folded = 0x00000000  // 32-bit
+    for i in range(hist_len):
+        folded ^= (ghr[i] &lt;&lt; (i % 32))
+    return folded
+
+// Tag 计算
+tag = hash(PC[31:2], folded_history)  // XOR + rotate
+// Index 计算
+index = hash(PC[31:2], folded_history) % table_size
+</pre>
+
+<h3>2.2.2.3 12 表 Tag 比较流水化 <span class="constraint-tag">D-012</span></h3>
+<p>12 张 TAGE 表的 tag 比较如果全部并行，组合逻辑面积和延迟过大。采用<strong>分组流水化</strong>方案：</p>
+<table>
+    <tr><th>阶段</th><th>比较表组</th><th>延迟</th></tr>
+    <tr><td>F1 前半 (Phase A)</td><td>Table 0~5 (短历史) + bimodal 基础表</td><td>~40ps</td></tr>
+    <tr><td>F1 后半 (Phase B)</td><td>Table 6~11 (长历史)</td><td>~40ps</td></tr>
+    <tr><td>F1 仲裁</td><td>选择最长历史命中的表作为预测结果</td><td>~20ps</td></tr>
+</table>
+<p>总延迟约 100ps，在 F1 级 125ps 预算 (1GHz @ TSMC 28HPC) 内。</p>
+
+<h3>2.2.2.4 Loop Predictor</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>表条目</td><td>128 entries</td></tr>
+    <tr><td>记录内容</td><td>PC tag + 循环迭代计数 + 当前计数 + 置信度</td></tr>
+    <tr><td>预测规则</td><td>当迭代计数稳定时, 预测循环最后一次为 not-taken</td></tr>
+</table>
+
+<h3>2.2.2.5 Loop Predictor 与 TAGE 优先级仲裁 <span class="constraint-tag">D-012</span></h3>
+<pre>
+// 优先级仲裁伪代码
+if (loop_predictor.confident &amp;&amp; loop_predictor.count_stable):
+    prediction = loop_predictor.prediction  // Loop Predictor 优先 (对紧密循环近乎零误判)
+elif (tage.longest_hit_table.useful >= 2):
+    prediction = tage.longest_hit_table.prediction  // TAGE 高置信度
+elif (tage.any_hit):
+    prediction = tage.longest_hit_table.prediction  // TAGE 任意命中
+else:
+    prediction = bimodal.prediction  // 退回 bimodal 基础预测
+</pre>
+
+<h2>2.3 状态机</h2>
+<pre>
+Fetch FSM:
+  IDLE  --(reset deassert)--> FETCHING
+  FETCHING --(branch redirect)--> REDIRECT
+  REDIRECT --(new PC ready, 0 cycle)--> FETCHING
+  FETCHING --(sleep request)--> SLEEPING
+  SLEEPING --(interrupt/wakeup)--> FETCHING
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 F1 级对外接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>f1_pc_out</code></td><td>Out &rarr; ICache</td><td>32</td><td>取指地址 (PC)</td></tr>
+    <tr><td><code>f1_btb_hit</code></td><td>Internal</td><td>1</td><td>BTB 命中信号</td></tr>
+    <tr><td><code>f1_btb_target</code></td><td>Internal</td><td>32</td><td>BTB 预测目标地址</td></tr>
+    <tr><td><code>f1_pred_taken</code></td><td>Internal</td><td>1</td><td>LTAGE 预测 taken</td></tr>
+    <tr><td><code>f1_pred_target</code></td><td>Internal</td><td>32</td><td>LTAGE 预测目标</td></tr>
+    <tr><td><code>branch_redirect_pc</code></td><td>In &larr; Execute</td><td>32</td><td>分支误预测纠正 PC</td></tr>
+    <tr><td><code>branch_redirect_valid</code></td><td>In &larr; Execute</td><td>1</td><td>分支纠正有效信号</td></tr>
+</table>
+
+<h2>3.2 F2 级对外接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>f2_icache_data</code></td><td>In &larr; ICache</td><td>128</td><td>ICache 返回数据 (16 bytes)</td></tr>
+    <tr><td><code>f2_icache_valid</code></td><td>In &larr; ICache</td><td>1</td><td>ICache 数据有效</td></tr>
+    <tr><td><code>f2_instructions</code></td><td>Out &rarr; Decode</td><td>32&times;6</td><td>展开后的指令 (最多 6 条)</td></tr>
+    <tr><td><code>f2_inst_count</code></td><td>Out &rarr; Decode</td><td>3</td><td>本 cycle 有效指令数</td></tr>
+    <tr><td><code>f2_pred_info</code></td><td>Out &rarr; Execute</td><td>--</td><td>预测信息 (用于后续验证)</td></tr>
+</table>
+
+<h2>3.3 LTAGE 预测器内部接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>tage_update_pc</code></td><td>In &larr; Execute</td><td>32</td><td>更新用的 PC</td></tr>
+    <tr><td><code>tage_update_taken</code></td><td>In &larr; Execute</td><td>1</td><td>实际方向</td></tr>
+    <tr><td><code>tage_update_ghr</code></td><td>In &larr; Execute</td><td>--</td><td>实际 GHR 快照</td></tr>
+    <tr><td><code>tage_update_valid</code></td><td>In &larr; Execute</td><td>1</td><td>更新有效</td></tr>
+    <tr><td><code>ghr[639:0]</code></td><td>Internal</td><td>640</td><td>全局历史寄存器 (需 hash 折叠)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 F1 级数据流</h2>
+<pre>
+PC_gen ──→ BTB_lookup (并行) ──→ Branch_decision
+       └─→ LTAGE_predict (并行)      │
+                                      ↓
+              if (predict taken &amp;&amp; BTB hit):
+                  next_PC = BTB_target
+              elif (CALL):
+                  RAS.push(PC + inst_len)
+                  next_PC = BTB_target
+              elif (RETURN):
+                  next_PC = RAS.pop()
+              else:
+                  next_PC = PC + fetch_width
+</pre>
+
+<h2>4.2 F2 级数据流</h2>
+<pre>
+ICache_data[127:0] ──→ Boundary_detect ──→ Compress_expand ──→ Pre_decode ──→ Fetch_Buffer
+                                              │                      │
+                                              └── inst_type          └── reg_nums
+                                              └── inst_valid         └── pred_info
+</pre>
+
+<h2>4.3 分支误预测恢复</h3>
+<table>
+    <tr><th>步骤</th><th>cycle</th><th>操作</th></tr>
+    <tr><td>1. 检测误预测</td><td>E1 级</td><td>Execute 级比较实际分支方向与预测方向</td></tr>
+    <tr><td>2. 发送 redirect</td><td>E1 级</td><td>branch_redirect_valid=1, branch_redirect_pc=正确目标</td></tr>
+    <tr><td>3. Flush 流水线</td><td>E1+1</td><td>清空 F2/D/I 级的错误指令</td></tr>
+    <tr><td>4. 新 PC 取指</td><td>E1+1</td><td>F1 使用 redirect PC 重新开始取指 (backwardDelay=0)</td></tr>
+</table>
+
+<h2>4.4 GHR 更新与回滚</h2>
+<p>GHR 在 F1 级推测性更新 (speculative update)，误预测时需回滚：</p>
+<ul>
+    <li><strong>推测更新</strong>: F1 预测时立即将预测方向移入 GHR (移位 + 插入)</li>
+    <li><strong>回滚</strong>: 误预测时，从 Execute 级保存的 GHR 快照恢复</li>
+    <li><strong>确认更新</strong>: 分支正确提交后，更新 TAGE 表计数器</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>默认值</th><th>范围</th><th>描述</th></tr>
+    <tr><td><code>FETCH_WIDTH</code></td><td>6</td><td>4, 6</td><td>每 cycle 取指条数 (issue_width &times; 2)</td></tr>
+    <tr><td><code>BTB_ENTRIES</code></td><td>8192</td><td>4096, 8192, 16384</td><td>BTB 条目数</td></tr>
+    <tr><td><code>RAS_DEPTH</code></td><td>32</td><td>16, 32, 64</td><td>RAS 深度</td></tr>
+    <tr><td><code>LTAGE_NUM_TABLES</code></td><td>12</td><td>8, 10, 12</td><td>TAGE 表数量</td></tr>
+    <tr><td><code>LTAGE_TOTAL_BITS</code></td><td>256K</td><td>128K, 256K, 512K</td><td>LTAGE 总容量</td></tr>
+    <tr><td><code>LTAGE_MIN_HIST</code></td><td>4</td><td>4</td><td>最短历史长度</td></tr>
+    <tr><td><code>LTAGE_MAX_HIST</code></td><td>640</td><td>320, 640</td><td>最长历史长度</td></tr>
+    <tr><td><code>LOOP_PRED_ENTRIES</code></td><td>128</td><td>64, 128, 256</td><td>Loop Predictor 条目</td></tr>
+    <tr><td><code>FETCH_BUFFER_SIZE</code></td><td>6</td><td>4, 6, 8</td><td>F2 级取指缓冲区深度</td></tr>
+</table>
+<div class="note"><strong>面积预算 <span class="req-tag">LUMI-AREA-001</span>:</strong> LTAGE 12 表默认 256K bit 总容量预估 &le;0.05 mm&sup2; (TSMC 28HPC+); 减少 LTAGE_NUM_TABLES 到 8 或 LTAGE_TOTAL_BITS 到 128K 可节省 ~40% 面积, 但分支预测精度下降 ~2%。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证要点</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>描述</th><th>目标覆盖</th></tr>
+    <tr><td><code>cg_btb_hit_miss</code></td><td>BTB 命中/未命中交叉分支类型</td><td>100%</td></tr>
+    <tr><td><code>cg_ras_push_pop</code></td><td>RAS push/pop 操作序列 (嵌套深度 1~32)</td><td>100%</td></tr>
+    <tr><td><code>cg_ras_overflow</code></td><td>RAS 溢出 (深度 > RAS_DEPTH) 恢复</td><td>100%</td></tr>
+    <tr><td><code>cg_ltage_prediction</code></td><td>LTAGE 预测 taken/not-taken 分布</td><td>100%</td></tr>
+    <tr><td><code>cg_ltage_table_update</code></td><td>TAGE 表计数器更新 (正确/错误预测)</td><td>100%</td></tr>
+    <tr><td><code>cg_ltage_ghr_fold</code></td><td>GHR 折叠 hash 正确性 (各表)</td><td>100%</td></tr>
+    <tr><td><code>cg_loop_predictor</code></td><td>Loop Predictor 对固定循环的预测准确率</td><td>100%</td></tr>
+    <tr><td><code>cg_arbitration_priority</code></td><td>Loop vs TAGE vs bimodal 仲裁正确性</td><td>100%</td></tr>
+    <tr><td><code>cg_branch_redirect</code></td><td>分支误预测 flush + redirect 时序</td><td>100%</td></tr>
+    <tr><td><code>cg_compress_expand</code></td><td>C 扩展指令展开正确性 (16bit &rarr; 32bit)</td><td>100%</td></tr>
+    <tr><td><code>cg_fetch_align</code></td><td>跨 Cache Line 边界的取指对齐</td><td>100%</td></tr>
+    <tr><td><code>cg_ghr_rollback</code></td><td>误预测时 GHR 回滚正确性</td><td>100%</td></tr>
+</table>
+
+<h2>6.2 关键验证场景</h2>
+<ul>
+    <li>连续 taken 分支序列 (验证 GHR 推测更新 + 回滚)</li>
+    <li>嵌套函数调用 (验证 RAS push/pop 正确性, 深度 1~64)</li>
+    <li>紧密循环 (验证 Loop Predictor 零误判, CoreMark 关键路径)</li>
+    <li>间接分支 (JALR) 预测 (BTB 目标缓存)</li>
+    <li>ICache miss 后重新取指 (流水线 stall + 恢复)</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求描述</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级顺序执行超标量流水线</td><td>&sect;1.1 F1/F2 级定义</td><td>功能仿真 + 时序</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark &ge;5.5 CM/MHz</td><td>&sect;1.3, &sect;2.2 LTAGE 预测器</td><td>性能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-005</span></td><td>C 压缩指令</td><td>&sect;2.2.1 压缩展开</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-008</span></td><td>Zce 代码压缩</td><td>&sect;2.2.1 压缩展开</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-FREQ-001</span></td><td>目标频率 &ge;1GHz (TSMC 28HPC)</td><td>&sect;2.2.2.3 12 表流水化</td><td>综合 + STA</td></tr>
+</table>
+
+<h2>7.1 审查约束响应</h2>
+<table>
+    <tr><th>审查编号</th><th>约束内容</th><th>本文档响应</th></tr>
+    <tr><td><span class="constraint-tag">D-012</span></td><td>LTAGE 640bit GHR hash 策略, 12 表 tag 比较流水化, Loop/TAGE 优先级仲裁</td><td>&sect;2.2.2.2 GHR 32-bit folded history; &sect;2.2.2.3 分组流水化 (Table 0~5 / 6~11); &sect;2.2.2.5 Loop 优先仲裁</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Design Document: Fetch &amp; Branch Predictor &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-DESIGN-001 &nbsp;|&nbsp; 批次: Batch-1 (P0) &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html v1.0.3</a> &nbsp;|&nbsp;
+    审查: <a href="../architecture/m2-s1-microarch-review-v2.html">融合审查报告 v2.0</a></p>
+</div>
+
+</body>
+</html>

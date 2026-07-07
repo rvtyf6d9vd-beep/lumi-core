@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>异常处理与陷阱委托模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>异常处理与陷阱委托模块设计文档</h1>
+    <p class="subtitle">Exception Handling + Trap Delegation + NMI (Smrnmi) + Precise Exception</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-010 &nbsp;|&nbsp; <strong>批次:</strong> Batch-3 (P1)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;5.6, &sect;8.1, &sect;8.4</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">异常优先级</span> (同一周期多异常的优先级仲裁)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>异常处理模块管理 Lumi-Core 的全部<strong>同步异常</strong>和<strong>NMI</strong>，实现精确异常模型：</p>
+<ul>
+    <li><strong>异常检测</strong>：在流水线各级检测同步异常 (地址未对齐、访问违例、非法指令等)</li>
+    <li><strong>精确异常</strong>：异常指令之前的所有指令已完成提交，异常指令及之后的指令全部丢弃</li>
+    <li><strong>陷阱委托 (Trap Delegation)</strong>：M-mode 可将异常/中断委托到 S-mode 处理</li>
+    <li><strong>NMI (Smrnmi)</strong>：不可屏蔽中断的可恢复处理机制</li>
+    <li><strong>异常优先级仲裁</strong>：同一周期多个异常事件的优先级排序</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>同步异常检测与提交</td><td>中断控制器 (属于 clic-plic.html)</td></tr>
+    <tr><td>陷阱委托 (medeleg/mideleg)</td><td>PMP 权限检查 (属于 privilege-pmp.html)</td></tr>
+    <tr><td>NMI (Smrnmi) 进入/返回</td><td>PMA 属性检查 (属于 pma-axi.html)</td></tr>
+    <tr><td>mepc/mcause/mtval CSR 更新</td><td>CSR 存储阵列 (属于 writeback-csr.html)</td></tr>
+    <tr><td>MRET/SRET 返回逻辑</td><td>Debug halt/单步 (属于 debug-trace.html)</td></tr>
+</table>
+
+<p><strong>承接需求补充:</strong> LUMI-SYS-002 (异常入口地址 mtvec) + LUMI-SYS-003 (中断延时 &le;16 cycle)</p>
+<p><strong>关联模块:</strong> <a href="clic-plic.html">clic-plic.html</a> (中断委托) | <a href="privilege-pmp.html">privilege-pmp.html</a> (特权切换) | <a href="writeback-csr.html">writeback-csr.html</a> (mepc/mcause CSR) | <a href="debug-trace.html">debug-trace.html</a> (EBREAK/debug halt)</p>
+
+<blockquote><strong>GEM5 已知限制:</strong> gem5 MinorCPU 模型对 Smrnmi (NMI) 和 Smepmp 的支持有限。Smrnmi 的 mnepc/mncause/mnstatus CSR 在 gem5 中可能未完整建模; Smepmp 的 MML/MMWP 权限语义在 gem5 中可能简化。验证时需注意 gem5 仿真结果与 RTL 行为可能存在差异。</blockquote>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 异常原因编码 (mcause)</h2>
+<table>
+    <tr><th>mcause</th><th>名称</th><th>检测级</th><th>mtval</th></tr>
+    <tr><td>0</td><td>Instruction Address Misaligned</td><td>F1/F2</td><td>失败地址</td></tr>
+    <tr><td>1</td><td>Instruction Access Fault</td><td>F1/F2</td><td>失败地址</td></tr>
+    <tr><td>2</td><td>Illegal Instruction</td><td>D (Decode)</td><td>指令编码</td></tr>
+    <tr><td>3</td><td>Breakpoint</td><td>D</td><td>EBREAK PC</td></tr>
+    <tr><td>4</td><td>Load Address Misaligned</td><td>E1 (地址计算)</td><td>失败地址</td></tr>
+    <tr><td>5</td><td>Load Access Fault</td><td>M (内存访问)</td><td>失败地址</td></tr>
+    <tr><td>6</td><td>Store/AMO Address Misaligned</td><td>E1</td><td>失败地址</td></tr>
+    <tr><td>7</td><td>Store/AMO Access Fault</td><td>M</td><td>失败地址</td></tr>
+    <tr><td>8</td><td>Environment Call from U-mode</td><td>D (ECALL 解码)</td><td>0</td></tr>
+    <tr><td>11</td><td>Environment Call from M-mode</td><td>D</td><td>0</td></tr>
+</table>
+
+<h2>2.2 异常优先级仲裁 <span class="constraint-tag">审查约束: 异常优先级</span></h2>
+
+<h3>2.2.1 优先级规则</h3>
+<p>同一周期可能存在多个待处理异常/中断，按以下优先级处理：</p>
+<table>
+    <tr><th>优先级</th><th>类型</th><th>描述</th></tr>
+    <tr><td>1 (最高)</td><td>Instruction Address Breakpoint</td><td>取指断点 (在取指前检测)</td></tr>
+    <tr><td>2</td><td>Instruction Page Fault / Access Fault / Misaligned</td><td>取指异常 (F1/F2 级)</td></tr>
+    <tr><td>3</td><td>Illegal Instruction / Environment Call / Breakpoint</td><td>解码级异常 (D 级)</td></tr>
+    <tr><td>4</td><td>Load/Store Address Misaligned</td><td>地址计算级异常 (E1 级)</td></tr>
+    <tr><td>5</td><td>Load/Store Access Fault</td><td>内存访问级异常 (M 级)</td></tr>
+    <tr><td>6</td><td>Reset</td><td>复位不可抢占</td></tr>
+    <tr><td>7</td><td>NMI (Smrnmi)</td><td>高优先级中断</td></tr>
+    <tr><td>8</td><td>外部中断 (PLIC → MEIP)</td><td>CLIC 仲裁后的外部中断</td></tr>
+    <tr><td>9</td><td>CLIC 本地中断</td><td>本地中断源</td></tr>
+    <tr><td>10</td><td>软件中断 (MSI)</td><td>软件触发</td></tr>
+    <tr><td>11 (最低)</td><td>定时器中断</td><td>MTIP</td></tr>
+</table>
+
+<div class="crit"><strong>审查约束 — 异常优先级:</strong>
+<ul>
+    <li><strong>规则 1:</strong> 同步异常 (与当前指令关联) 始终优先于异步中断</li>
+    <li><strong>规则 2:</strong> 同步异常之间按流水线级顺序 (早期级优先)：取指 > 解码 > 执行 > 内存</li>
+    <li><strong>规则 3:</strong> 同一指令同一级的多个异常 (如地址未对齐 + 访问违例) 按 mcause 编号排序 (小编号优先)</li>
+    <li><strong>规则 4:</strong> NMI 优先于所有普通中断，但低于同步异常</li>
+    <li><strong>实现:</strong> 优先级编码为组合逻辑，W 级汇总所有 pending 异常后选取最高优先级</li>
+    <li><strong>验证:</strong> Cover Group <code>cg_exception_priority</code> 覆盖多异常同时到达场景</li>
+</ul>
+</div>
+
+<h3>2.2.2 优先级仲裁伪代码</h3>
+<pre>
+// W 级异常优先级仲裁
+function exception_arbitrate():
+    // 收集各级异常
+    fetch_exception   = get_fetch_exception()      // F1/F2: mcause 0/1
+    decode_exception  = get_decode_exception()     // D: mcause 2/3/8/11
+    exec_exception    = get_exec_exception()       // E1: mcause 4/6
+    mem_exception     = get_mem_exception()        // M: mcause 5/7
+    nmi_pending       = get_nmi_status()           // Smrnmi
+    irq_pending       = get_highest_irq()          // 来自 clic-plic.html
+
+    // 优先级: 同步 > NMI > 中断
+    if fetch_exception.valid:
+        return {TRAP, fetch_exception.cause, fetch_exception.tval}
+    elif decode_exception.valid:
+        return {TRAP, decode_exception.cause, decode_exception.tval}
+    elif exec_exception.valid:
+        return {TRAP, exec_exception.cause, exec_exception.tval}
+    elif mem_exception.valid:
+        return {TRAP, mem_exception.cause, mem_exception.tval}
+    elif nmi_pending:
+        return {NMI, nmi_cause, 0}
+    elif irq_pending.valid:
+        return {IRQ, irq_pending.id, 0}
+    else:
+        return {NONE, 0, 0}
+</pre>
+
+<h2>2.3 精确异常模型</h2>
+<p>Lumi-Core 实现<strong>精确异常 (Precise Exception)</strong>：异常指令之前的所有指令已完成提交，异常指令及之后的指令全部丢弃。</p>
+<pre>
+// 精确异常保证
+//
+// 指令流:  ... A(committed) | B(exception) | C(not fetched) ...
+//                         ▲              ▲
+//                    已提交 (状态已更新)  异常指令 (未提交, 无副作用)
+//
+// 8 级顺序流水线天然支持精确异常:
+// - 顺序提交 (W 级按程序顺序)
+// - 异常指令在 W 级检测, 此时前指令已全部提交
+// - 异常指令本身在 W 级被拦截, 不执行写回
+// - F2/D/I/E1/E2/M 级中后续指令全部 flush
+</pre>
+
+<h2>2.4 陷阱委托 (Trap Delegation)</h2>
+
+<h3>2.4.1 委托 CSR</h3>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>描述</th></tr>
+    <tr><td><code>medeleg</code></td><td>0x302</td><td>M-mode 异常委托位图 (bit = mcause 异常码)</td></tr>
+    <tr><td><code>mideleg</code></td><td>0x303</td><td>M-mode 中断委托位图 (bit = 中断码)</td></tr>
+</table>
+
+<h3>2.4.2 委托流程</h3>
+<pre>
+// 陷阱委托判断
+function trap_delegate(cause, is_interrupt):
+    if is_interrupt:
+        delegated = mideleg[cause]  // 中断委托
+    else:
+        delegated = medeleg[cause]  // 异常委托
+
+    if delegated and current_privilege &lt;= S:
+        // 委托到 S-mode
+        scause = {is_interrupt, cause}
+        sepc   = faulting_pc
+        stval  = trap_value
+        sstatus.SPIE = sstatus.SIE
+        sstatus.SPP  = current_privilege
+        sstatus.SIE  = 0
+        PC = stvec  // S-mode trap handler
+    else:
+        // 在 M-mode 处理
+        mcause = {is_interrupt, cause}
+        mepc   = faulting_pc
+        mtval  = trap_value
+        mstatus.MPIE = mstatus.MIE
+        mstatus.MPP  = current_privilege
+        mstatus.MIE  = 0
+        PC = mtvec  // M-mode trap handler
+</pre>
+
+<h2>2.5 NMI 处理 (Smrnmi)</h2>
+
+<h3>2.5.1 NMI 进入</h3>
+<pre>
+// NMI 进入流程
+function nmi_enter():
+    mnepc    = current_pc       // 保存被中断 PC
+    mncause  = nmi_cause_code   // NMI 原因码
+    mnstatus.NMPP = mstatus.MPP // 保存特权级
+    mnstatus.NMP  = mstatus.MIE // 保存 MIE
+    mstatus.MPP  = M_MODE       // 强制切到 M-mode
+    mstatus.MIE  = 0            // 禁止所有中断
+    PC = mtvec.NMI_VECTOR       // NMI 入口地址
+</pre>
+
+<h3>2.5.2 NMI 返回 (mnret)</h3>
+<pre>
+// mnret 指令执行
+function mnret():
+    PC = mnepc                    // 恢复被中断 PC
+    mstatus.MPP = mnstatus.NMPP  // 恢复特权级
+    mstatus.MIE = mnstatus.NMP   // 恢复 MIE
+    // NMI 与普通中断互斥: NMI 处理期间不接受新 NMI
+</pre>
+
+<h2>2.6 MRET / SRET 返回逻辑</h2>
+<pre>
+// MRET: Machine-mode trap return
+function mret():
+    PC = mepc
+    mstatus.MIE = mstatus.MPIE   // 恢复中断使能
+    mstatus.MPP = U_MODE if mstatus.MPP != M_MODE else M_MODE
+    mstatus.MPIE = 1
+
+// SRET: Supervisor-mode trap return
+function sret():
+    PC = sepc
+    sstatus.SIE = sstatus.SPIE
+    sstatus.SPP = U_MODE
+    sstatus.SPIE = 1
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">异常输入 (来自各级流水线)</td></tr>
+    <tr><td><code>exc_fetch[1:0]</code></td><td>In</td><td>2</td><td>取指异常 (0=none, 1=misaligned, 2=fault)</td></tr>
+    <tr><td><code>exc_decode[3:0]</code></td><td>In</td><td>4</td><td>解码异常 (illegal/ecall/ebreak)</td></tr>
+    <tr><td><code>exc_exec[2:0]</code></td><td>In</td><td>3</td><td>执行异常 (misaligned)</td></tr>
+    <tr><td><code>exc_mem[1:0]</code></td><td>In</td><td>2</td><td>内存异常 (access fault)</td></tr>
+    <tr><td><code>exc_addr[31:0]</code></td><td>In</td><td>32</td><td>异常地址 (mtval)</td></tr>
+    <tr><td><code>exc_insn[31:0]</code></td><td>In</td><td>32</td><td>异常指令编码 (mtval, illegal insn)</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">NMI / 中断输入</td></tr>
+    <tr><td><code>nmi_signal</code></td><td>In</td><td>1</td><td>外部 NMI 信号</td></tr>
+    <tr><td><code>irq_request</code></td><td>In</td><td>1</td><td>中断请求 (来自 clic-plic.html)</td></tr>
+    <tr><td><code>irq_id[7:0]</code></td><td>In</td><td>8</td><td>中断 ID</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">Trap 输出</td></tr>
+    <tr><td><code>trap_take</code></td><td>Out</td><td>1</td><td>Trap 触发 (flush 流水线)</td></tr>
+    <tr><td><code>trap_pc[31:0]</code></td><td>Out</td><td>32</td><td>Trap 目标 PC (mtvec/stvec/NMI vector)</td></tr>
+    <tr><td><code>trap_cause[31:0]</code></td><td>Out</td><td>32</td><td>Trap 原因码</td></tr>
+    <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">CSR 写入接口</td></tr>
+    <tr><td><code>csr_trap_write</code></td><td>Out</td><td>1</td><td>CSR trap 写使能 (mepc/mcause/mtval/mstatus)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路与控制</h1>
+
+<h2>4.1 Trap 数据通路</h2>
+<pre>
+// Trap 完整数据通路
+//
+// 流水线各级异常信号
+//     │
+//     ▼
+// [W 级: 异常汇总 + 优先级仲裁]
+//     │
+//     ▼
+// [委托判断: medeleg/mideleg]
+//     │
+//     ├──→ M-mode trap: mepc/mcause/mtval/mstatus → PC=mtvec
+//     │
+//     ├──→ S-mode trap: sepc/scause/stval/sstatus → PC=stvec
+//     │
+//     └──→ NMI: mnepc/mncause/mnstatus → PC=NMI_VECTOR
+//
+// [Pipeline Flush]: F2/D/I/E1/E2/M 级全部 flush
+// [PC Mux]: 选择 trap PC (mtvec/stvec/NMI/MRET/SRET/mnret)
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>可选值</th><th>默认值</th><th>描述</th></tr>
+    <tr><td><code>TRAP_DELEGATION_EN</code></td><td>boolean</td><td>true/false</td><td>true</td><td>陷阱委托支持 (S-mode 需要)</td></tr>
+    <tr><td><code>SMRNMI_EN</code></td><td>boolean</td><td>true/false</td><td>true</td><td>Smrnmi NMI 支持</td></tr>
+    <tr><td><code>NMI_VECTOR_ADDR</code></td><td>uint32</td><td>地址</td><td>mtvec.BASE</td><td>NMI 入口地址 (可在 mtvec 中配置)</td></tr>
+    <tr><td><code>MISALIGNED_LDST_SUPPORT</code></td><td>boolean</td><td>true/false</td><td>true</td><td>未对齐 Load/Store 硬件支持 (不触发异常)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证覆盖</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_exception_all_causes</code></td><td>全部 mcause 异常码触发</td><td>mcause=0~11 各触发至少 1 次</td></tr>
+    <tr><td><code>cg_exception_priority</code></td><td>多异常同时到达优先级</td><td>fetch+decode, decode+exec 等同时 pending</td></tr>
+    <tr><td><code>cg_precise_exception</code></td><td>精确异常保证</td><td>异常指令前所有指令已提交, 后全部 flush</td></tr>
+    <tr><td><code>cg_trap_delegation</code></td><td>M→S 陷阱委托</td><td>medeleg/mideleg 各位 × 异常/中断类型</td></tr>
+    <tr><td><code>cg_nmi_enter_return</code></td><td>NMI 进入/返回</td><td>NMI 到达 → mnret → PC 恢复</td></tr>
+    <tr><td><code>cg_mret_sret</code></td><td>MRET/SRET 返回</td><td>mstatus.MPIE/MPP 恢复正确性</td></tr>
+    <tr><td><code>cg_misaligned_ldst</code></td><td>未对齐 Load/Store</td><td>Byte/Half/Word 未对齐 × 使能/禁用</td></tr>
+    <tr><td><code>cg_ecall_all_modes</code></td><td>ECALL 各特权级</td><td>M/S/U-mode ECALL × mcause 编码</td></tr>
+    <tr><td><code>cg_ebreak</code></td><td>EBREAK 断点</td><td>EBREAK 触发 → trap → 调试器响应</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-001</span></td><td>Profile 技术特性合规</td><td>&sect;2.1, &sect;2.3</td><td>异常处理合规测试</td></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-002</span></td><td>特权级配置支持</td><td>&sect;2.4, &sect;2.6</td><td>M/S/U-mode trap 路径</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-002</span></td><td>异常入口地址 (mtvec)</td><td>&sect;2.1 异常原因编码 + &sect;2.6 MRET 返回</td><td>异常入口地址正确性验证</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-003</span></td><td>中断延时 &le;16 cycle</td><td>&sect;2.4 陷阱委托 + &sect;2.5 NMI 处理</td><td>延时主体在 clic-plic.html, 本文档定义异常入口耗时预算</td></tr>
+</table>
+
+<div class="ok"><strong>审查约束响应 — 异常优先级:</strong> 已在 &sect;2.2 定义完整优先级排序 (11 级)，含优先级仲裁伪代码。核心规则：同步 > NMI > 中断，同步异常按流水线级序 (取指 > 解码 > 执行 > 内存)。Cover Group <code>cg_exception_priority</code> 覆盖多异常同时到达场景。</div>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-010 &mdash; 异常处理与陷阱委托设计文档 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html</a> &nbsp;|&nbsp;
+    批次: Batch-3 (P1) &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

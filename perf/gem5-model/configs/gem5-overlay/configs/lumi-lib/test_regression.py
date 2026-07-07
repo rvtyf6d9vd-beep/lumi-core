@@ -162,6 +162,34 @@ run_benchmark_test(
     "Dhrystone_DMIPS_per_MHz_x100"
 )
 
+# --- M2-S1 Test Cases ---
+
+# 9. PMA enabled
+run_test("M2-S1 PMA enabled", ["--enable-pma"])
+
+# 10. PMA + CLIC with latency model
+run_test("M2-S1 PMA+CLIC", [
+    "--enable-pma", "--enable-clic", "--clic-latency", "16"
+])
+
+# 11. Vector extension enabled
+run_test("M2-S1 Vector enabled", ["--enable-vector"])
+
+# 12. HPM export enabled
+run_test("M2-S1 HPM export", ["--enable-hpm", "--max-ticks", "10000000"])
+
+# 13. BTB/RAS sizing
+run_test("M2-S1 BTB+RAS sizing", [
+    "--btb-entries", "4096", "--ras-entries", "16"
+])
+
+# 14. Full M2-S1 feature set
+run_test("M2-S1 full features", [
+    "--enable-pma", "--enable-clic", "--clic-latency", "16",
+    "--enable-vector", "--enable-hpm",
+    "--btb-entries", "8192", "--ras-entries", "32",
+])
+
 # --- Summary ---
 print(f"\n{'='*60}")
 print("REGRESSION TEST SUMMARY")

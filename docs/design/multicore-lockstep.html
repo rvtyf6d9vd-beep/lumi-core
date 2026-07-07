@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多核互联 &amp; 双核锁步模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>多核互联 &amp; 双核锁步模块设计文档</h1>
+    <p class="subtitle">Multi-core Topology (1~4 Hart) + Dual Lock-Step (ASIL-D) + Lock-Step Comparator</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-015 &nbsp;|&nbsp; <strong>批次:</strong> Batch-4 (P2) &nbsp;|&nbsp; <strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;8.6.1~&sect;8.6.2</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">DEC-007-3</span> (锁步比较器接入点) &nbsp; <span class="constraint-tag">D-011</span> (双级比较粒度, 分歧项)</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>多核 &amp; 锁步模块管理 Lumi-Core 的<strong>多核拓扑</strong>和<strong>功能安全锁步</strong>：</p>
+<ul>
+    <li><strong>多核互联</strong>：1~4 核可配置拓扑，核间通过共享内存 + 原子操作通信</li>
+    <li><strong>PLIC 多核路由</strong>：PLIC 支持多 Hart 中断分发</li>
+    <li><strong>CLIC 独立性</strong>：每个 Hart 拥有独立 CLIC 实例</li>
+    <li><strong>缓存一致性</strong>：双核硬件一致性 / 四核软件维护 + CMO</li>
+    <li><strong>双核锁步</strong>：面向 ASIL-D 的指令级比较锁步模式</li>
+    <li><strong>锁步比较器</strong>：W 级比较 (基线) + M 级扩展预留</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>多核互联拓扑配置</td><td>单核内部流水线 (属于 Batch-1 各模块)</td></tr>
+    <tr><td>核间通信机制 (共享内存 + AMO)</td><td>缓存一致性协议硬件实现 (SoC 级)</td></tr>
+    <tr><td>锁步比较器 (W 级基线 + M 级预留)</td><td>PLIC 仲裁逻辑 (属于 clic-plic.html)</td></tr>
+    <tr><td>锁步错误处理 (NMI/复位/日志)</td><td>FMEDA 安全分析 (系统级)</td></tr>
+    <tr><td>Store Buffer 同步接口 (M 级预留)</td><td>Store Buffer 内部实现 (属于 cache.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="pma-axi.html">pma-axi.html</a> (AXI 互连拓扑) | <a href="clic-plic.html">clic-plic.html</a> (PLIC 多 Hart 路由) | <a href="cache.html">cache.html</a> (缓存一致性/CMO) | <a href="writeback-csr.html">writeback-csr.html</a> (commit_valid 比较接入点)</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 多核互联拓扑 <span class="req-tag">LUMI-MCORE-001</span></h2>
+
+<h3>2.1.1 配置选项</h3>
+<table>
+    <tr><th>配置</th><th>核数</th><th>互联方式</th><th>缓存一致性</th><th>PLIC 路由</th></tr>
+    <tr><td>单核 (默认)</td><td>1</td><td>N/A</td><td>N/A</td><td>单 Hart</td></tr>
+    <tr><td>双核</td><td>2</td><td>共享 L2 或 AXI 互连</td><td>硬件一致性 (可选)</td><td>双 Hart enable 位</td></tr>
+    <tr><td>四核</td><td>4</td><td>AXI 互连总线</td><td>软件维护 + CMO</td><td>四 Hart enable 位</td></tr>
+</table>
+
+<h3>2.1.2 核间通信</h3>
+<pre>
+// 核间通信机制
+//
+// 1. 共享内存: 多个 Hart 通过 AXI 总线访问同一物理地址
+//    - 缓存一致性保证数据正确 (硬件/软件)
+//    - 原子操作 (AMO) 提供互斥原语
+//
+// 2. 原子操作 (A 扩展):
+//    - LR (Load Reserved): 加载并设置 reservation
+//    - SC (Store Conditional): 条件存储, reservation 有效时成功
+//    - AMO (Atomic Memory Op): swap/add/and/or/xor/min/max
+//
+// 3. 软件中断 (MSI): Hart 间通过写 CLINT msip 寄存器触发
+//    - hart_i 写 hart_j 的 msip → hart_j 收到软件中断
+//
+// 4. Fence: SFENCE.VMA / CMO 指令用于多核 TLB/Cache 同步
+//    - 四核配置: 软件负责 CMO 同步 (IPI + fence)
+</pre>
+
+<h3>2.1.3 多核中断路由</h3>
+<table>
+    <tr><th>组件</th><th>多核行为</th></tr>
+    <tr><td>PLIC</td><td>每个中断源有 per-Hart enable 位; Claim/Complete 独立; 优先级 per-Hart threshold</td></tr>
+    <tr><td>CLIC</td><td>每个 Hart 独立 CLIC 实例; 本地中断不跨核; 通过 PLIC 或 MSI 实现跨核通知</td></tr>
+    <tr><td>CLINT</td><td>Per-Hart msip (软件中断) + mtip (定时器); 共享 mtime 计数器</td></tr>
+</table>
+
+<h2>2.2 双核锁步 <span class="req-tag">LUMI-MCORE-002</span> <span class="req-tag">LUMI-SAFE-002</span></h2>
+
+<h3>2.2.1 锁步执行模型</h3>
+<pre>
+// 双核锁步 (Dual Lock-Step) 执行模型
+//
+// Hart 0 (Leader) 和 Hart 1 (Checker) 执行完全相同的指令流:
+// - 两核从相同 PC 开始执行
+// - 每个指令周期后比较结果
+// - 不一致时触发 Lock-Step Error
+//
+// 前提条件:
+// - 两核共享同一时钟域 (clk_core)
+// - 两核接收相同的中断/异常信号
+// - 两核的 TCM/Cache 配置完全相同
+//
+// ┌─────────────┐     ┌─────────────┐
+// │  Hart 0     │     │  Hart 1     │
+// │  (Leader)   │     │  (Checker)  │
+// │             │     │             │
+// │  W 级输出 ──┼──┐  │  W 级输出 ──┼──┐
+// └─────────────┘  │  └─────────────┘  │
+//                  ▼                    ▼
+//          ┌──────────────────────────────┐
+//          │   Lock-Step Comparator       │
+//          │   比较: PC + Reg + Mem Write │
+//          └──────────────┬───────────────┘
+//                         │
+//                         ▼ mismatch
+//                  ┌──────────────┐
+//                  │ Error Handler│
+//                  │ NMI/Reset/Log│
+//                  └──────────────┘
+</pre>
+
+<h3>2.2.2 比较粒度 <span class="constraint-tag">DEC-007-3</span> <span class="constraint-tag">D-011</span></h3>
+<pre>
+// 锁步比较器接入点 (DEC-007-3)
+//
+// === 基线方案: W 级比较 (MiniMax 建议) ===
+//
+// 在 W 级比较以下信号:
+// 1. PC[31:0]           — 当前指令地址
+// 2. rd_addr[4:0]       — 目标寄存器号
+// 3. rd_data[31:0]      — 写入寄存器的数据
+// 4. mem_write_valid    — 是否有内存写操作
+// 5. mem_write_addr[31:0] — 内存写地址
+// 6. mem_write_data[31:0] — 内存写数据
+// 7. mem_write_size[2:0]  — 内存写大小
+// 8. exception_valid    — 是否触发异常
+// 9. exception_cause[31:0] — 异常原因
+//
+// W 级比较优点: 实现简单, 信号稳定 (已提交的指令)
+// W 级比较局限: Store Buffer 异步写入可能遗漏 (Store 在 M 级发出, W 级确认)
+
+// === 扩展预留: M 级比较 (Deepseek 建议) ===
+//
+// 在 M 级额外比较:
+// 10. mem_write_data_m[31:0] — M 级内存写数据 (Store Buffer 入口)
+// 11. mem_write_addr_m[31:0] — M 级内存写地址
+//
+// M 级比较需 Store Buffer 同步:
+// - Hart 0 和 Hart 1 的 Store Buffer 必须同步步进
+// - 复杂度较高, M2-S1 先实现 W 级基线, 预留 M 级接口
+</pre>
+
+<div class="warn"><strong>审查约束响应 — D-011 (锁步比较粒度分歧):</strong>
+<ul>
+    <li><strong>分歧:</strong> MiniMax 建议仅 W 级 (简单)；Deepseek 建议 W+M 双级 (全面)</li>
+    <li><strong>融合策略:</strong> M2-S1 基线采用 W 级比较，预留 M 级扩展接口 (mem_write_*_m 信号)</li>
+    <li><strong>升级路径:</strong> 若 W 级比较无法覆盖 Store Buffer 故障模式，后续版本升级到 W+M 双级</li>
+    <li><strong>面积影响:</strong> W 级比较器约 +2K gates; W+M 双级约 +5K gates + Store Buffer 同步逻辑</li>
+    <li><strong>验证:</strong> 基线覆盖 W 级全部 9 个比较信号; 扩展验证覆盖 Store Buffer 故障注入</li>
+</ul>
+</div>
+
+<div class="ok"><strong>审查约束响应 — DEC-007-3 (锁步比较器接入点):</strong>
+<ul>
+    <li><strong>接入点:</strong> W 级提交信号 (commit_valid) 触发比较，确保比较的是已提交指令</li>
+    <li><strong>信号列表:</strong> PC + rd_addr + rd_data + mem_write_* + exception_* (9 组信号)</li>
+    <li><strong>时序:</strong> 比较结果在 W 级下一 cycle 可用 (组合逻辑比较 + 1 FF 同步)</li>
+    <li><strong>M 级预留:</strong> 预留 mem_write_data_m / mem_write_addr_m 接口信号位</li>
+</ul>
+</div>
+
+<h3>2.2.3 锁步比较器实现</h3>
+<pre>
+// Lock-Step Comparator (W 级基线)
+//
+// module lockstep_comparator (
+//     input  wire        clk,
+//     input  wire        rst_n,
+//     // Hart 0 (Leader) W 级信号
+//     input  wire        h0_commit_valid,
+//     input  wire [31:0] h0_pc,
+//     input  wire [4:0]  h0_rd_addr,
+//     input  wire [31:0] h0_rd_data,
+//     input  wire        h0_mem_wr_valid,
+//     input  wire [31:0] h0_mem_wr_addr,
+//     input  wire [31:0] h0_mem_wr_data,
+//     input  wire [2:0]  h0_mem_wr_size,
+//     input  wire        h0_exc_valid,
+//     input  wire [31:0] h0_exc_cause,
+//     // Hart 1 (Checker) W 级信号
+//     input  wire        h1_commit_valid,
+//     input  wire [31:0] h1_pc,
+//     input  wire [4:0]  h1_rd_addr,
+//     input  wire [31:0] h1_rd_data,
+//     input  wire        h1_mem_wr_valid,
+//     input  wire [31:0] h1_mem_wr_addr,
+//     input  wire [31:0] h1_mem_wr_data,
+//     input  wire [2:0]  h1_mem_wr_size,
+//     input  wire        h1_exc_valid,
+//     input  wire [31:0] h1_exc_cause,
+//     // 比较结果
+//     output reg         lockstep_error,
+//     output reg  [3:0]  error_code
+// );
+//
+// 比较逻辑:
+//   commit_mismatch  = h0_commit_valid ^ h1_commit_valid
+//   pc_mismatch      = h0_commit_valid &amp; (h0_pc != h1_pc)
+//   rd_mismatch      = h0_commit_valid &amp; (h0_rd_addr != h1_rd_addr | h0_rd_data != h1_rd_data)
+//   mem_mismatch     = h0_mem_wr_valid &amp; (h0_mem_wr_addr != h1_mem_wr_addr |
+//                                           h0_mem_wr_data != h1_mem_wr_data |
+//                                           h0_mem_wr_size != h1_mem_wr_size)
+//   exc_mismatch     = h0_exc_valid &amp; (h0_exc_valid != h1_exc_valid | h0_exc_cause != h1_exc_cause)
+//
+//   lockstep_error = commit_mismatch | pc_mismatch | rd_mismatch | mem_mismatch | exc_mismatch
+//   error_code = {commit_mismatch, pc_mismatch, rd_mismatch, mem_mismatch}
+</pre>
+
+<h3>2.2.4 锁步错误处理</h3>
+<table>
+    <tr><th>处理策略</th><th>触发方式</th><th>行为</th></tr>
+    <tr><td>NMI (默认)</td><td><code>lockstep_nmi</code> 信号</td><td>两核同时收到 NMI, 进入 Smrnmi 处理流程</td></tr>
+    <tr><td>系统复位</td><td><code>lockstep_reset</code> 信号</td><td>两核同时复位, 从复位向量重新开始</td></tr>
+    <tr><td>日志记录</td><td><code>lockstep_log</code> CSR</td><td>记录 mismatch 详情 (PC/error_code/timestamp) 供诊断</td></tr>
+</table>
+<p>错误处理策略可通过 <code>lockstep_error_mode</code> CSR 配置，默认 NMI。</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 多核互联接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>hart_id[1:0]</code></td><td>In (per-hart)</td><td>2</td><td>Hart ID (0~3)</td></tr>
+    <tr><td><code>num_harts[1:0]</code></td><td>In (全局)</td><td>2</td><td>核数配置 (00=1, 01=2, 11=4)</td></tr>
+    <tr><td><code>axi_m_* (per-hart)</code></td><td>双向</td><td>—</td><td>每核独立 AXI Master 端口 (或共享 AXI 互连)</td></tr>
+    <tr><td><code>plic_enable[3:0]</code></td><td>In</td><td>4</td><td>PLIC per-Hart 中断使能</td></tr>
+    <tr><td><code>msip[3:0]</code></td><td>In (per-hart)</td><td>4</td><td>CLINT 软件中断 (per-Hart)</td></tr>
+    <tr><td><code>mtime[63:0]</code></td><td>In (共享)</td><td>64</td><td>共享定时器计数器</td></tr>
+    <tr><td><code>mtip[3:0]</code></td><td>In (per-hart)</td><td>4</td><td>定时器中断 (per-Hart 比较值)</td></tr>
+</table>
+
+<h2>3.2 锁步比较器接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>h0_commit_valid</code></td><td>In (from Hart0 W)</td><td>1</td><td>Hart0 W 级提交有效</td></tr>
+    <tr><td><code>h0_pc[31:0]</code></td><td>In</td><td>32</td><td>Hart0 提交 PC</td></tr>
+    <tr><td><code>h0_rd_addr[4:0]</code></td><td>In</td><td>5</td><td>Hart0 目标寄存器号</td></tr>
+    <tr><td><code>h0_rd_data[31:0]</code></td><td>In</td><td>32</td><td>Hart0 写入数据</td></tr>
+    <tr><td><code>h0_mem_wr_valid</code></td><td>In</td><td>1</td><td>Hart0 内存写有效</td></tr>
+    <tr><td><code>h0_mem_wr_addr[31:0]</code></td><td>In</td><td>32</td><td>Hart0 内存写地址</td></tr>
+    <tr><td><code>h0_mem_wr_data[31:0]</code></td><td>In</td><td>32</td><td>Hart0 内存写数据</td></tr>
+    <tr><td><code>h0_mem_wr_size[2:0]</code></td><td>In</td><td>3</td><td>Hart0 内存写大小</td></tr>
+    <tr><td><code>h0_exc_valid</code></td><td>In</td><td>1</td><td>Hart0 异常有效</td></tr>
+    <tr><td><code>h0_exc_cause[31:0]</code></td><td>In</td><td>32</td><td>Hart0 异常原因</td></tr>
+    <tr><td><code>h1_*</code></td><td>In (from Hart1 W)</td><td>同上</td><td>Hart1 对应信号</td></tr>
+    <tr><td><code>lockstep_error</code></td><td>Out</td><td>1</td><td>锁步错误 (mismatch 检测)</td></tr>
+    <tr><td><code>error_code[3:0]</code></td><td>Out</td><td>4</td><td>错误类型编码</td></tr>
+    <tr><td><code>lockstep_enable</code></td><td>In</td><td>1</td><td>锁步模式使能</td></tr>
+    <tr><td><code>lockstep_error_mode[1:0]</code></td><td>In</td><td>2</td><td>错误处理策略 (00=NMI, 01=Reset, 10=Log)</td></tr>
+    <tr><td><code>lockstep_log[63:0]</code></td><td>Out (to CSR)</td><td>64</td><td>错误日志 (PC + error_code + timestamp)</td></tr>
+</table>
+
+<h3>3.2.1 M 级扩展预留接口</h3>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>h0_mem_wr_data_m[31:0]</code></td><td>In (from Hart0 M)</td><td>32</td><td>Hart0 M 级 Store Buffer 写数据 (预留未连接)</td></tr>
+    <tr><td><code>h0_mem_wr_addr_m[31:0]</code></td><td>In (from Hart0 M)</td><td>32</td><td>Hart0 M 级 Store Buffer 写地址 (预留未连接)</td></tr>
+    <tr><td><code>h1_mem_wr_data_m[31:0]</code></td><td>In (from Hart1 M)</td><td>32</td><td>Hart1 M 级 Store Buffer 写数据 (预留未连接)</td></tr>
+    <tr><td><code>h1_mem_wr_addr_m[31:0]</code></td><td>In (from Hart1 M)</td><td>32</td><td>Hart1 M 级 Store Buffer 写地址 (预留未连接)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 多核互联拓扑图</h2>
+<pre>
+// 四核互联拓扑 (AXI 互连)
+//
+// ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
+// │ Hart 0 │  │ Hart 1 │  │ Hart 2 │  │ Hart 3 │
+// │ ICache │  │ ICache │  │ ICache │  │ ICache │
+// │ DCache │  │ DCache │  │ DCache │  │ DCache │
+// │ CLIC   │  │ CLIC   │  │ CLIC   │  │ CLIC   │
+// └───┬────┘  └───┬────┘  └───┬────┘  └───┬────┘
+//     │ AXI       │ AXI       │ AXI       │ AXI
+//     ▼           ▼           ▼           ▼
+// ┌──────────────────────────────────────────────────┐
+// │              AXI Interconnect                     │
+// │         (4 Master → N Slave)                      │
+// └─────┬──────────┬──────────┬──────────┬───────────┘
+//       │          │          │          │
+//       ▼          ▼          ▼          ▼
+//  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+//  │  PLIC  │ │ CLINT  │ │  DDR   │ │ TCM*   │
+//  │ (共享) │ │ (共享) │ │ (外部) │ │(per-hart)│
+//  └────────┘ └────────┘ └────────┘ └────────┘
+//
+// * TCM: 默认 per-Hart 私有, 可选共享
+//
+// 双核锁步模式:
+//   Hart 0 + Hart 1 → Lock-Step Pair
+//   比较器连接在 W 级输出
+</pre>
+
+<h2>4.2 锁步比较器数据通路</h2>
+<pre>
+// 锁步比较器时序
+//
+// cycle N:   Hart0 W 级提交指令, 输出 commit 信号
+// cycle N:   Hart1 W 级提交指令, 输出 commit 信号
+// cycle N+1: 比较器输出 lockstep_error (组合逻辑比较 + 1 FF)
+//
+// ┌──────┐     ┌──────┐
+// │Hart0 │     │Hart1 │
+// │ W 级 │     │ W 级 │
+// └──┬───┘     └──┬───┘
+//    │            │
+//    ▼            ▼
+// ┌──────────────────────┐
+// │  XOR Comparator       │  ← 组合逻辑
+// │  (PC+RD+MEM+EXC)     │
+// └──────────┬───────────┘
+//            │
+//            ▼
+// ┌──────────────────────┐
+// │  Error FF + Encoder  │  ← clk_core 采样
+// │  lockstep_error      │
+// │  error_code[3:0]     │
+// └──────────┬───────────┘
+//            │
+//            ▼
+//   NMI / Reset / Log (按 error_mode 配置)
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>可选值</th><th>默认值</th><th>影响</th></tr>
+    <tr><td>核数配置</td><td>1 / 2 / 4</td><td>1</td><td>多核拓扑 + PLIC 路由</td></tr>
+    <tr><td>双核锁步模式</td><td>Yes / No</td><td>No</td><td>需核数≥2; 启用比较器</td></tr>
+    <tr><td>锁步错误处理</td><td>NMI / Reset / Log</td><td>NMI</td><td>mismatch 后的恢复策略</td></tr>
+    <tr><td>缓存一致性 (双核)</td><td>硬件 / 软件</td><td>硬件</td><td>硬件一致性需额外硬件; 软件用 CMO</td></tr>
+    <tr><td>TCM 共享</td><td>私有 (per-Hart) / 共享</td><td>私有</td><td>共享 TCM 需仲裁器</td></tr>
+    <tr><td>M 级比较 (扩展)</td><td>Yes / No</td><td>No</td><td>启用后 Store Buffer 需同步</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证策略</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+<blockquote><strong>GEM5 参数关联:</strong> GEM5 多核拓扑通过 <code>Root.system.cpu[*]</code> 配置多 Hart。锁步模式无原生 GEM5 支持，需通过自定义 SimObject 注入故障并比较 commit 流。多核缓存一致性在 GEM5 中通过 Ruby/RubyProtocols 建模。</blockquote>
+
+<h2>6.1 Cover Groups</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_multicore_config</code></td><td>核数配置 (1/2/4) × 互联方式</td><td>num_harts × interconnect_type</td></tr>
+    <tr><td><code>cg_plic_routing</code></td><td>PLIC 中断路由到多 Hart</td><td>irq_source × target_hart × enable</td></tr>
+    <tr><td><code>cg_ipi</code></td><td>核间软件中断 (MSI)</td><td>src_hart × dst_hart × msip_write</td></tr>
+    <tr><td><code>cg_amo</code></td><td>原子操作多核竞争</td><td>amo_type × hart_id × contention</td></tr>
+    <tr><td><code>cg_lockstep_basic</code></td><td>锁步正常执行 (无 mismatch)</td><td>lockstep_enable × commit_count</td></tr>
+    <tr><td><code>cg_lockstep_error</code></td><td>锁步 mismatch 检测 (故障注入)</td><td>fault_type × error_code</td></tr>
+    <tr><td><code>cg_lockstep_recovery</code></td><td>锁步错误恢复 (NMI/Reset/Log)</td><td>error_mode × recovery_success</td></tr>
+    <tr><td><code>cg_lockstep_interrupt</code></td><td>锁步模式下中断处理 (两核同步)</td><td>irq_arrive × lockstep_phase</td></tr>
+    <tr><td><code>cg_cache_coherence</code></td><td>缓存一致性场景 (双核)</td><td>coherence_event × data_correct</td></tr>
+    <tr><td><code>cg_lockstep_mem_ext</code></td><td>M 级扩展比较 (预留验证)</td><td>m_level_compare × store_buffer_sync</td></tr>
+</table>
+
+<h2>6.2 关键验证场景</h2>
+<ul>
+    <li><strong>锁步故障注入:</strong> 在 Hart1 W 级注入 PC/RD/MEM 偏差，验证比较器检测</li>
+    <li><strong>锁步中断同步:</strong> 中断到达时两核同时进入中断处理，比较器持续工作</li>
+    <li><strong>多核 AMO 竞争:</strong> 两个 Hart 同时对同一地址执行 LR/SC</li>
+    <li><strong>锁步错误恢复:</strong> NMI 处理后重新同步两核执行</li>
+    <li><strong>Store Buffer 场景:</strong> 验证 W 级比较对 Store Buffer 故障的覆盖度</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<h2>7.1 承接需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求</th><th>本文档章节</th></tr>
+    <tr><td>LUMI-MCORE-001</td><td>多核互联拓扑 (1~4 核)</td><td>&sect;2.1 (拓扑/通信/中断路由)</td></tr>
+    <tr><td>LUMI-MCORE-002</td><td>双核锁步 (Dual Lock-Step)</td><td>&sect;2.2 (锁步模型/比较器/错误处理)</td></tr>
+    <tr><td>LUMI-SAFE-002</td><td>双核锁步执行检测</td><td>&sect;2.2.2 (比较粒度), &sect;2.2.3 (实现)</td></tr>
+</table>
+
+<h2>7.2 审查约束响应</h2>
+<table>
+    <tr><th>约束</th><th>响应章节</th><th>状态</th></tr>
+    <tr><td>DEC-007-3 (锁步比较器接入点)</td><td>&sect;2.2.2 (W 级 9 组信号 + M 级预留 4 组)</td><td>已响应</td></tr>
+    <tr><td>D-011 (双级比较粒度分歧)</td><td>&sect;2.2.2 (W 级基线 + M 级预留接口)</td><td>已响应</td></tr>
+</table>
+
+<h2>7.3 关联文档</h2>
+<ul>
+    <li><a href="clic-plic.html">clic-plic.html</a>: PLIC 多核路由 + CLIC per-Hart 独立性</li>
+    <li><a href="cache.html">cache.html</a>: 缓存一致性 + Store Buffer (M 级扩展依赖)</li>
+    <li><a href="exception-handling.html">exception-handling.html</a>: 锁步 NMI 恢复使用 Smrnmi</li>
+    <li><a href="writeback-csr.html">writeback-csr.html</a>: W 级提交信号来源</li>
+    <li><a href="../architecture/platform-spec.html">platform-spec.html</a>: §8.6 多核架构</li>
+</ul>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-015 &nbsp;|&nbsp; 多核 &amp; 锁步 &nbsp;|&nbsp; Batch-4 (P2) &nbsp;|&nbsp; 2026-07-07</p>
+</div>
+
+</body>
+</html>

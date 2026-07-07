@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core M2-S1 微架构融合审查报告 (v2.0)</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}
+        .badge-warn{background:#fff3e0;color:#e65100}
+        .badge-ok{background:#e8f5e9;color:#2e7d32}
+        .badge-info{background:#e3f2fd;color:#1565c0}
+        .source-mm{display:inline-block;background:#e8eaf6;color:#283593;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600}
+        .source-ds{display:inline-block;background:#fce4ec;color:#880e4f;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600}
+        .source-both{display:inline-block;background:#e0f2f1;color:#004d40;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#s1">1.方法论</a>
+    <a href="#s2">2.流水线</a>
+    <a href="#s3">3.模块划分</a>
+    <a href="#s4">4.接口</a>
+    <a href="#s5">5.RTL可行性</a>
+    <a href="#s6">6.竞品</a>
+    <a href="#s7">7.Profile</a>
+    <a href="#s8">8.GEM5</a>
+    <a href="#s9">9.决策</a>
+    <a href="#s10">10.文档清单</a>
+    <a href="#s11">11.风险</a>
+    <a href="#s12">12.一致性</a>
+</div>
+
+<div class="cover">
+    <h1>Lumi-Core M2-S1 微架构融合审查报告</h1>
+    <p class="subtitle">Dual Independent Microarchitecture Review &mdash; Merged Report</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-ARCH-002 &nbsp;|&nbsp; <strong>版本:</strong> 2.0 (融合版)</p>
+        <p><strong>创建日期:</strong> 2026-07-07 &nbsp;|&nbsp; <strong>状态:</strong> 完成</p>
+        <p><strong>审查来源:</strong>
+            <span class="source-mm">Round-1 MiniMax</span> +
+            <span class="source-ds">Round-2 Deepseek</span> &rarr; 融合</p>
+        <p><strong>负责人:</strong> hw-design (架构审查) + hw-ver (可测试性视角) + 独立审查员 &times;2</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s1">1. 审查方法论</h1>
+
+<h2>1.1 双审独立审查机制</h2>
+<p>本报告采用<strong>双轮独立审查</strong>机制，两位独立审查员分别基于相同的输入材料（架构说明书、GEM5 模型、性能数据、风险登记）进行独立分析，最后融合为统一报告。</p>
+
+<table>
+    <tr><th>维度</th><th>Round-1 <span class="source-mm">MiniMax</span></th><th>Round-2 <span class="source-ds">Deepseek</span></th></tr>
+    <tr><td>审查侧重</td><td>架构一致性、接口定义完整性、Spec/GEM5 对齐</td><td>RTL 实现可行性、物理约束、验证覆盖、竞品对标</td></tr>
+    <tr><td>发现范围</td><td>D-001 ~ D-015 (15 项)</td><td>D-016 ~ D-022 (7 项)</td></tr>
+    <tr><td>修正建议</td><td>MOD-001 ~ MOD-012 (12 项)</td><td>MOD-013 ~ MOD-017 (5 项)</td></tr>
+    <tr><td>新增风险</td><td>RISK-006 ~ RISK-010 (5 项)</td><td>RISK-011 ~ RISK-014 (4 项)</td></tr>
+    <tr><td>审查输入</td><td>platform-spec v1.0.2, lumi_cpu.py, perf-report.yaml, review v1.0</td><td>同上 + risk-register.yaml, known-issues.yaml, Lumi-Core-Profile.html</td></tr>
+</table>
+
+<h2>1.2 发现分类统计</h2>
+<table>
+    <tr><th>严重度</th><th><span class="source-mm">MiniMax</span></th><th><span class="source-ds">Deepseek</span></th><th>合计</th></tr>
+    <tr><td><span class="badge badge-crit">关键</span></td><td>4 (D-002, D-006, D-007, D-008)</td><td>2 (D-019, D-022)</td><td>6</td></tr>
+    <tr><td><span class="badge badge-warn">中等</span></td><td>8 (D-001, D-004, D-005, D-009~D-012, D-014, D-015)</td><td>4 (D-016, D-017, D-020, D-021)</td><td>12</td></tr>
+    <tr><td><span class="badge badge-info">低</span></td><td>1 (D-003)</td><td>1 (D-018)</td><td>2</td></tr>
+    <tr><td><span class="badge badge-ok">信息</span></td><td>2 (D-010, D-013)</td><td>0</td><td>2</td></tr>
+    <tr><td><strong>总计</strong></td><td><strong>15</strong></td><td><strong>7</strong></td><td><strong>22</strong></td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s2">2. 流水线架构审查</h1>
+
+<h2>2.1 流水线深度与阶段划分 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>Spec 阶段</th><th>Spec 功能</th><th>GEM5 对应</th><th>对齐状态</th></tr>
+    <tr><td>F1 (Fetch1)</td><td>PC 生成、分支预测、ICache 地址送出</td><td>Fetch1</td><td><span class="badge badge-ok">对齐</span></td></tr>
+    <tr><td>F2 (Fetch2)</td><td>ICache 返回、预解码、压缩指令展开</td><td>Fetch2</td><td><span class="badge badge-ok">对齐</span></td></tr>
+    <tr><td>D (Decode)</td><td>完整解码、寄存器读取、操作数准备</td><td>Decode1 + Decode2</td><td><span class="badge badge-warn">命名差异</span></td></tr>
+    <tr><td>I (Issue)</td><td>指令发射到 FU、数据旁路、发射仲裁</td><td>Issue</td><td><span class="badge badge-ok">对齐</span></td></tr>
+    <tr><td>E1 + E2 (Execute)</td><td>ALU 运算、地址计算、分支判断、MUL/DIV</td><td>Execute (单级)</td><td><span class="badge badge-warn">分组差异</span></td></tr>
+    <tr><td>M (Memory)</td><td>DCache/TCM 访问、Load 返回、Store 提交</td><td>Memory</td><td><span class="badge badge-ok">对齐</span></td></tr>
+    <tr><td>W (Writeback)</td><td>结果写回、异常/中断检测与提交</td><td>Writeback</td><td><span class="badge badge-ok">对齐</span></td></tr>
+</table>
+
+<div class="warn"><strong>D-001 (中) <span class="source-mm">MiniMax</span>:</strong> Spec 将 Decode 列为 1 级 (GEM5 为 Decode1+Decode2)，将 Execute 列为 E1+E2 两级 (GEM5 为单级)。总级数均为 8 级，阶段分组不同。<strong>建议:</strong> 在设计文档中明确 spec &harr; GEM5 映射关系。RTL 设计遵循 spec 定义。</div>
+
+<h2>2.2 功能单元 (FU) 配比 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>FU 类型</th><th>Spec &sect;4.3 (v1.0.2)</th><th>GEM5 配置</th><th>状态</th></tr>
+    <tr><td>ALU</td><td>4 (opLat=1)</td><td>4x LumiIntFU</td><td><span class="badge badge-ok">一致</span> (DEC-001)</td></tr>
+    <tr><td>MUL</td><td>1 (opLat=1, 流水线化)</td><td>1x LumiIntMulFU</td><td><span class="badge badge-ok">一致</span> (DEC-001)</td></tr>
+    <tr><td>DIV</td><td>1 (opLat=9, 迭代式)</td><td>1x MinorDefaultIntDivFU</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>LSU</td><td>2 (三发射模式)</td><td>2x MinorDefaultMemFU</td><td><span class="badge badge-ok">一致</span> (DEC-001)</td></tr>
+    <tr><td>FPU</td><td>1 (opLat=6)</td><td>1x MinorDefaultFloatSimdFU</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>MISC</td><td>1 (opLat=1)</td><td>1x MinorDefaultMiscFU</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td><strong>总计</strong></td><td><strong>10 FU</strong></td><td><strong>10 FU (三发射)</strong></td><td></td></tr>
+</table>
+
+<div class="ok"><strong>D-002 (关键) 已关闭 <span class="source-mm">MiniMax</span>:</strong> Spec &sect;4.3 FU 配比已通过 DEC-001 与 GEM5 对齐。v1.0.2 当前版本正确反映 4xALU + 1xMUL + 1xDIV + 2xLSU + 1xFPU + 1xMISC。</div>
+
+<h2>2.3 分支预测器 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>参数</th><th>Spec &sect;4.4</th><th>GEM5 配置</th><th>状态</th></tr>
+    <tr><td>预测器类型</td><td>LTAGE (TAGE + Loop)</td><td>LTAGE</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>TAGE 表数量</td><td>12 张</td><td>12 (gem5 默认)</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>BTB 条目</td><td>8192</td><td>SimpleBTB(8192)</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>RAS 条目</td><td>32</td><td>ReturnAddrStack(32)</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>误判率目标</td><td>典型&le;2%, CoreMark&le;1.5%</td><td>CoreMark 1.19%</td><td><span class="badge badge-ok">达标</span></td></tr>
+    <tr><td>误预测惩罚</td><td>3 cycle (flush F2+D+I)</td><td>executeBranchDelay=1</td><td><span class="badge badge-ok">一致</span></td></tr>
+</table>
+
+<div class="warn"><strong>D-012 (中) <span class="source-mm">MiniMax</span>:</strong> Spec 声称 LTAGE maxHist=640，但 640 bit 全局历史寄存器 (GHR) 远超过 RV32 的 32 bit 地址空间，必须通过 hash 压缩 (如 XOR fold)。<strong>建议:</strong> fetch-bpred.html 必须定义: (1) GHR 折叠策略 (建议 32-bit folded history); (2) 12 表 tag 比较流水化方案; (3) Loop Predictor 与 TAGE 优先级仲裁。</div>
+
+<h2>2.4 旁路网络与冒险处理 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>项目</th><th>Spec 定义 (v1.0.2)</th><th>GEM5</th><th>状态</th></tr>
+    <tr><td>E1/E2/M/W/FPU&rarr;D 旁路</td><td>5 条路径全覆盖</td><td>全覆盖</td><td><span class="badge badge-ok">一致</span> (DEC-004)</td></tr>
+    <tr><td>Load-Use RAW</td><td>1 stall, 推测命中 0 cycle</td><td>executeLoadAssumedLatency=1</td><td><span class="badge badge-ok">一致</span> (DEC-005)</td></tr>
+    <tr><td>skip-stalled</td><td>非冲突指令越过 stall 指令</td><td>executeEnableSkipStalled=True</td><td><span class="badge badge-ok">一致</span> (DEC-005)</td></tr>
+    <tr><td>Vector 多周期</td><td>未定义</td><td>未建模</td><td><span class="badge badge-crit">缺失</span> (D-006)</td></tr>
+</table>
+
+<div class="warn"><strong>D-015 (中) <span class="source-mm">MiniMax</span>:</strong> Spec &sect;1.3 硬约束"顺序执行"与 &sect;4.6.3 skip-stalled 机制的关系未明确。skip-stalled 仍按程序顺序发射/提交，但"跳过"字面可能被误解为乱序。<strong>建议:</strong> &sect;4.6.3 开头增加"skip-stalled 不破坏程序顺序 (in-order commit)"声明。(已纳入 spec v1.0.3 更新)</div>
+
+<div class="warn"><strong>D-010 (信息) <span class="source-mm">MiniMax</span>:</strong> Spec &sect;4.6.2 说"JALR 需等 E1 级寄存器值"，但未给出 cycle 数。实际延迟为 2 cycle (D 读 rs1 + E1 算地址) + 1 cycle (branch feedback)。<strong>建议:</strong> &sect;4.6.2 明确 JALR 解析延迟。(已纳入 spec v1.0.3 更新)</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s3">3. 模块划分审查</h1>
+
+<h2>3.1 16 份文档拆分方案 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>#</th><th>文档</th><th>审查结论</th><th>来源</th></tr>
+    <tr><td>1</td><td>fetch-bpred.html</td><td><span class="badge badge-ok">保持</span> 内聚合理</td><td>R1</td></tr>
+    <tr><td>2</td><td>decode-issue.html</td><td><span class="badge badge-ok">保持</span> D/I 紧耦合</td><td>R1</td></tr>
+    <tr><td>3</td><td>execute-alu.html</td><td><span class="badge badge-ok">保持</span> ALU+MUL/DIV 合并</td><td>R1</td></tr>
+    <tr><td>4</td><td>writeback-csr.html</td><td><span class="badge badge-ok">保持</span> W 级+CSR 合并</td><td>R1</td></tr>
+    <tr><td>5</td><td>regfile.html</td><td><span class="badge badge-ok">保持</span> 三类寄存器堆统一</td><td>R1</td></tr>
+    <tr><td>6</td><td>tcm.html</td><td><span class="badge badge-ok">保持</span> 独立合理</td><td>R1</td></tr>
+    <tr><td>7</td><td>cache.html</td><td><span class="badge badge-ok">保持</span> 独立合理</td><td>R1</td></tr>
+    <tr><td>8</td><td>pma-axi.html</td><td><span class="badge badge-ok">保持</span> PMA+AXI 紧耦合</td><td>R1</td></tr>
+    <tr><td>9</td><td><strong>clic-plic.html</strong></td><td><span class="badge badge-info">新拆分</span> 中断控制器 (硬件 IP)</td><td>R1 DEC-002</td></tr>
+    <tr><td>10</td><td><strong>exception-handling.html</strong></td><td><span class="badge badge-info">新拆分</span> 异常处理 (流水线逻辑)</td><td>R1 DEC-002</td></tr>
+    <tr><td>11</td><td>privilege-pmp.html</td><td><span class="badge badge-ok">保持</span> 特权+PMP 合并</td><td>R1</td></tr>
+    <tr><td>12</td><td>debug-trace.html</td><td><span class="badge badge-ok">保持</span> Debug+Trace 共享 JTAG</td><td>R1</td></tr>
+    <tr><td>13</td><td>fpu-vector.html</td><td><span class="badge badge-ok">保持</span> 均为可选扩展 FU</td><td>R1</td></tr>
+    <tr><td>14</td><td>power-reset.html</td><td><span class="badge badge-ok">保持</span> 低功耗+复位+时钟域紧耦合</td><td>R1</td></tr>
+    <tr><td>15</td><td><strong>multicore-lockstep.html</strong></td><td><span class="badge badge-info">新拆分</span> 多核/锁步 (架构特性)</td><td>R1 DEC-003</td></tr>
+    <tr><td>16</td><td><strong>dft-security.html</strong></td><td><span class="badge badge-info">新拆分</span> DFT/安全 (测试设计)</td><td>R1 DEC-003</td></tr>
+</table>
+
+<h2>3.2 需求覆盖率复核 <span class="source-ds">Deepseek</span></h2>
+<p>Deepseek 审查对 62 条硬件需求到 16 份设计文档的覆盖进行了交叉检查：</p>
+<table>
+    <tr><th>需求类别</th><th>条数</th><th>覆盖文档</th><th>覆盖状态</th></tr>
+    <tr><td>PPA 目标 (LUMI-PIPE/FREQ/IPC/AREA/PWR/SYS)</td><td>10</td><td>platform-spec &sect;9.1 + 各模块文档</td><td><span class="badge badge-ok">覆盖</span></td></tr>
+    <tr><td>RTL 功能 (LUMI-ISA/MEM/IF/SYS/FEAT/PROF)</td><td>36</td><td>Batch-1~4 对应文档</td><td><span class="badge badge-ok">覆盖</span></td></tr>
+    <tr><td>功能安全 (LUMI-SAFE-001~003)</td><td>3</td><td>dft-security.html + multicore-lockstep.html</td><td><span class="badge badge-ok">覆盖</span></td></tr>
+    <tr><td>信息安全 (LUMI-SEC-001~005)</td><td>5</td><td>dft-security.html + privilege-pmp.html + debug-trace.html</td><td><span class="badge badge-ok">覆盖</span></td></tr>
+    <tr><td>多核/DFT/启动/时序/质量</td><td>8</td><td>multicore-lockstep.html + dft-security.html + power-reset.html</td><td><span class="badge badge-ok">覆盖</span></td></tr>
+    <tr><td><strong>总计</strong></td><td><strong>62</strong></td><td></td><td><span class="badge badge-ok">100%</span></td></tr>
+</table>
+
+<div class="ok"><strong>D-020 (中) 验证通过 <span class="source-ds">Deepseek</span>:</strong> 62 条硬件需求到 16 份设计文档的覆盖率为 100%。pm-infra 需在 M2-S1 期间维护需求追溯矩阵确保无遗漏。</div>
+
+!-- ═══════════════════════════════════════════════ -->
+<h1 id="s4">4. 模块间接口审查</h1>
+
+<h2>4.1 接口完整性评估 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>接口</th><th>审查结论</th><th>关键发现</th><th>来源</th></tr>
+    <tr><td>Core &harr; Memory</td><td><span class="badge badge-warn">需细化</span></td><td>TCM 0/1 拍 vs Cache 1+ 拍统一处理未定义; GEM5 推测命中 latency=1 但 miss 惩罚未说明</td><td><span class="source-mm">R1</span></td></tr>
+    <tr><td>Core &harr; CSR</td><td><span class="badge badge-ok">清晰</span></td><td>CSR 读在 D 级, 写在 W 级, 旁路覆盖; spec &sect;4.7.4 已定义</td><td>&mdash;</td></tr>
+    <tr><td>Core &harr; Interrupt</td><td><span class="badge badge-warn">需细化</span></td><td>&le;16 cycle 预算分配: CLIC 仲裁 2~4c + 上下文保存 1c + PC 跳转 1c + 流水填充 4~5c = 8~12c</td><td><span class="source-mm">R1</span></td></tr>
+    <tr><td>Core &harr; Debug</td><td><span class="badge badge-crit">缺失</span></td><td>Debug halt 在 W 级生效, Resume 从 halt PC 重新取指; halt 信号传播路径未定义</td><td><span class="source-mm">R1</span> DEC-007-1</td></tr>
+    <tr><td>Core &harr; FPU/Vector</td><td><span class="badge badge-crit">缺失</span></td><td>FPU busy 回传 Issue 级, 同类型 FU stall; Vector 多周期同步完全未定义</td><td><span class="source-mm">R1</span> DEC-007-2</td></tr>
+    <tr><td>Memory &harr; Bus</td><td><span class="badge badge-ok">清晰</span></td><td>Cache miss 时 AXI 请求由 Cache 控制器发起; TCM DMA 从接口通过仲裁器分离</td><td>&mdash;</td></tr>
+    <tr><td>multicore &harr; Core</td><td><span class="badge badge-crit">缺失</span></td><td>锁步比较器双级粒度 (W 级寄存器 + M 级内存), Store Buffer 同步策略未定义</td><td><span class="source-mm">R1</span> <span class="source-ds">R2</span></td></tr>
+</table>
+
+<h2>4.2 寄存器堆端口压力分析 <span class="source-mm">MiniMax</span></h2>
+<table>
+    <tr><th>寄存器堆</th><th>读端口需求</th><th>写端口需求</th><th>配置</th><th>状态</th></tr>
+    <tr><td>整数 (x0~x31)</td><td>4 ALU&times;2 + 2 LSU&times;2 + 1 MUL&times;2 + 1 Branch&times;2 = 16</td><td>4 ALU + 2 LSU + 1 MUL + 1 W = 8</td><td>3R/2W &times;32 entries</td><td><span class="badge badge-warn">压力</span></td></tr>
+    <tr><td>浮点 (f0~f31)</td><td>FPU 3R (FADD: rs1+rs2+rs3)</td><td>FPU 1W</td><td>2R/1W &times;32 entries</td><td><span class="badge badge-warn">瓶颈</span></td></tr>
+    <tr><td>向量 (v0~v31)</td><td>Vector FU 多 Bank 并行读</td><td>Vector FU 写</td><td>多 Bank (VLEN 可配)</td><td><span class="badge badge-crit">未定义</span></td></tr>
+</table>
+
+<div class="warn"><strong>D-009 (中) <span class="source-mm">MiniMax</span>:</strong> 整数寄存器堆 3R/2W 端口在最坏情况下 (三发射全为整数运算 + Load) 可能不足。当 3 条指令同时读取 6 个不同源寄存器时, 需要 6R 但仅有 3R &mdash; 需分 2 个 cycle 完成。<strong>建议:</strong> spec &sect;4.7.1 增加端口压力最坏情况分析 + 极端场景 stall 仲裁规则。(已纳入 spec v1.0.3 更新)</div>
+
+<h2>4.3 Vector 扩展接口细化 <span class="source-mm">MiniMax</span></h2>
+<div class="crit"><strong>D-006 (关键) 拆分为三个子问题:</strong>
+<ul>
+    <li><strong>D-006a (Vector-FU 交互):</strong> Vector 指令执行延迟 (与 VLEN/SEW 相关)、stall 策略 (同类型 FU 阻塞)、与 Issue 级 busy 信号握手</li>
+    <li><strong>D-006b (Vector-LSQ 交互):</strong> scatter/gather 内存操作、与 scalar LSQ 分离还是共享、地址生成单元 (AGU) 需求</li>
+    <li><strong>D-006c (Vector RegFile 冲突):</strong> 跨 Bank 冲突策略、Bank 数与 VLEN 的关系、同时读写仲裁</li>
+</ul>
+<strong>目标文档:</strong> fpu-vector.html (Batch-4, P2)</div>
+
+<h2>4.4 锁步比较器接口分歧 <span class="source-both">双审分歧</span></h2>
+<div class="warn"><strong>D-011 (中) 分歧项:</strong>
+<ul>
+    <li><span class="source-mm">MiniMax</span> 建议: 仅在 W 级比较 (PC + 目标寄存器号 + 写入数据), 实现简单</li>
+    <li><span class="source-ds">Deepseek</span> 建议: W 级 (寄存器) + M 级 (内存写) 双级比较, 更全面但 Store Buffer 同步复杂</li>
+</ul>
+<strong>融合建议:</strong> M2-S1 设计文档先以 W 级比较为基线设计, 预留 M 级扩展接口。若 M+W 双级比较复杂度过高, 向用户提出简化方案 (仅 W 级)。写入 multicore-lockstep.html &sect;3 接口定义。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s5">5. RTL 实现可行性分析</h1>
+
+<h2>5.1 关键路径预估 <span class="source-ds">Deepseek</span></h2>
+<table>
+    <tr><th>流水线级</th><th>关键路径候选</th><th>预估延迟 (TSMC 28HPC)</th><th>预算占比</th></tr>
+    <tr><td>F1 (PC+BTB)</td><td>LTAGE 12 表 tag 并行比较 + hash 计算</td><td>80~100 ps</td><td>64~80%</td></tr>
+    <tr><td>F2 (ICache)</td><td>SRAM 读出 + 预解码 + 压缩展开</td><td>90~110 ps</td><td>72~88%</td></tr>
+    <tr><td>D (Decode)</td><td>完整解码 + 寄存器读 (3R/2W mux)</td><td>70~90 ps</td><td>56~72%</td></tr>
+    <tr><td>I (Issue)</td><td>旁路 mux (5&rarr;1, 32bit) + 发射仲裁</td><td>80~100 ps</td><td>64~80%</td></tr>
+    <tr><td>E1 (ALU)</td><td>三发射 3 路并行 ALU + 分支判断</td><td>60~80 ps</td><td>48~64%</td></tr>
+    <tr><td>E2 (MUL/DIV)</td><td>MUL 流水线化 (opLat=1)</td><td>60~80 ps</td><td>48~64%</td></tr>
+    <tr><td>M (DCache)</td><td>DCache SRAM + Tag 比较</td><td>90~110 ps</td><td>72~88%</td></tr>
+    <tr><td>W (Writeback)</td><td>写回 mux + CSR 提交 + 异常检测</td><td>50~70 ps</td><td>40~56%</td></tr>
+</table>
+
+<div class="warn"><strong>D-017 (中) <span class="source-ds">Deepseek</span>:</strong> 旁路 mux (5&rarr;1, 32bit) 在 I 级可能成为关键路径瓶颈。5 路旁路 &times; 32bit = 160bit mux, 延迟约 80~100ps, 占 1 级预算 (125ps @ 1GHz) 的 64~80%。<strong>建议:</strong> RTL 骨架中预留流水化分割点, 必要时将旁路 mux 拆为 2 级 (I 级前半 + D 级后半)。</div>
+
+<h2>5.2 面积预估 <span class="source-ds">Deepseek</span></h2>
+<table>
+    <tr><th>模块</th><th>预估面积 (TSMC 28HPC)</th><th>说明</th></tr>
+    <tr><td>Core (ALU&times;4 + MUL + DIV + LSU&times;2 + FPU + MISC)</td><td>~0.08~0.12 mm&sup2;</td><td>含旁路网络 + 发射逻辑</td></tr>
+    <tr><td>整数寄存器堆 (3R/2W &times;32 &times;32bit)</td><td>~0.01~0.02 mm&sup2;</td><td>Custom SRAM macro</td></tr>
+    <tr><td>浮点寄存器堆 (2R/1W &times;32 &times;64bit)</td><td>~0.01~0.02 mm&sup2;</td><td>Custom SRAM macro</td></tr>
+    <tr><td>LTAGE 预测器 (12 表 + 256Kbits)</td><td>~0.03~0.05 mm&sup2;</td><td>SRAM + hash logic</td></tr>
+    <tr><td>BTB (8192 entries) + RAS (32)</td><td>~0.02~0.04 mm&sup2;</td><td>SRAM based</td></tr>
+    <tr><td><strong>Core 小计</strong></td><td><strong>~0.15~0.25 mm&sup2;</strong></td><td></td></tr>
+    <tr><td>ITCM (16KB) + DTCM (16KB) + ECC</td><td>~0.04~0.06 mm&sup2;</td><td>SRAM + ECC logic</td></tr>
+    <tr><td>L1 I-Cache (16KB) + D-Cache (16KB)</td><td>~0.03~0.05 mm&sup2;</td><td>SRAM + Tag + 替换逻辑</td></tr>
+    <tr><td><strong>总计 (Core + TCM + Cache)</strong></td><td><strong>~0.22~0.36 mm&sup2;</strong></td><td>目标 &le;0.32 mm&sup2;</td></tr>
+</table>
+
+<div class="warn"><strong>D-018 (低) <span class="source-ds">Deepseek</span>:</strong> 面积预估上限 (~0.36 mm&sup2;) 可能超过 0.32 mm&sup2; 目标。主要风险来自 LTAGE 12 表 (256Kbits) 和 TCM/Cache 容量。<strong>建议:</strong> RTL 骨架完成后进行综合预估, 若超标需评估: (1) LTAGE 表数从 12 缩减至 8; (2) Cache 容量从 16KB 降至 8KB; (3) 采用高密度 SRAM macro。</div>
+
+<h2>5.3 1GHz 时序可行性 <span class="source-ds">Deepseek</span></h2>
+<p>TSMC 28HPC 工艺 FO4 延迟约 15~20ps, 8 级流水线每级时序预算 = 1000ps / 8 = <strong>125ps</strong>。</p>
+<ul>
+    <li>F2 级 (ICache SRAM 读出) 和 M 级 (DCache SRAM 读出) 是最紧张的级, 预估 90~110ps, 占预算 72~88%</li>
+    <li>I 级旁路 mux 预估 80~100ps, 占预算 64~80%, 需仔细物理设计</li>
+    <li>整体评估: 1GHz 目标<strong>可行但紧凑</strong>, 需在 RTL 实现中关注 F2/M 级 SRAM macro 选型和 I 级旁路优化</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s6">6. 竞品对标分析</h1>
+
+<h2>6.1 多维度对比 <span class="source-ds">Deepseek</span></h2>
+<table>
+    <tr><th>维度</th><th>Lumi-Core (设计)</th><th>ARM Cortex-R82</th><th>SiFive E8</th><th>Andes N25F</th><th>Nuclei UX600</th></tr>
+    <tr><td>ISA</td><td>RV32 (RVA22)</td><td>ARMv8-R AArch64</td><td>RV32/64 (RVA22)</td><td>RV32 (Andes V5)</td><td>RV32/64 (RVA22)</td></tr>
+    <tr><td>发射宽度</td><td>3 (triple-issue)</td><td>3 (triple-issue)</td><td>2 (dual-issue)</td><td>2 (dual-issue)</td><td>2 (dual-issue)</td></tr>
+    <tr><td>流水线深度</td><td>8</td><td>8</td><td>8</td><td>8</td><td>8</td></tr>
+    <tr><td>分支预测</td><td>LTAGE (12 表, 256Kbits)</td><td>动态预测 (未公开)</td><td>分支预测 (未公开)</td><td>分支预测</td><td>分支预测</td></tr>
+    <tr><td>CoreMark/MHz</td><td>6.97 (RV32 gem5)</td><td>~5.83 (公开)</td><td>~4.5 (公开)</td><td>~3.5 (公开)</td><td>~4.0 (公开)</td></tr>
+    <tr><td>Dhrystone DMIPS/MHz</td><td>1.65 (RV32 gem5)</td><td>~2.5 (公开)</td><td>~1.8 (公开)</td><td>~1.5 (公开)</td><td>~1.7 (公开)</td></tr>
+    <tr><td>FPU</td><td>SP + DP (opLat=6)</td><td>SP + DP</td><td>SP only</td><td>SP only</td><td>SP + DP</td></tr>
+    <tr><td>Vector</td><td>RVV 1.0 (可选)</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+    <tr><td>LockStep</td><td>Yes (双核)</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+    <tr><td>ASIL Target</td><td>D</td><td>D</td><td>B</td><td>B</td><td>B</td></tr>
+</table>
+
+<div class="crit"><strong>D-019 (关键) <span class="source-ds">Deepseek</span>:</strong> Lumi-Core 的三发射设计在 CoreMark/MHz 上具有显著优势 (6.97 vs Cortex-R82 ~5.83), 但 Dhrystone DMIPS/MHz (1.65) 低于所有三发射竞品 (Cortex-R82 ~2.5)。<strong>分析:</strong> Dhrystone 差距可能源于: (1) gem5 MinorCPU 对 Dhrystone 紧密循环的建模偏差; (2) 编译器优化不足; (3) 顺序执行对 Dhrystone 短循环的 IPC 限制。<strong>建议:</strong> RTL 实现后以实际综合结果重新评估 Dhrystone, 若仍低于 2.0 需重新审视目标。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s7">7. RISC-V Profile 合规矩阵</h1>
+
+<h2>7.1 RT-Europa Profile 对齐检查 <span class="source-ds">Deepseek</span></h2>
+<table>
+    <tr><th>扩展</th><th>Profile 要求</th><th>Lumi 支持</th><th>Spec 引用</th><th>状态</th></tr>
+    <tr><td>I (RV32I)</td><td>Mandatory</td><td>Yes</td><td>&sect;3.1</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>M (乘除)</td><td>Mandatory</td><td>Yes</td><td>&sect;3.2</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>A (原子)</td><td>Mandatory</td><td>Yes (AMO/LR/SC)</td><td>&sect;3.3</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>F (单精度浮点)</td><td>Mandatory</td><td>Yes (FPU opLat=6)</td><td>&sect;3.4</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>D (双精度浮点)</td><td>Mandatory</td><td>Yes (FPU SP+DP)</td><td>&sect;3.4</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>C (压缩指令)</td><td>Mandatory</td><td>Yes</td><td>&sect;3.5</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>B (位操作)</td><td>Mandatory</td><td>Yes (Zba/Zbb/Zbs)</td><td>&sect;3.6</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>V (向量)</td><td>Optional</td><td>Yes (RVV 1.0, 可选)</td><td>&sect;3.7</td><td><span class="badge badge-warn">待验证</span></td></tr>
+    <tr><td>Zicsr</td><td>Mandatory</td><td>Yes</td><td>&sect;4.7.4</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>Zicntr/Zihpm</td><td>Mandatory</td><td>Yes (HPM 计数器)</td><td>&sect;4.7.4</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>Zifencei</td><td>Mandatory</td><td>Yes (FENCE.I)</td><td>&sect;3.8</td><td><span class="badge badge-ok">合规</span></td></tr>
+    <tr><td>Smepmp</td><td>Recommended</td><td>Spec 定义, gem5 不支持</td><td>&sect;5.3</td><td><span class="badge badge-warn">ERR-004</span></td></tr>
+    <tr><td>Smrnmi</td><td>Recommended</td><td>Spec 定义, gem5 不支持</td><td>&sect;5.4</td><td><span class="badge badge-warn">ERR-005</span></td></tr>
+</table>
+
+<div class="warn"><strong>D-021 (中) <span class="source-ds">Deepseek</span>:</strong> Lumi-Core 对 RT-Europa Profile 的 Mandatory 扩展全部合规。但 Smepmp/Smrnmi 作为 Recommended 扩展, 因 gem5 不支持 (ERR-004/005) 无法在仿真阶段验证, 需在 RTL 验证阶段覆盖。<strong>建议:</strong> privilege-pmp.html 和 exception-handling.html 中明确标注 gem5 已知限制, 验证计划中增加 RTL-only 测试项。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s8">8. GEM5 性能模型交叉校验</h1>
+
+<h2>8.1 参数对齐总结 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>参数</th><th>Spec 值 (v1.0.2)</th><th>GEM5 值</th><th>状态</th><th>处理</th></tr>
+    <tr><td>流水线级数</td><td>8</td><td>8</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>发射宽度</td><td>3 (triple)</td><td>3</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>ALU FU</td><td>4 (opLat=1)</td><td>4x LumiIntFU</td><td><span class="badge badge-ok">一致</span></td><td>DEC-001 已执行</td></tr>
+    <tr><td>MUL</td><td>1 (opLat=1)</td><td>1x LumiIntMulFU</td><td><span class="badge badge-ok">一致</span></td><td>DEC-001 已执行</td></tr>
+    <tr><td>DIV</td><td>1 (opLat=9)</td><td>1x MinorDefaultIntDivFU</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>LSU</td><td>2</td><td>2x MinorDefaultMemFU</td><td><span class="badge badge-ok">一致</span></td><td>DEC-001 已执行</td></tr>
+    <tr><td>FPU</td><td>1 (opLat=6)</td><td>1x MinorDefaultFloatSimdFU</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>MISC</td><td>1 (opLat=1)</td><td>1x MinorDefaultMiscFU</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>LTAGE</td><td>12 表/256Kbits</td><td>LTAGE 默认</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>BTB/RAS</td><td>8192/32</td><td>8192/32</td><td><span class="badge badge-ok">一致</span></td><td>&mdash;</td></tr>
+    <tr><td>推测 Load 延迟</td><td>1 cycle (v1.0.2 补充)</td><td>executeLoadAssumedLatency=1</td><td><span class="badge badge-ok">一致</span></td><td>DEC-005 已执行</td></tr>
+    <tr><td>skip-stalled</td><td>启用 (v1.0.2 补充)</td><td>executeEnableSkipStalled=True</td><td><span class="badge badge-ok">一致</span></td><td>DEC-005 已执行</td></tr>
+</table>
+
+<h2>8.2 性能基线 <span class="source-both">双审一致</span></h2>
+<table>
+    <tr><th>基准</th><th>Spec 目标</th><th>GEM5 RV32 实测</th><th>GEM5 RV64 实测</th><th>状态</th></tr>
+    <tr><td>CoreMark</td><td>&ge;5.5 CM/MHz</td><td>6.97 CM/MHz (IPC 1.952)</td><td>6.22 CM/MHz</td><td><span class="badge badge-ok">达成</span></td></tr>
+    <tr><td>Dhrystone</td><td>&ge;3.8 DMIPS/MHz</td><td>1.65 DMIPS/MHz</td><td>1.48 DMIPS/MHz</td><td><span class="badge badge-crit">未达成</span> (DEC-006: 保持目标)</td></tr>
+    <tr><td>中断延时</td><td>&le;16 cycle</td><td>deferred (RISK-001/002)</td><td>&mdash;</td><td><span class="badge badge-warn">待验证</span></td></tr>
+    <tr><td>bp_mispredict_rate</td><td>&le;2% (典型)</td><td>1.19% (CoreMark)</td><td>&mdash;</td><td><span class="badge badge-ok">达标</span></td></tr>
+</table>
+
+<h2>8.3 GEM5 模型已知限制</h2>
+<table>
+    <tr><th>编号</th><th>限制</th><th>影响</th><th>缓解</th></tr>
+    <tr><td>ERR-004</td><td>gem5 不支持 Smepmp 扩展</td><td>CSR 访问触发 illegal-instruction trap</td><td>RTL 验证覆盖</td></tr>
+    <tr><td>ERR-005</td><td>gem5 不支持 Smrnmi 扩展</td><td>CSR 访问触发 illegal-instruction trap</td><td>RTL 验证覆盖</td></tr>
+    <tr><td>ERR-007</td><td>AtomicSimpleCPU mepc+mret bug</td><td>trap handler recovery 损坏</td><td>测试避免依赖 trap-and-skip</td></tr>
+    <tr><td>RISK-001/002</td><td>CLIC 自动接线需 gem5 重编译</td><td>SE 模式无法测试中断延时</td><td>FS 模式 + gem5 recompile</td></tr>
+    <tr><td>&mdash;</td><td>Vector FU 未建模</td><td>Vector 指令行为未知</td><td>M2-S1 P2 扩展建模</td></tr>
+</table>
+
+<div class="warn"><strong>D-013 (信息) <span class="source-mm">MiniMax</span>:</strong> 中断延时预算 (Phase 9 优化后 7~11 cycle) 需更新。CLIC 自动接线完成后, FS 模式实测数据应替换当前静态估算。<strong>目标文档:</strong> clic-plic.html &sect;3 接口定义。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s9">9. 决策记录</h1>
+
+<h2>9.1 审查决策汇总</h2>
+<table>
+    <tr><th>编号</th><th>决策内容</th><th>来源</th><th>状态</th></tr>
+    <tr><td>DEC-001</td><td>更新架构说明书 &sect;4.3 FU 配比为 4xALU + 1xMUL + 1xDIV + 2xLSU + 1xFPU + 1xMISC, MUL opLat=1</td><td><span class="source-mm">R1</span> 用户确认</td><td><span class="badge badge-ok">已执行</span></td></tr>
+    <tr><td>DEC-002</td><td>拆分 interrupt-clic-plic.html 为 clic-plic.html + exception-handling.html</td><td><span class="source-mm">R1</span> 用户确认</td><td><span class="badge badge-ok">已确认</span></td></tr>
+    <tr><td>DEC-003</td><td>拆分 multicore-dft.html 为 multicore-lockstep.html + dft-security.html</td><td><span class="source-mm">R1</span> 用户确认</td><td><span class="badge badge-ok">已确认</span></td></tr>
+    <tr><td>DEC-004</td><td>补充 spec &sect;4.6.1 W&rarr;D 旁路和 FPU 结果旁路路径</td><td><span class="source-mm">R1</span> 审查建议</td><td><span class="badge badge-ok">已执行</span></td></tr>
+    <tr><td>DEC-005</td><td>补充 spec 推测性 Load 延迟预测和 skip-stalled 机制说明</td><td><span class="source-mm">R1</span> 审查建议</td><td><span class="badge badge-ok">已执行</span></td></tr>
+    <tr><td>DEC-006</td><td>Dhrystone 目标 3.8 DMIPS/MHz &mdash; 保持目标不变, 后续通过 RTL/编译器优化接近</td><td><span class="source-mm">R1</span> 用户决策</td><td><span class="badge badge-ok">已决策</span></td></tr>
+    <tr><td>DEC-007</td><td>补充 Debug halt/resume, FPU/Vector 同步, 锁步比较器接入点接口定义</td><td><span class="source-mm">R1</span> <span class="source-ds">R2</span></td><td><span class="badge badge-info">待执行</span> (Task 0.3)</td></tr>
+</table>
+
+<h2>9.2 Deepseek 新增建议</h2>
+<table>
+    <tr><th>编号</th><th>建议内容</th><th>目标</th><th>状态</th></tr>
+    <tr><td>MOD-013</td><td>RTL 骨架预留旁路 mux 流水化分割点</td><td>Task 3 RTL 骨架</td><td><span class="badge badge-info">纳入计划</span></td></tr>
+    <tr><td>MOD-014</td><td>RTL 骨架完成后进行综合预估, 面积超标时评估 LTAGE 表数/Cache 容量缩减</td><td>Task 3 门禁</td><td><span class="badge badge-info">纳入计划</span></td></tr>
+    <tr><td>MOD-015</td><td>M2-S1 设计文档统一增加 "gem5 已知限制" 标注 (对 Smepmp/Smrnmi/Vector)</td><td>Batch-3/4 文档</td><td><span class="badge badge-info">纳入计划</span></td></tr>
+    <tr><td>MOD-016</td><td>验证计划增加 RTL-only 测试项 (Smepmp/Smrnmi/Vector)</td><td>hw-ver 验证方案</td><td><span class="badge badge-info">纳入计划</span></td></tr>
+    <tr><td>MOD-017</td><td>Dhrystone 目标重评点: RTL 实现后以实际综合结果重新评估</td><td>关键决策点</td><td><span class="badge badge-info">纳入计划</span></td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s10">10. 冻结的文档清单 (16 份)</h1>
+
+<table>
+    <tr><th>#</th><th>文件</th><th>内容</th><th>批次</th><th>审查约束响应</th></tr>
+    <tr><td>1</td><td>fetch-bpred.html</td><td>F1/F2 级 + LTAGE 分支预测 + BTB/RAS</td><td>Batch-1 (P0)</td><td>D-012: LTAGE GHR hash, 12 表流水化, Loop/TAGE 仲裁</td></tr>
+    <tr><td>2</td><td>decode-issue.html</td><td>D/I 级三发射 + 冒险处理 + skip-stalled</td><td>Batch-1 (P0)</td><td>D-015: skip-stalled 顺序声明; D-009: 读端口仲裁</td></tr>
+    <tr><td>3</td><td>execute-alu.html</td><td>E1/E2 级 ALU(4x) + MUL + DIV</td><td>Batch-1 (P0)</td><td>D-014: MUL/DIV 吞吐模型; D-010: JALR 2cycle 延迟</td></tr>
+    <tr><td>4</td><td>writeback-csr.html</td><td>W 级 + CSR + HPM 计数器</td><td>Batch-1 (P0)</td><td>无新增约束</td></tr>
+    <tr><td>5</td><td>regfile.html</td><td>整数/浮点/向量寄存器堆</td><td>Batch-1 (P0)</td><td>D-009: 3R/2W 端口压力最坏情况分析</td></tr>
+    <tr><td>6</td><td>tcm.html</td><td>ITCM/DTCM 控制器 + ECC + DMA</td><td>Batch-2 (P1)</td><td>TCM 0/1 拍延迟切换; DMA 冲突仲裁</td></tr>
+    <tr><td>7</td><td>cache.html</td><td>L1 I/D-Cache (可配 8/16/32KB)</td><td>Batch-2 (P1)</td><td>独立配置替换策略; miss 延迟影响</td></tr>
+    <tr><td>8</td><td>pma-axi.html</td><td>PMA 检查器 + AXI 总线接口</td><td>Batch-2 (P1)</td><td>PMA+PMP 联合检查时序</td></tr>
+    <tr><td>9</td><td><strong>clic-plic.html</strong></td><td>CLIC + PLIC 中断控制器</td><td>Batch-3 (P1)</td><td>D-013: 中断延时预算更新 (7~11 cycle)</td></tr>
+    <tr><td>10</td><td><strong>exception-handling.html</strong></td><td>异常处理 + 陷阱委托 + mcause</td><td>Batch-3 (P1)</td><td>异常优先级表与 CLIC 抢占交互</td></tr>
+    <tr><td>11</td><td>privilege-pmp.html</td><td>特权架构 + PMP/Smepmp</td><td>Batch-3 (P1)</td><td>gem5 不支持 Smepmp (ERR-004)</td></tr>
+    <tr><td>12</td><td>debug-trace.html</td><td>JTAG Debug + Nexus Trace</td><td>Batch-3 (P1)</td><td>DEC-007-1: Debug halt W 级生效; D-016: tck 异步延迟</td></tr>
+    <tr><td>13</td><td>fpu-vector.html</td><td>FPU + Vector 单元</td><td>Batch-4 (P2)</td><td>D-006a/b/c + DEC-007-2: FPU busy 回传 Issue</td></tr>
+    <tr><td>14</td><td>power-reset.html</td><td>低功耗 + 复位 + 时钟域 + UPF</td><td>Batch-4 (P2)</td><td>WFI 门控恢复延迟 &le;8 cycle</td></tr>
+    <tr><td>15</td><td><strong>multicore-lockstep.html</strong></td><td>多核互联 + 双核锁步</td><td>Batch-4 (P2)</td><td>DEC-007-3 + D-011: 双级比较粒度, Store Buffer 同步</td></tr>
+    <tr><td>16</td><td><strong>dft-security.html</strong></td><td>Scan Chain + MBIST + JTAG边界扫描 + 安全</td><td>Batch-4 (P2)</td><td>扫描链 &ge;98% 覆盖率目标</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s11">11. 综合风险评估</h1>
+
+<h2>11.1 风险汇总 (RISK-001 ~ RISK-014)</h2>
+<table>
+    <tr><th>编号</th><th>风险项</th><th>严重度</th><th>状态</th><th>来源</th><th>处理方式</th></tr>
+    <tr><td>RISK-001</td><td>Interrupt latency test deferred (SE mode)</td><td>中</td><td>accepted</td><td><span class="source-mm">R1</span></td><td>FS 模式 + gem5 recompile</td></tr>
+    <tr><td>RISK-002</td><td>CLIC/PLIC SE mode connection</td><td>中</td><td>accepted</td><td><span class="source-mm">R1</span></td><td>FS 模式 + CLIC wiring</td></tr>
+    <tr><td>RISK-003</td><td>Smrnmi NMI delivery requires FS</td><td>低</td><td>mitigated</td><td><span class="source-mm">R1</span></td><td>FS mode 验证</td></tr>
+    <tr><td>RISK-005</td><td>gem5 mepc+mret trap recovery bug</td><td>中</td><td>accepted</td><td><span class="source-mm">R1</span></td><td>测试避免 trap-and-skip</td></tr>
+    <tr><td>RISK-006</td><td>Dhrystone 3.8 vs 1.65 DMIPS/MHz 差距</td><td>高</td><td>open</td><td><span class="source-mm">R1</span></td><td>保持目标, RTL 优化</td></tr>
+    <tr><td>RISK-007</td><td>Vector 扩展流水线交互未定义</td><td>高</td><td>open</td><td><span class="source-mm">R1</span></td><td>fpu-vector.html 必须定义</td></tr>
+    <tr><td>RISK-008</td><td>Debug halt/resume 接口未定义</td><td>中</td><td>open</td><td><span class="source-mm">R1</span></td><td>debug-trace.html 必须定义</td></tr>
+    <tr><td>RISK-009</td><td>锁步比较器接入点未定义</td><td>中</td><td>open</td><td><span class="source-mm">R1</span></td><td>multicore-lockstep.html 必须定义</td></tr>
+    <tr><td>RISK-010</td><td>gem5 不支持 Smepmp/Smrnmi</td><td>低</td><td>accepted</td><td><span class="source-mm">R1</span></td><td>RTL 验证覆盖</td></tr>
+    <tr style="background:#fff3e0"><td><strong>RISK-011</strong></td><td>RTL 关键路径瓶颈 (旁路 mux / I 级)</td><td>中</td><td>open</td><td><span class="source-ds">R2</span></td><td>RTL 骨架预留流水化分割点</td></tr>
+    <tr style="background:#fff3e0"><td><strong>RISK-012</strong></td><td>面积超标风险 (Core+TCM+Cache ~0.36mm&sup2;)</td><td>中</td><td>open</td><td><span class="source-ds">R2</span></td><td>RTL 骨架后综合预估, 备选缩减方案</td></tr>
+    <tr style="background:#fff3e0"><td><strong>RISK-013</strong></td><td>1GHz 时序紧凑 (F2/M 级占 88% 预算)</td><td>中</td><td>open</td><td><span class="source-ds">R2</span></td><td>SRAM macro 选型 + 物理设计优化</td></tr>
+    <tr style="background:#fff3e0"><td><strong>RISK-014</strong></td><td>锁步比较器双级粒度复杂度过高</td><td>低</td><td>open</td><td><span class="source-ds">R2</span></td><td>先以 W 级基线, 预留 M 级扩展</td></tr>
+</table>
+
+<blockquote>RISK-011~RISK-014 为 Deepseek 审查新增, 需在 Task 0.4 中写入 risk-register.yaml。</blockquote>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="s12">12. 双审一致性评估</h1>
+
+<h2>12.1 一致性对比</h2>
+<table>
+    <tr><th>维度</th><th><span class="source-mm">MiniMax</span> 结论</th><th><span class="source-ds">Deepseek</span> 结论</th><th>一致性</th></tr>
+    <tr><td>流水线架构</td><td>8 级合理, 分组命名差异 (D-001)</td><td>采纳 MiniMax 结论, 补充关键路径分析</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>FU 配比</td><td>Spec 落后 GEM5 (D-002)</td><td>确认已对齐 (DEC-001)</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>分支预测</td><td>LTAGE GHR 压缩问题 (D-012)</td><td>确认 LTAGE 存储开销, 补充面积分析</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>旁路网络</td><td>5 路完整 (DEC-004), I 级 mux 瓶颈</td><td>确认 5 路完整, 量化 I 级 mux 延迟</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>寄存器堆端口</td><td>3R/2W 压力 (D-009)</td><td>确认压力, 补充物理面积估算</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>Vector 接口</td><td>D-006 拆分为 3 个子问题</td><td>采纳, 补充跨 Bank 冲突策略建议</td><td><span class="badge badge-ok">一致</span></td></tr>
+    <tr><td>锁步比较器</td><td>W 级比较 (PC+reg+data)</td><td>W+M 双级比较</td><td><span class="badge badge-warn">分歧</span> (见 &sect;4.4)</td></tr>
+    <tr><td>Dhrystone</td><td>建议下调或标 Stretch Goal</td><td>确认差距, 建议 RTL 后重评</td><td><span class="badge badge-ok">一致</span> (用户保持目标)</td></tr>
+    <tr><td>面积/时序</td><td>未覆盖</td><td>新增分析 (D-017/D-018)</td><td><span class="badge badge-info">补充</span></td></tr>
+    <tr><td>竞品对标</td><td>仅提 Cortex-R82</td><td>新增 4 家对比 (D-019)</td><td><span class="badge badge-info">补充</span></td></tr>
+    <tr><td>Profile 合规</td><td>未覆盖</td><td>新增 RT-Europa 矩阵 (D-021)</td><td><span class="badge badge-info">补充</span></td></tr>
+</table>
+
+<h2>12.2 争议项与融合策略</h2>
+<table>
+    <tr><th>争议项</th><th>分歧描述</th><th>融合策略</th></tr>
+    <tr><td>锁步比较器粒度</td><td>MiniMax: 仅 W 级 vs Deepseek: W+M 双级</td><td>先 W 级基线, 预留 M 级扩展接口; 若复杂度过高向用户提出简化</td></tr>
+</table>
+
+<div class="ok"><strong>双审一致性评估结论:</strong> 22 项发现中 21 项双审一致或互补, 1 项分歧 (D-011 锁步比较器粒度) 已制定融合策略。审查结果可信度高, 可作为 M2-S1 设计文档的约束基线。</div>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core M2-S1 Microarchitecture Review (v2.0 Fusion) &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-ARCH-002 &nbsp;|&nbsp; 版本: 2.0 (融合版) &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="platform-spec.html">平台架构说明书 v1.0.2</a> &nbsp;|&nbsp;
+    前版: <a href="m2-s1-microarch-review.html">审查报告 v1.0</a> &nbsp;|&nbsp;
+    参考: <a href="../../perf/benchmarks/perf-report.yaml">性能报告</a></p>
+</div>
+
+</body>
+</html>

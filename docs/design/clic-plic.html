@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLIC &amp; PLIC 中断控制器模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>CLIC &amp; PLIC 中断控制器模块设计文档</h1>
+    <p class="subtitle">Core-Local Interrupt Controller + Platform-Level Interrupt Controller</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-009 &nbsp;|&nbsp; <strong>批次:</strong> Batch-3 (P1)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;5.1~&sect;5.5</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">D-013</span> (CLIC 中断延时精化 — 16 cycle 预算分解)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>CLIC &amp; PLIC 模块实现 Lumi-Core 的<strong>两层中断架构</strong>，负责中断信号的聚合、仲裁和分发：</p>
+<ul>
+    <li><strong>PLIC</strong> (Platform-Level)：平台级中断控制器，聚合外部中断源 (32~960)，执行优先级仲裁 (7 级)，多 Hart 路由</li>
+    <li><strong>CLIC</strong> (Core-Local)：ISA 扩展层中断控制器，per-hart 实例，管理本地中断 + PLIC 传入的外部中断，支持硬件向量中断和优先级抢占</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>CLIC 中断接收/仲裁/向量跳转</td><td>异常处理逻辑 (属于 exception-handling.html)</td></tr>
+    <tr><td>PLIC 中断聚合/优先级/路由</td><td>外部中断源设备 (SoC 侧)</td></tr>
+    <tr><td>中断响应流水线交互 (W 级检测)</td><td>mepc/mcause CSR 存储 (属于 writeback-csr.html)</td></tr>
+    <tr><td>CLIC CSR (mintstatus/mintthresh/mclick)</td><td>标准 mstatus/mip/mie CSR (属于 writeback-csr.html)</td></tr>
+    <tr><td>中断嵌套与抢占控制</td><td>NMI (Smrnmi) 处理 (属于 exception-handling.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="exception-handling.html">exception-handling.html</a> (异常入口) | <a href="writeback-csr.html">writeback-csr.html</a> (中断 CSR) | <a href="power-reset.html">power-reset.html</a> (WFI 唤醒) | <a href="multicore-lockstep.html">multicore-lockstep.html</a> (per-Hart 中断路由)</p>
+
+<h2>1.3 设计约束</h2>
+<table>
+    <tr><th>约束</th><th>值</th><th>来源</th></tr>
+    <tr><td>中断延时</td><td>&le;16 cycle (信号到达到首条处理指令)</td><td><span class="req-tag">LUMI-SYS-003</span></td></tr>
+    <tr><td>CLIC 中断数</td><td>1~240 可配 (默认 16)</td><td><span class="req-tag">LUMI-SYS-002</span></td></tr>
+    <tr><td>PLIC 中断数</td><td>32~960 可配 (默认 32)</td><td><span class="req-tag">LUMI-SYS-001</span></td></tr>
+    <tr><td>PLIC 优先级</td><td>7 级 (0=禁用, 1~7)</td><td>PLIC 规范</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 中断信号路径</h2>
+<pre>
+// 完整中断信号路径
+//
+// 外部设备 (UART, Timer, GPIO, ...)
+//      │ IRQ_EXT[0..N-1]
+//      ▼
+// ┌────────────┐
+// │   PLIC     │  优先级仲裁 (7 级)
+// │ (平台级) │  多 Hart 路由 (enable 位)
+// │            │  Threshold 过滤
+// └────┬─────┘
+//      │ MEIP / SEIP (per-hart 信号)
+//      ▼
+// ┌────────────┐
+// │   CLIC     │  Per-hart 实例
+// │ (ISA 层) │  本地中断 + PLIC 传入外部中断
+// │            │  硬件向量中断 (mtvec vectored)
+// │            │  优先级抢占
+// └────┬─────┘
+//      │ 中断请求 (pending + enabled)
+//      ▼
+// ┌────────────┐
+// │ Hart 核心 │  W 级检测 → 当前指令完成 → trap 进入
+// └────────────┘
+</pre>
+
+<h2>2.2 PLIC 详细设计</h2>
+
+<h3>2.2.1 中断源管理</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>中断源数</td><td>32~960 (32 的 2 的幂次倍数)</td></tr>
+    <tr><td>中断源 0</td><td>保留 (不存在)</td></tr>
+    <tr><td>优先级</td><td>3bit (0=禁用, 1=最低, 7=最高)</td></tr>
+    <tr><td>触发类型</td><td>边沿/电平可配</td></tr>
+    <tr><td>Pending 位</td><td>每源 1 bit, 中断到达时置位, claim 后清零</td></tr>
+</table>
+
+<h3>2.2.2 PLIC 仲裁逻辑</h3>
+<pre>
+// PLIC 仲裁伪代码
+function plic_arbitrate(context_id):
+    // context_id: 每个 Hart 的 M-mode/S-mode 各一个 context
+    best_id = 0
+    best_priority = 0
+
+    for src_id in 1..NUM_SOURCES:
+        if pending[src_id] and enable[context_id][src_id]:
+            if priority[src_id] > best_priority:
+                best_priority = priority[src_id]
+                best_id = src_id
+
+    // Threshold 过滤
+    if best_priority > threshold[context_id]:
+        return {best_id, best_priority}  // MEIP/SEIP 信号置位
+    else:
+        return {0, 0}  // 无中断
+
+// PLIC Claim/Complete
+function plic_claim(context_id):
+    {id, prio} = plic_arbitrate(context_id)
+    pending[id] = 0  // 清除 pending
+    return id  // 返回中断源 ID, 软件通过此 ID 识别中断
+
+function plic_complete(context_id, src_id):
+    // 中断处理完成后通知 PLIC, 允许同源新中断
+    enable[context_id][src_id] = 1  // 重新使能
+</pre>
+
+<h3>2.2.3 PLIC 寄存器映射</h3>
+<table>
+    <tr><th>偏移</th><th>名称</th><th>大小</th><th>描述</th></tr>
+    <tr><td><code>0x000000</code></td><td>priority[1..N]</td><td>N × 4B</td><td>中断源优先级 (每源 32bit, 低 3bit 有效)</td></tr>
+    <tr><td><code>0x001000</code></td><td>pending[0..N/32]</td><td>N/32 × 4B</td><td>中断挂起位图</td></tr>
+    <tr><td><code>0x002000</code></td><td>enable[ctx][0..N/32]</td><td>ctx × N/32 × 4B</td><td>中断使能位图 (per-context)</td></tr>
+    <tr><td><code>0x200000</code></td><td>threshold[ctx]</td><td>ctx × 4B</td><td>优先级阈值</td></tr>
+    <tr><td><code>0x200004</code></td><td>claim/complete[ctx]</td><td>ctx × 4B</td><td>读=claim, 写=complete</td></tr>
+</table>
+
+<h2>2.3 CLIC 详细设计</h2>
+
+<h3>2.3.1 CLIC 中断类型</h3>
+<table>
+    <tr><th>中断类型</th><th>来源</th><th>数量</th><th>描述</th></tr>
+    <tr><td>软件中断 (MSI)</td><td>内部/外部</td><td>1</td><td>通过 CLIC 软件触发寄存器</td></tr>
+    <tr><td>定时器中断 (MTI)</td><td>外部 Timer</td><td>1</td><td>连接外部 MTIME 比较器</td></tr>
+    <tr><td>外部中断 (MEI)</td><td>PLIC 输出</td><td>1</td><td>PLIC 仲裁后的外部中断</td></tr>
+    <tr><td>本地中断</td><td>外部直接输入</td><td>N-3</td><td>直连 Hart 的本地中断源</td></tr>
+</table>
+
+<h3>2.3.2 CLIC 优先级与抢占</h3>
+<pre>
+// CLIC 优先级仲裁
+function clic_arbitrate():
+    // 遍历所有 CLIC 中断输入
+    best_id = -1
+    best_level = 0
+    best_prv = M
+
+    for irq_id in 0..CLIC_NUM_INTERRUPTS:
+        if clic_pending[irq_id] and clic_enable[irq_id]:
+            level = clic_level[irq_id]  // 中断级别 (8bit, 0~255)
+            prv   = clic_prv[irq_id]    // 目标特权级 (M/S/U)
+
+            // 级别 > 当前阈值 且 > 当前处理中断级别
+            if level > mintthresh.th:
+                if best_id == -1 or level > best_level:
+                    best_id = irq_id
+                    best_level = level
+                    best_prv = prv
+
+    if best_id >= 0:
+        // 检查是否可抢占当前中断处理
+        if best_level > mintstatus.mil:  // mil = 当前中断级别
+            return {best_id, best_level, best_prv, PREEMPT}
+        else:
+            return {-1, 0, M, NO_PREEMPT}  // 不抢占
+    return {-1, 0, M, NO_INTERRUPT}
+
+// 硬件向量中断跳转
+function clic_vector_jump(irq_id, prv):
+    // 直接跳转到中断处理入口, 无需软件查表
+    // vectored 模式: PC = mtvec.BASE + 4 * irq_id
+    vector_addr = mtvec.BASE + 4 * irq_id
+    return vector_addr
+</pre>
+
+<h3>2.3.3 CLIC CSR 映射</h3>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>描述</th></tr>
+    <tr><td><code>mintstatus</code></td><td>0xFB1</td><td>中断状态: mil[31:24]=当前级别, mpie[7]=之前MIE, mpp[12:11]=之前模式</td></tr>
+    <tr><td><code>mintthresh</code></td><td>0x347</td><td>中断阈值: th[7:0]=最低响应级别</td></tr>
+    <tr><td><code>mclick</code></td><td>0xFB0</td><td>CLIC claim: 读=获取最高优先级中断ID, 写=complete</td></tr>
+    <tr><td><code>sintstatus</code></td><td>0xDB1</td><td>S-mode 中断状态 (委托中断)</td></tr>
+    <tr><td><code>sintthresh</code></td><td>0x147</td><td>S-mode 中断阈值</td></tr>
+    <tr><td><code>sclick</code></td><td>0xDB0</td><td>S-mode claim/complete</td></tr>
+</table>
+
+<h2>2.4 中断响应时序 <span class="constraint-tag">D-013: 中断延时精化</span></h2>
+
+<h3>2.4.1 16 cycle 预算分解</h3>
+<table>
+    <tr><th>步骤</th><th>延迟</th><th>描述</th><th>累计</th></tr>
+    <tr><td>1. 中断信号同步</td><td>1 cycle</td><td>外部异步信号 2-FF 同步到 clk_core</td><td>1</td></tr>
+    <tr><td>2. PLIC 仲裁</td><td>0 cycle</td><td>组合逻辑 (已在 PLIC 内部完成)</td><td>1</td></tr>
+    <tr><td>3. CLIC 仲裁</td><td>1 cycle</td><td>CLIC 优先级比较 + 抢占判断</td><td>2</td></tr>
+    <tr><td>4. W 级中断检测</td><td>0 cycle</td><td>检查 mip &amp; mie &amp; mstatus.MIE (组合逻辑)</td><td>2</td></tr>
+    <tr><td>5. 当前指令完成</td><td>0~1 cycle</td><td>等待 M/W 级排空 (顺序流水线)</td><td>3</td></tr>
+    <tr><td>6. 上下文保存</td><td>1 cycle</td><td>mepc/mcause/mstatus 写入 CSR</td><td>4</td></tr>
+    <tr><td>7. PC 跳转</td><td>1 cycle</td><td>F1 级: PC = mtvec (vectored: + 4*cause)</td><td>5</td></tr>
+    <tr><td>8. 取指 (F2)</td><td>1 cycle</td><td>从 ITCM/I-Cache 取首条处理指令</td><td>6</td></tr>
+    <tr><td>9. 解码 (D)</td><td>1 cycle</td><td>指令解码</td><td>7</td></tr>
+    <tr><td>10. 发射 (I)</td><td>1 cycle</td><td>指令发射</td><td>8</td></tr>
+    <tr><td>11. 执行 (E1)</td><td>1 cycle</td><td>首条中断处理指令执行</td><td>9</td></tr>
+</table>
+<blockquote><strong>预算分析:</strong> 硬件流水线部分约 9 cycle (步骤 1~11)。剩余 7 cycle 预算用于：
+<ul>
+    <li>PLIC 仲裁延迟 (多中断源时): ~2~4 cycle</li>
+    <li>CLIC 向量查表 (如使用 shv): ~1~2 cycle</li>
+    <li>Cache miss (首条指令不在 I-Cache): 需额外 refill delay</li>
+</ul>
+最坏场景 (PLIC 多源仲裁 + I-Cache miss): 9 + 4 + 2 + refill ≈ 可能超过 16 cycle。<br>
+<strong>缓解策略:</strong> 中断向量表放置于 ITCM (零延迟), 避免 I-Cache miss。</blockquote>
+
+<div class="ok"><strong>审查约束响应 — D-013:</strong>
+<ul>
+    <li><strong>预算分解:</strong> 16 cycle = 1 (同步) + 1 (CLIC) + 1 (排空) + 1 (CSR) + 1 (跳转) + 1 (F2) + 1 (D) + 1 (I) + 1 (E1) + 7 (PLIC+向量+裕量)</li>
+    <li><strong>关键路径:</strong> 中断向量在 ITCM 时 9 cycle 可达, 裕量 7 cycle</li>
+    <li><strong>风险场景:</strong> I-Cache miss 可能超时 → 建议 BSP 将中断向量固定于 ITCM</li>
+    <li><strong>GEM5 验证:</strong> 中断延时测试用例 (perf/gem5-model/tests/) 可精化实际 cycle 数</li>
+</ul>
+</div>
+
+<h2>2.5 嵌套中断规则</h2>
+<table>
+    <tr><th>场景</th><th>行为</th><th>条件</th></tr>
+    <tr><td>同级中断</td><td>不嵌套, 按 ID 仲裁</td><td>CLIC level 相同</td></tr>
+    <tr><td>高优先级抢占</td><td>嵌套: 当前中断暂停, 执行高优先级</td><td>新 level > mintstatus.mil</td></tr>
+    <tr><td>MIE=0 期间</td><td>不响应任何中断</td><td>mstatus.MIE=0</td></tr>
+    <tr><td>手动允许抢占</td><td>中断处理中设 MIE=1, 允许更高优先级</td><td>软件显式操作</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 CLIC 模块端口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>In</td><td>1</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>In</td><td>1</td><td>异步复位</td></tr>
+    <tr><td><code>irq_local[N-1:0]</code></td><td>In</td><td>N</td><td>本地中断输入 (N=CLIC_NUM)</td></tr>
+    <tr><td><code>meip</code></td><td>In</td><td>1</td><td>PLIC M-mode 外部中断</td></tr>
+    <tr><td><code>seip</code></td><td>In</td><td>1</td><td>PLIC S-mode 外部中断</td></tr>
+    <tr><td><code>msip</code></td><td>In</td><td>1</td><td>M-mode 软件中断</td></tr>
+    <tr><td><code>mtip</code></td><td>In</td><td>1</td><td>M-mode 定时器中断</td></tr>
+    <tr><td><code>irq_request</code></td><td>Out</td><td>1</td><td>中断请求有效</td></tr>
+    <tr><td><code>irq_id[7:0]</code></td><td>Out</td><td>8</td><td>待处理中断 ID</td></tr>
+    <tr><td><code>irq_level[7:0]</code></td><td>Out</td><td>8</td><td>待处理中断级别</td></tr>
+    <tr><td><code>irq_preempt</code></td><td>Out</td><td>1</td><td>抢占信号</td></tr>
+    <tr><td><code>csr_rw_*</code></td><td>Bidir</td><td>--</td><td>CSR 读写接口 (mintstatus/mintthresh/mclick)</td></tr>
+</table>
+
+<h2>3.2 PLIC 模块端口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>clk_bus</code></td><td>In</td><td>1</td><td>总线时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>In</td><td>1</td><td>异步复位</td></tr>
+    <tr><td><code>irq_ext[N-1:0]</code></td><td>In</td><td>N</td><td>外部中断输入 (N=PLIC_NUM, 32~960)</td></tr>
+    <tr><td><code>meip_out[H-1:0]</code></td><td>Out</td><td>H</td><td>M-mode 外部中断输出 (per-hart)</td></tr>
+    <tr><td><code>seip_out[H-1:0]</code></td><td>Out</td><td>H</td><td>S-mode 外部中断输出 (per-hart)</td></tr>
+    <tr><td><code>axi_slave_*</code></td><td>Bidir</td><td>--</td><td>AXI4 Slave 接口 (MMIO 配置寄存器)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路与控制</h1>
+
+<h2>4.1 中断检测与响应数据通路</h2>
+<pre>
+// W 级中断检测数据通路
+//
+// W 级: 当前指令提交后
+//     │
+//     ├──→ [mip &amp; mie &amp; mstatus.MIE] → interrupt_pending
+//     │
+//     ├──→ [CLIC irq_request] → clic_pending
+//     │        │
+//     │        ├──→ [优先级比较] → level > mintthresh?
+//     │        │        │
+//     │        │   ┌────┴────┐
+//     │        │   YES       NO
+//     │        │   │          │
+//     │        │   ▼          ▼
+//     │        │  可抢占?   忽略
+//     │        │   │
+//     │        │  ┌┴────┐
+//     │        │  YES   NO
+//     │        │  │      │
+//     │        │  ▼      ▼
+//     │        │ TRAP  等待
+//     │
+//     ├──→ [同步异常检测] → exception_pending (属于 exception-handling.html)
+//     │
+//     ▼
+// [优先级排序: 同步异常 > NMI > 外部中断 > CLIC > 软件 > 定时器]
+//     │
+//     ▼
+// TRAP: mepc=PC, mcause=id, mtval=info, PC=mtvec
+</pre>
+
+<h2>4.2 中断响应状态机</h2>
+<pre>
+enum IrqState { IDLE, DETECT, DRAIN, CONTEXT_SAVE, JUMP, VECTOR_FETCH }
+
+function irq_response_fsm():
+    state = IDLE
+    while true:
+        // IDLE: 等待中断
+        if interrupt_pending and current_instruction_committed:
+            state = DETECT
+
+        // DETECT: 确认最高优先级中断
+        if state == DETECT:
+            {irq_id, irq_level} = select_highest_priority()
+            state = DRAIN
+
+        // DRAIN: 排空流水线 (M/W 级)
+        if state == DRAIN:
+            pipeline_drain()  // 1~2 cycle
+            state = CONTEXT_SAVE
+
+        // CONTEXT_SAVE: 保存上下文到 CSR
+        if state == CONTEXT_SAVE:
+            mepc = current_pc + 4
+            mcause = {1'b1, irq_id}  // Interrupt=1
+            mstatus.MPIE = mstatus.MIE
+            mstatus.MPP = current_privilege
+            mstatus.MIE = 0
+            state = JUMP
+
+        // JUMP: 跳转到中断处理入口
+        if state == JUMP:
+            if mtvec.MODE == VECTORED:
+                PC = mtvec.BASE + 4 * mcause.code
+            else:
+                PC = mtvec.BASE  // Direct mode
+            state = VECTOR_FETCH
+
+        // VECTOR_FETCH: 取首条处理指令
+        if state == VECTOR_FETCH:
+            // F1→F2→D→I→E1: 5 cycle 到首条执行
+            state = IDLE  // 中断处理开始, 返回 IDLE
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>可选值</th><th>默认值</th><th>描述</th></tr>
+    <tr><td><code>PLIC_NUM_SOURCES</code></td><td>integer</td><td>32/64/128/256/512/960</td><td>32</td><td>PLIC 中断源数 <span class="req-tag">LUMI-SYS-001</span></td></tr>
+    <tr><td><code>PLIC_NUM_CONTEXTS</code></td><td>integer</td><td>1~8</td><td>2</td><td>PLIC context 数 (M+S per hart)</td></tr>
+    <tr><td><code>PLIC_PRIORITY_BITS</code></td><td>integer</td><td>3</td><td>3</td><td>优先级位宽 (7 级)</td></tr>
+    <tr><td><code>PLIC_TRIGGER_TYPE</code></td><td>enum</td><td>EDGE/LEVEL/CONFIG</td><td>CONFIG</td><td>触发类型 <span class="req-tag">LUMI-IF-004</span></td></tr>
+    <tr><td><code>CLIC_NUM_INTERRUPTS</code></td><td>integer</td><td>1~240</td><td>16</td><td>CLIC 中断数 <span class="req-tag">LUMI-SYS-002</span></td></tr>
+    <tr><td><code>CLIC_LEVEL_BITS</code></td><td>integer</td><td>8</td><td>8</td><td>CLIC 级别位宽 (256 级)</td></tr>
+    <tr><td><code>CLIC_SHV_EN</code></td><td>boolean</td><td>true/false</td><td>true</td><td>Selective Hardware Vectoring</td></tr>
+    <tr><td><code>NUM_HARTS</code></td><td>integer</td><td>1/2/4</td><td>1</td><td>Hart 数 (每 hart 一个 CLIC)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证覆盖</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_plic_priority</code></td><td>7 级优先级仲裁全覆盖</td><td>多源同时到达 × 优先级组合</td></tr>
+    <tr><td><code>cg_plic_routing</code></td><td>多 Hart 路由</td><td>enable 位 × context 选择</td></tr>
+    <tr><td><code>cg_plic_threshold</code></td><td>Threshold 过滤</td><td>threshold 值 × 中断优先级</td></tr>
+    <tr><td><code>cg_plic_claim_complete</code></td><td>Claim/Complete 协议</td><td>claim → handler → complete 完整序列</td></tr>
+    <tr><td><code>cg_clic_local_irq</code></td><td>CLIC 本地中断响应</td><td>irq_local 触发 → clic claim</td></tr>
+    <tr><td><code>cg_clic_preempt</code></td><td>CLIC 优先级抢占</td><td>高优先级中断到达时正在处理低优先级</td></tr>
+    <tr><td><code>cg_clic_vector</code></td><td>硬件向量跳转</td><td>SHV 使能 × 各 irq_id 向量地址</td></tr>
+    <tr><td><code>cg_irq_latency</code></td><td>中断延时 &le;16 cycle</td><td>信号到达到首条 E1 的 cycle 计数</td></tr>
+    <tr><td><code>cg_irq_nesting</code></td><td>嵌套中断规则</td><td>同级/高级/低级中断在 MIE=0/1 时</td></tr>
+    <tr><td><code>cg_irq_mie_disable</code></td><td>MIE=0 屏蔽</td><td>mstatus.MIE=0 时中断 pending 但不响应</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-001</span></td><td>PLIC 中断控制器</td><td>&sect;2.2, &sect;3.2</td><td>PLIC 功能仿真 + 协议验证</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-002</span></td><td>CLIC 快速中断控制器</td><td>&sect;2.3, &sect;3.1</td><td>CLIC 仲裁 + 向量跳转仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-003</span></td><td>快速中断延时 &le;16 周期</td><td>&sect;2.4</td><td>Cycle 精确延时测量</td></tr>
+    <tr><td><span class="req-tag">LUMI-IF-004</span></td><td>中断信号线规格</td><td>&sect;5</td><td>边沿/电平触发仿真</td></tr>
+</table>
+
+<div class="ok"><strong>审查约束响应 — D-013 (CLIC 中断延时精化):</strong> 已在 &sect;2.4.1 完整分解 16 cycle 预算为 11 步，硬件流水线部分 9 cycle，剩余 7 cycle 裕量。最坏场景 (I-Cache miss) 可能超时，建议中断向量放 ITCM。Cover Group <code>cg_irq_latency</code> 覆盖延时测量。</div>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-009 &mdash; CLIC &amp; PLIC 中断控制器设计文档 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html</a> &nbsp;|&nbsp;
+    批次: Batch-3 (P1) &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

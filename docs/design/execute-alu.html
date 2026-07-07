@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Execute (ALU/MUL/DIV) 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Execute (ALU/MUL/DIV) 模块设计文档</h1>
+    <p class="subtitle">E1/E2 Stage &mdash; Integer ALU + Pipelined MUL + Iterative DIV</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-003 &nbsp;|&nbsp; <strong>批次:</strong> Batch-1 (P0)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;4.2~&sect;4.3</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> D-014 (MUL/DIV 吞吐模型), D-010 (JALR 解析延迟)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Execute 模块覆盖 Lumi-Core 8 级流水线的 <strong>E1 (Execute 1)</strong> 和 <strong>E2 (Execute 2)</strong> 两级，负责所有整数运算、分支判断和地址计算：</p>
+<ul>
+    <li><strong>E1 级</strong>：ALU 运算 (add/sub/and/or/xor/slt/shift)、分支条件判断、Load/Store 地址计算、JALR 目标地址计算</li>
+    <li><strong>E2 级</strong>：MUL 流水线执行 (opLat=1)、DIV 迭代执行第一级 (opLat=9)、多周期指令流水线化</li>
+</ul>
+<blockquote><strong>GEM5 映射:</strong> Spec 的 E1+E2 对应 GEM5 MinorCPU 的 Execute 级。GEM5 通过 opLat 参数建模不同 FU 的执行延迟，ALU/MUL opLat=1 (E1 即完成)，DIV opLat=9 (跨 E1~W 多 cycle)。</blockquote>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>4x ALU 整数运算 (add/sub/and/or/xor/slt/slli/srli/srai)</td><td>浮点运算 (属于 fpu-vector.html)</td></tr>
+    <tr><td>1x MUL 流水线化乘法 (mul/mulh/mulhsu/mulhu)</td><td>Load/Store 执行 (属于 cache.html / tcm.html)</td></tr>
+    <tr><td>1x DIV 迭代除法 (div/divu/rem/remu)</td><td>系统指令处理 (属于 writeback-csr.html)</td></tr>
+    <tr><td>分支条件判断与目标计算 (BEQ/BNE/BLT/BGE/BLTU/BGEU)</td><td>分支预测 (属于 fetch-bpred.html)</td></tr>
+    <tr><td>JALR 地址计算与 flush 触发</td><td>指令发射仲裁 (属于 decode-issue.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="decode-issue.html">decode-issue.html</a> (FU 分配) | <a href="regfile.html">regfile.html</a> (操作数读) | <a href="writeback-csr.html">writeback-csr.html</a> (ALU 结果→W 级) | <a href="fetch-bpred.html">fetch-bpred.html</a> (JALR 反馈) | <a href="fpu-vector.html">fpu-vector.html</a> (FPU 旁路)</p>
+
+<h2>1.3 性能约束</h2>
+<table>
+    <tr><th>指标</th><th>约束</th><th>来源</th></tr>
+    <tr><td>ALU 延迟</td><td>1 cycle (opLat=1)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>MUL 吞吐</td><td>1 条/cycle (流水线化, opLat=1)</td><td><span class="constraint-tag">D-014</span></td></tr>
+    <tr><td>DIV 延迟</td><td>9 cycle (迭代式, opLat=9)</td><td><span class="constraint-tag">D-014</span></td></tr>
+    <tr><td>分支解析</td><td>E1 级完成 (1 cycle)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>JALR 延迟</td><td>2 cycle (D 级读 rs1 + E1 级算地址) + 1 cycle flush</td><td><span class="constraint-tag">D-010</span></td></tr>
+    <tr><td>时序预算</td><td>&le;125ps/cycle @ TSMC 28HPC 1GHz</td><td>RISK-013</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 E1 级：ALU 运算与分支判断</h2>
+
+<h3>2.1.1 ALU 操作集</h3>
+<table>
+    <tr><th>操作</th><th>funct3</th><th>funct7</th><th>描述</th><th>延迟</th></tr>
+    <tr><td>ADD / SUB</td><td>000</td><td>0000000 / 0100000</td><td>32-bit 整数加减</td><td>1 cycle</td></tr>
+    <tr><td>SLL</td><td>001</td><td>0000000</td><td>逻辑左移 (shamt[4:0])</td><td>1 cycle</td></tr>
+    <tr><td>SLT / SLTU</td><td>010 / 011</td><td>0000000</td><td>有符号/无符号比较</td><td>1 cycle</td></tr>
+    <tr><td>XOR</td><td>100</td><td>0000000</td><td>按位异或</td><td>1 cycle</td></tr>
+    <tr><td>SRL / SRA</td><td>101</td><td>0000000 / 0100000</td><td>逻辑/算术右移</td><td>1 cycle</td></tr>
+    <tr><td>OR</td><td>110</td><td>0000000</td><td>按位或</td><td>1 cycle</td></tr>
+    <tr><td>AND</td><td>111</td><td>0000000</td><td>按位与</td><td>1 cycle</td></tr>
+</table>
+
+<h3>2.1.2 B 扩展位操作 (Zba/Zbb/Zbs)</h3>
+<table>
+    <tr><th>操作</th><th>描述</th><th>延迟</th></tr>
+    <tr><td>SH1ADD / SH2ADD / SH3ADD</td><td>移位加 (Zba)</td><td>1 cycle</td></tr>
+    <tr><td>CLZ / CTZ / CPOP</td><td>前导零/尾随零/位计数 (Zbb)</td><td>1 cycle</td></tr>
+    <tr><td>MIN / MAX / MINU / MAXU</td><td>最小/最大值 (Zbb)</td><td>1 cycle</td></tr>
+    <tr><td>ANDN / ORN / XNOR</td><td>取反逻辑 (Zbb)</td><td>1 cycle</td></tr>
+    <tr><td>ROL / ROR / RORI</td><td>循环移位 (Zbb)</td><td>1 cycle</td></tr>
+    <tr><td>REV8 / ORC.B</td><td>字节反转/字节OR (Zbb)</td><td>1 cycle</td></tr>
+    <tr><td>BSET / BCLR / BINV / BEXT</td><td>位操作 (Zbs)</td><td>1 cycle</td></tr>
+</table>
+
+<h3>2.1.3 分支判断</h3>
+<p>所有分支指令在 E1 级完成条件判断，误预测时触发 F2/D/I 级 flush：</p>
+<table>
+    <tr><th>分支</th><th>funct3</th><th>条件</th><th>误预测惩罚</th></tr>
+    <tr><td>BEQ</td><td>000</td><td>rs1 == rs2</td><td>3 cycle flush</td></tr>
+    <tr><td>BNE</td><td>001</td><td>rs1 != rs2</td><td>3 cycle flush</td></tr>
+    <tr><td>BLT</td><td>100</td><td>rs1 &lt; rs2 (signed)</td><td>3 cycle flush</td></tr>
+    <tr><td>BGE</td><td>101</td><td>rs1 &ge; rs2 (signed)</td><td>3 cycle flush</td></tr>
+    <tr><td>BLTU</td><td>110</td><td>rs1 &lt; rs2 (unsigned)</td><td>3 cycle flush</td></tr>
+    <tr><td>BGEU</td><td>111</td><td>rs1 &ge; rs2 (unsigned)</td><td>3 cycle flush</td></tr>
+</table>
+
+<blockquote><strong>分支 FU 复用:</strong> 分支指令使用 ALU FU 执行比较操作，不占用独立 FU (Phase 11 优化后取消 Branch FU)。分支目标地址在 F1 级由预测器计算，E1 级验证目标正确性。</blockquote>
+
+<h3>2.1.4 JALR 地址计算 <span class="constraint-tag">D-010</span></h3>
+<div class="warn"><strong>D-010 JALR 解析延迟:</strong> JALR 目标地址 = (rs1 + imm) &amp; ~1，需要 D 级读取 rs1 寄存器值 + E1 级计算最终地址。若分支预测器未能准确预测 JALR 目标 (间接跳转)，E1 级检测到误预测后触发 flush。<br><br>
+<strong>延迟分析:</strong><br>
+&bull; D 级: 读取 rs1 寄存器值 (1 cycle)<br>
+&bull; E1 级: 计算 (rs1 + imm) &amp; ~1，与预测目标比较 (1 cycle)<br>
+&bull; Branch feedback: 将正确 PC 反馈到 F1 级 (1 cycle, <code>executeBranchDelay=1</code>)<br>
+&bull; <strong>总计: 3 cycle 误预测惩罚</strong> (与条件分支相同)</div>
+
+<pre>
+// JALR 目标计算伪代码
+function jalr_execute(rs1_val, imm):
+    target = (rs1_val + sign_extend(imm)) &amp; 0xFFFFFFFE  // 对齐到 2 字节
+    predicted_target = btb_lookup(pc)
+
+    if target != predicted_target:
+        // 误预测: flush F2/D/I, 重定向 PC
+        flush_pipeline(F2 | D | I)
+        redirect_pc(target)
+        return MISPREDICT
+    else:
+        return CORRECT
+</pre>
+
+<h2>2.2 E2 级：MUL/DIV 执行</h2>
+
+<h3>2.2.1 MUL 流水线化乘法 <span class="constraint-tag">D-014</span></h3>
+<div class="ok"><strong>D-014 MUL 吞吐模型:</strong> MUL 采用流水线化乘法器 (Phase 7 优化后)，opLat=1，每个 cycle 可接受 1 条新乘法指令，吞吐 1 条/cycle。独立 MUL FU (LumiIntMulFU)，不与 DIV 共享。</div>
+
+<table>
+    <tr><th>操作</th><th>funct3</th><th>funct7</th><th>描述</th><th>延迟</th><th>吞吐</th></tr>
+    <tr><td>MUL</td><td>000</td><td>0000001</td><td>rs1*rs2 低 32 位</td><td>1 cycle</td><td>1/cycle</td></tr>
+    <tr><td>MULH</td><td>001</td><td>0000001</td><td>有符号*有符号 高 32 位</td><td>1 cycle</td><td>1/cycle</td></tr>
+    <tr><td>MULHSU</td><td>010</td><td>0000001</td><td>有符号*无符号 高 32 位</td><td>1 cycle</td><td>1/cycle</td></tr>
+    <tr><td>MULHU</td><td>011</td><td>0000001</td><td>无符号*无符号 高 32 位</td><td>1 cycle</td><td>1/cycle</td></tr>
+</table>
+
+<pre>
+// MUL 流水线化执行模型
+// Phase 7 优化: 从 3-cycle 迭代改为 1-cycle 流水线化 Wallace Tree
+pipeline_stage MUL_execute(op, rs1, rs2):
+    case op:
+        MUL:    result = (rs1 * rs2)[31:0]
+        MULH:   result = (signed(rs1) * signed(rs2))[63:32]
+        MULHSU: result = (signed(rs1) * unsigned(rs2))[63:32]
+        MULHU:  result = (unsigned(rs1) * unsigned(rs2))[63:32]
+    // opLat=1: 结果在 E1 结束时即可用, 通过旁路网络转发
+    // 下一个 cycle 可接受新的 MUL 指令 (全流水线化)
+    return result
+</pre>
+
+<h3>2.2.2 DIV 迭代式除法 <span class="constraint-tag">D-014</span></h3>
+<div class="warn"><strong>D-014 DIV 延迟模型:</strong> DIV 采用迭代式除法器 (SRT Radix-4)，opLat=9。执行期间 DIV FU 被独占，但其他 FU (ALU/MUL/LSU/FPU) 可并行执行。skip-stalled 机制允许后续不依赖 DIV 结果的指令越过等待。</div>
+
+<table>
+    <tr><th>操作</th><th>funct3</th><th>funct7</th><th>描述</th><th>延迟</th><th>吞吐</th></tr>
+    <tr><td>DIV</td><td>100</td><td>0000001</td><td>有符号除法商</td><td>9 cycle</td><td>1/9 cycle</td></tr>
+    <tr><td>DIVU</td><td>101</td><td>0000001</td><td>无符号除法商</td><td>9 cycle</td><td>1/9 cycle</td></tr>
+    <tr><td>REM</td><td>110</td><td>0000001</td><td>有符号除法余数</td><td>9 cycle</td><td>1/9 cycle</td></tr>
+    <tr><td>REMU</td><td>111</td><td>0000001</td><td>无符号除法余数</td><td>9 cycle</td><td>1/9 cycle</td></tr>
+</table>
+
+<pre>
+// DIV 执行模型 (SRT Radix-4 迭代)
+function div_execute(op, rs1, rs2):
+    if rs2 == 0:
+        // 除以零: 按 RISC-V 规范返回 -1 (商) 或 rs1 (余数)
+        if op in (DIV, DIVU): return 0xFFFFFFFF
+        else: return rs1  // REM/REMU
+
+    // 特殊情况: 有符号最小值 / -1
+    if op == DIV and rs1 == 0x80000000 and rs2 == 0xFFFFFFFF:
+        return 0x80000000  // 溢出, 返回被除数
+
+    quotient, remainder = srt_radix4_divide(rs1, rs2, 32)
+    // 32-bit / Radix-4 = 16 迭代, 每次 2 bit
+    // 总延迟: 1 (setup) + 7 (迭代) + 1 (finalize) = 9 cycle
+
+    case op:
+        DIV:  return sign_adjust(quotient)
+        DIVU: return quotient
+        REM:  return sign_adjust(remainder)
+        REMU: return remainder
+</pre>
+
+<h3>2.2.3 DIV 与 skip-stalled 协同</h3>
+<p>DIV 执行 9 cycle 期间，DIV FU 被独占。后续指令的发射行为：</p>
+<table>
+    <tr><th>场景</th><th>skip-stalled 行为</th><th>影响</th></tr>
+    <tr><td>后续指令不依赖 DIV 结果 + 不使用 DIV FU</td><td>正常发射到 ALU/LSU/FPU</td><td>0 stall</td></tr>
+    <tr><td>后续指令需要 DIV FU (第二条 DIV)</td><td>skip-stalled: 跳过该指令，发射后续非 DIV 指令</td><td>该指令 stall 直到 DIV FU 释放</td></tr>
+    <tr><td>后续指令 RAW 依赖 DIV rd</td><td>stall 等待 DIV 结果</td><td>最多 8 cycle stall (DIV 剩余 cycle)</td></tr>
+</table>
+
+<h2>2.3 E1 级分支反馈路径</h2>
+<p>分支指令在 E1 级完成后，结果反馈到 F1 级用于 PC 修正：</p>
+<table>
+    <tr><th>参数</th><th>值</th><th>描述</th></tr>
+    <tr><td><code>executeBranchDelay</code></td><td>1 cycle</td><td>E1 到 F1 的反馈延迟 (GEM5 Phase 5 优化)</td></tr>
+    <tr><td>Flush 范围</td><td>F2 + D + I (3 级)</td><td>误预测时清空预测路径上所有指令</td></tr>
+    <tr><td>Flush 延迟</td><td>1 cycle (下一 cycle 从正确 PC 取指)</td><td>含在 3 cycle 惩罚内</td></tr>
+</table>
+
+<pre>
+// 分支解析与 flush 伪代码
+function branch_resolve(alu_result, pred_taken, pred_target, pc):
+    actual_taken = (alu_result == 0) ? NOT_TAKEN : TAKEN  // 比较结果为 0 表示条件满足
+    actual_target = pc + sign_extend(imm)
+
+    if actual_taken != pred_taken or (actual_taken and actual_target != pred_target):
+        // 误预测
+        flush_stages(F2 | D | I)
+        if actual_taken:
+            redirect_pc(actual_target)
+        else:
+            redirect_pc(pc + 4)  // 顺序执行
+        increment_hpm(BRANCH_MISS)
+    else:
+        // 预测正确, 无需 flush
+        pass
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 E1 级接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>e1_inst[2:0]</code></td><td>In &larr; I</td><td>--</td><td>从 I 级发射的指令包 (最多 3 条)</td></tr>
+    <tr><td><code>e1_rs1_data[2:0]</code></td><td>In</td><td>32&times;3</td><td>rs1 操作数 (已旁路)</td></tr>
+    <tr><td><code>e1_rs2_data[2:0]</code></td><td>In</td><td>32&times;3</td><td>rs2 操作数</td></tr>
+    <tr><td><code>e1_result[2:0]</code></td><td>Out</td><td>32&times;3</td><td>ALU 运算结果 (旁路到 D 级)</td></tr>
+    <tr><td><code>e1_rd[2:0]</code></td><td>Out</td><td>5&times;3</td><td>目标寄存器号</td></tr>
+    <tr><td><code>e1_valid[2:0]</code></td><td>Out</td><td>3</td><td>结果有效标志</td></tr>
+    <tr><td><code>e1_branch_taken</code></td><td>Out &rarr; F1</td><td>1</td><td>分支实际方向</td></tr>
+    <tr><td><code>e1_branch_target</code></td><td>Out &rarr; F1</td><td>32</td><td>分支实际目标地址</td></tr>
+    <tr><td><code>e1_mispredict</code></td><td>Out &rarr; F1/F2/D/I</td><td>1</td><td>误预测信号 (触发 flush)</td></tr>
+    <tr><td><code>e1_mem_addr[1:0]</code></td><td>Out &rarr; LSU</td><td>32&times;2</td><td>Load/Store 计算地址 (2x LSU)</td></tr>
+</table>
+
+<h2>3.2 E2 级接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>e2_mul_result</code></td><td>Out</td><td>32</td><td>MUL 运算结果 (32-bit)</td></tr>
+    <tr><td><code>e2_mul_result_hi</code></td><td>Out</td><td>32</td><td>MULH/MULHSU/MULHU 高 32 位结果</td></tr>
+    <tr><td><code>e2_mul_valid</code></td><td>Out</td><td>1</td><td>MUL 结果有效</td></tr>
+    <tr><td><code>e2_div_result</code></td><td>Out</td><td>32</td><td>DIV 运算结果</td></tr>
+    <tr><td><code>e2_div_valid</code></td><td>Out</td><td>1</td><td>DIV 结果有效 (9 cycle 后脉冲)</td></tr>
+    <tr><td><code>e2_div_busy</code></td><td>Out &rarr; I</td><td>1</td><td>DIV FU 忙信号 (阻止新 DIV 发射)</td></tr>
+    <tr><td><code>e2_rd</code></td><td>Out</td><td>5</td><td>MUL/DIV 目标寄存器号</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 E1/E2 级数据流</h2>
+<pre>
+I 级发射 ──→ E1 级 ALU 运算 ──→ 结果旁路到 D 级 (E1→D)
+     │              │
+     │              ├─ ALU 结果 ──→ E2 ──→ M ──→ W (写回)
+     │              ├─ Branch 判断 ──→ 反馈到 F1 (branch feedback)
+     │              ├─ Mem Addr ──→ LSU (Load/Store 执行)
+     │              └─ JALR 地址 ──→ 误预测检测 ──→ flush
+     │
+     └──(MUL/DIV 指令)──→ E2 级 MUL/DIV 执行
+                              │
+                              ├─ MUL 结果 (1 cycle) ──→ M ──→ W
+                              └─ DIV 结果 (9 cycle) ──→ M ──→ W
+</pre>
+
+<h2>4.2 FU 分配逻辑</h2>
+<pre>
+// FU 分配伪代码 (I 级执行)
+function fu_dispatch(decoded_inst):
+    case decoded_inst.type:
+        ALU_OP:     // add/sub/and/or/xor/slt/shift/B-ext
+            assign to free LumiIntFU (4 available)
+        MUL_OP:     // mul/mulh/mulhsu/mulhu
+            assign to LumiIntMulFU (1 available)
+        DIV_OP:     // div/divu/rem/remu
+            if div_busy: stall (or skip-stalled)
+            else: assign to MinorDefaultIntDivFU
+        BRANCH_OP:  // beq/bne/blt/bge/bltu/bgeu
+            assign to free LumiIntFU (复用 ALU 做比较)
+        MEM_OP:     // load/store
+            assign to free MinorDefaultMemFU (2 available)
+        FPU_OP:     // fadd/fmul/fdiv/...
+            assign to MinorDefaultFloatSimdFU
+        MISC_OP:    // ecall/ebreak/fence
+            assign to MinorDefaultMiscFU
+</pre>
+
+<h2>4.3 旁路网络 (Execute 侧输出)</h2>
+<p>E1/E2 级的执行结果通过旁路网络转发到 D 级，消除 RAW 冒险：</p>
+<table>
+    <tr><th>旁路路径</th><th>数据源</th><th>可用时机</th><th>延迟</th></tr>
+    <tr><td>E1&rarr;D</td><td>ALU/Branch 运算结果</td><td>E1 级结束 (当前 cycle)</td><td>0 cycle (下条指令 D 级即可用)</td></tr>
+    <tr><td>E2&rarr;D</td><td>MUL 最终结果</td><td>E2 级结束 (E1 + 1 cycle)</td><td>0 cycle (MUL opLat=1, E1 即可用)</td></tr>
+    <tr><td>DIV 结果</td><td>DIV 最终结果</td><td>DIV 完成 (9 cycle 后)</td><td>等待 DIV 完成</td></tr>
+</table>
+
+<div class="warn"><strong>RISK-011 旁路 mux 关键路径:</strong> 5 路旁路 mux (E1/E2/M/W/FPU&rarr;D) 的 5-to-1 选择器延迟约 80~100ps，占 E1/I 级 125ps 预算的 64~80%。RTL 实现时需评估是否需要在 mux 中间插入流水寄存器分割关键路径。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>默认值</th><th>范围</th><th>描述</th></tr>
+    <tr><td><code>NUM_ALU</code></td><td>4</td><td>2, 3, 4</td><td>ALU FU 数量</td></tr>
+    <tr><td><code>NUM_MUL</code></td><td>1</td><td>0, 1</td><td>MUL FU 数量 (0=不支持 M 扩展)</td></tr>
+    <tr><td><code>NUM_DIV</code></td><td>1</td><td>0, 1</td><td>DIV FU 数量</td></tr>
+    <tr><td><code>MUL_OPLAT</code></td><td>1</td><td>1, 2, 3</td><td>MUL 操作延迟 (cycle)</td></tr>
+    <tr><td><code>DIV_OPLAT</code></td><td>9</td><td>4~32</td><td>DIV 操作延迟 (cycle), 取决于 Radix</td></tr>
+    <tr><td><code>M_EXTENSION</code></td><td>True</td><td>True/False</td><td>是否启用 M 扩展 (MUL/DIV)</td></tr>
+    <tr><td><code>B_EXTENSION</code></td><td>True</td><td>True/False</td><td>是否启用 B 扩展 (位操作)</td></tr>
+    <tr><td><code>BRANCH_DELAY</code></td><td>1</td><td>1, 2</td><td>分支反馈延迟 (cycle)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证要点</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>描述</th><th>目标</th></tr>
+    <tr><td><code>cg_alu_all_ops</code></td><td>ALU 全操作覆盖 (ADD/SUB/AND/OR/XOR/SLT/SHIFT)</td><td>100%</td></tr>
+    <tr><td><code>cg_b_ext_ops</code></td><td>B 扩展位操作覆盖 (Zba/Zbb/Zbs 全指令)</td><td>100%</td></tr>
+    <tr><td><code>cg_mul_all_ops</code></td><td>MUL 全操作覆盖 (MUL/MULH/MULHSU/MULHU)</td><td>100%</td></tr>
+    <tr><td><code>cg_mul_pipeline</code></td><td>MUL 流水线化吞吐验证 (连续 MUL 不 stall)</td><td>100%</td></tr>
+    <tr><td><code>cg_div_all_ops</code></td><td>DIV 全操作覆盖 (DIV/DIVU/REM/REMU)</td><td>100%</td></tr>
+    <tr><td><code>cg_div_by_zero</code></td><td>除以零处理 (返回 -1 或 rs1)</td><td>100%</td></tr>
+    <tr><td><code>cg_div_overflow</code></td><td>有符号溢出 (MIN_INT / -1)</td><td>100%</td></tr>
+    <tr><td><code>cg_div_skip_stalled</code></td><td>DIV 占用期间其他 FU 并行执行</td><td>100%</td></tr>
+    <tr><td><code>cg_branch_all_types</code></td><td>分支全类型覆盖 (BEQ/BNE/BLT/BGE/BLTU/BGEU)</td><td>100%</td></tr>
+    <tr><td><code>cg_branch_mispredict</code></td><td>分支误预测 flush 正确性</td><td>100%</td></tr>
+    <tr><td><code>cg_jalr_resolve</code></td><td>JALR 地址计算与误预测处理</td><td>100%</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求描述</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-001</span></td><td>RV32I 基础整数指令</td><td>&sect;2.1.1 ALU 操作集</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-002</span></td><td>M 扩展 (乘除法)</td><td>&sect;2.2.1 MUL / &sect;2.2.2 DIV</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-006</span></td><td>B 扩展 (位操作)</td><td>&sect;2.1.2 B 扩展位操作</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark &ge;5.5 CM/MHz</td><td>&sect;2.2.1 MUL 流水线化 (吞吐保证)</td><td>性能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级流水线</td><td>&sect;1.3 E1/E2 延迟约束</td><td>时序验证</td></tr>
+</table>
+
+<h2>7.1 审查约束响应</h2>
+<table>
+    <tr><th>审查编号</th><th>约束内容</th><th>本文档响应</th></tr>
+    <tr><td><span class="constraint-tag">D-014</span></td><td>MUL/DIV 吞吐模型精确化</td><td>&sect;2.2.1 MUL 流水线化 opLat=1 吞吐 1/cycle; &sect;2.2.2 DIV 迭代 opLat=9; &sect;2.2.3 skip-stalled 协同; 验证 cg_mul_pipeline, cg_div_skip_stalled</td></tr>
+    <tr><td><span class="constraint-tag">D-010</span></td><td>JALR 解析延迟声明</td><td>&sect;2.1.4 JALR 地址计算延迟分析 (D级读+E1级算+feedback=3cycle); 伪代码实现; 验证 cg_jalr_resolve</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Design Document: Execute (ALU/MUL/DIV) &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-DESIGN-003 &nbsp;|&nbsp; 批次: Batch-1 (P0) &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html v1.0.3</a> &nbsp;|&nbsp;
+    审查: <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+</div>
+
+</body>
+</html>

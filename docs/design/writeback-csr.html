@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writeback &amp; CSR/HPM 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Writeback &amp; CSR/HPM 模块设计文档</h1>
+    <p class="subtitle">W Stage + CSR Register File + Hardware Performance Monitor</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-004 &nbsp;|&nbsp; <strong>批次:</strong> Batch-1 (P0)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;3.3, &sect;4.7.4, &sect;4.8</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">D-013</span> (CSR 写入对中断响应可见性)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Writeback &amp; CSR/HPM 模块覆盖 Lumi-Core 8 级流水线的 <strong>W (Writeback)</strong> 级，以及全局 CSR 寄存器文件和硬件性能监控计数器：</p>
+<ul>
+    <li><strong>W 级</strong>：运算结果写回整数/浮点/向量寄存器堆、指令提交 (in-order commit)、异常/中断检测与触发</li>
+    <li><strong>CSR 文件</strong>：RISC-V 标准 CSR 寄存器 (mstatus/mtvec/mepc/mcause 等) 的读写逻辑</li>
+    <li><strong>HPM</strong>：Zicntr 基础计数器 + Zihpm 性能监控计数器</li>
+</ul>
+<blockquote><strong>GEM5 映射:</strong> W 级对应 GEM5 MinorCPU 的 Writeback 级。CSR 操作通过 MISC FU (opLat=1) 执行，GEM5 建模为系统指令的写回动作。</blockquote>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>W 级寄存器写回与指令提交</td><td>寄存器堆存储阵列 (属于 regfile.html)</td></tr>
+    <tr><td>CSR 读写逻辑 (含原子 CSR 操作)</td><td>CLIC/PLIC 中断控制器 (属于 clic-plic.html)</td></tr>
+    <tr><td>异常/中断检测与 trap 入口</td><td>异常处理完整流程 (属于 exception-handling.html)</td></tr>
+    <tr><td>Zicntr + Zihpm HPM 计数器</td><td>Debug 模块触发器 (属于 debug-trace.html)</td></tr>
+    <tr><td>mstatus/mepc/mcause 等 trap CSR 更新</td><td>PMP/ePMP 配置 (属于 privilege-pmp.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="execute-alu.html">execute-alu.html</a> (ALU 结果写回) | <a href="regfile.html">regfile.html</a> (写端口) | <a href="fpu-vector.html">fpu-vector.html</a> (fflags 聚合) | <a href="clic-plic.html">clic-plic.html</a> (中断 CSR) | <a href="multicore-lockstep.html">multicore-lockstep.html</a> (commit_valid) | <a href="exception-handling.html">exception-handling.html</a> (mepc/mcause) | <a href="debug-trace.html">debug-trace.html</a> (halt W 级)</p>
+
+<h2>1.3 性能约束</h2>
+<table>
+    <tr><th>指标</th><th>约束</th><th>来源</th></tr>
+    <tr><td>W 级延迟</td><td>1 cycle</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>写回吞吐</td><td>&le;2 写/cycle (整数堆 2W 端口)</td><td><span class="req-tag">LUMI-IPC-001</span></td></tr>
+    <tr><td>CSR 操作延迟</td><td>1 cycle (MISC FU, opLat=1)</td><td>GEM5 配置</td></tr>
+    <tr><td>中断响应</td><td>&le;16 cycle (W 级检测到 F1 级首条处理指令)</td><td><span class="req-tag">LUMI-SYS-003</span></td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 W 级：指令提交与写回</h2>
+
+<h3>2.1.1 In-Order Commit</h3>
+<p>W 级是流水线的最终级，负责按程序顺序提交指令。所有指令必须通过 W 级才能产生可见的架构状态改变：</p>
+<table>
+    <tr><th>动作</th><th>条件</th><th>描述</th></tr>
+    <tr><td>寄存器写回</td><td>rd != x0 且指令有写回目标</td><td>ALU/MUL/DIV/Load 结果写入整数堆; FPU 结果写入浮点堆</td></tr>
+    <tr><td>Store 提交</td><td>Store 指令到达 W 级</td><td>Store 数据写入 DCache/TCM (已在 M 级准备，W 级确认)</td></tr>
+    <tr><td>CSR 更新</td><td>SYSTEM 指令</td><td>CSRRW/CSRRS/CSRRC 写回 CSR 文件</td></tr>
+    <tr><td>异常触发</td><td>异常条件成立</td><td>中止当前指令提交，进入 trap 处理</td></tr>
+    <tr><td>中断检测</td><td>mip &amp; mie &amp; mstatus.MIE 非零</td><td>当前指令提交后进入中断处理</td></tr>
+</table>
+
+<h3>2.1.2 写回端口仲裁</h3>
+<p>整数寄存器堆 2W 端口，最多同时 2 条指令写回：</p>
+<pre>
+// 写回端口仲裁
+function writeback_arbitrate(slot_results[0..2]):
+    write_ports = 2  // 2W ports for integer register file
+    for i in range(min(len(slot_results), write_ports)):
+        if slot_results[i].valid and slot_results[i].rd != 0:
+            regfile_write(slot_results[i].rd, slot_results[i].data)
+            write_ports -= 1
+
+    // 超过 2W 端口的情况 (三发射理论上最多 3 条同时到达 W 级)
+    // 实际上: 由于 E1/E2 延迟差异，ALU (1c) 和 DIV (9c) 不会同时到达
+    // 最坏情况: 2 条 ALU + 1 条 Load 同时 W 级 → 需要仲裁
+    if write_ports &lt; remaining_writes:
+        stall_pipeline(1)  // 延迟 1 cycle
+</pre>
+
+<blockquote><strong>写端口充足性分析:</strong> 三发射模式下，最多 3 条指令可能在同一 cycle 到达 W 级。但由于不同 FU 的延迟差异 (ALU=1c, MUL=1c, DIV=9c, Load=1c+, FPU=6c)，实际同时到达 W 级最多 2 条 (如 1 条 ALU + 1 条 Load)。极端场景 (3 条 ALU 指令同时发射、同时完成) 需要 3W 但仅 2W 可用，此时 stall 1 cycle。2W 端口满足绝大多数场景。</blockquote>
+
+<h3>2.1.3 异常与中断检测</h3>
+<p>W 级是异常和中断的 <strong>精确检测点</strong>，保证精确异常 (Precise Exception)：</p>
+<table>
+    <tr><th>检测项</th><th>时机</th><th>处理</th></tr>
+    <tr><td>指令访问异常</td><td>F2 级已标记，W 级确认提交</td><td>触发 trap</td></tr>
+    <tr><td>非法指令</td><td>D 级已标记，W 级确认提交</td><td>触发 trap (mcause=2)</td></tr>
+    <tr><td>Load/Store 异常</td><td>M 级已标记，W 级确认提交</td><td>触发 trap (mcause=5/7)</td></tr>
+    <tr><td>ECALL</td><td>W 级检测到 SYSTEM 指令</td><td>触发 trap (mcause=11)</td></tr>
+    <tr><td>EBREAK</td><td>W 级检测到 SYSTEM 指令</td><td>进入 Debug 模式或触发 trap (mcause=3)</td></tr>
+    <tr><td>中断</td><td>W 级指令提交后检查 mip&amp;mie</td><td>当前指令提交后进入 trap</td></tr>
+</table>
+
+<pre>
+// W 级异常/中断检测伪代码
+function writeback_commit(inst):
+    if inst.exception_pending:
+        // 异常优先于中断
+        enter_trap(inst.exception_cause, inst.pc)
+        flush_all_stages()
+        return
+
+    // 正常提交指令
+    commit_instruction(inst)
+    if inst.has_writeback and inst.rd != 0:
+        regfile_write(inst.rd, inst.result)
+    increment_hpm(INST_RETIRED)
+
+    // 指令提交后检查中断
+    if (mip &amp; mie &amp; mstatus.MIE) != 0:
+        highest_irq = find_highest_priority_irq(mip &amp; mie)
+        if highest_irq.priority > mstatus.MIL:  // CLIC 优先级比较
+            enter_trap(IRQ_BASE + highest_irq.id, pc_next)
+            flush_all_stages()
+</pre>
+
+<h2>2.2 CSR 寄存器文件</h2>
+
+<h3>2.2.1 CSR 指令操作</h3>
+<table>
+    <tr><th>指令</th><th>funct3</th><th>操作</th><th>延迟</th></tr>
+    <tr><td>CSRRW</td><td>001</td><td>CSR = rs1; rd = old_CSR</td><td>1 cycle</td></tr>
+    <tr><td>CSRRS</td><td>010</td><td>CSR = CSR | rs1; rd = old_CSR</td><td>1 cycle</td></tr>
+    <tr><td>CSRRC</td><td>011</td><td>CSR = CSR &amp; ~rs1; rd = old_CSR</td><td>1 cycle</td></tr>
+    <tr><td>CSRRWI</td><td>101</td><td>CSR = zimm; rd = old_CSR</td><td>1 cycle</td></tr>
+    <tr><td>CSRRSI</td><td>110</td><td>CSR = CSR | zimm; rd = old_CSR</td><td>1 cycle</td></tr>
+    <tr><td>CSRRCI</td><td>111</td><td>CSR = CSR &amp; ~zimm; rd = old_CSR</td><td>1 cycle</td></tr>
+</table>
+
+<h3>2.2.2 CSR 地址解码</h3>
+<p>CSR 使用 12-bit 地址空间 (最多 4096 个)，Lumi-Core 实际使用子集：</p>
+<table>
+    <tr><th>地址范围</th><th>类别</th><th>读/写权限</th></tr>
+    <tr><td>0x300~0x33F</td><td>Machine Trap Setup</td><td>MRW</td></tr>
+    <tr><td>0x340~0x344</td><td>Machine Trap Handling</td><td>MRW (部分只读)</td></tr>
+    <tr><td>0x3A0~0x3EF</td><td>PMP 配置与地址</td><td>MRW</td></tr>
+    <tr><td>0x740~0x747</td><td>Smrnmi + Smepmp</td><td>MRW</td></tr>
+    <tr><td>0x7A0~0x7A5</td><td>Debug/Trace</td><td>DRW (Debug 模式)</td></tr>
+    <tr><td>0xB00~0xB1F</td><td>Machine Counter/Timers</td><td>MRW</td></tr>
+    <tr><td>0xB80~0xB9F</td><td>Machine Counter High (RV32)</td><td>MRW</td></tr>
+    <tr><td>0xC00~0xC02</td><td>User Counter (Zicntr)</td><td>URO (User Read Only)</td></tr>
+    <tr><td>0xFB0~0xFB1</td><td>CLIC CSR</td><td>MRW</td></tr>
+    <tr><td>0xF11~0xF14</td><td>Machine Info</td><td>MRO (Machine Read Only)</td></tr>
+</table>
+
+<h3>2.2.3 Trap CSR 自动更新</h3>
+<p>异常/中断触发时，硬件自动更新以下 CSR：</p>
+<table>
+    <tr><th>CSR</th><th>更新内容</th><th>时机</th></tr>
+    <tr><td><code>mepc</code></td><td>触发异常/中断的指令 PC</td><td>trap 入口</td></tr>
+    <tr><td><code>mcause</code></td><td>异常原因码 (最高位: 0=异常, 1=中断)</td><td>trap 入口</td></tr>
+    <tr><td><code>mtval</code></td><td>异常附加信息 (如非法指令字、访问地址)</td><td>trap 入口</td></tr>
+    <tr><td><code>mstatus.MPIE</code></td><td>&larr; mstatus.MIE (保存中断使能)</td><td>trap 入口</td></tr>
+    <tr><td><code>mstatus.MIE</code></td><td>&larr; 0 (禁止中断)</td><td>trap 入口</td></tr>
+    <tr><td><code>mstatus.MPP</code></td><td>&larr; 当前特权级 (M-mode)</td><td>trap 入口</td></tr>
+    <tr><td><code>mintstatus</code></td><td>CLIC 中断状态 (若 CLIC 中断)</td><td>CLIC trap 入口</td></tr>
+</table>
+
+<pre>
+// Trap 入口 CSR 更新伪代码
+function enter_trap(cause, pc):
+    mepc = pc
+    mcause = cause
+    mtval = trap_value(cause)  // 指令字或访问地址
+
+    mstatus.MPIE = mstatus.MIE
+    mstatus.MIE = 0
+    mstatus.MPP = current_privilege
+
+    // 跳转到 mtvec
+    if mtvec.MODE == VECTORED and is_interrupt(cause):
+        new_pc = mtvec.BASE + 4 * exception_code(cause)
+    else:
+        new_pc = mtvec.BASE  // 直接模式
+
+    redirect_pc(new_pc)
+</pre>
+
+<h2>2.3 硬件性能监控 (HPM)</h2>
+
+<h3>2.3.1 Zicntr 基础计数器</h3>
+<table>
+    <tr><th>计数器</th><th>CSR (M-mode)</th><th>CSR (U-mode)</th><th>位宽</th><th>描述</th></tr>
+    <tr><td>周期计数</td><td><code>mcycle</code> (0xB00) / <code>mcycleh</code> (0xB80)</td><td><code>cycle</code> (0xC00) / <code>cycleh</code> (0xC80)</td><td>64-bit (32+32)</td><td>每 cycle 加 1</td></tr>
+    <tr><td>退休指令计数</td><td><code>minstret</code> (0xB02) / <code>minstreth</code> (0xB82)</td><td><code>instret</code> (0xC02) / <code>instreth</code> (0xC82)</td><td>64-bit (32+32)</td><td>每条提交指令加 1</td></tr>
+    <tr><td>挂钟时间</td><td>N/A</td><td><code>time</code> (0xC01) / <code>timeh</code> (0xC81)</td><td>64-bit</td><td>读取外部 timer (内存映射)</td></tr>
+</table>
+
+<h3>2.3.2 Zihpm 扩展计数器</h3>
+<p>29 个可编程性能计数器 (mhpmcounter3~31)，通过 mhpmevent3~31 选择事件源：</p>
+<table>
+    <tr><th>事件 ID</th><th>事件名称</th><th>来源</th><th>计数方式</th></tr>
+    <tr><td>0x00</td><td>CPU_CYCLES</td><td>全局时钟</td><td>= mcycle</td></tr>
+    <tr><td>0x01</td><td>INST_RETIRED</td><td>W 级提交</td><td>= minstret</td></tr>
+    <tr><td>0x02</td><td>BRANCH_MISS</td><td>E1 级误预测</td><td>每次 flush +1</td></tr>
+    <tr><td>0x03</td><td>I_CACHE_MISS</td><td>F2 级 ICache miss</td><td>每次 ICache miss +1</td></tr>
+    <tr><td>0x04</td><td>D_CACHE_MISS</td><td>M 级 DCache miss</td><td>每次 DCache miss +1</td></tr>
+    <tr><td>0x05</td><td>EXCEPTION_TAKEN</td><td>W 级 trap</td><td>每次异常 +1</td></tr>
+    <tr><td>0x06</td><td>IRQ_TAKEN</td><td>W 级中断</td><td>每次中断 +1</td></tr>
+    <tr><td>0x07</td><td>CSR_ACCESS</td><td>MISC FU</td><td>每次 CSR 操作 +1</td></tr>
+</table>
+
+<pre>
+// HPM 计数器更新伪代码 (每 cycle)
+function hpm_update():
+    mcycle += 1  // 始终计数
+
+    if instruction_committed:
+        minstret += commit_count  // 可能 1~3 条
+
+    // 可编程计数器
+    for i in range(3, 32):
+        event_id = mhpmevent[i] &amp; 0x3FF  // 10-bit 事件 ID
+        if event_match(event_id):
+            mhpmcounter[i] += 1
+</pre>
+
+<h3>2.3.3 RV32 高/低 32 位拆分访问</h3>
+<p>RV32 架构下 64-bit 计数器需要两次读取 (低 32 位 + 高 32 位)，为避免读写之间的溢出竞争：</p>
+<pre>
+// 64-bit 计数器安全读取 (RV32)
+function read_counter_64(lo_addr, hi_addr):
+    hi1 = csr_read(hi_addr)
+    lo  = csr_read(lo_addr)
+    hi2 = csr_read(hi_addr)
+    if hi1 != hi2:
+        // 高位溢出, 重读
+        lo = csr_read(lo_addr)
+        hi = hi2
+    return (hi &lt;&lt; 32) | lo
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 W 级接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>w_inst[2:0]</code></td><td>In &larr; M</td><td>--</td><td>待提交指令包</td></tr>
+    <tr><td><code>w_valid[2:0]</code></td><td>In</td><td>3</td><td>指令有效</td></tr>
+    <tr><td><code>w_result[2:0]</code></td><td>In</td><td>32&times;3</td><td>运算/Load 结果</td></tr>
+    <tr><td><code>w_rd[2:0]</code></td><td>In</td><td>5&times;3</td><td>目标寄存器号</td></tr>
+    <tr><td><code>w_exception[2:0]</code></td><td>In</td><td>4&times;3</td><td>异常标志</td></tr>
+    <tr><td><code>w_pc[2:0]</code></td><td>In</td><td>32&times;3</td><td>指令 PC (异常时使用)</td></tr>
+    <tr><td><code>regfile_wr_en[1:0]</code></td><td>Out &rarr; RegFile</td><td>2</td><td>写使能 (2W 端口)</td></tr>
+    <tr><td><code>regfile_wr_addr[1:0]</code></td><td>Out &rarr; RegFile</td><td>5&times;2</td><td>写地址</td></tr>
+    <tr><td><code>regfile_wr_data[1:0]</code></td><td>Out &rarr; RegFile</td><td>32&times;2</td><td>写数据</td></tr>
+    <tr><td><code>trap_request</code></td><td>Out &rarr; 全局</td><td>1</td><td>trap 触发信号</td></tr>
+    <tr><td><code>irq_request</code></td><td>In &larr; CLIC</td><td>1</td><td>中断请求</td></tr>
+</table>
+
+<h2>3.2 CSR 接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>csr_addr</code></td><td>In</td><td>12</td><td>CSR 地址</td></tr>
+    <tr><td><code>csr_rdata</code></td><td>Out</td><td>32</td><td>CSR 读数据</td></tr>
+    <tr><td><code>csr_wdata</code></td><td>In</td><td>32</td><td>CSR 写数据</td></tr>
+    <tr><td><code>csr_we</code></td><td>In</td><td>1</td><td>CSR 写使能</td></tr>
+    <tr><td><code>csr_op[1:0]</code></td><td>In</td><td>2</td><td>操作类型 (00=写, 01=置位, 10=清除)</td></tr>
+    <tr><td><code>mstatus_out</code></td><td>Out</td><td>32</td><td>mstatus 当前值 (全局使用)</td></tr>
+    <tr><td><code>mtvec_out</code></td><td>Out</td><td>32</td><td>mtvec 当前值 (trap 跳转)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 W 级数据流</h2>
+<pre>
+M 级输出 ──→ W 级提交 ──→ 寄存器写回 (2W 端口)
+                  │
+                  ├─ 异常检测 ──→ Trap 处理 (CSR 更新 + PC 跳转)
+                  ├─ 中断检测 ──→ 当前指令提交后 Trap
+                  ├─ HPM 更新 ──→ mcycle/minstret/event 计数器
+                  └─ Store 确认 ──→ DCache/TCM 写确认
+</pre>
+
+<h2>4.2 CSR 读写路径</h2>
+<pre>
+// CSR 读路径
+csr_rdata = csr_file[csr_addr]
+
+// CSR 写路径 (原子操作)
+case csr_op:
+    WRITE (CSRRW/CSRRWI): csr_file[addr] = wdata
+    SET   (CSRRS/CSRRSI): csr_file[addr] |= wdata
+    CLEAR (CSRRC/CSRRCI): csr_file[addr] &amp;= ~wdata
+
+// 特殊 CSR 行为
+if csr_addr == 0x300 (mstatus):
+    // mstatus 部分位为 WARL/WLRL, 写入时忽略非法值
+    csr_file[0x300] = apply_warl_mask(wdata)
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>默认值</th><th>范围</th><th>描述</th></tr>
+    <tr><td><code>NUM_HPM_COUNTERS</code></td><td>29</td><td>0, 4, 8, 16, 29</td><td>Zihpm 可编程计数器数量</td></tr>
+    <tr><td><code>HPM_EVENT_WIDTH</code></td><td>10</td><td>8, 10, 16</td><td>事件选择 ID 位宽</td></tr>
+    <tr><td><code>USER_COUNTERS</code></td><td>True</td><td>True/False</td><td>是否允许 U-mode 读 cycle/instret</td></tr>
+    <tr><td><code>WRITE_PORTS</code></td><td>2</td><td>2, 3</td><td>整数寄存器堆写端口数</td></tr>
+    <tr><td><code>COMMIT_WIDTH</code></td><td>3</td><td>2, 3</td><td>W 级最大提交数</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证要点</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>描述</th><th>目标</th></tr>
+    <tr><td><code>cg_commit_triple</code></td><td>三提交同时完成 (3 条指令 W 级同时提交)</td><td>100%</td></tr>
+    <tr><td><code>cg_write_port_conflict</code></td><td>写端口冲突 (3 条同时写回, 2W 不足)</td><td>100%</td></tr>
+    <tr><td><code>cg_csr_rw</code></td><td>CSR 读写全指令覆盖 (CSRRW/S/C/WI/SI/CI)</td><td>100%</td></tr>
+    <tr><td><code>cg_csr_atomic</code></td><td>CSR 原子操作 (CSRRS 读-改-写不被中断)</td><td>100%</td></tr>
+    <tr><td><code>cg_trap_entry</code></td><td>异常 trap 入口 (mepc/mcause/mstatus 更新正确)</td><td>100%</td></tr>
+    <tr><td><code>cg_irq_entry</code></td><td>中断 trap 入口 (mstatus.MIE&rarr;MPIE, MIE=0)</td><td>100%</td></tr>
+    <tr><td><code>cg_hpm_cycle</code></td><td>mcycle 计数正确 (每 cycle +1)</td><td>100%</td></tr>
+    <tr><td><code>cg_hpm_instret</code></td><td>minstret 计数正确 (每条提交 +1, 三发射 +3)</td><td>100%</td></tr>
+    <tr><td><code>cg_hpm_events</code></td><td>HPM 事件计数覆盖 (BRANCH_MISS/ICACHE_MISS 等)</td><td>100%</td></tr>
+    <tr><td><code>cg_hpm_overflow</code></td><td>64-bit 计数器溢出安全读取 (hi1!=hi2 重读)</td><td>100%</td></tr>
+    <tr><td><code>cg_csr_irq_visibility</code></td><td>CSR 写入对中断响应可见性 (mstatus/mie 同 cycle commit)</td><td>100%</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求描述</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-011</span></td><td>Zicsr CSR 指令扩展</td><td>&sect;2.2.1 CSR 指令操作</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-001</span></td><td>Zicntr 基础计数器</td><td>&sect;2.3.1 Zicntr 基础计数器</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-002</span></td><td>Zihpm 性能监控</td><td>&sect;2.3.2 Zihpm 扩展计数器</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级流水线</td><td>&sect;1.3 W 级延迟约束</td><td>时序验证</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark &ge;5.5 CM/MHz</td><td>&sect;2.1.2 写回端口仲裁 (性能影响最小化)</td><td>性能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-002</span></td><td>Dhrystone &ge;2.0 DMIPS/MHz</td><td>&sect;2.3 HPM 计数器支撑 Dhrystone 性能测量</td><td>性能仿真</td></tr>
+</table>
+
+<h2>7.1 审查约束响应</h2>
+<table>
+    <tr><th>审查编号</th><th>约束内容</th><th>本文档响应</th></tr>
+    <tr><td><span class="constraint-tag">D-013</span></td><td>CSR 写入对中断响应可见性 — 中断在 W 级生效时, CSR (mstatus/mie) 写入须在同 cycle commit</td><td>&sect;2.1 W 级 commit 顺序: CSR 写入优先于中断检测; &sect;2.2 CSR 写端口 1W, 中断检测在 commit_valid 同 cycle; 验证 <code>cg_csr_irq_visibility</code></td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Design Document: Writeback &amp; CSR/HPM &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-DESIGN-004 &nbsp;|&nbsp; 批次: Batch-1 (P0) &nbsp;|&nbsp;
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html v1.0.3</a></p>
+</div>
+
+</body>
+</html>

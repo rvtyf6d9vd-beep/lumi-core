@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFT &amp; 安全 &amp; 物理约束模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能描述</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>DFT &amp; 安全 &amp; 物理约束模块设计文档</h1>
+    <p class="subtitle">Scan Chain + MBIST + JTAG Boundary Scan + Security + Timing + IP Quality</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-016 &nbsp;|&nbsp; <strong>批次:</strong> Batch-4 (P2)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;8.5, &sect;8.7~&sect;8.8</a></p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> <span class="constraint-tag">扫描链覆盖率</span> (&ge;98% stuck-at fault coverage)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>DFT &amp; 安全模块覆盖 Lumi-Core 的<strong>可测试性设计</strong>、<strong>信息安全</strong>和<strong>物理约束</strong>：</p>
+<ul>
+    <li><strong>Scan Chain</strong>：全扫描链插入，&ge;98% stuck-at fault 覆盖率</li>
+    <li><strong>MBIST</strong>：TCM + L1 Cache 内存内建自测试</li>
+    <li><strong>JTAG 边界扫描</strong>：IEEE 1149.1 合规，与调试 JTAG 复用物理接口</li>
+    <li><strong>信息安全</strong>：安全启动 ROM、调试安全、PMP 隔离、总线完整性</li>
+    <li><strong>物理约束</strong>：SDC 时序约束、PVT 角落覆盖、IP 质量指标</li>
+</ul>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>DFT 插入点定义 + 扫描链分组</td><td>ATPG 向量生成 (EDA 工具)</td></tr>
+    <tr><td>MBIST 控制器接口 + 算法选择</td><td>MBIST IP 物理实现 (Memory Compiler)</td></tr>
+    <tr><td>JTAG 边界扫描 TAP + BSDL</td><td>JTAG 调试功能 (属于 debug-trace.html)</td></tr>
+    <tr><td>安全机制功能定义</td><td>密码算法 IP (RSA/ECDSA 加速器)</td></tr>
+    <tr><td>SDC 约束规范 + 时序目标</td><td>综合/布局布线 (物理实现)</td></tr>
+    <tr><td>IP 质量检查清单 (Lint/CDC/FMEDA)</td><td>FMEDA 分析 (系统安全工程)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="tcm.html">tcm.html</a> (MBIST 覆盖 + ECC 联调) | <a href="cache.html">cache.html</a> (L1 Cache MBIST) | <a href="debug-trace.html">debug-trace.html</a> (JTAG TAP 复用) | <a href="privilege-pmp.html">privilege-pmp.html</a> (PMP 安全隔离) | <a href="pma-axi.html">pma-axi.html</a> (AXI 总线 Parity) | <a href="power-reset.html">power-reset.html</a> (Boot ROM 启动 + 时钟域) | <a href="fpu-vector.html">fpu-vector.html</a> (Vector Crypto 加密加速)</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 Scan Chain 扫描链 <span class="req-tag">LUMI-DFT-001</span> <span class="constraint-tag">审查约束: 扫描链覆盖率</span></h2>
+
+<h3>2.1.1 扫描链设计</h3>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>覆盖率目标</td><td>&ge;98% stuck-at fault + &ge;95% transition fault</td></tr>
+    <tr><td>扫描链数量</td><td>4~8 条 (可配，减少测试时间)</td></tr>
+    <tr><td>最大链长度</td><td>&le;5000 FF/chain (平衡测试时间)</td></tr>
+    <tr><td>扫描模式</td><td>Functional / Scan / MBIST (通过 <code>scan_mode</code> 信号切换)</td></tr>
+    <tr><td>扫描时钟</td><td><code>scan_clk</code> (可选独立时钟，降低测试功耗)</td></tr>
+    <tr><td>压缩</td><td>可选 DFT 压缩 (DFTMAX / iJTAG)，减少 I/O 引脚需求</td></tr>
+</table>
+
+<h3>2.1.2 DFT 插入点</h3>
+<pre>
+// DFT 插入点定义 (RTL 设计预留)
+//
+// 1. 扫描链使能:
+//    - 顶层信号: scan_enable (SE), scan_mode
+//    - scan_mode = 1 时: 所有 FF 切换为 scan FF (MUX-based)
+//    - scan_enable 控制 shift/capture 模式
+//
+// 2. 扫描链分组 (默认 4 条):
+//    Chain 0: 流水线寄存器 (F1/F2/D/I/E1/E2/M/W)
+//    Chain 1: CSR + 中断控制器 (CLIC/PLIC 寄存器)
+//    Chain 2: FPU + Vector 单元
+//    Chain 3: 内存控制器 (TCM/Cache 控制逻辑, 不含 RAM)
+//
+// 3. RAM 处理:
+//    - TCM/Cache SRAM 不可扫描 (非 FF)
+//    - 通过 MBIST 覆盖 (§2.2)
+//    - SRAM 读写端口通过扫描链验证
+//
+// 4. 多时钟域处理:
+//    - 跨域 FF 使用 scan-safe 同步器
+//    - tck 域 FF 不参与扫描 (独立 JTAG 测试)
+</pre>
+
+<div class="crit"><strong>审查约束 — 扫描链覆盖率:</strong>
+<ul>
+    <li><strong>目标:</strong> &ge;98% stuck-at fault (LUMI-DFT-001)</li>
+    <li><strong>不可扫描:</strong> SRAM (TCM/Cache) 通过 MBIST 覆盖; 模拟 IP (PLL) 通过专用测试</li>
+    <li><strong>覆盖率计算:</strong> (可扫描 FF 数 / 总 FF 数) &times; ATPG 覆盖率</li>
+    <li><strong>预期:</strong> Lumi-Core 可扫描 FF 比例 &ge;95% (SRAM 控制逻辑可扫描), ATPG 覆盖率 &ge;99%</li>
+    <li><strong>验证:</strong> ATPG 工具生成测试向量后报告实际覆盖率; Cover Group <code>cg_scan_coverage</code></li>
+</ul>
+</div>
+
+<h2>2.2 MBIST 内存内建自测试 <span class="req-tag">LUMI-DFT-002</span></h2>
+
+<h3>2.2.1 MBIST 覆盖范围</h3>
+<table>
+    <tr><th>内存模块</th><th>容量</th><th>测试算法</th><th>故障覆盖</th></tr>
+    <tr><td>ITCM</td><td>0~128 KB</td><td>March C-</td><td>stuck-at / transition / coupling</td></tr>
+    <tr><td>DTCM0</td><td>0~128 KB</td><td>March C-</td><td>stuck-at / transition / coupling</td></tr>
+    <tr><td>DTCM1</td><td>0~128 KB</td><td>March C-</td><td>stuck-at / transition / coupling</td></tr>
+    <tr><td>I-Cache Data RAM</td><td>8~32 KB</td><td>March C-</td><td>stuck-at / transition</td></tr>
+    <tr><td>I-Cache Tag RAM</td><td>~1 KB</td><td>March C-</td><td>stuck-at / transition</td></tr>
+    <tr><td>D-Cache Data RAM</td><td>8~32 KB</td><td>March C-</td><td>stuck-at / transition</td></tr>
+    <tr><td>D-Cache Tag RAM</td><td>~1 KB</td><td>March C-</td><td>stuck-at / transition</td></tr>
+</table>
+
+<h3>2.2.2 MBIST 控制器</h3>
+<pre>
+// MBIST 控制器接口
+//
+// 信号:
+//   mbist_enable    — MBIST 模式使能 (scan_mode 下激活)
+//   mbist_start     — 启动测试序列
+//   mbist_done      — 测试完成
+//   mbist_fail      — 测试失败 (至少一个故障检测到)
+//   mbist_addr[31:0] — 故障地址 (诊断用)
+//   mbist_data[31:0] — 期望值 / 实际值 (诊断用)
+//
+// 与 ECC 联调:
+//   MBIST 期间禁用 ECC 检查 (mbist_ecc_bypass = 1)
+//   避免 ECC 纠正掩盖 SRAM 故障
+//
+// March C- 算法序列:
+//   M0: ↑(w0)                           — 全写 0
+//   M1: ↑(r0, w1)                       — 升序读 0 写 1
+//   M2: ↑(r1, w0)                       — 升序读 1 写 0
+//   M3: ↓(r0, w1)                       — 降序读 0 写 1
+//   M4: ↓(r1, w0)                       — 降序读 1 写 0
+//   M5: ↑(r0)                           — 升序读 0
+//   复杂度: 10N (N = memory depth)
+</pre>
+
+<h2>2.3 JTAG 边界扫描 <span class="req-tag">LUMI-DFT-003</span></h2>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>标准</td><td>IEEE 1149.1 (JTAG 边界扫描)</td></tr>
+    <tr><td>物理接口</td><td>与调试 JTAG 复用 (TCK/TMS/TDI/TDO/TRST)</td></tr>
+    <tr><td>TAP 指令</td><td>EXTEST / INTEST / SAMPLE / PRELOAD / BYPASS / IDCODE</td></tr>
+    <tr><td>BSDL 文件</td><td>交付完整 BSDL 描述</td></tr>
+    <tr><td>Boundary Cell 数</td><td>等于芯片 I/O 引脚数 (含 AXI/JTAG/时钟/复位)</td></tr>
+    <tr><td>IDCODE</td><td>32 bit (厂商 ID + 器件型号 + 版本号)</td></tr>
+</table>
+
+<p><strong>JTAG TAP 与 Debug TAP 复用:</strong></p>
+<ul>
+    <li>边界扫描 TAP 和 Debug TAP 共享物理 JTAG 引脚</li>
+    <li>通过 JTAG 指令区分: BYPASS/EXTEST/INTEST &rarr; 边界扫描; 自定义指令 &rarr; Debug</li>
+    <li>可选 cJTAG (IEEE 1149.7) 支持 2-pin 模式 <span class="req-tag">LUMI-FEAT-004</span></li>
+</ul>
+
+<h2>2.4 安全启动 ROM <span class="req-tag">LUMI-SEC-001</span></h2>
+<p>Boot ROM 固件签名验证（引用 <a href="power-reset.html">power-reset.html</a> &sect;2.5）：</p>
+<ul>
+    <li><strong>算法:</strong> RSA-2048 或 ECDSA-P256 签名验证</li>
+    <li><strong>流程:</strong> Boot ROM 加载固件 &rarr; 读取签名 &rarr; 验证公钥 (eFuse/OTP) &rarr; 通过则跳转</li>
+    <li><strong>密码 IP:</strong> 外部硬件加速器 (非 Lumi-Core 内置), 通过 AXI 接口调用</li>
+    <li><strong>安全链:</strong> ROM 代码不可修改 &rarr; 签名验证不可绕过 &rarr; 固件完整性保证</li>
+</ul>
+
+<h2>2.5 安全调试策略 <span class="req-tag">LUMI-SEC-003</span></h2>
+<p>三级调试安全等级（引用 <a href="debug-trace.html">debug-trace.html</a> &sect;2.6）：</p>
+<table>
+    <tr><th>安全等级</th><th>描述</th><th>能力</th></tr>
+    <tr><td>Level 0 (完全锁定)</td><td>生产环境</td><td>禁止一切调试操作 (JTAG 不响应, Abstract Command 禁止)</td></tr>
+    <tr><td>Level 1 (仅断点)</td><td>受限调试</td><td>允许硬件断点 + 单步; 禁止寄存器/内存读写</td></tr>
+    <tr><td>Level 2 (完全开放)</td><td>开发环境</td><td>全部调试功能开放</td></tr>
+</table>
+
+<h2>2.6 PMP 安全隔离 <span class="req-tag">LUMI-SEC-004</span></h2>
+<p>基于 PMP + Smepmp 的安全隔离（引用 <a href="privilege-pmp.html">privilege-pmp.html</a> &sect;2.3）：</p>
+<ul>
+    <li>Smepmp 强制生效: M-mode PMP 配置不可被低特权级篡改</li>
+    <li>PMP 锁定 (L=1): 复位前不可修改</li>
+    <li>IP 隔离边界: 基于 PMP 的内存访问控制</li>
+</ul>
+
+<h2>2.7 总线完整性保护 <span class="req-tag">LUMI-SEC-005</span></h2>
+<p>总线 Parity 保护（引用 <a href="pma-axi.html">pma-axi.html</a>）：</p>
+<ul>
+    <li>AXI 主总线: 数据 Parity 校验 (可选 ECC)</li>
+    <li>FFP 外设总线: 数据 Parity 校验</li>
+    <li>异常处理: bus_error_exception &rarr; 可配策略 (中断/NMI/复位)</li>
+</ul>
+
+<h2>2.8 加密加速 <span class="req-tag">LUMI-SEC-002</span> (Optional)</h2>
+<p>加密加速通过 Vector Crypto (Zvkg/Zvkn) 或 Packed SIMD 实现（引用 <a href="fpu-vector.html">fpu-vector.html</a> &sect;2.4）。</p>
+
+<h2>2.9 综合约束 <span class="req-tag">LUMI-TIMING-001</span> <span class="req-tag">LUMI-AREA-001</span></h2>
+<table>
+    <tr><th>参数</th><th>规格</th></tr>
+    <tr><td>SDC 文件</td><td><code>docs/design/timing/lumi-core.sdc</code></td></tr>
+    <tr><td>目标工艺</td><td>TSMC 28HPC+ (基准)</td></tr>
+    <tr><td>时钟约束</td><td>clk_core &ge;1.0 GHz (1ns period), clk_bus 同或分频</td></tr>
+    <tr><td>PVT 角落</td><td>ss (0.81V, 125&deg;C) + tt (0.9V, 25&deg;C) + ff (1.1V, -40&deg;C)</td></tr>
+    <tr><td>MCMM 场景</td><td>Functional / Scan / MBIST / Sleep (4 个场景)</td></tr>
+    <tr><td>IO 延迟</td><td>AXI 接口 input delay/output delay 按 SoC 负载设定</td></tr>
+    <tr><td>False Path</td><td>tck 域所有路径; scan_clk 路径 (Scan 模式)</td></tr>
+    <tr><td>Multicycle Path</td><td>DIV 迭代路径 (9 cycle); FDIV/FSQRT SRT 路径</td></tr>
+    <tr><td>面积预算</td><td>&le;0.32 mm&sup2; (STDCELL); DFT 逻辑 (扫描链+MBIST) 预算 &le;5% 面积</td></tr>
+</table>
+
+<h2>2.10 时序目标 <span class="req-tag">LUMI-TIMING-002</span></h2>
+<table>
+    <tr><th>指标</th><th>要求</th><th>关键路径预估</th></tr>
+    <tr><td>Setup WNS (ss)</td><td>&ge;0 (时序收敛)</td><td>ALU/分支预测/Cache Tag</td></tr>
+    <tr><td>Hold (ff)</td><td>无 hold violation</td><td>寄存器间短路径</td></tr>
+    <tr><td>面积预估</td><td>&le;0.32 mm&sup2; (STDCELL)</td><td>D-018: 上限 ~0.36 mm&sup2;, 需优化</td></tr>
+    <tr><td>功耗 (动态)</td><td>&le;100 mW/GHz (单核)</td><td>ICG 门控降低 20~30%</td></tr>
+    <tr><td>功耗 (泄漏)</td><td>&le;32 mW (单核)</td><td>依赖工艺库</td></tr>
+</table>
+
+<h2>2.11 IP 质量指标</h2>
+<table>
+    <tr><th>指标</th><th>REQ-ID</th><th>要求</th><th>工具/方法</th></tr>
+    <tr><td>CDC 验证</td><td>LUMI-QUAL-001</td><td>无未解析跨域路径</td><td>SpyGlass CDC / Conformal CDC</td></tr>
+    <tr><td>Lint 检查</td><td>LUMI-QUAL-002</td><td>无 Error, Warning 有 Waiver</td><td>SpyGlass Lint / HAL</td></tr>
+    <tr><td>DEF/FIT 率</td><td>LUMI-QUAL-003</td><td>FMEDA 分析完成</td><td>ISO 26262 FMEDA 流程</td></tr>
+    <tr><td>RDC 验证</td><td>LUMI-QUAL-001</td><td>无未解析复位域路径</td><td>SpyGlass RDC</td></tr>
+    <tr><td>Formal 等价</td><td>--</td><td>RTL&harr;Gate 等价验证</td><td>Formality / Conformal LEC</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 DFT 接口</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>scan_mode</code></td><td>In</td><td>1</td><td>扫描模式使能 (1=Scan, 0=Functional)</td></tr>
+    <tr><td><code>scan_enable</code></td><td>In</td><td>1</td><td>扫描 shift/capture 控制</td></tr>
+    <tr><td><code>scan_clk</code></td><td>In (可选)</td><td>1</td><td>扫描测试时钟</td></tr>
+    <tr><td><code>scan_in[3:0]</code></td><td>In</td><td>4</td><td>4 条扫描链输入 (可配)</td></tr>
+    <tr><td><code>scan_out[3:0]</code></td><td>Out</td><td>4</td><td>4 条扫描链输出</td></tr>
+    <tr><td><code>mbist_enable</code></td><td>In</td><td>1</td><td>MBIST 模式使能</td></tr>
+    <tr><td><code>mbist_start</code></td><td>In</td><td>1</td><td>MBIST 启动</td></tr>
+    <tr><td><code>mbist_done</code></td><td>Out</td><td>1</td><td>MBIST 完成</td></tr>
+    <tr><td><code>mbist_fail</code></td><td>Out</td><td>1</td><td>MBIST 失败</td></tr>
+    <tr><td><code>mbist_diag[63:0]</code></td><td>Out</td><td>64</td><td>MBIST 诊断信息 (地址+数据)</td></tr>
+</table>
+
+<h2>3.2 JTAG 接口 (边界扫描 + 调试复用)</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>tck</code></td><td>In</td><td>1</td><td>JTAG 时钟</td></tr>
+    <tr><td><code>tms</code></td><td>In</td><td>1</td><td>JTAG TAP 状态机控制</td></tr>
+    <tr><td><code>tdi</code></td><td>In</td><td>1</td><td>JTAG 数据输入</td></tr>
+    <tr><td><code>tdo</code></td><td>Out</td><td>1</td><td>JTAG 数据输出</td></tr>
+    <tr><td><code>trst_n</code></td><td>In (可选)</td><td>1</td><td>JTAG TAP 复位</td></tr>
+    <tr><td><code>cjtag_tmsc</code></td><td>In/Out (可选)</td><td>1</td><td>cJTAG 2-pin 模式</td></tr>
+    <tr><td><code>cjtag_tckc</code></td><td>In/Out (可选)</td><td>1</td><td>cJTAG 2-pin 模式</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 DFT 插入点拓扑</h2>
+<pre>
+                    ┌─────────────────────────────────────────────┐
+                    │              Lumi-Core Top                  │
+                    │                                             │
+  scan_in[0] ──►   │  ┌─── Chain 0: Pipeline FF (F1~W) ───┐      │
+  scan_in[1] ──►   │  ├─── Chain 1: CSR + IRQ (CLIC/PLIC) ┤      │
+  scan_in[2] ──►   │  ├─── Chain 2: FPU + Vector ─────────┤──► scan_out[3:0]
+  scan_in[3] ──►   │  └─── Chain 3: Mem Ctrl (TCM/Cache) ─┘      │
+                    │                                             │
+                    │  SRAM (TCM/Cache) ──► MBIST Controller      │
+                    │  (不参与扫描, 由 MBIST 覆盖)                 │
+                    │                                             │
+  tck/tms/tdi ──►  │  JTAG TAP ──► Boundary Scan Cells           │
+  tdo ◄────────    │  (与 Debug TAP 复用物理引脚)                 │
+                    └─────────────────────────────────────────────┘
+</pre>
+<p>扫描链在 <code>scan_mode=1</code> 时激活，所有功能 FF 通过 MUX 切换为 Scan FF。SRAM 不可扫描，通过 MBIST 独立覆盖。JTAG 边界扫描通过 TAP 控制器驱动芯片 I/O 的 Boundary Cell。</p>
+
+<h2>4.2 安全数据流</h2>
+<pre>
+  Boot ROM ──► 签名验证 (RSA/ECDSA) ──► 通过? ──► 跳转固件
+                    │                        │
+                    └──► 失败 ──► 安全异常 (NMI/Reset)
+
+  Debug 请求 ──► 安全等级检查 ──► Level 0: 拒绝
+                    │              Level 1: 仅断点
+                    │              Level 2: 全开放
+                    │
+  总线访问 ──► PMP 检查 ──► 通过? ──► 允许
+                    │           │
+                    └───────────┴──► 拒绝: access_fault 异常
+
+  总线 Parity ──► 校验 ──► 错误? ──► bus_error 异常 (可配策略)
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>可选值</th><th>默认值</th><th>影响</th></tr>
+    <tr><td>扫描链数量</td><td>4 / 8 / 16</td><td>4</td><td>更多链 = 更短链长 = 更快测试</td></tr>
+    <tr><td>MBIST 算法</td><td>March C- / March SR / March LR</td><td>March C-</td><td>不同算法覆盖不同故障模型</td></tr>
+    <tr><td>JTAG 边界扫描</td><td>Yes / No</td><td>Yes</td><td>IEEE 1149.1 合规</td></tr>
+    <tr><td>cJTAG 接口</td><td>Yes / No</td><td>No</td><td>IEEE 1149.7 2-pin 模式</td></tr>
+    <tr><td>DFT 压缩</td><td>Yes / No</td><td>No</td><td>减少 I/O 引脚需求</td></tr>
+    <tr><td>Boot ROM</td><td>Yes / No</td><td>No</td><td>安全启动签名验证</td></tr>
+    <tr><td>安全调试等级</td><td>0/1/2 (eFuse 配置)</td><td>2 (开放)</td><td>生产环境设置为 0</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证策略</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+<blockquote><strong>GEM5 参数关联:</strong> DFT (Scan/MBIST/JTAG) 为物理实现层特性，GEM5 功能模型不适用。GEM5 中 JTAG/Debug TAP 复用通过 DebugModule SimObject 建模，但 Scan Chain 和 MBIST 无对应 GEM5 模型。</blockquote>
+
+<h2>6.1 Cover Groups</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>采样点</th></tr>
+    <tr><td><code>cg_scan_coverage</code></td><td>扫描链覆盖率 (ATPG 报告)</td><td>stuck_at_coverage &times; transition_coverage</td></tr>
+    <tr><td><code>cg_scan_chains</code></td><td>扫描链分组 &times; 移位/捕获</td><td>chain_id &times; scan_mode &times; shift_capture</td></tr>
+    <tr><td><code>cg_mbist</code></td><td>MBIST 全内存模块 &times; 算法步骤</td><td>memory_module &times; march_phase</td></tr>
+    <tr><td><code>cg_mbist_fault</code></td><td>MBIST 故障注入 &times; 检测</td><td>fault_type &times; memory_addr &times; detected</td></tr>
+    <tr><td><code>cg_jtag_instructions</code></td><td>JTAG TAP 指令全覆盖</td><td>jtag_instruction &times; boundary_cell</td></tr>
+    <tr><td><code>cg_jtag_states</code></td><td>JTAG TAP 状态机全覆盖 (16 states)</td><td>tap_state &times; transition</td></tr>
+    <tr><td><code>cg_security_debug_levels</code></td><td>调试安全等级 &times; 操作权限</td><td>security_level &times; debug_operation &times; allowed</td></tr>
+    <tr><td><code>cg_security_pmp_lock</code></td><td>PMP 锁定后篡改尝试</td><td>pmp_locked &times; write_attempt &times; denied</td></tr>
+    <tr><td><code>cg_parity_bus</code></td><td>总线 Parity 错误注入 &times; 检测</td><td>bus_parity_error &times; error_response</td></tr>
+    <tr><td><code>cg_timing_corners</code></td><td>时序角落 (ss/tt/ff) &times; 场景</td><td>pvt_corner &times; scenario &times; wns</td></tr>
+    <tr><td><code>cg_cdc_paths</code></td><td>CDC 路径全覆盖</td><td>src_domain &times; dst_domain &times; sync_type</td></tr>
+    <tr><td><code>cg_dft_mode_transitions</code></td><td>DFT 模式切换 (Func&harr;Scan&harr;MBIST)</td><td>prev_mode &times; next_mode &times; transition_safe</td></tr>
+</table>
+
+<h2>6.2 关键验证场景</h2>
+<ul>
+    <li><strong>扫描链功能:</strong> 验证 Scan Mode 下 FF 移位/捕获正确; Functional 模式下无功能影响</li>
+    <li><strong>MBIST 故障注入:</strong> 在 SRAM 模型中注入 stuck-at/transition 故障，验证 MBIST 检测</li>
+    <li><strong>JTAG 边界扫描:</strong> EXTEST 驱动外部引脚 + SAMPLE 采样 + BYPASS 直通</li>
+    <li><strong>安全调试:</strong> Level 0 下禁止所有调试操作; Level 1 仅断点; Level 2 全开放</li>
+    <li><strong>模式切换:</strong> Functional &rarr; Scan &rarr; Functional 无残留状态</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<h2>7.1 承接需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求</th><th>本文档章节</th></tr>
+    <tr><td>LUMI-DFT-001</td><td>Scan Chain 扫描链 (&ge;98%)</td><td>&sect;2.1 (扫描链设计 + 覆盖率)</td></tr>
+    <tr><td>LUMI-DFT-002</td><td>MBIST 内存内建自测试</td><td>&sect;2.2 (MBIST 覆盖 + 控制器)</td></tr>
+    <tr><td>LUMI-DFT-003</td><td>JTAG 边界扫描 (IEEE 1149.1)</td><td>&sect;2.3 (TAP + BSDL)</td></tr>
+    <tr><td>LUMI-SEC-001</td><td>安全启动 ROM</td><td>&sect;2.4 (签名验证)</td></tr>
+    <tr><td>LUMI-SEC-002</td><td>加密加速指令 (Optional)</td><td>&sect;2.8 (Vector Crypto 引用)</td></tr>
+    <tr><td>LUMI-SEC-003</td><td>安全调试策略</td><td>&sect;2.5 (三级安全)</td></tr>
+    <tr><td>LUMI-SEC-004</td><td>PMP 安全隔离</td><td>&sect;2.6 (Smepmp 引用)</td></tr>
+    <tr><td>LUMI-SEC-005</td><td>总线完整性保护</td><td>&sect;2.7 (Parity 引用)</td></tr>
+    <tr><td>LUMI-TIMING-001</td><td>综合约束文件 (SDC)</td><td>&sect;2.9 (SDC 规范)</td></tr>
+    <tr><td>LUMI-TIMING-002</td><td>关键路径时序目标</td><td>&sect;2.10 (时序目标)</td></tr>
+    <tr><td>LUMI-AREA-001</td><td>面积 &le;0.32 mm&sup2;</td><td>&sect;2.9 (面积预算) + &sect;2.10 (面积预估)</td></tr>
+    <tr><td>LUMI-QUAL-001</td><td>CDC/RDC 验证</td><td>&sect;2.11 (IP 质量)</td></tr>
+    <tr><td>LUMI-QUAL-002</td><td>Lint 检查</td><td>&sect;2.11 (IP 质量)</td></tr>
+    <tr><td>LUMI-QUAL-003</td><td>DEF/FIT 率目标</td><td>&sect;2.11 (FMEDA)</td></tr>
+    <tr><td>LUMI-FEAT-004</td><td>JTAG/cJTAG 物理接口</td><td>&sect;2.3 (JTAG) + &sect;3.2 (接口)</td></tr>
+    <tr><td>LUMI-SAFE-001</td><td>ECC/Parity 内存保护</td><td>&sect;2.2 (MBIST-ECC 联调)</td></tr>
+    <tr><td>LUMI-SAFE-003</td><td>总线 Parity 完整性</td><td>&sect;2.7 (总线保护)</td></tr>
+</table>
+
+<h2>7.2 审查约束响应</h2>
+<table>
+    <tr><th>约束</th><th>响应章节</th><th>状态</th></tr>
+    <tr><td>扫描链覆盖率 (&ge;98%)</td><td>&sect;2.1.1 (覆盖率目标 + 链分组 + RAM 处理)</td><td>已响应</td></tr>
+</table>
+
+<h2>7.3 关联文档</h2>
+<ul>
+    <li><a href="tcm.html">tcm.html</a>: TCM MBIST 覆盖 + ECC 联调</li>
+    <li><a href="cache.html">cache.html</a>: L1 Cache MBIST 覆盖 + ECC 联调</li>
+    <li><a href="debug-trace.html">debug-trace.html</a>: JTAG 调试 TAP (与边界扫描复用)</li>
+    <li><a href="privilege-pmp.html">privilege-pmp.html</a>: PMP 安全隔离 (Smepmp)</li>
+    <li><a href="pma-axi.html">pma-axi.html</a>: AXI 总线 Parity</li>
+    <li><a href="power-reset.html">power-reset.html</a>: Boot ROM 启动序列 + 时钟域</li>
+    <li><a href="fpu-vector.html">fpu-vector.html</a>: Vector Crypto 加密加速</li>
+    <li><a href="../architecture/platform-spec.html">platform-spec.html</a>: &sect;8.5 安全, &sect;8.7 DFT, &sect;8.8 物理约束</li>
+    <li><a href="../architecture/m2-s1-microarch-review-v2.html">m2-s1-microarch-review-v2.html</a>: 双审融合报告 v2.0</li>
+</ul>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>LUMI-DESIGN-016 &nbsp;|&nbsp; DFT &amp; 安全 &amp; 物理约束 &nbsp;|&nbsp; 版本 1.0 &nbsp;|&nbsp; 2026-07-07</p>
+</div>
+
+</body>
+</html>

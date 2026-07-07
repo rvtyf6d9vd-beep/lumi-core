@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register File 模块设计文档</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.数据通路</a>
+    <a href="#ch5">5.可配置</a>
+    <a href="#ch6">6.验证</a>
+    <a href="#ch7">7.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Register File 模块设计文档</h1>
+    <p class="subtitle">Integer / Floating-Point / Vector Register File Architecture</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-DESIGN-005 &nbsp;|&nbsp; <strong>批次:</strong> Batch-1 (P0)</p>
+        <p><strong>承接:</strong> <a href="../architecture/platform-spec.html">platform-spec.html &sect;4.7</a></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>更新:</strong> 2026-07-07</p>
+        <p><strong>审查依据:</strong> <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+        <p><strong>审查约束:</strong> D-009 (寄存器读端口压力分析)</p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 模块职责</h2>
+<p>Register File 模块负责 Lumi-Core 的三类寄存器堆的存储阵列、端口管理和访问控制：</p>
+<ul>
+    <li><strong>整数寄存器堆 (IRF)</strong>：32 entry &times; 32 bit, 3R/2W 端口</li>
+    <li><strong>浮点寄存器堆 (FRF)</strong>：32 entry &times; 64 bit, 2R/1W 端口</li>
+    <li><strong>向量寄存器堆 (VRF)</strong>：32 entry &times; VLEN bit, 多 Bank 结构, 每 Bank 1R/1W</li>
+</ul>
+<blockquote><strong>GEM5 映射:</strong> GEM5 MinorCPU 隐式建模寄存器堆 (通过 ISA 描述寄存器数量)。本设计文档定义 RTL 实现的物理寄存器堆规格。</blockquote>
+
+<h2>1.2 范围边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>三类寄存器堆的存储阵列与端口</td><td>CSR 寄存器文件 (属于 writeback-csr.html)</td></tr>
+    <tr><td>读/写端口仲裁与冲突处理</td><td>寄存器堆数据来源 (由旁路网络/W 级提供)</td></tr>
+    <tr><td>x0 硬连线零寄存器逻辑</td><td>向量寄存器 Bank 调度 (属于 fpu-vector.html)</td></tr>
+    <tr><td>NaN-Boxing (FP 寄存器堆)</td><td>浮点运算 (属于 fpu-vector.html)</td></tr>
+    <tr><td>ECC 保护 (可选)</td><td>ECC 编码/解码逻辑 (属于 tcm.html)</td></tr>
+</table>
+
+<p><strong>关联模块:</strong> <a href="decode-issue.html">decode-issue.html</a> (读端口需求) | <a href="execute-alu.html">execute-alu.html</a> (操作数) | <a href="fpu-vector.html">fpu-vector.html</a> (FRF/VRF) | <a href="writeback-csr.html">writeback-csr.html</a> (写端口) | <a href="tcm.html">tcm.html</a> (ECC 逻辑复用)</p>
+
+<h2>1.3 性能约束</h2>
+<table>
+    <tr><th>指标</th><th>约束</th><th>来源</th></tr>
+    <tr><td>读延迟</td><td>1 cycle (D 级)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>写延迟</td><td>1 cycle (W 级)</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>IRF 读端口</td><td>3R (三发射支持)</td><td><span class="constraint-tag">D-009</span></td></tr>
+    <tr><td>IRF 写端口</td><td>2W</td><td><span class="req-tag">LUMI-IPC-001</span></td></tr>
+    <tr><td>FRF 读端口</td><td>2R</td><td>FPU 三操作数 (rs1+rs2&rarr;rd)</td></tr>
+    <tr><td>VRF Bank 数</td><td>4 banks (默认)</td><td>LMUL 并行需求</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能描述</h1>
+
+<h2>2.1 整数寄存器堆 (IRF)</h2>
+
+<h3>2.1.1 规格</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>描述</th></tr>
+    <tr><td>条目数</td><td>32 entry (x0~x31)</td><td>RISC-V RV32I 标准</td></tr>
+    <tr><td>位宽</td><td>32 bit</td><td>XLEN=32</td></tr>
+    <tr><td>读端口</td><td><strong>3R</strong></td><td>支持三发射同时读 3 个源操作数</td></tr>
+    <tr><td>写端口</td><td><strong>2W</strong></td><td>支持同时写回 2 个结果</td></tr>
+    <tr><td>x0 处理</td><td>读恒为 0, 写忽略</td><td>节省 1 个写端口使能和存储单元</td></tr>
+    <tr><td>读延迟</td><td>1 cycle</td><td>组合逻辑读 (SRAM 或触发器阵列)</td></tr>
+    <tr><td>写延迟</td><td>1 cycle</td><td>同步写入</td></tr>
+</table>
+
+<h3>2.1.2 端口压力分析 <span class="constraint-tag">D-009</span></h3>
+<div class="warn"><strong>D-009 三发射端口压力:</strong><br>
+<strong>读端口需求 (最坏情况):</strong> 3 条指令 &times; 2 源寄存器 = 6 个读请求，但仅 3R 端口可用。实际分析：<br>
+&bull; <strong>场景 A (典型)</strong>：1 条 Load (rs1) + 1 条 ALU (rs1, rs2) + 1 条 Store (rs1, rs2) = 5 读请求 &rarr; 需 2 cycle<br>
+&bull; <strong>场景 B (最坏)</strong>：3 条 ALU 各需 rs1+rs2 且全不重叠 = 6 读请求 &rarr; 需 2 cycle<br>
+&bull; <strong>场景 C (常见)</strong>：指令间共享 rs1/rs2 (如循环计数器) = 去重后 3~4 读请求 &rarr; 可 1 cycle<br><br>
+<strong>写端口需求:</strong> 最多 2 条指令同时到达 W 级写回，2W 端口满足。极端 3 条同时到达时 stall 1 cycle。<br><br>
+<strong>仲裁策略:</strong> 程序顺序优先 (Slot 0 > Slot 1 > Slot 2)，端口不足时后续指令 stall 1 cycle。</div>
+
+<h3>2.1.3 实现方案选择</h3>
+<table>
+    <tr><th>方案</th><th>优势</th><th>劣势</th><th>选择</th></tr>
+    <tr><td>触发器阵列 (Flip-Flop)</td><td>速度快, 多端口简单, 1 cycle 读</td><td>面积大 (~0.01mm&sup2;)</td><td><strong>基准方案</strong> (32 entry 面积可控)</td></tr>
+    <tr><td>SRAM (6T)</td><td>面积小</td><td>多端口需 bank 复制, 读延迟可能 >1 cycle</td><td>备选 (面积受限时)</td></tr>
+    <tr><td>寄存器文件 IP (Foundry)</td><td>PPA 最优</td><td>依赖 IP 可用性, 端口数受限</td><td>量产方案</td></tr>
+</table>
+<blockquote><strong>决策:</strong> 32 entry &times; 32 bit 的 IRF 面积较小 (~1024 bit)，采用触发器阵列方案在 TSMC 28HPC 下面积约 0.008mm&sup2;，可满足 1GHz 时序要求。</blockquote>
+
+<h3>2.1.4 x0 零寄存器优化</h3>
+<pre>
+// x0 硬连线逻辑
+function irf_read(addr, port):
+    if addr == 0:
+        return 0x00000000  // x0 读恒为 0
+    else:
+        return reg_array[addr]
+
+function irf_write(addr, data, we):
+    if addr == 0:
+        // x0 写忽略 (节省写端口使能)
+        return
+    elif we:
+        reg_array[addr] = data
+</pre>
+
+<h2>2.2 浮点寄存器堆 (FRF)</h2>
+
+<h3>2.2.1 规格</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>描述</th></tr>
+    <tr><td>条目数</td><td>32 entry (f0~f31)</td><td>RISC-V F/D 扩展</td></tr>
+    <tr><td>位宽</td><td>64 bit</td><td>支持 FP64 双精度</td></tr>
+    <tr><td>读端口</td><td>2R</td><td>FPU 三操作数仅需 2 读 (fmadd 有 3 操作数但第 3 个通过旁路)</td></tr>
+    <tr><td>写端口</td><td>1W</td><td>FPU opLat=6, 写端口充足</td></tr>
+    <tr><td>NaN-Boxing</td><td>32-bit FP 值高位填 1</td><td>FP32 写入 64-bit 寄存器时 bits[63:32]=0xFFFFFFFF</td></tr>
+    <tr><td>读延迟</td><td>1 cycle</td><td>触发器阵列</td></tr>
+</table>
+
+<h3>2.2.2 NaN-Boxing 逻辑</h3>
+<pre>
+// NaN-Boxing: FP32 值写入 64-bit 寄存器
+function frf_write_fp32(addr, data32):
+    reg_array[addr] = {0xFFFFFFFF, data32}  // 高位填 1
+
+// NaN-Boxing 检测: 读取时检查高位
+function frf_read_fp32(addr):
+    val64 = reg_array[addr]
+    if val64[63:32] == 0xFFFFFFFF:
+        return val64[31:0]  // 合法 NaN-boxed FP32
+    else:
+        return canonical_NaN()  // 非法 NaN-boxing, 返回 canonical NaN
+
+// FP64 直接读写 (无 NaN-Boxing)
+function frf_write_fp64(addr, data64):
+    reg_array[addr] = data64
+
+function frf_read_fp64(addr):
+    return reg_array[addr]
+</pre>
+
+<h2>2.3 向量寄存器堆 (VRF)</h2>
+
+<h3>2.3.1 规格</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>描述</th></tr>
+    <tr><td>条目数</td><td>32 entry (v0~v31)</td><td>RVV 1.0 标准</td></tr>
+    <tr><td>位宽</td><td>VLEN 可配 (128/256 bit)</td><td>决定单条向量指令处理位宽</td></tr>
+    <tr><td>Bank 结构</td><td>多 Bank 分体 (默认 4 banks)</td><td>支持 LMUL>1 的多组访存并行</td></tr>
+    <tr><td>每 Bank 读端口</td><td>1R</td><td>跨 Bank 可并行读</td></tr>
+    <tr><td>每 Bank 写端口</td><td>1W</td><td>跨 Bank 可并行写</td></tr>
+    <tr><td>读延迟</td><td>1 cycle (Bank 命中) / 多 cycle (跨 Bank)</td><td>跨 Bank 需仲裁或转发</td></tr>
+</table>
+
+<h3>2.3.2 Bank 分配策略</h3>
+<table>
+    <tr><th>LMUL</th><th>Bank 使用</th><th>并行度</th></tr>
+    <tr><td>1 (默认)</td><td>每个 vreg 使用 1 Bank</td><td>4 个 vreg 并行访问</td></tr>
+    <tr><td>2</td><td>每个 vreg 使用 2 Banks</td><td>2 个 vreg 并行访问</td></tr>
+    <tr><td>4</td><td>每个 vreg 使用 4 Banks</td><td>1 个 vreg 独占全部 Bank</td></tr>
+    <tr><td>8</td><td>每个 vreg 使用 8 Banks (需 &ge;8 Bank 配置)</td><td>1 个 vreg 独占</td></tr>
+</table>
+
+<pre>
+// VRF Bank 分配伪代码
+function vrf_read(vreg, element_idx):
+    bank_idx = vreg % NUM_BANKS
+    if bank_conflict(bank_idx):
+        stall(1)  // Bank 冲突, stall 1 cycle
+        return vrf_read(vreg, element_idx)  // 重试
+    else:
+        return bank[bank_idx].read(vreg, element_idx)
+</pre>
+
+<blockquote><strong>向量寄存器堆详细设计:</strong> VRF 的 Bank 调度、LMUL 分组、向量元素访问逻辑将在 fpu-vector.html 中详细展开。本文档仅定义存储阵列规格和端口约束。</blockquote>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口定义</h1>
+
+<h2>3.1 整数寄存器堆接口 (IRF)</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>irf_rs1_addr[2:0]</code></td><td>In &larr; D 级</td><td>5&times;3</td><td>读端口 1 地址 (3 路, 对应 3R)</td></tr>
+    <tr><td><code>irf_rs2_addr[2:0]</code></td><td>In &larr; D 级</td><td>5&times;3</td><td>读端口 2 地址 (注: 与 rs1 共享端口, 分时读)</td></tr>
+    <tr><td><code>irf_rs1_data[2:0]</code></td><td>Out &rarr; D 级</td><td>32&times;3</td><td>读端口 1 数据</td></tr>
+    <tr><td><code>irf_rs2_data[2:0]</code></td><td>Out &rarr; D 级</td><td>32&times;3</td><td>读端口 2 数据</td></tr>
+    <tr><td><code>irf_wr_addr[1:0]</code></td><td>In &larr; W 级</td><td>5&times;2</td><td>写端口地址 (2 路, 对应 2W)</td></tr>
+    <tr><td><code>irf_wr_data[1:0]</code></td><td>In &larr; W 级</td><td>32&times;2</td><td>写端口数据</td></tr>
+    <tr><td><code>irf_wr_en[1:0]</code></td><td>In &larr; W 级</td><td>2</td><td>写使能</td></tr>
+    <tr><td><code>irf_read_stall</code></td><td>Out &rarr; D 级</td><td>1</td><td>读端口不足 stall 信号</td></tr>
+</table>
+
+<h2>3.2 浮点寄存器堆接口 (FRF)</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>frf_rs1_addr</code></td><td>In &larr; D 级</td><td>5</td><td>FP 读端口 1 地址</td></tr>
+    <tr><td><code>frf_rs2_addr</code></td><td>In &larr; D 级</td><td>5</td><td>FP 读端口 2 地址</td></tr>
+    <tr><td><code>frf_rs1_data</code></td><td>Out</td><td>64</td><td>FP 读端口 1 数据</td></tr>
+    <tr><td><code>frf_rs2_data</code></td><td>Out</td><td>64</td><td>FP 读端口 2 数据</td></tr>
+    <tr><td><code>frf_wr_addr</code></td><td>In &larr; W 级</td><td>5</td><td>FP 写端口地址</td></tr>
+    <tr><td><code>frf_wr_data</code></td><td>In</td><td>64</td><td>FP 写数据</td></tr>
+    <tr><td><code>frf_wr_en</code></td><td>In</td><td>1</td><td>FP 写使能</td></tr>
+    <tr><td><code>frf_nan_box_err</code></td><td>Out</td><td>1</td><td>NaN-Boxing 非法标志</td></tr>
+</table>
+
+<h2>3.3 向量寄存器堆接口 (VRF)</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>vrf_vs1_addr</code></td><td>In &larr; D 级</td><td>5</td><td>向量源寄存器 1</td></tr>
+    <tr><td><code>vrf_vs2_addr</code></td><td>In &larr; D 级</td><td>5</td><td>向量源寄存器 2</td></tr>
+    <tr><td><code>vrf_vs1_data</code></td><td>Out</td><td>VLEN</td><td>向量源 1 数据 (VLEN bit)</td></tr>
+    <tr><td><code>vrf_vs2_data</code></td><td>Out</td><td>VLEN</td><td>向量源 2 数据</td></tr>
+    <tr><td><code>vrf_vd_addr</code></td><td>In &larr; W 级</td><td>5</td><td>向量目标寄存器</td></tr>
+    <tr><td><code>vrf_vd_data</code></td><td>In</td><td>VLEN</td><td>向量写数据</td></tr>
+    <tr><td><code>vrf_wr_en</code></td><td>In</td><td>1</td><td>向量写使能</td></tr>
+    <tr><td><code>vrf_bank_conflict</code></td><td>Out</td><td>1</td><td>Bank 冲突信号</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 数据通路</h1>
+
+<h2>4.1 寄存器堆读写时序</h2>
+<pre>
+Cycle N:
+  D 级: irf_rs1_addr[0..2] 送出 → 寄存器堆读
+        irf_rs2_addr[0..2] (分时或端口仲裁)
+  D 级末: irf_rs1_data[0..2] / irf_rs2_data[0..2] 返回
+        (与旁路网络选择后输出到 I 级)
+
+Cycle N+1:
+  E1 级: 使用 rs1/rs2 数据运算
+  W 级: irf_wr_addr[0..1] + irf_wr_data[0..1] 写入
+        (写后下一 cycle 可读, 或通过旁路立即转发)
+</pre>
+
+<h2>4.2 读写冲突处理</h2>
+<p>当同一 cycle 内读地址与写地址相同时 (RAR/WAR 冒险)：</p>
+<table>
+    <tr><th>场景</th><th>处理策略</th><th>描述</th></tr>
+    <tr><td>读优先 (Read-First)</td><td>返回旧值</td><td>适用于顺序执行, 写在同一 cycle 末尾</td></tr>
+    <tr><td>写优先 (Write-First)</td><td>返回新值</td><td>减少旁路需求, 但时序更紧</td></tr>
+    <tr><td>旁路转发 (Forwarding)</td><td>W 级写数据同时转发到 D 级读输出</td><td><strong>Lumi-Core 采用此方案</strong></td></tr>
+</table>
+
+<pre>
+// 读写冲突旁路转发
+function irf_read_with_forward(addr):
+    // 检查同 cycle 是否有写操作到相同地址
+    for wr_port in [0, 1]:
+        if irf_wr_en[wr_port] and irf_wr_addr[wr_port] == addr:
+            return irf_wr_data[wr_port]  // 写转发
+    return reg_array[addr]  // 无冲突, 正常读
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 可配置特性</h1>
+
+<table>
+    <tr><th>参数</th><th>默认值</th><th>范围</th><th>描述</th></tr>
+    <tr><td><code>IRF_READ_PORTS</code></td><td>3</td><td>2, 3, 4</td><td>整数堆读端口数</td></tr>
+    <tr><td><code>IRF_WRITE_PORTS</code></td><td>2</td><td>1, 2, 3</td><td>整数堆写端口数</td></tr>
+    <tr><td><code>IRF_IMPL</code></td><td>FF (触发器)</td><td>FF, SRAM, IP</td><td>IRF 实现方式</td></tr>
+    <tr><td><code>FRF_READ_PORTS</code></td><td>2</td><td>2, 3</td><td>浮点堆读端口数</td></tr>
+    <tr><td><code>FRF_WRITE_PORTS</code></td><td>1</td><td>1, 2</td><td>浮点堆写端口数</td></tr>
+    <tr><td><code>VRF_NUM_BANKS</code></td><td>4</td><td>2, 4, 8</td><td>向量堆 Bank 数</td></tr>
+    <tr><td><code>VLEN</code></td><td>128</td><td>128, 256</td><td>向量寄存器位宽</td></tr>
+    <tr><td><code>IRF_ECC</code></td><td>False</td><td>True/False</td><td>整数堆 ECC 保护</td></tr>
+    <tr><td><code>FRF_ECC</code></td><td>False</td><td>True/False</td><td>浮点堆 ECC 保护</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 验证要点</h1>
+
+<p><strong>验证策略依据:</strong> <a href="../verification/verification-strategy.html">验证策略文档</a> | <a href="../verification/coverage-plan.yaml">覆盖率计划</a></p>
+
+<h2>6.1 Cover Group 摘要</h2>
+<table>
+    <tr><th>Cover Group</th><th>描述</th><th>目标</th></tr>
+    <tr><td><code>cg_irf_read_3port</code></td><td>3R 端口全满读取 (3 条指令同时读 IRF)</td><td>100%</td></tr>
+    <tr><td><code>cg_irf_port_stall</code></td><td>读端口不足触发 stall (6 读请求 vs 3R)</td><td>100%</td></tr>
+    <tr><td><code>cg_irf_x0_read</code></td><td>x0 读取恒为 0</td><td>100%</td></tr>
+    <tr><td><code>cg_irf_x0_write</code></td><td>x0 写忽略 (写后读仍为 0)</td><td>100%</td></tr>
+    <tr><td><code>cg_irf_write_2port</code></td><td>2W 端口同时写回</td><td>100%</td></tr>
+    <tr><td><code>cg_irf_rw_conflict</code></td><td>读写冲突旁路转发 (同 cycle 读写同地址)</td><td>100%</td></tr>
+    <tr><td><code>cg_frf_nan_boxing</code></td><td>NaN-Boxing 正确性 (FP32 写入 64-bit, 读取检查)</td><td>100%</td></tr>
+    <tr><td><code>cg_frf_nan_invalid</code></td><td>非法 NaN-Boxing 返回 canonical NaN</td><td>100%</td></tr>
+    <tr><td><code>cg_vrf_bank_conflict</code></td><td>VRF Bank 冲突检测与 stall</td><td>100%</td></tr>
+    <tr><td><code>cg_vrf_lmul_groups</code></td><td>LMUL=1/2/4 的 Bank 分组正确</td><td>100%</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 需求追溯</h1>
+
+<table>
+    <tr><th>REQ-ID</th><th>需求描述</th><th>本文档章节</th><th>验证方式</th></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-004</span></td><td>F/D 扩展 (浮点)</td><td>&sect;2.2 FRF 规格与 NaN-Boxing</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-007</span></td><td>V 扩展 (向量)</td><td>&sect;2.3 VRF Bank 结构</td><td>功能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark &ge;5.5 CM/MHz</td><td>&sect;2.1.2 端口仲裁 (性能影响最小化)</td><td>性能仿真</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级流水线</td><td>&sect;1.3 读写延迟约束</td><td>时序验证</td></tr>
+</table>
+
+<h2>7.1 审查约束响应</h2>
+<table>
+    <tr><th>审查编号</th><th>约束内容</th><th>本文档响应</th></tr>
+    <tr><td><span class="constraint-tag">D-009</span></td><td>寄存器读端口压力分析</td><td>&sect;2.1.2 最坏情况分析 (场景 A/B/C); &sect;2.1.3 实现方案选择; &sect;4.2 读写冲突处理; 验证 cg_irf_port_stall, cg_irf_rw_conflict</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Design Document: Register File Architecture &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-DESIGN-005 &nbsp;|&nbsp; 批次: Batch-1 (P0) &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    承接: <a href="../architecture/platform-spec.html">platform-spec.html v1.0.3</a> &nbsp;|&nbsp;
+    审查: <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+</div>
+
+</body>
+</html>

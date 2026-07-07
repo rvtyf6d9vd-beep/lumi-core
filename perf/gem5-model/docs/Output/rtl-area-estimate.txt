@@ -1,0 +1,101 @@
+============================================================
+Lumi-Core RTL Skeleton — Module Statistics Report
+Generated: 2026-07-07 23:22:49
+Tool: Verilator 5.048 lint (full pass, 0 errors)
+============================================================
+
+--- Module Inventory ---
+
+[include]
+  lumi_interfaces.sv:      238 lines, ~24 ports, 8 params
+  lumi_types_pkg.sv:      155 lines, ~0
+0 ports, 25 params
+
+[core]
+  lumi_bypass.sv:       71 lines, ~20 ports, 2 params
+  lumi_core_top.sv:      261 lines, ~33 ports, 2 params
+  lumi_decode_issue.sv:       88 lines, ~20 ports, 1 params
+  lumi_execute.sv:      105 lines, ~24 ports, 1 params
+  lumi_fetch.sv:      101 lines, ~14 ports, 4 params
+  lumi_memory_stage.sv:      104 lines, ~25 ports, 1 params
+  lumi_writeback.sv:       94 lines, ~24 ports, 1 params
+
+[memory]
+  lumi_cache.sv:      121 lines, ~33 ports, 6 params
+  lumi_tcm.sv:       95 lines, ~28 ports, 3 params
+
+[bus]
+  lumi_axi_wrapper.sv:      172 lines, ~57 ports, 3 params
+  lumi_pma_checker.sv:       83 lines, ~14 ports, 0
+0 params
+
+[csr]
+  lumi_csr_unit.sv:      100 lines, ~23 ports, 1 params
+  lumi_regfile.sv:       35 lines, ~17 ports, 2 params
+
+[interrupt]
+  lumi_clic.sv:       44 lines, ~11 ports, 2 params
+  lumi_exception.sv:       32 lines, ~8 ports, 1 params
+  lumi_plic.sv:       37 lines, ~10 ports, 2 params
+
+[debug]
+  lumi_debug_module.sv:       35 lines, ~7 ports, 0
+0 params
+  lumi_trace.sv:       31 lines, ~7 ports, 0
+0 params
+
+[fpu]
+  lumi_fpu.sv:       38 lines, ~7 ports, 0
+0 params
+  lumi_vector.sv:       43 lines, ~12 ports, 1 params
+
+[power]
+  lumi_power_mgmt.sv:       43 lines, ~13 ports, 1 params
+
+[multicore]
+  lumi_lockstep.sv:       30 lines, ~6 ports, 1 params
+  lumi_multicore_top.sv:       26 lines, ~6 ports, 2 params
+
+[dft]
+  lumi_dft_ctrl.sv:       40 lines, ~8 ports, 0
+0 params
+
+[top]
+  lumi_soc_tb_stub.sv:      137 lines, ~0
+0 ports, 3 params
+  lumi_soc_top.sv:      342 lines, ~40 ports, 2 params
+
+--- Summary ---
+Total .sv files:       28
+Total lines:     2701
+Total port declarations:      491
+
+--- FSM State Count (skeleton) ---
+  src/rtl//power/lumi_power_mgmt.sv:24:    typedef enum logic [2:0] {
+  src/rtl//core/lumi_fetch.sv:55:    typedef enum logic [2:0] {
+  src/rtl//core/lumi_memory_stage.sv:61:    typedef enum logic [2:0] {
+  src/rtl//core/lumi_decode_issue.sv:55:    typedef enum logic [1:0] {
+  src/rtl//core/lumi_writeback.sv:54:    typedef enum logic [2:0] {
+  src/rtl//core/lumi_execute.sv:61:    typedef enum logic [1:0] {
+  src/rtl//csr/lumi_csr_unit.sv:59:    typedef enum logic [1:0] {
+  src/rtl//memory/lumi_cache.sv:62:    typedef enum logic [3:0] {
+  src/rtl//memory/lumi_tcm.sv:57:    typedef enum logic [2:0] {
+  src/rtl//dft/lumi_dft_ctrl.sv:21:    typedef enum logic [2:0] {
+  src/rtl//multicore/lumi_lockstep.sv:15:    typedef enum logic [1:0] { ST_IDLE, ST_COMPARE, ST_MISMATCH, ST_RECOVER } ls_state_e;
+  src/rtl//include/lumi_types_pkg.sv:25:  typedef enum logic [1:0] {
+  src/rtl//include/lumi_types_pkg.sv:45:  typedef enum logic [3:0] {
+  src/rtl//include/lumi_types_pkg.sv:80:  typedef enum logic [3:0] {
+  src/rtl//include/lumi_types_pkg.sv:112:  typedef enum logic [1:0] {
+  src/rtl//interrupt/lumi_plic.sv:23:    typedef enum logic [1:0] { ST_IDLE, ST_PRIORITIZE, ST_PENDING, ST_CLAIM } plic_state_e;
+  src/rtl//interrupt/lumi_exception.sv:17:    typedef enum logic [2:0] { ST_IDLE, ST_DETECT, ST_DELEGATE, ST_TRAP, ST_NMI } exc_state_e;
+  src/rtl//interrupt/lumi_clic.sv:24:    typedef enum logic [2:0] {
+  src/rtl//bus/lumi_axi_wrapper.sv:96:    typedef enum logic [3:0] {
+  src/rtl//fpu/lumi_vector.sv:22:    typedef enum logic [2:0] {
+  src/rtl//fpu/lumi_fpu.sv:16:    typedef enum logic [3:0] {
+  src/rtl//debug/lumi_trace.sv:16:    typedef enum logic [1:0] { ST_IDLE, ST_CAPTURE, ST_ENCODE, ST_FLUSH } trace_state_e;
+  src/rtl//debug/lumi_debug_module.sv:16:    typedef enum logic [2:0] {
+
+--- Note ---
+Yosys 0.64 does not support SV unpacked arrays in module ports.
+Full synthesis estimation requires packed-port wrapper or DC/NX tools.
+Verilator lint: 100% PASS (0 error, 0 warning after fixes).
