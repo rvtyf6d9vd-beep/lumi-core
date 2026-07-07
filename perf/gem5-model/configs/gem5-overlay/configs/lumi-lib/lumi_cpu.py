@@ -12,7 +12,6 @@ from m5.objects import (
     MinorFUTiming,
     minorMakeOpClassSet,
     MinorDefaultIntDivFU,
-    MinorDefaultFloatSimdFU,
     MinorDefaultMemFU,
     MinorDefaultMiscFU,
     TournamentBP,
@@ -44,11 +43,67 @@ class LumiIntMulFU(MinorFU):
     opLat = 1
 
 
-def create_lumi_cpu(issue_width=3):
+# =========================================================================
+# M2-S1: FPU split into 7 dedicated FUs (DS-D1: real gem5 opClasses)
+# Each FU handles one opClass — no bit-width suffixes.
+# MinorCPU uses 1 FU per opClass; covers all precisions (FP32/FP64).
+# =========================================================================
+
+class LumiFPAddFU(MinorFU):
+    """FP addition: FloatAdd opClass, opLat=6 (4-stage FP pipeline + 2 pipeline regs)."""
+    opClasses = minorMakeOpClassSet(["FloatAdd"])
+    timings = [MinorFUTiming(description="FPAdd", srcRegsRelativeLats=[4])]
+    opLat = 6
+
+
+class LumiFPMulFU(MinorFU):
+    """FP multiplication: FloatMul opClass, opLat=6."""
+    opClasses = minorMakeOpClassSet(["FloatMul"])
+    timings = [MinorFUTiming(description="FPMul", srcRegsRelativeLats=[4])]
+    opLat = 6
+
+
+class LumiFPFMAFU(MinorFU):
+    """FP fused multiply-add: FloatMultAcc opClass, opLat=6."""
+    opClasses = minorMakeOpClassSet(["FloatMultAcc"])
+    timings = [MinorFUTiming(description="FPFMA", srcRegsRelativeLats=[4])]
+    opLat = 6
+
+
+class LumiFPDivFU(MinorFU):
+    """FP division: FloatDiv opClass, opLat=14 (non-pipelined iterative)."""
+    opClasses = minorMakeOpClassSet(["FloatDiv"])
+    timings = [MinorFUTiming(description="FPDiv", srcRegsRelativeLats=[0])]
+    opLat = 14
+
+
+class LumiFPSqrtFU(MinorFU):
+    """FP square root: FloatSqrt opClass, opLat=14 (non-pipelined iterative)."""
+    opClasses = minorMakeOpClassSet(["FloatSqrt"])
+    timings = [MinorFUTiming(description="FPSqrt", srcRegsRelativeLats=[0])]
+    opLat = 14
+
+
+class LumiFPCvtFU(MinorFU):
+    """FP format conversion: FloatCvt opClass, opLat=4."""
+    opClasses = minorMakeOpClassSet(["FloatCvt"])
+    timings = [MinorFUTiming(description="FPCvt", srcRegsRelativeLats=[2])]
+    opLat = 4
+
+
+class LumiFPCmpFU(MinorFU):
+    """FP comparison: FloatCmp opClass, opLat=2."""
+    opClasses = minorMakeOpClassSet(["FloatCmp"])
+    timings = [MinorFUTiming(description="FPCmp", srcRegsRelativeLats=[1])]
+    opLat = 2
+
+
+def create_lumi_cpu(issue_width=3, enable_vector=False):
     """
     Create a Lumi-Core 8-stage RiscvMinorCPU.
 
     :param issue_width: 2 or 3 (default 3 = triple-issue, Cortex-R82 style).
+    :param enable_vector: If True, add 8 Vector FUs to the FU pool.
     :returns: A configured RiscvMinorCPU instance.
     """
     if issue_width not in (2, 3):
@@ -126,12 +181,23 @@ def create_lumi_cpu(issue_width=3):
         LumiIntFU(),  # 4x single-cycle ALU (opLat=1)
         LumiIntMulFU(),  # 1x single-cycle MUL (opLat=1)
         MinorDefaultIntDivFU(),  # 1x DIV (opLat=9, unchanged)
-        MinorDefaultFloatSimdFU(),  # 1x FP/SIMD (opLat=6, unchanged)
+        # M2-S1: FPU split into 7 dedicated FUs (DS-D1: real opClasses)
+        LumiFPAddFU(),     # FloatAdd     opLat=6
+        LumiFPMulFU(),     # FloatMul     opLat=6
+        LumiFPFMAFU(),     # FloatMultAcc opLat=6
+        LumiFPDivFU(),     # FloatDiv     opLat=14
+        LumiFPSqrtFU(),    # FloatSqrt    opLat=14
+        LumiFPCvtFU(),     # FloatCvt     opLat=4
+        LumiFPCmpFU(),     # FloatCmp     opLat=2
         MinorDefaultMemFU(),  # 1x MEM (opLat=1, unchanged)
     ]
     if issue_width >= 3:
         fu_list.append(MinorDefaultMemFU())  # Phase 11: 2nd MEM FU
     fu_list.append(MinorDefaultMiscFU())  # 1x MISC (opLat=1, unchanged)
+    # M2-S1: Optional Vector extension (8 additional FUs)
+    if enable_vector:
+        from lumi_vector import create_vector_fu_list
+        fu_list.extend(create_vector_fu_list())
     cpu.executeFuncUnits = MinorFUPool(funcUnits=fu_list)
 
     # --- Branch Predictor (Phase 11: LTAGE -- Cortex-A520 inspired) ---

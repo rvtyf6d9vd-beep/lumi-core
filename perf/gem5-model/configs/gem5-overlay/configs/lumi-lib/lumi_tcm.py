@@ -21,33 +21,37 @@ def create_tcm(
     itcm_base=ITCM_BASE,
     dtcm0_base=DTCM0_BASE,
     dtcm1_base=DTCM1_BASE,
+    itcm_latency="0ns",
+    dtcm_latency="0ns",
 ):
     """
     Create TCM memory regions for Lumi-Core.
 
-    TCM is modeled as SimpleMemory with 0ns latency, providing
-    deterministic single-cycle access for real-time workloads.
+    TCM is modeled as SimpleMemory with configurable latency, providing
+    deterministic access for real-time workloads.
 
     :param itcm_size: Instruction TCM size (default 16KiB).
     :param dtcm0_size: Data TCM region 0 size (default 8KiB).
     :param dtcm1_size: Data TCM region 1 size (default 8KiB).
+    :param itcm_latency: ITCM access latency (default "0ns").
+    :param dtcm_latency: DTCM access latency (default "0ns").
     :returns: Tuple of (itcm, dtcm0, dtcm1) SimpleMemory instances.
     """
     itcm = SimpleMemory(
         range=AddrRange(start=itcm_base, size=itcm_size),
-        latency="0ns",
+        latency=itcm_latency,
         bandwidth="0B/s",  # unlimited
     )
 
     dtcm0 = SimpleMemory(
         range=AddrRange(start=dtcm0_base, size=dtcm0_size),
-        latency="0ns",
+        latency=dtcm_latency,
         bandwidth="0B/s",
     )
 
     dtcm1 = SimpleMemory(
         range=AddrRange(start=dtcm1_base, size=dtcm1_size),
-        latency="0ns",
+        latency=dtcm_latency,
         bandwidth="0B/s",
     )
 

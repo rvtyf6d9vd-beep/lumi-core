@@ -8,11 +8,15 @@
 from m5.objects import Cache, StridePrefetcher, LRURP
 
 
-def create_l1i_cache():
-    """Create Lumi-Core L1 Instruction Cache (32KB, 8-way)."""
+def create_l1i_cache(size="32KiB", assoc=8):
+    """Create Lumi-Core L1 Instruction Cache.
+
+    :param size: Cache size (default "32KiB").
+    :param assoc: Cache associativity (default 8).
+    """
     cache = Cache()
-    cache.size = "32KiB"
-    cache.assoc = 8
+    cache.size = size
+    cache.assoc = assoc
     cache.tag_latency = 1
     cache.data_latency = 1
     cache.response_latency = 1
@@ -28,11 +32,15 @@ def create_l1i_cache():
     return cache
 
 
-def create_l1d_cache():
-    """Create Lumi-Core L1 Data Cache (32KB, 8-way)."""
+def create_l1d_cache(size="32KiB", assoc=8):
+    """Create Lumi-Core L1 Data Cache.
+
+    :param size: Cache size (default "32KiB").
+    :param assoc: Cache associativity (default 8).
+    """
     cache = Cache()
-    cache.size = "32KiB"
-    cache.assoc = 8
+    cache.size = size
+    cache.assoc = assoc
     cache.tag_latency = 1
     # Phase 5: reduced from 2 to 1 cycle for faster D-cache access
     cache.data_latency = 1
