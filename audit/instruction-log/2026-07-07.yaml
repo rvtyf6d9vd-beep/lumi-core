@@ -37,6 +37,34 @@ entries:
       M2 status 更新为 in_progress。4 个 agent 状态文件已同步更新。
       原有 Sign-off 报告（07-03）和关闭报告保留不删除。
 
+  # ──────────────────────────────────────────────
+  # 指令 2：GitHub 同步上传
+  # ──────────────────────────────────────────────
+  - timestamp: "19:00:00"
+    role: pm-infra
+    session_mode: main
+    action: github_sync_upload
+    details:
+      description: >
+        将 Lumi-core 全部变更推送到 GitHub，并更新母项目 riscv-workspace
+        的子模块引用和 README。
+      user_request: >
+        做一个 github 上传计划，把 Lumi 项目整体上传，并更新母项目相关信息。
+      steps:
+        - "step 1: 修复 .gitignore — 追加 *.o.rv64 / *.a.rv64 规则"
+        - "step 2: 创建 Lumi-core README.md — 项目简介/技术规格/里程碑状态/仓库结构/快速导航"
+        - "step 3: git add -A — 暂存 128 个文件 (46 新增 + 43 修改 + 1 删除 + README + .gitignore)"
+        - "step 4: git commit — feat: M1 架构与需求冻结完成 (346cc54)"
+        - "step 5: git push origin main — f9f0715..346cc54 推送到 github.com/rvtyf6d9vd-beep/lumi-core.git"
+        - "step 6: 母项目 git submodule update --remote Lumi-core — 更新子模块引用到 346cc54"
+        - "step 7: 创建母项目 README.md — 工作区简介/子项目索引/目录结构/使用方法"
+        - "step 8: 母项目 git pull --rebase origin main — 合并远程新提交 (5c7ca9e)"
+        - "step 9: 母项目 git push origin main — 5c7ca9e..ff93827 推送到 github.com/rvtyf6d9vd-beep/riscv-workspace.git"
+      rules_checked: ["03", "13", "16"]
+    outcome: >
+      成功。Lumi-core 推送 128 个文件变更 (19770 行新增) 到 GitHub。
+      母项目 riscv-workspace 子模块引用更新并推送，新增 workspace README。
+
 files_created_or_modified:
   - path: "audit/compliance-reports/m1-20260702.yaml"
     action: modified
@@ -59,6 +87,12 @@ files_created_or_modified:
   - path: "agents/qa-audit/context/current-state.yaml"
     action: modified
     summary: "追加 M1-ADDENDUM completed_task, last_active → 07-07"
+  - path: ".gitignore"
+    action: modified
+    summary: "追加 *.o.rv64 / *.a.rv64 编译产物排除规则"
+  - path: "README.md"
+    action: created
+    summary: "Lumi-core 项目 README (技术规格/里程碑/仓库结构/快速导航)"
   - path: "audit/instruction-log/2026-07-07.yaml"
     action: created
     summary: "本日志文件"
