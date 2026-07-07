@@ -1,0 +1,89 @@
+# Phase 5: 8 级流水线基础建模
+
+phase: 5
+title: "Cortex-R82 式 8 级 in-order MinorCPU 流水线建模"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  建立 Cortex-R82 参考的 8 级顺序执行流水线模型，配置分支预测器、
+  缓存系统、LSQ 和流水线缓冲区，运行首个 CoreMark 基准测试。
+
+architecture:
+  pipeline_stages: "Fetch1 -> Fetch2 -> Decode1 -> Decode2 -> Issue -> Execute -> Memory -> Writeback"
+  issue_width: 3  # 默认三发射
+  cpu_model: RiscvMinorCPU
+  isa: "rv64im"
+
+pipeline_config:
+  fetch:
+    fetch1FetchLimit: "1 -> issue_width (3)"
+    fetch1ToFetch2ForwardDelay: 1
+    fetch2InputBufferSize: "issue_width * 2"
+    fetch2ToDecode1ForwardDelay: 1
+  decode:
+    decode1InputBufferSize: "issue_width * 2"
+    decode1ToDecode2ForwardDelay: 1
+    decodeInputBufferSize: "issue_width * 2"
+    decodeInputWidth: "issue_width"
+    decode2ToIssueForwardDelay: 1
+  issue:
+    issueInputBufferSize: "issue_width * 3"
+    issueToExecuteForwardDelay: 1
+  execute:
+    executeInputWidth: "issue_width"
+    executeIssueLimit: "issue_width"
+    executeCommitLimit: "issue_width"
+    executeMemoryIssueLimit: 2
+    executeMemoryCommitLimit: 2
+    executeInputBufferSize: "issue_width * 3"
+    executeToMemoryForwardDelay: 1
+    executeBranchDelay: "2 -> 1"
+  memory:
+    memoryInputBufferSize: "issue_width * 2"
+    memoryToWritebackForwardDelay: 1
+  writeback:
+    writebackInputBufferSize: "issue_width * 2"
+
+cache_config:
+  L1I: "32KB, 8-way"
+  L1D: "32KB, 8-way"
+  dcache_data_latency: "2 -> 1"
+  block_size: "64 bytes"
+
+memory_config:
+  model: "DDR3_1600_8x8"
+
+branch_predictor:
+  type: TournamentBP
+  local: "4K entries -> 8K entries"
+  global: "1K entries -> 2K entries"
+  choice: "2-bit -> 3-bit"
+
+lsq_config:
+  executeLSQStoreBufferSize: "5 -> 8 -> 12"
+  executeLSQRequestsQueueSize: "1 -> 2 -> 4"
+  executeLSQTransfersQueueSize: "2 -> 4 -> 6"
+  executeLSQMaxStoreBufferStoresPerCycle: "issue_width"
+
+compiler:
+  flags: "-O2 -funroll-loops -march=rv64im -mabi=lp64"
+  o3_test: "tested, 4% worse for in-order, reverted"
+
+fu_pool:
+  initial: "3x IntFU(opLat=3) + 1x MUL + 1x DIV + 1x FP + 1x MEM + 1x MISC = 8 FUs"
+
+results:
+  coremark_triple: "~3.30"
+  coremark_dual: "N/A"
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "CPU 工厂函数 (create_lumi_cpu)"
+  - path: "perf/gem5-model/gem5/configs/lumi-core.py"
+    description: "顶层配置入口 (CLI 参数: --issue-width, --binary)"
+  - path: "perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_cpu.py"
+    description: "Overlay 副本"
+  - path: "perf/benchmarks/coremark/"
+    description: "CoreMark 基准测试 (移植到 mini_libc)"

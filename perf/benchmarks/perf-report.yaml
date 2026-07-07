@@ -1,8 +1,8 @@
-# Lumi-Core Phase 9 Performance Report
-# Target met: 5.54 CM/MHz (target: 5.5)
+# Lumi-Core Phase 11 Performance Report (RV32 ISA Compliance Update)
+# Target met: 6.97 CM/MHz (RV32), 1.65 DMIPS/MHz (RV32)
 
-report_version: '3.0'
-generated_at: '2026-06-24'
+report_version: '6.0'
+generated_at: '2026-07-01'
 
 environment:
   compiler: riscv64-unknown-elf-gcc (GCC) 16.1.0
@@ -29,17 +29,23 @@ benchmarks:
   coremark:
     triple_issue_optimized:
       status: PASS
-      CM_per_MHz_x100: 554
-      CM_per_MHz: 5.54
-      target: 5.5
+      CM_per_MHz_x100: 622
+      CM_per_MHz: 6.22
+      target: 6.0
       target_met: true
-      sim_ticks: 9009948
+      sim_ticks: 8089500
+      ipc: 2.017
+      bp_mispredictions: 9593
+      fu_unavailable_stalls: 562940
       compiler_flags: "-O2 -funroll-loops"
     dual_issue:
       status: PASS
-      CM_per_MHz_x100: 446
-      CM_per_MHz: 4.46
-      sim_ticks: 11207286
+      CM_per_MHz_x100: 478
+      CM_per_MHz: 4.78
+      sim_ticks: 10536382
+      ipc: 1.551
+      bp_mispredictions: 9593
+      fu_unavailable_stalls: 813207
 
   dhrystone:
     triple_issue:
@@ -53,6 +59,55 @@ benchmarks:
       DMIPS_per_MHz_x100: 141
       DMIPS_per_MHz: 1.41
       sim_ticks: 201711
+
+  # RV32 ISA Compliance Data (Lumi-CoreM Profile)
+  rv32_coremark:
+    triple_issue:
+      status: PASS
+      CM_per_MHz_x100: 697
+      CM_per_MHz: 6.97
+      CRC: 0x0158
+      sim_ticks: 7137331
+      ipc: 1.952
+      bp_mispredictions: 33671
+      bp_lookups: 2824212
+      bp_mispredict_rate: "1.19%"
+      fu_unavailable_stalls: 715844
+      scoreboard_stalls: 97511
+      compiler_flags: "-O2 -funroll-loops -march=rv32imac_zicsr_zifencei -mabi=ilp32"
+    dual_issue:
+      status: PASS
+      CM_per_MHz_x100: 536
+      CM_per_MHz: 5.36
+      CRC: 0x0158
+      sim_ticks: 9408966
+      ipc: 1.480
+      bp_mispredictions: 26926
+      bp_lookups: 2817457
+      bp_mispredict_rate: "0.96%"
+      fu_unavailable_stalls: 869421
+      scoreboard_stalls: 26021
+
+  rv32_dhrystone:
+    triple_issue:
+      status: PASS
+      DMIPS_per_MHz_x100: 165
+      DMIPS_per_MHz: 1.65
+      sim_ticks: 167003
+      runs: 500
+      checks: PASS
+    dual_issue:
+      status: PASS
+      DMIPS_per_MHz_x100: 125
+      DMIPS_per_MHz: 1.25
+      sim_ticks: 222025
+      runs: 500
+      checks: PASS
+
+  rv32_hello_world:
+    triple_issue:
+      status: PASS
+      exit_tick: 139000
 
   hello_world:
     triple_issue:
@@ -74,10 +129,76 @@ regression:
   tests:
     - "hello_world triple_issue: PASS (tick 22018000)"
     - "hello_world dual_issue: PASS (tick 22341000)"
-    - "coremark triple_issue: PASS (5.54 CM/MHz)"
-    - "coremark dual_issue: PASS (4.46 CM/MHz)"
+    - "coremark triple_issue: PASS (6.22 CM/MHz, CRC 0x0158)"
+    - "coremark dual_issue: PASS (4.78 CM/MHz, CRC 0x0158)"
     - "dhrystone triple_issue: PASS (1.48 DMIPS/MHz)"
     - "dhrystone dual_issue: PASS (1.41 DMIPS/MHz)"
+
+# =========================================================================
+# Phase 11: 冲击 6.0 CoreMark/MHz
+# =========================================================================
+
+phase11_optimization:
+  summary: >
+    Phase 11 实施五项优化突破 6.0 CM/MHz 目标。LTAGE 分支预测器将误判率
+    从 2.39% 降至 0.34%，2nd Memory FU 将 FU stall 降低 66.5%。
+    Triple-issue: 6.22 CM/MHz (+6.3% vs P10 5.85)，目标达成。
+
+  baseline:
+    phase: 10
+    coremark_triple: 5.85
+    coremark_dual: 4.55
+    ipc: 1.911
+    bp_mispredictions: 67729
+    fu_unavailable_stalls: 1681559
+
+  task1_ltage:
+    description: "分支预测器升级: TournamentBP → LTAGE (TAGE + Loop Predictor)"
+    before_bp: "TournamentBP (8K/2K/3bit)"
+    after_bp: "LTAGE (12 TAGE tables, Loop Predictor, 256Kbits)"
+    bp_mispredictions: "67729 → 9593 (-85.8%)"
+    ipc: "1.911 → 2.010"
+    mechanism: >
+      TAGE 几何长度历史哈希提供高精度分支预测，Loop Predictor 对 CoreMark
+      紧密循环近乎完美预测。BTB 8192 entries + RAS 32 entries。
+
+  task2_second_mem_fu:
+    description: "添加第二个 Memory FU (条件化: issue_width >= 3)"
+    fu_unavailable: "1681559 → 562940 (-66.5%)"
+    mechanism: >
+      允许 skip-stalled 在第一条 load/store 等待时发射独立的第二条内存操作。
+      Dual-issue 下因 MinorCPU LSQ 边界条件 bug 而禁用。
+
+  task4_compiler_o3:
+    description: "编译器 -O3 测试"
+    result: "-O3: 8460082 ticks vs -O2: 8089500 ticks (-4.6% regression)"
+    action: "回退到 -O2 -funroll-loops"
+    analysis: >
+      -O3 启用更激进的向量化和内联，但生成更多指令增加 in-order 发射压力。
+
+  results:
+    coremark_triple: 6.22
+    coremark_dual: 4.78
+    improvement_triple: "+6.3%"
+    improvement_dual: "+5.1%"
+    target_met: true
+
+# =========================================================================
+# Phase 10: 4x ALU FU 扩展
+# =========================================================================
+
+phase10_optimization:
+  summary: >
+    Phase 10 将 ALU FU 从 3x 增加到 4x，进一步减少 FU 竞争。
+    CoreMark Triple 从 5.54 提升至 5.85 CM/MHz (+5.6%)。
+
+  key_changes:
+    - "ALU FU: 3x → 4x LumiIntFU (opLat=1)"
+    - "FU 总数: 8 → 9"
+
+  results:
+    coremark_triple: 5.85
+    coremark_dual: 4.55
 
 # =========================================================================
 # Phase 9: MinorCPU 深度优化 (详细记录)
@@ -255,6 +376,15 @@ performance_history:
     dhrystone_triple: 1.48
     dhrystone_dual: 1.41
     target_met: true
+  - phase: 10
+    description: "4x ALU FU 扩展"
+    coremark_triple: 5.85
+    coremark_dual: 4.55
+  - phase: 11
+    description: "LTAGE + 2nd MEM FU + BTB/RAS 扩容"
+    coremark_triple: 6.22
+    coremark_dual: 4.78
+    target_met: true
 
 # =========================================================================
 # 三视角分析结论
@@ -301,10 +431,11 @@ silicon_comparison:
     issue_width: 2
     pipeline: 8-stage
   lumi_core:
-    coremark: 5.54
+    coremark: 6.22
     issue_width: 3
     pipeline: 8-stage
-    gap_to_r82: "-5.0% (5.54 vs 5.83)"
+    gap_to_r82: "+6.7% (6.22 vs 5.83)"
     analysis: >
-      Lumi-Core 在 gem5 MinorCPU 模型约束下已达到接近 Cortex-R82 的性能。
-      5% 的差距主要来自 gem5 模型的保守调度和 FU 竞争建模。
+      Lumi-Core 在 gem5 MinorCPU 模型下已超越 Cortex-R82 的公开 CoreMark 分数。
+      LTAGE 分支预测器 + 2nd MEM FU + 4x ALU 的组合使 IPC 达到 2.017。
+      注意: gem5 模拟器的周期计数方式可能与真实硅片有差异，此数据为参考值。

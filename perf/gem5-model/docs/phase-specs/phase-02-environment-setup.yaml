@@ -1,0 +1,61 @@
+# Phase 2: gem5 v24.1 环境搭建
+
+phase: 2
+title: "gem5 v24.1 RISC-V 编译环境搭建与基础验证"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  在 macOS 上完成 gem5 v24.1 RISC-V 编译环境搭建，解决兼容性问题，
+  成功编译 gem5.opt 并通过基础 RISC-V 仿真验证。
+
+key_decisions:
+  - topic: "Python 版本"
+    options: ["系统默认 Python 3.14", "Homebrew Python 3.12", "conda 环境"]
+    decision: "Homebrew Python 3.12 (venv 隔离, gem5 官方支持版本)"
+  - topic: "m4 来源"
+    options: ["macOS /usr/bin/m4 (Xcode CLT shim)", "Homebrew m4 (keg-only)"]
+    decision: "Homebrew m4 (/usr/bin/m4 仅为 Xcode CLT 占位符)"
+
+problems_solved:
+  - problem: "Python 3.14 与 scons 4.10.1 不兼容 (MergeFlags 乱码 -l 标志)"
+    solution: "创建 Python 3.12 venv 虚拟环境"
+  - problem: "scons CheckLibWithHeader 在 macOS 上有 bug (zlib 检测失败)"
+    solution: "修改 SConstruct 绕过 CheckLibWithHeader, 改用 conf.TryLink()"
+  - problem: "scons env.Detect() 忽略 PYTHON_CONFIG 绝对路径"
+    solution: "修改 defaults.py 支持环境变量覆盖 + SConstruct 添加绝对路径检查"
+  - problem: "venv 不含 python3-config"
+    solution: "创建 .venv/bin/python3-config 包装脚本指向 python3.12-config"
+  - problem: "zlib 头文件找不到 (homebrew keg-only)"
+    solution: "brew install zlib + 创建 /opt/homebrew/include 和 lib 符号链接"
+  - problem: "GNU m4 缺失 (/usr/bin/m4 为 Xcode CLT 占位符)"
+    solution: "brew install m4 + export PATH=/opt/homebrew/opt/m4/bin:$PATH"
+
+steps:
+  - "检查系统环境 (Python/clang/scons/RISC-V 工具链)"
+  - "创建 perf/gem5-model/ 目录结构 (configs/patches/scripts/docs/tests)"
+  - "git clone --depth 1 --branch v24.1 gem5 源码"
+  - "创建 Python 3.12 venv 并安装 scons/mako/pydot/protobuf/numpy"
+  - "应用 macOS 兼容性补丁 (SConstruct + defaults.py)"
+  - "安装并配置 m4 (brew install m4)"
+  - "scons build/RISCV/gem5.opt -j8 编译成功"
+  - "运行 simple-riscv.py 验证 (Hello world! 成功输出)"
+  - "保存构建脚本 scripts/build-gem5.sh"
+
+verification:
+  test: "simple-riscv.py Hello World"
+  exit_tick: 530893000
+  result: PASS
+
+deliverables:
+  - path: "perf/gem5-model/gem5/"
+    description: "gem5 v24.1 源码仓库"
+  - path: "perf/gem5-model/patches/macos-python312-zlib-compat.patch"
+    description: "macOS 兼容性补丁"
+  - path: "perf/gem5-model/scripts/build-gem5.sh"
+    description: "一键构建脚本"
+  - path: "perf/gem5-model/gem5/build/RISCV/gem5.opt"
+    description: "编译产物 gem5 v24.1.0.3 RISC-V (49MB)"
+  - path: "perf/gem5-model/.venv/"
+    description: "Python 3.12.13 venv 虚拟环境"

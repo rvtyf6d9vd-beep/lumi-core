@@ -1,0 +1,98 @@
+milestone: M0
+project_root: /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core
+report_type: compliance-check
+results:
+- detail: 全部 9 个核心文件存在
+  id: T1-FILES
+  status: PASS
+  tier: 1
+  title: 核心文件完整性
+- detail: 全部 4 个角色目录结构完整
+  id: T1-ROLES
+  status: PASS
+  tier: 1
+  title: 角色目录完整性
+- detail: 全部 6 个目录存在
+  id: T1-DIRS
+  status: PASS
+  tier: 1
+  title: 关键目录结构
+- detail: .git 目录存在
+  id: '13'
+  status: PASS
+  tier: 1
+  title: GitHub 版本管理
+- detail: 所有规则 YAML 格式合法
+  id: T1-YAML
+  status: PASS
+  tier: 1
+  title: 规则文件格式
+- detail: 今日日志 2026-07-01.yaml 存在
+  id: '03'
+  status: PASS
+  tier: 2
+  title: 工作留痕
+- detail: 'HTML: 9 个, 非 HTML: 893 个'
+  id: '14'
+  non_html_files:
+  - docs/project/generate_prd.py
+  - docs/project/project-flowchart-screenshot.png
+  - docs/standards/Profiles/DDI0403E_e_armv7m_arm.pdf
+  - docs/standards/Profiles/Quintauris-RT-Europa-Profile.pdf
+  - docs/standards/riscv-specs/isa/riscv-spec.pdf
+  - docs/standards/riscv-specs/isa/riscv-unprivileged.pdf
+  - docs/standards/riscv-specs/isa/riscv-privileged.pdf
+  - docs/standards/riscv-specs/extensions/riscv-packed-simd.pdf
+  - docs/standards/riscv-specs/extensions/riscv-nexus-trace.pdf
+  - docs/standards/riscv-specs/extensions/riscv-smcntrpmf.pdf
+  status: WARN
+  tier: 2
+  title: HTML 文档格式
+- detail: 风险登记册共 4 项，无跳过
+  id: '18'
+  status: PASS
+  tier: 2
+  title: 问题不允许跳过
+- detail: 当前 0/256 条
+  id: IT-1
+  status: PASS
+  tier: 2
+  title: 知识库规模
+- detail: 所有活跃任务均在 2 天内
+  id: HD-2
+  status: PASS
+  tier: 2
+  title: 两天期限预警
+- detail: '近 7 天日志: 4 个'
+  id: '16'
+  status: PASS
+  tier: 2
+  title: 指令记录
+- detail: 角色映射中 58 条规则引用全部有效
+  id: T3-MAPREF
+  status: PASS
+  tier: 3
+  title: 角色映射→规则引用一致性
+- detail: 所有规则的 applicable_roles 均在有效角色列表 ['hw-design', 'hw-ver', 'pm-infra', 'qa-audit']
+    内
+  id: T3-ROLES
+  status: PASS
+  tier: 3
+  title: 适用角色合法性
+- detail: 所有变更通知 to 字段指向有效角色
+  id: T3-NOTICE
+  status: PASS
+  tier: 3
+  title: 变更通知一致性
+- detail: 共 30 条规则，ID 全部唯一
+  id: T3-UNIQID
+  status: PASS
+  tier: 3
+  title: 规则 ID 唯一性
+summary:
+  FAIL: 0
+  PASS: 14
+  SKIP: 0
+  WARN: 1
+tier_filter: null
+timestamp: '2026-07-01T18:52:57.852414'

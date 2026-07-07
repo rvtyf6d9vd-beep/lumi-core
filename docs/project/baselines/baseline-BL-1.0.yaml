@@ -1,0 +1,1187 @@
+# Lumi-Core 需求基线快照 — BL-1.0
+# 本文件由 gen_baseline.py 自动生成，为下游流程（设计/验证/实现）的唯一参考依据
+
+baseline:
+  version: BL-1.0
+  frozen_at: '2026-07-02T22:50:50+08:00'
+  description: M1 里程碑需求基线 — Lumi-Core 全部已评审需求定版快照
+  approver: 项目负责人
+  statistics:
+    total: 91
+    by_category:
+      PPA-PIPE: 1
+      PPA-FREQ: 1
+      PPA-IPC: 3
+      PPA-AREA: 1
+      PPA-PWR: 3
+      PPA-INT: 1
+      RTL-PROF: 2
+      RTL-ISA: 11
+      RTL-MEM: 10
+      RTL-IF: 6
+      RTL-FEAT: 4
+      RTL-OTHER: 4
+      RTL-DFT: 3
+      RTL-MCORE: 2
+      RTL-BOOT: 3
+      RTL-TIMING: 2
+      RTL-QUAL: 3
+      DEL-RTL: 3
+      DEL-INT: 4
+      DEL-DOC: 3
+      SAFE: 3
+      SEC: 5
+      SW-TOOL: 2
+      SW-SDK: 2
+      SW-FW: 2
+      SW-IDE: 1
+      SW-SIM: 2
+      SW-DBG: 2
+      SW-PERF: 2
+    by_priority:
+      Must: 77
+      Could: 3
+      Should: 11
+requirements:
+- category: PPA-PIPE
+  req_id: LUMI-PIPE-001
+  name: 8 级流水线架构
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 流水线级数为 8 级，微架构设计以达到预定性能参数为准
+  change_date: '2026-06-29'
+  note: 其他微架构设计由架构组自行决定
+- category: PPA-FREQ
+  req_id: LUMI-FREQ-001
+  name: TSMC 28HPC 主频 >=1.0GHz
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: TSMC 28HPC 工艺下达到 >=1.0GHz 时钟频率
+  change_date: '2026-06-29'
+  note: 基于 TSMC 28HPC 工艺
+- category: PPA-IPC
+  req_id: LUMI-IPC-001
+  name: Coremark >=5.5 CM/MHz
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Coremark 基准测试达到 >=5.5 CM/MHz
+  change_date: '2026-06-29'
+  note: ''
+- category: PPA-IPC
+  req_id: LUMI-IPC-002
+  name: Dhrystone >=3.8 DMIPS/MHz
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Dhrystone 基准测试达到 >=3.8 DMIPS/MHz
+  change_date: '2026-06-29'
+  note: ''
+- category: PPA-IPC
+  req_id: LUMI-IPC-003
+  name: 售前售后基准测试覆盖
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Coremark、Dhrystone、Crypto (AES/SHA/CRC32) 基准测试可运行并输出报告
+  change_date: '2026-06-29'
+  note: 支撑售前和售后客户支持
+- category: PPA-AREA
+  req_id: LUMI-AREA-001
+  name: STDCELL 面积 <=0.32 mm²
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: TSMC 28HPC 工艺下 STDCELL 面积不超过 0.32 mm²
+  change_date: '2026-06-29'
+  note: 面积边界为 Core + L1 Cache 基准配置（不含 TCM/FPU/Vector）。启用 FPU+Vector(VLEN128) 预计增加约 30%~50% 面积
+- category: PPA-PWR
+  req_id: LUMI-PWR-001
+  name: 单核动态功耗 <=100mW/GHz
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Dynamic power <=100mW/GHz (单核)
+  change_date: '2026-06-29'
+  note: ''
+- category: PPA-PWR
+  req_id: LUMI-PWR-002
+  name: 单核泄漏功耗 <=32mW
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Leakage Power <=32mW (单核)
+  change_date: '2026-06-29'
+  note: ''
+- category: PPA-PWR
+  req_id: LUMI-PWR-003
+  name: 功耗状态定义与切换
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 支持 Active/Sleep/Deep Sleep 三种功耗状态，状态切换延时可配置，WFI 进入 Sleep 延时 <=8 周期
+  change_date: '2026-07-02'
+  note: 本需求定义功耗状态本身的规格（电压/频率/唤醒延时），不含 ISA 入口（见 LUMI-SYS-004）和外部系统接口（见 LUMI-SYS-008）。Sleep 状态下保持 L1 Cache/TCM 内容，Deep Sleep
+    仅保留寄存器文件
+- category: PPA-INT
+  req_id: LUMI-SYS-003
+  name: 快速中断延时 <=16 周期
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 从中断信号到第一条中断处理指令执行 <=16 时钟周期
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-PROF
+  req_id: LUMI-PROF-001
+  name: Lumi-Core Profile 技术特性合规
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: Lumi-Core Profile
+  acceptance: Profile 定义的全部 Mandatory 技术特性通过 riscv-arch-test 合规测试
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-PROF
+  req_id: LUMI-PROF-002
+  name: 特权级配置支持 (CoreM/CoreS/CoreU)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi-Core Profile
+  ref_doc: Lumi-Core Profile A2.3/A2.4
+  acceptance: 三种特权级配置可独立配置，对应 Mandatory 扩展全部实现（S/Sstvecd/Ssstrict/Sstc/Ssclic + Sm/Smpmp/Smepmp/Smrnmi/Smclic）
+  change_date: '2026-07-02'
+  note: 明确 Lumi-Core 的默认配置级别为 CoreM（Machine-only）
+- category: RTL-ISA
+  req_id: LUMI-ISA-001
+  name: RV32I 基础整数指令集
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: 全部 RV32I 指令通过合规测试
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-ISA
+  req_id: LUMI-ISA-002
+  name: M 扩展 — 整数乘除法
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: MUL/DIV 系列指令通过合规测试
+  change_date: '2026-06-29'
+  note: RV32G 包含
+- category: RTL-ISA
+  req_id: LUMI-ISA-003
+  name: A 扩展 — 原子操作
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: AMO/LR/SC 系列指令通过合规测试
+  change_date: '2026-06-29'
+  note: RV32G 包含
+- category: RTL-ISA
+  req_id: LUMI-ISA-004
+  name: F/D 双精度浮点扩展
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: FP32/FP16/BF16 浮点运算正确，支持标量和向量，数据格式互转正确
+  change_date: '2026-06-29'
+  note: RV32G 包含，FPU 可配置。超出 Profile 要求（Profile 中为 Optional），产品决策强制实现
+- category: RTL-ISA
+  req_id: LUMI-ISA-005
+  name: C 扩展 — 压缩指令
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: 16bit 压缩指令解码执行正确
+  change_date: '2026-06-29'
+  note: RV32G 包含。Profile 中由 Zce 的 Zca 子扩展覆盖，本产品显式列出以确保 RV32G 完整覆盖
+- category: RTL-ISA
+  req_id: LUMI-ISA-006
+  name: B 扩展 — 位操作
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: 位操作指令通过合规测试
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-ISA
+  req_id: LUMI-ISA-007
+  name: V 向量扩展 + zvfh/zvfbf
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Spec
+  acceptance: 基于 RVV1.0，支持 zvfh/zvfbf，VLEN=128bit 向量运算正确
+  change_date: '2026-06-29'
+  note: 支持 128bit/256bit 位宽（可配置）。超出 Profile 要求（Profile 中为 Optional），产品决策强制实现。VLEN=128 时对面积影响显著，需在配置表中列出典型配置面积
+- category: RTL-ISA
+  req_id: LUMI-ISA-008
+  name: Zce 代码压缩扩展
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: Lumi-Core Profile
+  acceptance: Zca+Zcb+Zcmp+Zcmt 全部子扩展通过 riscv-arch-test 合规测试
+  change_date: '2026-07-01'
+  note: Profile Mandatory 扩展，纳入基线实现
+- category: RTL-ISA
+  req_id: LUMI-ISA-009
+  name: Vector Crypto 向量加密指令
+  priority: Could
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 向量加密指令功能正确 (zvkg/zvkn 等)
+  change_date: '2026-06-29'
+  note: 可选支持
+- category: RTL-ISA
+  req_id: LUMI-ISA-010
+  name: Packed SIMD 扩展
+  priority: Could
+  status: Approved
+  version: v0.9.4
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: Packed SIMD 指令功能正确
+  change_date: '2026-06-29'
+  note: 基于 v0.9.4 规范，可选支持
+- category: RTL-ISA
+  req_id: LUMI-ISA-011
+  name: Profile Mandatory 扩展完整覆盖
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi-Core Profile
+  ref_doc: Lumi-Core Profile A2.2
+  acceptance: Zicsr/Zicntr/Zihpm/Zicbom/Zicbop/Zicboz/Zicond/Zihintpause/Zihintntl/Zimop/Zcmop/Ziccamoa/Zifencei 全部通过 riscv-arch-test
+    合规测试
+  change_date: '2026-07-02'
+  note: Profile A2.2 定义的 13 个 Mandatory 扩展，LUMI-PROF-001 的具体分解
+- category: RTL-MEM
+  req_id: LUMI-MEM-001
+  name: PMP 物理内存保护 (可配, 默认 8 Region)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: Lumi-Core Profile B2.1
+  acceptance: PMP Region 数量可配（默认 8），越界访问触发异常
+  change_date: '2026-06-29'
+  note: Region 数为可配置参数。Profile 要求 PMP entries=16，本产品默认配置为 8（可通过参数扩展到 16）
+- category: RTL-MEM
+  req_id: LUMI-MEM-002
+  name: TCM 紧耦合内存 (0~128KB 可配)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: TCM 大小 0~128KB 可配置，必须为 8KB 的 2 的幂次倍数
+  change_date: '2026-06-29'
+  note: 可配置选项
+- category: RTL-MEM
+  req_id: LUMI-MEM-003
+  name: TCM 三区域 (代码+数据双区)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 代码单一区域 + 数据双区域（奇偶地址），三个区域独立访问正确
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-MEM
+  req_id: LUMI-MEM-004
+  name: TCM 0 拍 / 1 拍延迟访问
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 支持 0 拍延迟和 1 拍延迟两种访问模式
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-MEM
+  req_id: LUMI-MEM-005
+  name: TCM ECC 内存保护
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: TCM ECC 保护功能正确，单 bit 翻转可检测并纠正
+  change_date: '2026-06-29'
+  note: 可选配置
+- category: RTL-MEM
+  req_id: LUMI-MEM-006
+  name: L1 Cache 可配 (8/16/32KB)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: L1 I-Cache/D-Cache 容量可选 8KB/16KB/32KB
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-MEM
+  req_id: LUMI-MEM-007
+  name: L1 Cache ECC 内存保护
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: L1 Cache ECC 保护功能正确
+  change_date: '2026-06-29'
+  note: 可选配置
+- category: RTL-MEM
+  req_id: LUMI-SYS-006
+  name: 32bit 物理寻址
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 32bit 物理地址空间寻址正确
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-MEM
+  req_id: LUMI-SYS-007
+  name: Little-Endian 字节序
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 所有内存访问符合 Little-Endian 字节序
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-MEM
+  req_id: LUMI-MEM-008
+  name: RVWMO 内存序模型
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Spec
+  ref_doc: RISC-V Unprivileged Spec Ch.17
+  acceptance: 内存访问顺序符合 RVWMO (RISC-V Weak Memory Ordering) 模型，FENCE 指令正确约束内存序
+  change_date: '2026-07-02'
+  note: RV32G 隐含要求，单核场景下与顺序一致但对多核互斥有影响
+- category: RTL-IF
+  req_id: LUMI-IF-001
+  name: AMBA4 AXI 主总线 (128bit)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: AXI4 协议合规，128bit 位宽
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-IF
+  req_id: LUMI-IF-002
+  name: FFP 外设接口 (AXI 32bit)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: FFP 接口 AXI 协议合规，32bit 位宽
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-IF
+  req_id: LUMI-IF-003
+  name: TCM 从接口 (DMA 数据导入导出)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: DMA 通过从接口正确读写 TCM 数据
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-IF
+  req_id: LUMI-SYS-001
+  name: PLIC 中断控制器支持
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: PLIC 中断控制器功能正确，中断数可配置 32~960（32 的 2 的幂次倍数）
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-IF
+  req_id: LUMI-SYS-002
+  name: CLIC 快速中断控制器
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: CLIC 中断控制器功能正确，中断数可配置 1~240
+  change_date: '2026-06-29'
+  note: 中断数为可配置选项
+- category: RTL-IF
+  req_id: LUMI-IF-004
+  name: 中断信号线规格
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: PLIC/CLIC 中断输入支持边沿触发和电平触发可配置，优先级位数可配置 (2~8 bit)，中断抢占机制正确
+  change_date: '2026-07-02'
+  note: 中断优先级和触发类型为客户集成关键参数
+- category: RTL-FEAT
+  req_id: LUMI-FEAT-001
+  name: RISC-V Debug V1.0.0
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Debug Spec V1.0.0
+  acceptance: 调试模块功能符合 RISC-V Debug V1.0.0 规范
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-FEAT
+  req_id: LUMI-FEAT-002
+  name: RISC-V Nexus Trace V1.0.0
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: RISC-V Nexus Trace V1.0.0
+  acceptance: 跟踪模块功能符合 Nexus Trace V1.0.0 规范
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-FEAT
+  req_id: LUMI-FEAT-003
+  name: 跟踪指令流 AXI4 写出
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 跟踪指令流数据通过 AXI4 接口正确写出
+  change_date: '2026-06-29'
+  note: 可配置选项
+- category: RTL-FEAT
+  req_id: LUMI-FEAT-004
+  name: JTAG/cJTAG 调试物理接口
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: IEEE 1149.1 / IEEE 1149.7
+  acceptance: 支持标准 JTAG (IEEE 1149.1) 和可选 cJTAG (IEEE 1149.7) 物理接口，TAP 控制器功能正确
+  change_date: '2026-07-02'
+  note: JTAG 为必要接口，cJTAG 为可配置选项
+- category: RTL-OTHER
+  req_id: LUMI-SYS-004
+  name: WFI/WRS 低功耗指令
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: WFI 和 WRS 指令正确进入低功耗状态
+  change_date: '2026-06-29'
+  note: 本需求定义 ISA 层面的 WFI/WRS 指令行为（指令解码、状态转换触发），不含功耗状态规格（见 LUMI-PWR-003）和外部系统接口（见 LUMI-SYS-008）
+- category: RTL-OTHER
+  req_id: LUMI-SYS-005
+  name: 多时钟域多电压域管理
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 支持多个电压域的功耗管理机制
+  change_date: '2026-06-29'
+  note: ''
+- category: RTL-OTHER
+  req_id: LUMI-SYS-008
+  name: 低功耗状态管理接口
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 可配置 CPU 进入睡眠或深度睡眠状态，进行系统功率管理
+  change_date: '2026-06-29'
+  note: 本需求定义外部系统接口层面的功耗控制信号（如 sys_sleep_req/ack、sys_wake_event），不含功耗状态规格（见 LUMI-PWR-003）和 ISA 入口（见 LUMI-SYS-004）
+- category: RTL-OTHER
+  req_id: LUMI-FEAT-005
+  name: 自定义协处理器接口
+  priority: Could
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 协处理器接口功能正确，可扩展自定义标量/矢量协处理器
+  change_date: '2026-06-29'
+  note: 可配置选项
+- category: RTL-DFT
+  req_id: LUMI-DFT-001
+  name: Scan Chain 扫描链
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: ''
+  acceptance: 全扫描链插入，扫描覆盖率 >=98%，支持 DFT 插入和 ATPG 生成
+  change_date: '2026-07-02'
+  note: RTL 设计需保留 DFT 插入点
+- category: RTL-DFT
+  req_id: LUMI-DFT-002
+  name: MBIST 内存内建自测试
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: ''
+  acceptance: TCM 和 L1 Cache 支持 MBIST，可检测制造缺陷
+  change_date: '2026-07-02'
+  note: ''
+- category: RTL-DFT
+  req_id: LUMI-DFT-003
+  name: JTAG 边界扫描 (IEEE 1149.1)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: IEEE 1149.1
+  acceptance: BSDL 文件完整，支持 EXTEST/INTEST/SAMPLE/PRELOAD
+  change_date: '2026-07-02'
+  note: 与调试 JTAG 复用物理接口
+- category: RTL-MCORE
+  req_id: LUMI-MCORE-001
+  name: 多核互联拓扑
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 支持 1~4 核配置，核间通过共享 L2 或互连总线通信，缓存一致性协议正确
+  change_date: '2026-07-02'
+  note: 默认单核，可扩展到多核配置
+- category: RTL-MCORE
+  req_id: LUMI-MCORE-002
+  name: 双核锁步 (Dual Lock-Step)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 双核锁步模式下，两核执行相同指令流并比较结果，检测到不一致时触发异常。比较粒度为指令级，错误处理策略可配置
+  change_date: '2026-07-02'
+  note: 对应 LUMI-SAFE-002，面向 ASIL-D 场景。异步互锁需明确时钟域关系
+- category: RTL-BOOT
+  req_id: LUMI-BOOT-001
+  name: 复位类型支持
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 支持冷复位 (Power-on Reset)、暖复位 (Warm Reset) 和软复位 (Software Reset)，各复位类型的影响范围明确定义
+  change_date: '2026-07-02'
+  note: 冷复位清除全部状态，暖复位保持调试状态，软复位仅复位 CPU 核心
+- category: RTL-BOOT
+  req_id: LUMI-BOOT-002
+  name: 启动流程与向量表
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Spec
+  ref_doc: RISC-V Privileged Spec §3.1
+  acceptance: 复位后从可配置的复位向量地址开始执行，支持 Boot ROM/TCM/外部存储三种启动模式
+  change_date: '2026-07-02'
+  note: 复位向量地址为可配置参数
+- category: RTL-BOOT
+  req_id: LUMI-BOOT-003
+  name: Boot ROM 支持
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 可选内置 Boot ROM，容量可配置 (4~32KB)，支持安全启动固件验证
+  change_date: '2026-07-02'
+  note: 与 LUMI-SEC-001 安全启动联动
+- category: RTL-TIMING
+  req_id: LUMI-TIMING-001
+  name: 综合约束文件 (SDC)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: ''
+  acceptance: 交付完整的 SDC 时序约束文件，覆盖所有工作模式和角落条件 (ss/tt/ff x temp x voltage)
+  change_date: '2026-07-02'
+  note: ''
+- category: RTL-TIMING
+  req_id: LUMI-TIMING-002
+  name: 关键路径时序目标
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: TSMC 28HPC ss corner (0.81V, 125°C) 下时序收敛，WNS >= 0
+  change_date: '2026-07-02'
+  note: 需明确目标工艺库和角落条件
+- category: RTL-QUAL
+  req_id: LUMI-QUAL-001
+  name: CDC/RDC 验证
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: ''
+  acceptance: 通过 CDC (Clock Domain Crossing) 和 RDC (Reset Domain Crossing) 验证，无未解析的跨域路径
+  change_date: '2026-07-02'
+  note: ''
+- category: RTL-QUAL
+  req_id: LUMI-QUAL-002
+  name: Lint 检查
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 质量标准
+  ref_doc: ''
+  acceptance: RTL 通过 SpyGlass 或同等工具 Lint 检查，无 Error，Warning 有明确解释或 Waiver
+  change_date: '2026-07-02'
+  note: Lint 工具选择需在交付文档中明确
+- category: RTL-QUAL
+  req_id: LUMI-QUAL-003
+  name: DEF/FIT 率目标
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 车规客户要求
+  ref_doc: AEC-Q100 / IEC 61508
+  acceptance: DEF (Defects per FIT) 率符合目标安全完整性等级要求，FMEDA 分析完成并输出报告
+  change_date: '2026-07-02'
+  note: 具体目标值待安全分析后确定，车规客户要求 ASIL-B/D 对应的 FIT 率
+- category: DEL-RTL
+  req_id: LUMI-DEL-001
+  name: RTL 源码 (Verilog)
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 通过 lint 检查（工具集见 LUMI-QUAL-002），无 Error，Warning 有明确 Waiver
+  change_date: ''
+  note: ''
+- category: DEL-RTL
+  req_id: LUMI-DEL-002
+  name: 验证测试台
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 回归测试 100% 通过，测试用例覆盖所有 Must 需求
+  change_date: ''
+  note: ''
+- category: DEL-RTL
+  req_id: LUMI-DEL-003
+  name: Cycle Accurate Model
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: Lumi Req
+  ref_doc: ''
+  acceptance: 提供可用的 Cycle Accurate Model，支持软件性能评估
+  change_date: '2026-06-26'
+  note: ''
+- category: DEL-INT
+  req_id: LUMI-DEL-004
+  name: 集成手册 (Integration Guide)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 包含 IP 实例化示例、接口连接指南、配置参数说明、典型应用电路
+  change_date: '2026-07-02'
+  note: 客户集成的关键交付物
+- category: DEL-INT
+  req_id: LUMI-DEL-005
+  name: 时序模型 (Liberty/LEF)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 交付 .lib (Liberty) 和 .lef (LEF) 文件，覆盖所有角落条件
+  change_date: '2026-07-02'
+  note: ''
+- category: DEL-INT
+  req_id: LUMI-DEL-006
+  name: 综合约束文件 (SDC)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 交付完整 SDC 文件，覆盖所有工作模式和角落条件
+  change_date: '2026-07-02'
+  note: ''
+- category: DEL-INT
+  req_id: LUMI-DEL-007
+  name: Formality 等价性验证网表
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 提供综合后网表的等价性验证脚本和参考结果
+  change_date: '2026-07-02'
+  note: ''
+- category: DEL-DOC
+  req_id: LUMI-DEL-008
+  name: IP-XACT/RTL 描述文件
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: IP-XACT IEEE 1685
+  acceptance: 提供符合 IP-XACT 标准的 IP 描述文件，支持 EDA 工具自动集成
+  change_date: '2026-07-02'
+  note: ''
+- category: DEL-DOC
+  req_id: LUMI-DEL-009
+  name: FPGA 原型/评估板支持包
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 提供 FPGA 综合约束和参考设计，支持客户早期评估
+  change_date: '2026-07-02'
+  note: ''
+- category: DEL-DOC
+  req_id: LUMI-DEL-010
+  name: BSDL 文件
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: IEEE 1149.1
+  acceptance: 提供完整的 BSDL 边界扫描描述文件
+  change_date: '2026-07-02'
+  note: 对应 LUMI-DFT-003
+- category: SAFE
+  req_id: LUMI-SAFE-001
+  name: PMP 物理内存保护 (引用 LUMI-MEM-001)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: LUMI-MEM-001
+  acceptance: '满足 LUMI-MEM-001 的全部要求，另外在安全模式下
+
+    PMP 配置不可被非特权代码修改（Smepmp 扩展）
+
+    '
+  change_date: '2026-07-02'
+  note: 与硬件需求 LUMI-MEM-001 保持一致，安全视角增加 Smepmp 约束；同时引用 LUMI-SEC-004
+- category: SAFE
+  req_id: LUMI-SAFE-002
+  name: 双核异步互锁
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: LUMI-MCORE-002
+  acceptance: '双核异步互锁机制正确，检测到不一致时触发异常。
+
+    比较粒度为指令级，错误处理策略可配置
+
+    '
+  change_date: '2026-06-29'
+  note: 对应硬件需求 LUMI-MCORE-002
+- category: SAFE
+  req_id: LUMI-SAFE-003
+  name: 总线 Parity 保护机制
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: ''
+  acceptance: 总线 Parity 校验正确，检测到错误时触发异常
+  change_date: '2026-06-29'
+  note: 信息安全视角引用见 LUMI-SEC-005
+- category: SEC
+  req_id: LUMI-SEC-001
+  name: 安全启动 ROM
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: LUMI-BOOT-003
+  acceptance: 'IP 内置 Boot ROM 固件支持签名验证（RSA-2048 或 ECDSA-P256），
+
+    启动固件签名验证通过后方可跳转执行；
+
+    Boot ROM 容量 4~32KB 可配置（引用 LUMI-BOOT-003）；
+
+    不含 SoC 级密钥存储（OTP/eFuse），密钥由外部安全存储提供
+
+    '
+  change_date: '2026-07-01'
+  note: IP 提供签名验证逻辑，密钥注入接口由 SoC 集成方实现
+- category: SEC
+  req_id: LUMI-SEC-002
+  name: 加密加速指令支持
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: LUMI-ISA-009/LUMI-ISA-010
+  acceptance: '通过 RISC-V Vector Crypto 扩展 (zvkg/zvkn 等) 和/或 Packed SIMD 扩展
+
+    实现加密算法加速（AES/SHA/SM3/SM4），指令功能正确；
+
+    IP 不提供独立硬件加密引擎模块
+
+    '
+  change_date: '2026-07-01'
+  note: 加密加速通过 ISA 扩展实现，引用 LUMI-ISA-009 (Vector Crypto) 和 LUMI-ISA-010 (Packed SIMD)
+- category: SEC
+  req_id: LUMI-SEC-003
+  name: 安全调试策略
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: LUMI-FEAT-001/RISC-V Debug V1.0.0
+  acceptance: '支持 Debug Authentication 机制：
+
+    (1) Debug Lock/Unlock 功能，通过 CSR 或外部引脚控制调试端口使能状态；
+
+    (2) 锁定状态下禁止调试器连接和内存/寄存器访问；
+
+    (3) 支持安全调试等级配置（完全锁定/仅断点/完全开放）；
+
+    (4) Lock 状态不可通过软件绕过，需硬件复位或密钥认证解锁
+
+    '
+  change_date: '2026-07-01'
+  note: 对应 RISC-V Debug V1.0.0 (LUMI-FEAT-001)，调试安全是 IP 产品级必备功能
+- category: SEC
+  req_id: LUMI-SEC-004
+  name: PMP 安全隔离 (引用 LUMI-MEM-001 + Smepmp)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Profile/Lumi-Core Profile
+  ref_doc: LUMI-MEM-001/Lumi-Core Profile Mandatory Smepmp
+  acceptance: '满足 LUMI-MEM-001 全部 PMP 功能要求，另外：
+
+    (1) Smepmp 扩展生效，M-mode 下 PMP 配置不可被 S/U-mode 代码修改；
+
+    (2) PMP 配置锁定后，非特权代码无法篡改内存访问权限；
+
+    (3) 支持至少 8 个 PMP Region（可配置扩展到 16）；
+
+    IP 提供的隔离能力边界：基于 PMP 的内存访问控制，不含 MMU-based 安全域隔离
+
+    '
+  change_date: '2026-07-01'
+  note: Lumi-Core Profile Mandatory Smepmp 要求，IP 级隔离能力上限为 PMP，不含 TrustZone 等价机制
+- category: SEC
+  req_id: LUMI-SEC-005
+  name: 总线完整性保护
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: LUMI-SAFE-003
+  acceptance: 'AXI 主总线和 FFP 外设总线支持 Parity 校验（引用 LUMI-SAFE-003），
+
+    检测到总线数据完整性错误时触发异常 (bus_error_exception)，
+
+    异常处理策略可配置（异常中断 / NMI / 系统复位）
+
+    '
+  change_date: '2026-07-01'
+  note: 从信息安全视角补充总线保护，对应功能安全需求 LUMI-SAFE-003
+- category: SW-TOOL
+  req_id: LUMI-TOOL-001
+  name: GCC 14+ 支持
+  priority: Must
+  status: Approved
+  version: v0.1
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 可编译并运行裸机程序，支持 RV32IMAFDCBV + Zce 全部已实现扩展
+  change_date: ''
+  note: ''
+- category: SW-TOOL
+  req_id: LUMI-TOOL-002
+  name: LLVM/Clang 支持
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: LLVM 后端支持 Lumi-Core 的全部已实现 ISA 扩展，可编译裸机程序
+  change_date: '2026-07-02'
+  note: 部分客户偏好 LLVM 工具链
+- category: SW-SDK
+  req_id: LUMI-SDK-001
+  name: HAL/BSP 硬件抽象层
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 提供寄存器级 HAL 库，覆盖全部外设寄存器访问、中断配置、时钟管理
+  change_date: '2026-07-02'
+  note: ''
+- category: SW-SDK
+  req_id: LUMI-SDK-002
+  name: 外设驱动库
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 提供 UART/SPI/I2C/GPIO/Timer 等常用外设驱动
+  change_date: '2026-07-02'
+  note: ''
+- category: SW-FW
+  req_id: LUMI-FW-001
+  name: Boot Firmware
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi原始需求
+  ref_doc: LUMI-BOOT-001/LUMI-SEC-001
+  acceptance: 提供 Boot ROM 固件源码，支持安全启动签名验证和基本硬件初始化
+  change_date: '2026-07-02'
+  note: 对应 LUMI-BOOT-003 Boot ROM
+- category: SW-FW
+  req_id: LUMI-FW-002
+  name: RTOS 移植支持
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: 客户要求
+  ref_doc: ''
+  acceptance: 提供 FreeRTOS 和 Zephyr RTOS 的 BSP 移植，可编译运行基本任务调度
+  change_date: '2026-07-02'
+  note: 汽车/工业客户普遍使用 RTOS
+- category: SW-IDE
+  req_id: LUMI-IDE-001
+  name: Eclipse/VS Code 调试支持
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 提供 GDB 调试配置文件和 IDE 集成指南，支持断点、单步、变量查看
+  change_date: '2026-07-02'
+  note: ''
+- category: SW-SIM
+  req_id: LUMI-SIM-001
+  name: 指令集模拟器 (ISS)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: IP 产品标准
+  ref_doc: ''
+  acceptance: 提供兼容 Spike 或 Whisper 的指令集模拟器，支持 Lumi-Core 全部已实现 ISA 扩展
+  change_date: '2026-07-02'
+  note: 用于软件开发早期和回归测试 Golden Model
+- category: SW-SIM
+  req_id: LUMI-SIM-002
+  name: Cycle Accurate Model (gem5)
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi Req
+  ref_doc: LUMI-DEL-003
+  acceptance: gem5 模型支持 Lumi-Core 微架构参数配置，性能评估误差 <=10%
+  change_date: '2026-07-02'
+  note: 对应交付物 LUMI-DEL-003
+- category: SW-DBG
+  req_id: LUMI-DBG-001
+  name: GDB + OpenOCD 支持
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Debug Spec
+  ref_doc: RISC-V Debug V1.0.0
+  acceptance: GDB 通过 OpenOCD 连接 Lumi-Core，支持断点、单步、内存读写、寄存器查看
+  change_date: '2026-07-02'
+  note: 对应 LUMI-FEAT-001 调试模块
+- category: SW-DBG
+  req_id: LUMI-DBG-002
+  name: Trace 解码工具
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Nexus Trace
+  ref_doc: RISC-V Nexus Trace V1.0.0
+  acceptance: 提供 Trace 数据包解码工具，可将 Trace AXI4 输出还原为指令流
+  change_date: '2026-07-02'
+  note: 对应 LUMI-FEAT-002/F003
+- category: SW-PERF
+  req_id: LUMI-PERF-001
+  name: 基准测试套件
+  priority: Must
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: Lumi Req
+  ref_doc: LUMI-IPC-001/002/003
+  acceptance: 提供 CoreMark、Dhrystone、Crypto 基准测试的可编译源码和运行脚本
+  change_date: '2026-07-02'
+  note: 对应 perf/benchmarks/ 目录
+- category: SW-PERF
+  req_id: LUMI-PERF-002
+  name: 性能计数器工具
+  priority: Should
+  status: Approved
+  version: v1.0
+  baseline: BL-1.0
+  source: RISC-V Spec
+  ref_doc: Zihpm/Zicntr
+  acceptance: 提供读取和分析硬件性能计数器 (cycle/instret/hpm) 的工具库
+  change_date: '2026-07-02'
+  note: ''

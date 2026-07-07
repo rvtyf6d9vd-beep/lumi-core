@@ -1,11 +1,213 @@
 # ═══════════════ 10. 需求追溯矩阵 ═══════════════
 section: "10. 需求追溯矩阵"
 id: sec-trace
-description: "展示需求 → 设计文档 → 验证用例的完整追溯链，确保每条需求有对应的设计和验证覆盖。"
+description: "展示需求 → 架构章节 → 设计文档 → 验证用例的完整追溯链，确保每条需求有对应的设计和验证覆盖。"
+
+traceability_structure:
+  chain: "REQ-ID → 架构章节(platform-spec.html) → 模块设计文档(docs/design/) → 验证用例(tests/)"
+  coverage_target: "100% Must 需求必须有对应的设计文档和验证用例"
+  review_trigger: "每次里程碑门禁时检查追溯覆盖率"
 
 sub_sections:
-  - title: ""
+  - title: "10.1 PPA 目标追溯"
     table_type: data
-    headers: [REQ-ID, 需求名称, 设计文档, 验证用例, 覆盖状态]
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
     rows:
-      - [LUMI-ISA-001, RV32I, "docs/design/isa/rv32i.html", "tc_isa_rv32i_001~040", Covered]
+      - [LUMI-PIPE-001, 8级流水线架构, "§4 微架构定义", "docs/design/pipeline/", "tc_pipe_*", "Pending"]
+      - [LUMI-FREQ-001, TSMC 28HPC 主频≥1.0GHz, "—", "docs/design/physical/", "tc_synth_*", "Pending"]
+      - [LUMI-IPC-001, CoreMark ≥5.5 CM/MHz, "§4.1", "—", "perf/benchmarks/coremark/", Covered]
+      - [LUMI-IPC-002, Dhrystone ≥3.8 DMIPS/MHz, "§4.1", "—", "perf/benchmarks/dhrystone/", Covered]
+      - [LUMI-IPC-003, 售前售后基准测试覆盖, "§4.1", "—", "perf/benchmarks/", Covered]
+      - [LUMI-AREA-001, STDCELL 面积 ≤0.32 mm², "—", "docs/design/physical/", "tc_area_*", "Pending"]
+      - [LUMI-PWR-001, 单核动态功耗 ≤100mW/GHz, "—", "docs/design/physical/", "tc_power_*", "Pending"]
+      - [LUMI-PWR-002, 单核泄漏功耗 ≤32mW, "—", "docs/design/physical/", "tc_leakage_*", "Pending"]
+      - [LUMI-PWR-003, 功耗状态定义与切换, "§8.2", "docs/design/power/", "tc_power_state_*", "Pending"]
+      - [LUMI-SYS-003, 快速中断延时 ≤16 周期, "§5.3.3", "docs/design/clic/", "tc_irq_latency_*", "Pending"]
+
+  - title: "10.2 RTL 功能需求追溯"
+    table_type: data
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-PROF-001, Profile 技术特性合规, "§2 指令集架构", "docs/design/isa/", "tc_profile_*", "Pending"]
+      - [LUMI-PROF-002, 特权级配置支持, "§3.1", "docs/design/privilege/", "tc_priv_*", "Pending"]
+      - [LUMI-ISA-001, RV32I 基础整数指令集, "§2.2", "docs/design/isa/rv32i.html", "tc_isa_rv32i_001~040", Covered]
+      - [LUMI-ISA-002, M 扩展 — 整数乘除法, "§2.2", "docs/design/isa/m_ext.html", "tc_isa_m_*", "Pending"]
+      - [LUMI-ISA-003, A 扩展 — 原子操作, "§2.2", "docs/design/isa/a_ext.html", "tc_isa_a_*", Covered]
+      - [LUMI-ISA-004, F/D 双精度浮点扩展, "§2.2", "docs/design/isa/fpu.html", "tc_isa_fpu_*", "Pending"]
+      - [LUMI-ISA-005, C 扩展 — 压缩指令, "§2.2", "docs/design/isa/c_ext.html", "tc_isa_c_*", Covered]
+      - [LUMI-ISA-006, B 扩展 — 位操作, "§2.2", "docs/design/isa/b_ext.html", "tc_isa_b_*", "Pending"]
+      - [LUMI-ISA-007, V 向量扩展 + zvfh/zvfbf, "§2.2", "docs/design/isa/v_ext.html", "tc_isa_v_*", "Pending"]
+      - [LUMI-ISA-008, Zce 代码压缩扩展, "§2.2", "docs/design/isa/zce.html", "tc_isa_zce_*", Covered]
+      - [LUMI-ISA-009, Vector Crypto 向量加密, "§2.3", "docs/design/isa/vcrypto.html", "tc_isa_vcrypto_*", "Pending"]
+      - [LUMI-ISA-010, Packed SIMD 扩展, "§2.3", "docs/design/isa/simd.html", "tc_isa_simd_*", "Pending"]
+      - [LUMI-ISA-011, Profile Mandatory 扩展完整覆盖, "§2.2", "docs/design/isa/", "tc_isa_profile_*", "Pending"]
+      - [LUMI-MEM-001, PMP 物理内存保护 (8 Region), "§3.2", "docs/design/pmp/", "tc_pmp_*", Covered]
+      - [LUMI-MEM-002, TCM 紧耦合内存 (0~128KB), "§7.2", "docs/design/tcm/", "tc_tcm_*", "Pending"]
+      - [LUMI-MEM-003, TCM 三区域 (代码+数据双区), "§7.2", "docs/design/tcm/", "tc_tcm_region_*", "Pending"]
+      - [LUMI-MEM-004, TCM 0/1 拍延迟访问, "§7.2", "docs/design/tcm/", "tc_tcm_latency_*", "Pending"]
+      - [LUMI-MEM-005, TCM ECC 内存保护, "§7.2", "docs/design/tcm/ecc.html", "tc_tcm_ecc_*", "Pending"]
+      - [LUMI-MEM-006, L1 Cache 可配 (8/16/32KB), "§7.3", "docs/design/cache/", "tc_cache_*", "Pending"]
+      - [LUMI-MEM-007, L1 Cache ECC 保护, "§7.3", "docs/design/cache/ecc.html", "tc_cache_ecc_*", "Pending"]
+      - [LUMI-MEM-008, RVWMO 内存序模型, "§7.4", "docs/design/mmu/", "tc_rvwmo_*", "Pending"]
+      - [LUMI-MEM-009, PMA 物理内存属性检查器, "§7.8", "docs/design/pma/", "tc_pma_*", "Pending"]
+      - [LUMI-CLK-001, 多时钟域架构, "§8.9.1", "docs/design/clock/", "tc_clock_domain_*", "Pending"]
+      - [LUMI-CLK-002, Clock Gating 策略, "§8.9.2", "docs/design/clock/", "tc_clk_gate_*", "Pending"]
+      - [LUMI-CLK-003, 复位域划分, "§8.9.3", "docs/design/clock/", "tc_rst_domain_*", "Pending"]
+      - [LUMI-PWR-004, 电源域划分与 UPF 交付, "§8.9.4", "docs/design/power/", "tc_power_domain_*", "Pending"]
+      - [LUMI-PWR-005, 关键 CSR Retention 寄存器, "§8.9.4", "docs/design/power/", "tc_retention_*", "Pending"]
+      - [LUMI-SYS-001, PLIC 中断控制器, "§5.4", "docs/design/plic/", "tc_plic_*", "Covered"]
+      - [LUMI-SYS-002, CLIC 快速中断控制器, "§5.3", "docs/design/clic/", "tc_clic_*", Covered]
+      - [LUMI-SYS-004, WFI/WRS 低功耗指令, "§8.2", "docs/design/power/", "tc_power_wfi_*", "Pending"]
+      - [LUMI-SYS-005, 多时钟域多电压域管理, "§8.2", "docs/design/power/", "tc_power_domain_*", "Pending"]
+      - [LUMI-SYS-006, 32bit 物理寻址, "§7.4", "docs/design/mmu/", "tc_addr_*", "Pending"]
+      - [LUMI-SYS-007, Little-Endian 字节序, "§7.4", "docs/design/mmu/", "tc_endian_*", "Pending"]
+      - [LUMI-SYS-008, 低功耗状态管理接口, "§8.2", "docs/design/power/", "tc_power_state_*", "Pending"]
+      - [LUMI-IF-001, AMBA4 AXI 主总线 (128bit), "§7.5", "docs/design/bus/axi.html", "tc_axi_*", "Pending"]
+      - [LUMI-IF-002, FFP 外设接口 (AXI 32bit), "§7.5", "docs/design/bus/ffp.html", "tc_ffp_*", "Pending"]
+      - [LUMI-IF-003, TCM 从接口 (DMA), "§7.5", "docs/design/tcm/dma.html", "tc_tcm_dma_*", "Pending"]
+      - [LUMI-IF-004, 中断信号线规格, "§5.3/5.4", "docs/design/clic/", "tc_irq_signal_*", "Pending"]
+      - [LUMI-FEAT-001, RISC-V Debug V1.0.0, "§6.1", "docs/design/debug/", "tc_debug_*", "Pending"]
+      - [LUMI-FEAT-002, RISC-V Nexus Trace V1.0.0, "§6.2", "docs/design/trace/", "tc_trace_*", "Pending"]
+      - [LUMI-FEAT-003, Trace AXI4 写出, "§6.2", "docs/design/trace/", "tc_trace_axi_*", "Pending"]
+      - [LUMI-FEAT-004, JTAG/cJTAG 调试物理接口, "§6.3", "docs/design/debug/jtag.html", "tc_jtag_*", "Pending"]
+      - [LUMI-FEAT-005, 自定义协处理器接口, "§2.3", "docs/design/coproc/", "tc_coproc_*", "Pending"]
+      - [LUMI-DFT-001, Scan Chain 扫描链, "—", "docs/design/dft/scan.html", "tc_dft_scan_*", "Pending"]
+      - [LUMI-DFT-002, MBIST 内存内建自测试, "—", "docs/design/dft/mbist.html", "tc_dft_mbist_*", "Pending"]
+      - [LUMI-DFT-003, JTAG 边界扫描, "§6.3", "docs/design/dft/bscan.html", "tc_dft_bscan_*", "Pending"]
+      - [LUMI-MCORE-001, 多核互联拓扑, "—", "docs/design/multicore/", "tc_multicore_*", "Pending"]
+      - [LUMI-MCORE-002, 双核锁步 (Dual Lock-Step), "—", "docs/design/multicore/lockstep.html", "tc_lockstep_*", "Pending"]
+      - [LUMI-BOOT-001, 复位类型支持, "§8.3", "docs/design/boot/", "tc_reset_*", "Pending"]
+      - [LUMI-BOOT-002, 启动流程与向量表, "§8.3", "docs/design/boot/", "tc_boot_*", "Pending"]
+      - [LUMI-BOOT-003, Boot ROM 支持, "§8.3", "docs/design/boot/rom.html", "tc_bootrom_*", "Pending"]
+      - [LUMI-TIMING-001, 综合约束文件 (SDC), "—", "docs/design/physical/sdc.html", "tc_sdc_*", "Pending"]
+      - [LUMI-TIMING-002, 关键路径时序目标, "—", "docs/design/physical/", "tc_timing_*", "Pending"]
+      - [LUMI-QUAL-001, CDC/RDC 验证, "—", "docs/design/quality/cdc.html", "tc_cdc_*", "Pending"]
+      - [LUMI-QUAL-002, Lint 检查, "—", "docs/design/quality/lint.html", "tc_lint_*", "Pending"]
+      - [LUMI-QUAL-003, DEF/FIT 率目标, "—", "docs/design/quality/fmeda.html", "tc_fmeda_*", "Pending"]
+
+  - title: "10.3 交付物需求追溯"
+    table_type: data
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-DEL-001, RTL 源码 (Verilog), "—", "src/", "tc_lint_*", "Pending"]
+      - [LUMI-DEL-002, 验证测试台, "—", "tests/", "tc_regression_*", "Pending"]
+      - [LUMI-DEL-003, Cycle Accurate Model, "—", "perf/gem5-model/", "tc_gem5_*", "Pending"]
+      - [LUMI-DEL-004, 集成手册, "—", "docs/integration/", "—", "Pending"]
+      - [LUMI-DEL-005, 时序模型 (Liberty/LEF), "—", "docs/design/physical/", "—", "Pending"]
+      - [LUMI-DEL-006, 综合约束文件 (SDC), "—", "docs/design/physical/sdc.html", "tc_sdc_*", "Pending"]
+      - [LUMI-DEL-007, Formality 等价性验证, "—", "—", "tc_formality_*", "Pending"]
+      - [LUMI-DEL-008, IP-XACT/RTL 描述文件, "—", "—", "—", "Pending"]
+      - [LUMI-DEL-009, FPGA 原型/评估板支持包, "—", "—", "—", "Pending"]
+      - [LUMI-DEL-010, BSDL 文件, "§6.3", "docs/design/dft/bscan.html", "—", "Pending"]
+      - [LUMI-DEL-011, 程序员参考手册 (PRM), "—", "docs/programmer/", "—", "Pending"]
+      - [LUMI-DEL-012, RISC-V Compliance Test 结果报告, "—", "riscv-arch-test/", "tc_arch_test_*", "Pending"]
+
+  - title: "10.4 功能安全需求追溯"
+    table_type: data
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-SAFE-001, PMP 安全保护 (Smepmp), "§3.2", "docs/design/pmp/", "tc_pmp_smepmp_*", "Pending"]
+      - [LUMI-SAFE-002, 双核异步互锁, "—", "docs/design/multicore/lockstep.html", "tc_lockstep_*", "Pending"]
+      - [LUMI-SAFE-003, 总线 Parity 保护, "§7.5", "docs/design/bus/parity.html", "tc_bus_parity_*", "Pending"]
+      - [LUMI-SAFE-004, FMEDA 故障模式分析, "—", "—", "—", "Proposed (v2.0)"]
+      - [LUMI-SAFE-005, 安全手册, "—", "—", "—", "Proposed (v2.0)"]
+
+  - title: "10.5 信息安全需求追溯"
+    table_type: data
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-SEC-001, 安全启动 ROM, "§8.3", "docs/design/boot/secure.html", "tc_secure_boot_*", "Pending"]
+      - [LUMI-SEC-002, 加密加速指令支持, "§2.3", "docs/design/isa/vcrypto.html", "tc_isa_vcrypto_*", "Pending"]
+      - [LUMI-SEC-003, 安全调试策略, "§6.1", "docs/design/debug/auth.html", "tc_debug_auth_*", "Pending"]
+      - [LUMI-SEC-004, PMP 安全隔离 (Smepmp), "§3.2", "docs/design/pmp/", "tc_pmp_isolation_*", "Pending"]
+      - [LUMI-SEC-005, 总线完整性保护, "§7.5", "docs/design/bus/parity.html", "tc_bus_integrity_*", "Pending"]
+
+  - title: "10.6 软件需求追溯"
+    table_type: data
+    headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
+    rows:
+      - [LUMI-TOOL-001, GCC 14+ 支持, "§2.2", "software/gcc/", "tc_gcc_*", "Pending"]
+      - [LUMI-TOOL-002, LLVM/Clang 支持, "§2.2", "software/llvm/", "tc_llvm_*", "Pending"]
+      - [LUMI-SDK-001, HAL/BSP 硬件抽象层, "—", "software/hal/", "tc_hal_*", "Pending"]
+      - [LUMI-SDK-002, 外设驱动库, "—", "software/drivers/", "tc_driver_*", "Pending"]
+      - [LUMI-FW-001, Boot Firmware, "§8.3", "software/bootfw/", "tc_bootfw_*", "Pending"]
+      - [LUMI-FW-002, RTOS 移植支持, "—", "software/rtos/", "tc_rtos_*", "Pending"]
+      - [LUMI-IDE-001, Eclipse/VS Code 调试支持, "§6.1", "software/ide/", "—", "Pending"]
+      - [LUMI-SIM-001, 指令集模拟器 (ISS), "§2.2", "perf/gem5-model/", "tc_iss_*", "Pending"]
+      - [LUMI-SIM-002, Cycle Accurate Model (gem5), "§4", "perf/gem5-model/", "tc_gem5_*", "Pending"]
+      - [LUMI-DBG-001, GDB + OpenOCD 支持, "§6.1", "software/debug/", "tc_gdb_*", "Pending"]
+      - [LUMI-DBG-002, Trace 解码工具, "§6.2", "software/trace/", "tc_trace_decode_*", "Pending"]
+      - [LUMI-PERF-001, 基准测试套件, "§4.1", "perf/benchmarks/", "tc_bench_*", Covered]
+      - [LUMI-PERF-002, 性能计数器工具, "§4", "software/perf/", "tc_hpm_*", "Pending"]
+
+  - title: "10.7 需求依赖关系"
+    description: |
+      记录 PRD 中各项需求之间的依赖关系，包括硬件模块间依赖、软硬件协同依赖、
+      以及与 RISC-V Profile 的兼容性要求。依赖方向：依赖方 → 被依赖方。
+    sub_sub_sections:
+      - title: "10.7.1 硬件内部依赖"
+        table_type: data
+        headers: [依赖方, 被依赖方, 依赖类型, 说明]
+        rows:
+          - ["LUMI-IPC-001/002 (性能基准)", "LUMI-PIPE-001 (流水线) + 分支预测", "性能依赖", "流水线架构和分支预测精度决定 IPC 上限"]
+          - ["LUMI-SYS-003 (中断延时 ≤16c)", "LUMI-SYS-002 (CLIC)", "功能依赖", "快速中断路径依赖 CLIC 硬件实现"]
+          - ["LUMI-MCORE-002 (锁步)", "LUMI-MCORE-001 (多核互联)", "功能依赖", "锁步需多核拓扑支撑"]
+          - ["LUMI-MEM-005 (TCM ECC)", "LUMI-MEM-002 (TCM)", "功能依赖", "ECC 依附于 TCM 存储子系统"]
+          - ["LUMI-MEM-007 (Cache ECC)", "LUMI-MEM-006 (L1 Cache)", "功能依赖", "ECC 依附于 Cache 存储子系统"]
+          - ["LUMI-FEAT-003 (Trace AXI)", "LUMI-IF-001 (AXI 总线)", "接口依赖", "Trace 输出复用 AXI 接口"]
+          - ["LUMI-FREQ-001 (≥1.0GHz)", "LUMI-TIMING-001/002 (时序)", "物理依赖", "频率目标依赖时序收敛"]
+          - ["LUMI-PWR-001/002 (功耗)", "LUMI-FREQ-001 (频率)", "物理依赖", "功耗指标与频率绑定（mW/GHz）"]
+          - ["LUMI-BOOT-003 (Boot ROM)", "LUMI-MEM-002 (TCM)", "资源依赖", "Boot ROM 可复用 TCM 地址空间"]
+          - ["LUMI-IF-004 (中断信号线)", "LUMI-SYS-001/002 (PLIC/CLIC)", "接口依赖", "中断信号线规格由中断控制器定义"]
+          - ["LUMI-FEAT-004 (JTAG)", "LUMI-FEAT-001 (Debug)", "接口依赖", "JTAG 物理接口服务于 Debug Module"]
+          - ["LUMI-DFT-003 (边界扫描)", "LUMI-FEAT-004 (JTAG)", "接口依赖", "DFT 边界扫描复用 JTAG 物理接口"]
+          - ["LUMI-PWR-003 (功耗状态)", "LUMI-SYS-004 (WFI/WRS)", "行为依赖", "功耗状态转换由 WFI/WRS 指令触发"]
+          - ["LUMI-SYS-008 (功耗接口)", "LUMI-PWR-003 (功耗状态)", "接口依赖", "外部接口控制已定义的功耗状态"]
+
+      - title: "10.7.2 软硬件协同依赖"
+        table_type: data
+        headers: [软件需求, 硬件需求, 依赖类型, 说明]
+        rows:
+          - ["LUMI-TOOL-001 (GCC)", "LUMI-ISA-* (全部 ISA 扩展)", "编译依赖", "编译器需支持全部已实现 ISA 扩展"]
+          - ["LUMI-TOOL-002 (LLVM)", "LUMI-ISA-* (全部 ISA 扩展)", "编译依赖", "LLVM 后端需支持全部已实现 ISA 扩展"]
+          - ["LUMI-SIM-001 (ISS)", "LUMI-ISA-* (全部 ISA 扩展)", "模型依赖", "ISS 需模拟全部 ISA 行为"]
+          - ["LUMI-SIM-002 (gem5)", "LUMI-PIPE-001 + 微架构", "模型依赖", "gem5 需建模流水线参数和 Cache 层次"]
+          - ["LUMI-DBG-001 (GDB+OpenOCD)", "LUMI-FEAT-001 (Debug Module)", "协议依赖", "调试工具依赖 Debug Module 协议"]
+          - ["LUMI-DBG-002 (Trace 解码)", "LUMI-FEAT-002/003 (Trace+AXI)", "协议依赖", "Trace 解码依赖 Trace 数据格式定义"]
+          - ["LUMI-FW-001 (Boot FW)", "LUMI-BOOT-001/002/003", "功能依赖", "Boot 固件依赖 Boot ROM 硬件和复位向量"]
+          - ["LUMI-FW-002 (RTOS BSP)", "LUMI-SYS-002 (CLIC) + LUMI-SYS-004 (WFI)", "功能依赖", "RTOS 调度依赖中断管理和低功耗指令"]
+          - ["LUMI-SDK-001 (HAL/BSP)", "LUMI-SYS-001/002 + LUMI-IF-*", "功能依赖", "HAL 需覆盖中断控制器和总线接口寄存器"]
+          - ["LUMI-PERF-001 (基准测试)", "LUMI-SIM-001/002 + LUMI-IPC-*", "运行依赖", "基准测试需在模拟器或 FPGA 上运行"]
+          - ["LUMI-PERF-002 (性能计数器)", "LUMI-ISA-011 (Zihpm/Zicntr)", "功能依赖", "性能计数器工具依赖硬件 HPM 实现"]
+          - ["LUMI-IDE-001 (IDE 调试)", "LUMI-DBG-001 (GDB+OpenOCD)", "工具依赖", "IDE 调试功能依赖 GDB/OpenOCD 底层支持"]
+
+      - title: "10.7.3 RISC-V Profile 兼容依赖"
+        table_type: data
+        headers: [需求, Profile 引用, 说明]
+        rows:
+          - ["LUMI-PROF-001 (Profile 合规)", "Lumi-Core Profile A2.2", "13 个 Mandatory 扩展全部通过 riscv-arch-test"]
+          - ["LUMI-PROF-002 (特权级配置)", "Profile A2.3/A2.4", "CoreM/CoreS/CoreU 三种配置，各自 Mandatory 扩展完整"]
+          - ["LUMI-ISA-011 (Mandatory 扩展)", "Profile A2.2", "LUMI-PROF-001 的细化分解，逐扩展验证"]
+          - ["LUMI-ISA-008 (Zce)", "Profile Mandatory Zce", "Zca+Zcb+Zcmp+Zcmt 全部子扩展为 Profile 强制"]
+          - ["LUMI-MEM-001 (PMP)", "Profile B2.1", "Profile 要求 PMP entries=16，产品默认 8 可配置到 16"]
+          - ["LUMI-SYS-002 (CLIC)", "Profile Mandatory Ssclic", "CLIC 为 Profile 强制扩展"]
+          - ["LUMI-SAFE-001 (Smepmp)", "Profile Mandatory Smepmp", "PMP 增强保护为 Profile 强制"]
+          - ["LUMI-MEM-008 (RVWMO)", "Profile Mandatory RVWMO", "内存序模型为 Profile 隐含要求"]
+
+  - title: "10.8 覆盖统计"
+    table_type: data
+    headers: [指标, 数值, 备注]
+    rows:
+      - [硬件需求总数, 66, "§3 硬件需求 (PPA 10 + RTL 56, 含 DFT/多核/复位/时序/质量/时钟架构/PMA)"]
+      - [交付物需求, 12, "§4 交付物需求 (RTL 3 + INT 4 + DOC 5, 含 PRM 和 Compliance Test 报告)"]
+      - [功能安全需求, 3, "§5 v1.0 Must 需求 (另 2 条 LUMI-SAFE-004/005 为 Proposed v2.0)"]
+      - [信息安全需求, 5, "§6 信息安全需求"]
+      - [软件需求, 13, "§7 依赖软件需求 (TOOL/SDK/FW/IDE/SIM/DBG/PERF)"]
+      - [需求总数, 99, "全部章节汇总 (BL-1.1 校准, M1 独立审查补强后)"]
+      - [Must 需求数, 84, "BL-1.0 77 + M1 补强 7 条 Must (MEM-009/CLK-001~003/PWR-004/DEL-011/DEL-012)"]
+      - [Should 需求数, 12, "BL-1.0 11 + PWR-005 1 条"]
+      - [Could 需求数, 3, "LUMI-ISA-009/010, LUMI-FEAT-005"]
+      - [Proposed (v2.0), 2, "LUMI-SAFE-004/005, 不纳入当前基线"]
+      - [已覆盖 (Covered), 9, "RV32I/A/C/Zce/PMP/CLIC/PLIC/CoreMark/Dhrystone/Bench"]
+      - [待覆盖 (Pending), 90, "设计文档和验证用例待 M1~M3 阶段逐步完成"]
+      - [覆盖率, "9.1%", "目标: M1 结束达到 30%, M2 结束达到 100%"]

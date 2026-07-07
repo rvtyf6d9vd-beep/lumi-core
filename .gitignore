@@ -22,6 +22,8 @@ perf/gem5-model/gem5/
 # ── 编译产物 ──
 *.o
 *.a
+*.o.rv64
+*.a.rv64
 *.riscv
 *.elf
 

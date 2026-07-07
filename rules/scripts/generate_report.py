@@ -10,6 +10,7 @@ generate_report.py — 合规报告生成器
 """
 
 import argparse
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -22,8 +23,14 @@ def load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def generate_html_report(data: dict) -> str:
+def generate_html_report(data: dict, output_path: Path = None) -> str:
     """将合规检查结果转换为 HTML 报告"""
+    # Compute relative path to docs/index.html
+    if output_path:
+        docs_index = Path(__file__).resolve().parent.parent.parent / "docs" / "index.html"
+        rel_path = os.path.relpath(docs_index, output_path.resolve().parent)
+    else:
+        rel_path = "../../docs/index.html"
     timestamp = data.get("timestamp", datetime.now().isoformat())
     milestone = data.get("milestone", "N/A")
     summary = data.get("summary", {})
@@ -64,9 +71,14 @@ def generate_html_report(data: dict) -> str:
     .stat-warn {{ background: #fffbeb; color: #92400e; }}
     .stat-fail {{ background: #fef2f2; color: #991b1b; }}
     code {{ background: #f1f5f9; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }}
+    .nav-back {{ display: inline-block; margin-bottom: 1em; padding: 0.4em 1em; background: #f0f4f8;
+      border: 1px solid #e2e8f0; border-radius: 4px; color: #3b82f6; text-decoration: none;
+      font-size: 0.9em; font-weight: 500; transition: background 0.2s; }}
+    .nav-back:hover {{ background: #e1e8f0; text-decoration: none; }}
   </style>
 </head>
 <body>
+  <a href="{rel_path}" class="nav-back">&larr; 返回文档地图</a>
   <h1>Lumi 合规检查报告</h1>
   <p>生成时间: {timestamp} | 里程碑: {milestone}</p>
 
@@ -82,6 +94,7 @@ def generate_html_report(data: dict) -> str:
   </table>
 
   <p style="color: #64748b; font-size: 0.85em; margin-top: 2em;">
+    <a href="{rel_path}" class="nav-back" style="margin-bottom:0.5em;">&larr; 返回文档地图</a><br>
     由 generate_report.py 自动生成 | Lumi 项目合规检查引擎
   </p>
 </body>
@@ -101,9 +114,9 @@ def main():
         sys.exit(1)
 
     data = load_yaml(input_path)
-    html = generate_html_report(data)
 
     output_path = Path(args.output) if args.output else input_path.with_suffix(".html")
+    html = generate_html_report(data, output_path)
     output_path.write_text(html, encoding="utf-8")
     print(f"✅ 报告已生成: {output_path}")
 

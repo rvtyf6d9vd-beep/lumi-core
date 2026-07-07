@@ -1,0 +1,46 @@
+# Phase 6: skip-stalled 与 load latency 机制
+
+phase: 6
+title: "skip-stalled 调度机制与 load 延迟预测基础"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  建立 MinorCPU 高级调度机制基础：skip-stalled 允许在第一条指令等待时
+  发射后续独立指令，load 延迟预测为推测性发射提供基础。
+
+mechanisms:
+  skip_stalled:
+    description: >
+      当 Execute 阶段第一条指令因数据冒险或 FU 不可用而停顿时，
+      跳过该指令，尝试发射后续不依赖该指令结果的独立指令。
+    parameter: "executeEnableSkipStalled = True"
+    max_width: 16  # 一次最多跳过检查 16 条指令
+    constraint: >
+      仅允许非内存引用指令被 skip。Load/Store 因 LSQ 顺序性
+      约束而被禁止 skip (Phase 9 尝试放宽但失败回退)。
+
+  load_latency_prediction:
+    description: >
+      推测性假设 load 在指定周期数内完成 (L1D hit)，允许
+      依赖该 load 的后续指令提前发射。L1D miss 时需要 flush
+      并重执行，惩罚更大但概率极低 (99.99%+ 命中率)。
+    parameter: "executeLoadAssumedLatency = 2"
+    note: "Phase 9 将此值从 2 降至 1，获得 +12.4% 收益"
+
+  early_memory_issue:
+    description: "允许内存操作提前发射 (不等 execute 阶段完整流水线)"
+    parameter: "executeAllowEarlyMemoryIssue = True"
+
+performance_impact:
+  coremark_triple: "~3.30"
+  note: >
+    本 Phase 建立机制基础但未调优参数。skip-stalled 和 load prediction
+    的收益在 Phase 8-9 通过参数调优释放。
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "CPU 配置新增 skip-stalled 和 load latency 参数"
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/perf_measure.py"
+    description: "Phase 6 性能测量脚本"

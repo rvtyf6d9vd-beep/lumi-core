@@ -10,7 +10,25 @@ rules:
   - "权威来源：baselines/ 目录下的 YAML 文件为下游流程（设计/验证/实现）的唯一参考依据。"
   - "定版后变更需求 → 版本 +0.1，基线标签清空，等待下次定版。"
 
+change_management:
+  versioning: "BL-{major}.{minor}，major 在架构变更时递增，minor 在需求增删时递增"
+  process:
+    - "1. 需求状态达到 Approved 或以上"
+    - "2. 触发基线定版，输入基线版本号和描述"
+    - "3. 系统自动收集合格需求并生成 YAML 快照"
+    - "4. YAML 放入 baselines/ 目录，生成 HTML 报告"
+    - "5. 定版后的变更需走变更请求流程（CR），版本+0.1"
+  approval_required: true
+  archive_policy: "旧基线移入 baselines/archive/ 保留不删除"
+
 baselines:
+  - version: BL-1.0
+    date: "2026-07-01"
+    count: 91
+    yaml: "baselines/baseline-BL-1.0.yaml"
+    html: "baselines/baseline-BL-1.0.html"
+    note: "M1 里程碑需求基线 — 全部已评审需求定版快照（Must:77, Should:11, Could:3）"
+
   - version: BL-EXAMPLE
     date: "2026-06-26"
     count: 5

@@ -1,0 +1,66 @@
+# Phase 7: FU 延迟校准
+
+phase: 7
+title: "功能单元 (FU) 延迟校准 — opLat 3 -> 1"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  将 ALU/MUL 功能单元的 opLat 从 gem5 默认值 3 降至现实值 1，
+  匹配 Cortex-R82 级单周期 ALU/MUL 行为。gem5 默认的 opLat=3
+  是学术惯例而非真实硅片行为，导致性能被严重低估。
+
+key_changes:
+  - component: "LumiIntFU (自定义类)"
+    description: "单周期整数 ALU"
+    opClasses: "IntAlu"
+    opLat: "3 -> 1"
+    srcRegsRelativeLats: [2]
+    rationale: >
+      真实硅片上 add/sub/and/or/xor/slt/shift 均为 1 周期。
+      srcRegsRelativeLats=[2] 允许源寄存器在结果可用前 2 周期读取
+      (MinorCPU 的 bypass 建模)。
+
+  - component: "LumiIntMulFU (自定义类)"
+    description: "单周期流水线乘法器"
+    opClasses: "IntMult"
+    opLat: "3 -> 1"
+    srcRegsRelativeLats: [0]
+    rationale: >
+      现代流水线乘法器可达 1 周期吞吐。srcRegsRelativeLats=[0]
+      表示源寄存器必须完全就绪才能发射。
+
+  - component: "inFlightInsts slots"
+    before: 29
+    after: 22
+    rationale: "opLat 降低后飞行中指令槽位需求减少"
+
+  - component: "executeMemoryIssueLimit"
+    value: 2
+    description: "允许每周期 2 条内存操作"
+
+  - component: "executeMemoryCommitLimit"
+    value: 2
+    description: "允许每周期 2 条内存提交"
+
+fu_pool_after:
+  total: 8
+  list:
+    - "3x LumiIntFU (opLat=1)"
+    - "1x LumiIntMulFU (opLat=1)"
+    - "1x MinorDefaultIntDivFU (opLat=9, 不变)"
+    - "1x MinorDefaultFloatSimdFU (opLat=6, 不变)"
+    - "1x MinorDefaultMemFU (opLat=1, 不变)"
+    - "1x MinorDefaultMiscFU (opLat=1, 不变)"
+
+results:
+  coremark_triple: "~3.86"
+  improvement: "+17% vs Phase 6"
+  analysis: >
+    opLat 校准释放了被 gem5 保守默认值压制的大量并行性。
+    skip-stalled 在 opLat=1 下能更快找到可发射的独立指令。
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "新增 LumiIntFU / LumiIntMulFU 自定义类"

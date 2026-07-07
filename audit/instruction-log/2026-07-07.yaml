@@ -1,0 +1,64 @@
+# Lumi 指令日志 — 2026-07-07
+
+date: "2026-07-07"
+entries:
+  # ──────────────────────────────────────────────
+  # 指令 1：M1 补充归档 + M2 状态更新
+  # ──────────────────────────────────────────────
+  - timestamp: "10:00:00"
+    role: pm-infra
+    session_mode: main
+    action: m1_addendum_and_m2_status
+    details:
+      description: >
+        审查 M1 里程碑状态，确认 GATE-4 已从 CONDITIONAL_PASS 升级为 PASS，
+        执行补充归档流程，同时更新 M2 状态为 in_progress。
+      user_request: >
+        先看看 MS1 的状态。制定 Sign-off 计划（如果已经基本就绪）。
+      options_and_decisions:
+        - topic: "M1 Sign-off 方式"
+          options:
+            - "执行补充归档（轻量操作）"
+            - "重新执行完整 Sign-off 流程"
+            - "跳过，直接进 M2"
+          decision: "执行补充归档（M1 已于 07-03 完成完整 4 步 Sign-off + 人类批准，仅 GATE-4 状态需升级）"
+      steps:
+        - "step 1: 审查 M1 门禁报告 (m1-20260702.yaml) — 确认 GATE-4 为 CONDITIONAL_PASS"
+        - "step 2: 审查已有 Sign-off 报告 — 确认 07-03 已完成完整 4 步协议 + 人类批准"
+        - "step 3: 审查 GATE-4 关闭报告 (m1-gate4-closure-20260706.yaml) — 确认 VERIFIED, 4/4 PASS"
+        - "step 4: 更新 m1-20260702.yaml — GATE-4: CONDITIONAL_PASS → PASS, summary: 4P/0C/0F"
+        - "step 5: 创建 m1-final-addendum-20260707.yaml — 补充归档报告"
+        - "step 6: 更新 milestone-plan.yaml — M1 compliance_report 引用更新, M2 status: planned → in_progress"
+        - "step 7: 更新 4 个 agent current-state.yaml — 追加 M1-ADDENDUM completed_task"
+        - "step 8: 创建本指令日志"
+      rules_checked: ["03", "10", "16", "23"]
+    outcome: >
+      成功。M1 以全部门禁 PASS 状态正式归档（GATE-1~4 全 PASS）。
+      M2 status 更新为 in_progress。4 个 agent 状态文件已同步更新。
+      原有 Sign-off 报告（07-03）和关闭报告保留不删除。
+
+files_created_or_modified:
+  - path: "audit/compliance-reports/m1-20260702.yaml"
+    action: modified
+    summary: "GATE-4: CONDITIONAL_PASS → PASS, G4-2 更新, summary: 4P/0C/0F"
+  - path: "audit/compliance-reports/m1-final-addendum-20260707.yaml"
+    action: created
+    summary: "M1 补充归档报告 (GATE-4 升级记录, 最终门禁状态, Errata/Risk 汇总)"
+  - path: "docs/project/milestone-plan.yaml"
+    action: modified
+    summary: "M1 compliance_report 引用更新, M2 status: planned → in_progress"
+  - path: "agents/hw-design/context/current-state.yaml"
+    action: modified
+    summary: "追加 M1-ADDENDUM completed_task, last_active → 07-07"
+  - path: "agents/hw-ver/context/current-state.yaml"
+    action: modified
+    summary: "追加 M1-ADDENDUM completed_task, last_active → 07-07"
+  - path: "agents/pm-infra/context/current-state.yaml"
+    action: modified
+    summary: "追加 M1-ADDENDUM completed_task, last_active → 07-07"
+  - path: "agents/qa-audit/context/current-state.yaml"
+    action: modified
+    summary: "追加 M1-ADDENDUM completed_task, last_active → 07-07"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: created
+    summary: "本日志文件"

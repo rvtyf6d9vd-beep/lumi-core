@@ -1,10 +1,20 @@
 # 规则变更日志
 
-## 2026-06-24 — v3.1 新增 Errata & Bug 回归 & Skill 复用规则
+## 2026-07-01 — v3.2 文档一致性同步
+- AGENTS.md 第 7 节补充规则 20-23（Errata/Bug回归/Skill复用/里程碑层级）
+- AGENTS.md 第 4 节文件操作规范补充规则 20-23 引用
+- top-rules.yaml 标题注释更新（15 条 → 19 条）
+- 重新生成全部 4 个角色的 role-prompt.md（role_prompt_builder.py）
+- Lumi_Deployment_Plan.html 升级至 v3.1（规则总数 26→30，评分模型更新）
+- product-requirements.html 重新生成
+
+## 2026-06-24 — v3.1 新增 Errata & Bug 回归 & Skill 复用 & 里程碑层级规则
 - 新增规则 20: Errata/Known Issue 维护 — 记录所有已知问题直到解决
 - 新增规则 21: Bug 回归测试用例 — RTL Freeze 后每个 Bug 增加回归测试用例
 - 新增规则 22: Skill 优先复用 — 建立 skills/ 目录，任务优先查找复用现有 Skill
+- 新增规则 23: Milestone/Stage/Phase 层级定义 — 三层进度管理结构
 - 创建 audit/errata/known-issues.yaml 模板
+- 创建 docs/project/milestone-plan.yaml 里程碑计划定义文件
 - role-mapping.yaml 更新: 为相关角色添加新规则引用和文件权限
 
 ## 2026-06-15 — v3.0 Qoder 适配 + 架构优化

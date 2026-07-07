@@ -1,0 +1,58 @@
+# Phase 4: PRD 模板与规则基础设施
+
+phase: 4
+title: "研发流程规则体系与 PRD 模板建设"
+date: "2026-06-24 ~ 2026-06-26"
+role: pm-infra
+status: COMPLETE
+
+objective: >
+  建立项目研发流程规则体系，创建 PRD (产品需求文档) 交互模板，
+  实现数据与展示分离的文档管理流程。
+
+rules_added:
+  - id: 20
+    title: "Errata/Known Issue 维护"
+    severity: high
+    description: >
+      维护 Errata 文档记录所有已知问题，问题解决后保留记录标注 resolved。
+    path: "audit/errata/known-issues.yaml"
+
+  - id: 21
+    title: "Bug 回归测试用例"
+    severity: critical
+    trigger: "RTL Freeze 里程碑后"
+    description: >
+      RTL Freeze 后每个发现的 Bug 必须增加回归测试用例，
+      确保后续修改不会导致相同问题重现。
+
+  - id: 22
+    title: "Skill 优先复用"
+    severity: high
+    description: >
+      任务执行前优先从 skills/ 目录查找可复用 Skill，
+      避免重复造轮。新 Skill 收录需经 review。
+    path: "skills/"
+
+prd_template:
+  format: "HTML + YAML 数据分离"
+  features:
+    - "可交互表格 (增删改行、状态切换、筛选)"
+    - "基线管理 (YAML 快照 + HTML 可读化)"
+    - "Git post-commit 钩子自动生成 HTML"
+    - "CSV 批量导入"
+    - "版本追溯与需求基线定版"
+  chapters: 12
+  data_path: "docs/project/product-requirements/"
+
+deliverables:
+  - path: "rules/top-rules.yaml"
+    description: "研发规则 (22 条)"
+  - path: "rules/role-mapping.yaml"
+    description: "角色权限映射"
+  - path: "audit/errata/known-issues.yaml"
+    description: "Errata 模板"
+  - path: "docs/project/product-requirements/*.yaml"
+    description: "PRD 数据文件 (12 章节)"
+  - path: "docs/project/baselines/"
+    description: "基线管理目录"

@@ -37,8 +37,8 @@ PRI_CSS = {'Must': 'must', 'Should': 'should', 'Could': 'could', "Won't": 'wont'
 # ── 工具栏分类映射（从 YAML categories 生成）──
 TOOLBAR_GROUPS = {
     'PPA': ['PPA-PIPE', 'PPA-FREQ', 'PPA-IPC', 'PPA-AREA', 'PPA-PWR', 'PPA-INT'],
-    'RTL': ['RTL-PROF', 'RTL-ISA', 'RTL-MEM', 'RTL-IF', 'RTL-FEAT', 'RTL-OTHER', 'INC'],
-    '交付 & 安全': ['DEL', 'SAFE', 'SEC'],
+    'RTL': ['RTL-PROF', 'RTL-ISA', 'RTL-MEM', 'RTL-IF', 'RTL-FEAT', 'RTL-OTHER', 'RTL-DFT', 'RTL-MCORE', 'RTL-BOOT', 'RTL-TIMING', 'RTL-QUAL', 'INC'],
+    '交付 & 安全': ['DEL-RTL', 'DEL-INT', 'DEL-DOC', 'SAFE', 'SEC'],
     '软件依赖': ['SW-TOOL', 'SW-SDK', 'SW-FW', 'SW-IDE', 'SW-SIM', 'SW-DBG', 'SW-PERF'],
 }
 TOOLBAR_LABELS = {
@@ -46,8 +46,10 @@ TOOLBAR_LABELS = {
     'PPA-AREA': '面积约束', 'PPA-PWR': '功耗预算', 'PPA-INT': '中断性能',
     'RTL-PROF': 'Profile 合规', 'RTL-ISA': 'ISA 扩展',
     'RTL-MEM': '内存模型', 'RTL-IF': '外部接口', 'RTL-FEAT': '调试与跟踪', 'RTL-OTHER': '其他RTL功能',
-    'INC': '增量需求', 'DEL': '交付物', 'SAFE': '功能安全',
-    'SEC': '信息安全', 'SW-TOOL': '工具链', 'SW-SDK': 'SDK', 'SW-FW': '固件',
+    'INC': '增量需求', 'DEL-RTL': 'RTL交付', 'DEL-INT': '集成交付', 'DEL-DOC': '文档交付',
+    'SAFE': '功能安全', 'SEC': '信息安全',
+    'RTL-DFT': 'DFT', 'RTL-MCORE': '多核', 'RTL-BOOT': '复位启动', 'RTL-TIMING': '时序约束', 'RTL-QUAL': 'IP质量',
+    'SW-TOOL': '工具链', 'SW-SDK': 'SDK', 'SW-FW': '固件',
     'SW-IDE': 'IDE', 'SW-SIM': '仿真器', 'SW-DBG': '调试工具', 'SW-PERF': '性能工具',
     'DEP': '废弃需求',
 }
@@ -280,6 +282,8 @@ blockquote strong{color:#1565C0}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 hr{border:none;border-top:2px solid var(--accent);margin:3rem 0 1rem}
 .req-desc{margin:.6rem 0 1rem;color:#546e7a;font-size:.95rem;line-height:1.8}
+.nav-back{display:inline-block;margin-bottom:1.5rem;padding:.4rem 1rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:.9rem;font-weight:500;transition:background .2s}
+.nav-back:hover{background:#e1e8f0;text-decoration:none}
 #toolbar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#16213e;color:#fff;padding:.5rem 1rem;display:flex;align-items:center;gap:.6rem;font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.3);flex-wrap:wrap}
 #toolbar select,#toolbar button{padding:.3rem .6rem;border-radius:3px;font-size:.82rem;border:1px solid rgba(255,255,255,.3);cursor:pointer}
 #toolbar select{background:#fff;color:#333}
@@ -496,6 +500,9 @@ def generate():
     html += '    <title>Lumi-Core 产品需求文档 (PRD)</title>\n'
     html += f'    <style>{CSS}</style>\n</head>\n<body>\n\n'
 
+    # Navigation back to doc map
+    html += '<a href="../index.html" class="nav-back">&larr; 返回文档地图</a>\n\n'
+
     # Cover
     html += render_cover() + '\n\n'
 
@@ -506,6 +513,7 @@ def generate():
 
     # Footer
     html += '<hr>\n<p style="text-align:center;color:#90a4ae;font-size:.85rem;margin-top:2rem;">\n'
+    html += '    <a href="../index.html" class="nav-back" style="margin-bottom:.5rem;">&larr; 返回文档地图</a><br>\n'
     html += '    Lumi-Core Product Requirements Document &mdash; Confidential<br>\n'
     html += '    自动生成自 YAML 数据 &nbsp;|&nbsp; 模板版本 2.0\n</p>\n\n'
 

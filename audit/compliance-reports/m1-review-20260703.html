@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lumi 合规检查报告</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2em auto; padding: 0 1em; color: #1e293b; }
+    h1 { color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 0.5em; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; }
+    .summary { display: flex; gap: 1em; margin: 1em 0; }
+    .stat { padding: 1em; border-radius: 8px; text-align: center; flex: 1; }
+    .stat-pass { background: #ecfdf5; color: #065f46; }
+    .stat-warn { background: #fffbeb; color: #92400e; }
+    .stat-fail { background: #fef2f2; color: #991b1b; }
+    code { background: #f1f5f9; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+    .nav-back { display: inline-block; margin-bottom: 1em; padding: 0.4em 1em; background: #f0f4f8;
+      border: 1px solid #e2e8f0; border-radius: 4px; color: #3b82f6; text-decoration: none;
+      font-size: 0.9em; font-weight: 500; transition: background 0.2s; }
+    .nav-back:hover { background: #e1e8f0; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <a href="../../docs/index.html" class="nav-back">&larr; 返回文档地图</a>
+  <h1>Lumi 合规检查报告</h1>
+  <p>生成时间: 2026-07-06T12:58:25.327161 | 里程碑: M1</p>
+
+  <div class="summary">
+    <div class="stat stat-pass"><strong>3</strong><br>通过</div>
+    <div class="stat stat-warn"><strong>0</strong><br>警告</div>
+    <div class="stat stat-fail"><strong>0</strong><br>失败</div>
+  </div>
+
+  <table>
+    <tr><th>规则 ID</th><th>名称</th><th>状态</th><th>详情</th></tr>
+    
+  </table>
+
+  <p style="color: #64748b; font-size: 0.85em; margin-top: 2em;">
+    <a href="../../docs/index.html" class="nav-back" style="margin-bottom:0.5em;">&larr; 返回文档地图</a><br>
+    由 generate_report.py 自动生成 | Lumi 项目合规检查引擎
+  </p>
+</body>
+</html>

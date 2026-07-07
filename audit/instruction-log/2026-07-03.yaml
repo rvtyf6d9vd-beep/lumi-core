@@ -1,0 +1,179 @@
+# Lumi-Core 指令日志 2026-07-03
+# M1 独立审查补强 — 硬件 IP 产品完整性视角补强
+
+date: "2026-07-03"
+operator: pm-infra + hw-design
+milestone: M1
+parent_event: "M1 门禁通过后 (m1-20260702.yaml) 独立硬件 IP 视角的完整性审查"
+
+context:
+  trigger: "用户在 M1 门禁通过后, 指出从硬件 IP 产品完整性角度仍有 4 项缺口"
+  scope: "PRD 完整性 (PRM 交付物, RISC-V 合规套件) + 架构说明书完整性 (顶层框图, 时钟/复位架构, PMA, 寄存器堆, 异常处理, 性能计数器)"
+  baseline: "BL-1.0 → BL-1.1 (99 条需求, 新增 8 条)"
+
+instructions:
+  - id: 1
+    time: "10:00"
+    directive: "启动 M1 独立审查补强计划"
+    source: "用户指令: 继续执行 M1 独立审查补强计划"
+    plan: "/Users/chenjiangshan/Library/Application Support/Qoder/SharedClientCache/cache/plans/M1_架构与需求冻结_task-b9e.md"
+
+  - id: 2
+    time: "10:30"
+    directive: "T1.1 ~ T1.7: 架构说明书 7 处新增/修复"
+    actions:
+      - "T1.1: §8.9 时钟与复位架构 (4 子节: 时钟域/Clock Gating/复位域/UPF)"
+      - "T1.2: §7.8 PMA 检查器 (7 属性 + Hardwired PMA + cfgaddr/cfgdata + gem5 ref)"
+      - "T1.3: §4.7 寄存器堆架构 (整数/浮点/向量/CSR 四种堆规格)"
+      - "T1.4: §5.6 异常处理 (mcause 表 + medeleg/mideleg + 7 级优先级 + mtval)"
+      - "T1.5: §4.8 HPM (Zicntr + Zihpm CSR 映射 + 事件表)"
+      - "T1.6: §10 配置表 Bug 修复 (#15 核数/--→§8.6, #16 双核锁步/§8.5.2→§8.6.2)"
+      - "T1.7: §1.5 顶层框图 (ASCII 框图 + 12 项边界信号表)"
+    target: "docs/architecture/platform-spec.html"
+    result: "1128 行 (+305 行), TOC/导航同步更新"
+
+  - id: 3
+    time: "12:00"
+    directive: "T1.8/T1.9: §9/§10 表补全"
+    actions:
+      - "T1.8: §9 需求表补全 6 条: LUMI-MEM-009, LUMI-CLK-001/002/003, LUMI-PWR-004/005"
+      - "T1.9: §10 配置表新增 3 项: #21 多电源域, #22 PMA 区域数, #23 CSR Retention"
+      - "T1.10: ch8 导航标签更新为 8.安全/多核/DFT/时钟复位"
+
+  - id: 4
+    time: "13:30"
+    directive: "T2.0 ~ T2.6: PRD 6 处新增/校准"
+    actions:
+      - "T2.0: 03-hardware.yaml 章节号重编 (RTL-CLK=3.2.10, RTL-TIMING=3.2.11, RTL-QUAL=3.2.12)"
+      - "T2.1: 03-hardware.yaml 新增 RTL-CLK 分类 (LUMI-CLK-001/002/003)"
+      - "T2.2: 03-hardware.yaml 新增电源域需求 (LUMI-PWR-004/005)"
+      - "T2.3: 04-deliverables.yaml 新增 LUMI-DEL-011 (PRM)"
+      - "T2.4: 04-deliverables.yaml 新增 LUMI-DEL-012 (RISC-V Compliance Test)"
+      - "T2.5: 03-hardware.yaml 新增 LUMI-MEM-009 (PMA)"
+      - "T2.6: 10-traceability.yaml §10.2/§10.3 补全 + §10.8 统计校准"
+    target_files:
+      - "docs/project/product-requirements/03-hardware.yaml (799 行, +70 行)"
+      - "docs/project/product-requirements/04-deliverables.yaml (141 行, +20 行)"
+      - "docs/project/product-requirements/10-traceability.yaml (214 行, +8 行)"
+
+  - id: 5
+    time: "15:00"
+    directive: "T3.1 ~ T3.2: 重新生成 HTML 与基线 BL-1.1"
+    actions:
+      - "T3.1: 运行 generate_prd.py 重新生成 product-requirements.html (12 章节, 31 分类表格)"
+      - "T3.2: 修改 gen_baseline.py 支持版本号参数, 运行生成 baseline-BL-1.1.yaml (99 条) + baseline-BL-1.1.html"
+    command_log:
+      - "/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/docs/project/.venv/bin/python3 gen_baseline.py BL-1.1"
+      - "/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/docs/project/.venv/bin/python3 generate_baseline_html.py baseline-BL-1.1.yaml"
+      - "/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/docs/project/.venv/bin/python3 generate_prd.py"
+    statistics:
+      - "BL-1.0: 91 条 (Must:77/Should:11/Could:3)"
+      - "BL-1.1: 99 条 (Must:84/Should:12/Could:3)"
+      - "新增 8 条: 7 Must (MEM-009, CLK-001~003, PWR-004, DEL-011, DEL-012) + 1 Should (PWR-005)"
+
+  - id: 6
+    time: "15:30"
+    directive: "追溯矩阵统计校准"
+    details: "10-traceability.yaml §10.8 统计修正"
+    before: "硬件 55 / 交付 12 / 安全 5 / 信息安全 5 / 软件 13 / 总计 90 / Must 80 / Should 7 / Pending 79 / 覆盖率 10.0%"
+    after: "硬件 66 / 交付 12 / 安全 3 / 信息安全 5 / 软件 13 / 总计 99 / Must 84 / Should 12 / Pending 90 / 覆盖率 9.1%"
+    fix: "硬件需求统计口径错误 (原 55 漏算 PPA 10 + RTL-CLK 5; 实际 PPA 10 + RTL 56 = 66)"
+
+  - id: 7
+    time: "16:30"
+    directive: "T3.3: 创建 M1 独立审查补强门禁报告"
+    target: "audit/compliance-reports/m1-review-20260703.yaml (206 行, 新建)"
+    structure:
+      - "GATE-1 PRD 评审定版 BL-1.1 增强 (6 检查项, PASS)"
+      - "GATE-2 架构说明书定版独立审查补强 (10 检查项, PASS)"
+      - "GATE-3 验证方案启动 (1 新增检查项, PASS)"
+      - "GATE-4 GEM5+ 中断建模 (无变化, CONDITIONAL_PASS)"
+
+  - id: 8
+    time: "17:00"
+    directive: "T3.4: 记录本指令日志 (本文件)"
+
+  - id: 9
+    time: "17:30"
+    directive: "M1 独立审查补强完成汇报"
+    summary: "4 项缺口全部补强完成, 8 条新需求已落 PRD/架构/基线, 待 Sign-off"
+
+deliverables:
+  baseline:
+    - path: "docs/project/baselines/baseline-BL-1.1.yaml"
+      type: "需求基线快照"
+      size: "1285 行, 99 条 Approved 需求"
+    - path: "docs/project/baselines/baseline-BL-1.1.html"
+      type: "需求基线 HTML 报告"
+      size: "99 条需求可视化"
+  architecture:
+    - path: "docs/architecture/platform-spec.html"
+      type: "平台架构说明书 v1.0"
+      size: "1128 行 (含 §1.5/§4.7/§4.8/§5.6/§7.8/§8.9)"
+  prd:
+    - path: "docs/project/product-requirements.html"
+      type: "PRD HTML"
+      size: "12 章节, 31 分类表格"
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      type: "硬件需求源文件"
+      size: "799 行, 新增 RTL-CLK 分类"
+    - path: "docs/project/product-requirements/04-deliverables.yaml"
+      type: "交付物需求源文件"
+      size: "141 行, 新增 LUMI-DEL-011/012"
+    - path: "docs/project/product-requirements/10-traceability.yaml"
+      type: "追溯矩阵"
+      size: "214 行, §10.8 统计校准"
+  gate_report:
+    - path: "audit/compliance-reports/m1-review-20260703.yaml"
+      type: "M1 独立审查补强门禁报告"
+      size: "206 行, 4 GATES (3 PASS + 1 CONDITIONAL_PASS)"
+
+pending_actions:
+  - "Sign-off: hw-design 角色审签 ✓ 完成"
+  - "Sign-off: hw-ver 角色审签 ✓ 完成 (APPROVED_WITH_NOTE)"
+  - "Sign-off: qa-audit 隔离审签 ✓ 完成 (CONDITIONAL_PASS 审计完成)"
+  - "Sign-off: 项目负责人最终签署 ✓ 完成 (全部 4 问题接受推荐选项)"
+  - "M1 阶段状态: CLOSED (2026-07-03T18:00:00+08:00)"
+  - "M2 阶段: 实现 8 条新增需求的 RTL 骨架与验证用例"
+  - "M2 阶段: 编写 PRM 文档模板 (LUMI-DEL-011)"
+  - "M2 阶段: 集成 riscv-arch-test (LUMI-DEL-012)"
+  - "M2 阶段: GATE-4 收尾 (gem5 FS 模式 + CLIC 接线)"
+  - "M2 阶段: 整改建议 REC-001/002/003/005/006"
+
+milestone_closure:
+  status: CLOSED
+  closure_report: audit/compliance-reports/m1-closure-20260703.yaml
+  qa_audit_report: audit/compliance-reports/m1-qa-isolation-20260703.yaml
+  baseline_locked: BL-1.1
+  gates: {PASS: 3, CONDITIONAL_PASS: 1, FAIL: 0}
+  rules: {PASS: 27, WARN: 3, FAIL: 0}
+  user_decisions:
+    Q1_8_new_requirements: "全部接受 (推荐)"
+    Q2_BL_1_1_baseline: "批准 (推荐)"
+    Q3_GATE_4_conditional_pass: "接受 (推荐)"
+    Q4_M2_immediate_start: "是, M2-S1 立即开始 (推荐)"
+  timestamp: "2026-07-03T18:00:00+08:00"
+
+sign_off_flow:
+  - step: 1_auto_check
+    time: "17:00"
+    result: PASS (13 PASS / 2 WARN / 0 FAIL)
+  - step: 2_role_signoff
+    time: "17:00-17:30"
+    participants: [hw-design, hw-ver, pm-infra]
+    result: "hw-design APPROVED, hw-ver APPROVED_WITH_NOTE, pm-infra APPROVED"
+  - step: 3_qa_isolation_audit
+    time: "17:30-17:45"
+    executor: "qa-audit 独立子代理"
+    report: "m1-qa-isolation-20260703.yaml (965 行)"
+    result: "CONDITIONAL_PASS (27 PASS / 3 WARN / 0 FAIL)"
+  - step: 4_human_approval
+    time: "18:00"
+    approver: "项目负责人 (用户)"
+    result: "APPROVED - 全部 4 问题接受推荐选项"
+
+notes:
+  - "BL-1.0 不删除, 与 BL-1.1 并存, 体现基线递进 (规则 03 工作留痕)"
+  - "原 m1-20260702.yaml 不覆盖, 新建 m1-review-20260703.yaml 体现补强工作 (规则 03)"
+  - "追溯矩阵统计校准体现 '不准跳过问题' 原则 (规则 18), 将错误的 90 修正为 99"
+  - "新增 8 条需求符合 Profile 准文档要求, 不引入新的非 Profile 扩展"

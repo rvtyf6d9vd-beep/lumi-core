@@ -1,0 +1,396 @@
+# Lumi 指令日志 — 2026-07-01
+
+date: "2026-07-01"
+entries:
+  # ──────────────────────────────────────────────
+  # 指令 1：规则体系一致性检查与文档同步更新
+  # ──────────────────────────────────────────────
+  - timestamp: "10:00:00"
+    role: pm-infra
+    session_mode: main
+    action: consistency_sync
+    details:
+      description: "根据最新的 30 条规则配置（含 2026-06-24 新增的规则 20/21/22/23），对所有相关文档进行一致性检查并同步更新。"
+      user_request: >
+        根据当前最新的规则配置，更新项目需求文档、角色提示词文件、部署计划文档和指令日志格式，
+        并详细说明如何确保规则在项目执行过程中始终生效的规则执行协议。
+      options_and_decisions:
+        - topic: "更新范围"
+          options: ["仅更新规则相关文件", "全面更新含 PRD/部署计划/角色提示词", "最小化更新只修复不一致处"]
+          decision: "全面更新：AGENTS.md + top-rules.yaml + role-prompt.md + 部署计划 + PRD 重新生成"
+        - topic: "规则计数确认"
+          options: ["沿用部署计划的 26 条", "按实际 YAML 统计为 30 条", "保持 26 条并注释新增 4 条为 pending"]
+          decision: "按实际 YAML 统计为 30 条（19 通用 + 11 专属）"
+      steps:
+        - "step 1: 分析所有规则 YAML 文件，统计实际规则数量（30 条）"
+        - "step 2: 对比 AGENTS.md 第 7 节，发现缺少规则 20-23"
+        - "step 3: 更新 AGENTS.md 第 7 节追加规则 20-23，第 4 节追加文件操作规范"
+        - "step 4: 更新 top-rules.yaml 标题注释（15 条 → 19 条）"
+        - "step 5: 运行 role_prompt_builder.py 重新生成 4 个角色的 role-prompt.md"
+        - "step 6: 更新 Lumi_Deployment_Plan.html：版本号 v3.0→v3.1，规则数量 26→30，严重度分布、评分模型同步更新"
+        - "step 7: 运行 generate_prd.py 重新生成 PRD HTML"
+        - "step 8: 写入指令日志"
+        - "step 9: 输出规则执行协议说明"
+      rules_checked: ["03", "14", "16", "19", "22", "23"]
+    outcome: "成功。更新 7 个文件：AGENTS.md、top-rules.yaml、4 个 role-prompt.md、Lumi_Deployment_Plan.html。重新生成 product-requirements.html。规则总数从文档中的 26 条更正为实际的 30 条。"
+
+files_created_or_modified:
+  - path: "AGENTS.md"
+    action: modified
+    summary: "第 7 节追加规则 20-23（Errata/Bug回归/Skill复用/里程碑层级），第 4 节追加文件操作规范 20-23"
+  - path: "rules/top-rules.yaml"
+    action: modified
+    summary: "标题注释从 15 条更新为 19 条"
+  - path: "agents/pm-infra/role-prompt.md"
+    action: modified
+    summary: "由 role_prompt_builder.py 重新生成（通用 14 + 专属 6）"
+  - path: "agents/hw-design/role-prompt.md"
+    action: modified
+    summary: "由 role_prompt_builder.py 重新生成（通用 17 + 专属 3）"
+  - path: "agents/hw-ver/role-prompt.md"
+    action: modified
+    summary: "由 role_prompt_builder.py 重新生成（通用 16 + 专属 2）"
+  - path: "agents/qa-audit/role-prompt.md"
+    action: modified
+    summary: "由 role_prompt_builder.py 重新生成（通用 19 + 专属 11）"
+  - path: "Lumi_Deployment_Plan.html"
+    action: modified
+    summary: "v3.0→v3.1：规则总数 26→30，严重度分布更新，评分模型总权重 79→98，新增 v3.1 变更说明和新增规则表"
+  - path: "docs/project/product-requirements.html"
+    action: modified
+    summary: "由 generate_prd.py 重新生成（12 章节，23 分类表格）"
+  - path: "audit/instruction-log/2026-07-01.yaml"
+    action: created
+    summary: "本日志文件"
+
+  # ──────────────────────────────────────────────
+  # 指令 2：Profile ISA 合规性桥接（早期会话记录）
+  # ──────────────────────────────────────────────
+  - timestamp: "13:00:00"
+    role: hw-ver
+    session_mode: main
+    action: isa_compliance_bridge
+    details:
+      description: "评估并桥接 Lumi-Core Profile (RV32IMAC) 与 gem5 性能模型 (RV64IM) 的指令集差距。"
+      user_request: "Profile 定义的指令集，性能参考模型都实现了吗？"
+      steps:
+        - "RV32 配置迁移：修改 lumi_cpu.py 添加 ISA 配置"
+        - "编译工具链适配：crt0.S 支持 RV32/RV64 双模式"
+        - "A 扩展验证：LR.W/SC.W/AMO 全 10 条 ALL PASS"
+        - "Zcmp 验证：cm.push/cm.pop/cm.popret ALL PASS"
+        - "CLIC 集成：创建成功，SE 模式无法连接"
+        - "特权模式验证：U-mode 计数器 + ECALL ALL PASS"
+        - "RV32 性能基线：CoreMark Triple=6.97, Dual=5.36 (+12% vs RV64)"
+        - "文档更新：RTL 参考说明书 v3.0"
+      rules_checked: ["05", "06", "12"]
+    outcome: "成功。gem5 RV32 配置迁移完成，CoreMark CM/MHz 比 RV64 提升 12%。CLIC/SE 模式限制已记录。"
+
+  files_changed:
+    - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+      action: modified
+      summary: "添加 ISA 配置 (RV32, MSU, enable_Zcd=False)"
+    - path: "perf/benchmarks/libc/crt0.S"
+      action: modified
+      summary: "支持 RV32/RV64 双模式"
+    - path: "perf/benchmarks/libc/lumi-se-rv32.ld"
+      action: created
+      summary: "RV32 链接脚本"
+    - path: "perf/gem5-model/tests/isa/atomics/test_atomics.c"
+      action: created
+      summary: "A 扩展测试"
+    - path: "perf/gem5-model/tests/isa/zcmp/test_zcmp.c"
+      action: created
+      summary: "Zcmp 测试"
+    - path: "perf/gem5-model/tests/isa/privilege/test_privilege.c"
+      action: created
+      summary: "特权模式测试"
+    - path: "perf/gem5-model/docs/output/lumi-core-gem5-rtl-reference.md"
+      action: modified
+      summary: "升级到 v3.0"
+
+  # ──────────────────────────────────────────────
+  # 指令 3：MS0 项目启动执行计划
+  # ──────────────────────────────────────────────
+  - timestamp: "14:00:00"
+    role: pm-infra
+    session_mode: main
+    action: ms0_execution_plan
+    details:
+      description: "执行 MS0 项目启动完成里程碑的全部 4 个门禁目标。"
+      user_request: >
+        开始制定并执行 Lumi 项目 MS0 的执行计划。包含：基础设施补全、PRD草案完善、
+        架构说明书初稿（较完整内容）、GEM5+环境搭建完成（含中断建模启动）。
+      options_and_decisions:
+        - topic: "架构说明书深度"
+          options: ["初稿即可", "仅框架", "较完整内容"]
+          decision: "较完整内容（包含微架构定义、流水线设计、模块划分）"
+        - topic: "GEM5 范围"
+          options: ["ISA 环境就绪", "含中断建模启动"]
+          decision: "含中断建模启动（PMP/CLIC/PLIC/Smrnmi）"
+      steps:
+        - "step 1: 创建 docs/index.html 文档地图入口页"
+        - "step 2: 创建 docs/project/master-plan.html 里程碑索引页"
+        - "step 3: 创建 skills/index.yaml Skill 复用索引（8个 Skill）"
+        - "step 4: 补全 08-milestones.yaml (M0+M4)，完善 09-baseline.yaml、10-traceability.yaml"
+        - "step 5: 重新生成 product-requirements.html (12章节, 23分类表格)"
+        - "step 6: 创建 docs/architecture/platform-spec.html (10章节较完整架构说明书)"
+        - "step 7: 创建中断建模测试套件 (PMP/CLIC/PLIC/Smrnmi 测试程序)"
+        - "step 8: 创建 lumi-interrupt.py gem5 中断建模配置脚本"
+        - "step 9: 更新 audit/risk-register.yaml (RISK-002/003/004) 和 audit/errata/known-issues.yaml (ERR-001)"
+        - "step 10: 运行合规检查脚本，输出门禁报告 (14 PASS, 1 WARN, 0 FAIL)"
+        - "step 11: 更新 milestone-plan.yaml (M0 status=completed)、各角色状态文件"
+      rules_checked: ["03", "05", "06", "07", "08", "14", "16", "18", "20", "22", "23"]
+    outcome: "成功。MS0 全部 4 个门禁目标达成。创建 15 个新文件，修改 9 个现有文件。合规检查 14 PASS/1 WARN/0 FAIL。"
+
+  files_created_or_modified:
+    - path: "docs/index.html"
+      action: created
+      summary: "项目文档地图入口页"
+    - path: "docs/project/master-plan.html"
+      action: created
+      summary: "里程碑可视化索引页 (MS0~MS4)"
+    - path: "skills/index.yaml"
+      action: created
+      summary: "Skill 复用索引 (9个 Skill)"
+    - path: "docs/project/product-requirements/08-milestones.yaml"
+      action: modified
+      summary: "追加 M0 和 M4 条目"
+    - path: "docs/project/product-requirements/09-baseline.yaml"
+      action: modified
+      summary: "添加 change_management 流程说明"
+    - path: "docs/project/product-requirements/10-traceability.yaml"
+      action: modified
+      summary: "添加追溯结构和示例矩阵"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "重新生成 (12章节, 23分类表格)"
+    - path: "docs/architecture/platform-spec.html"
+      action: created
+      summary: "平台架构说明书初稿 (10章节, 478行, 含硬件需求追溯)"
+    - path: "perf/gem5-model/tests/interrupt/test_pmp.c"
+      action: created
+      summary: "PMP/Smepmp 测试程序"
+    - path: "perf/gem5-model/tests/interrupt/test_clic.c"
+      action: created
+      summary: "CLIC 中断控制器测试程序"
+    - path: "perf/gem5-model/tests/interrupt/test_plic.c"
+      action: created
+      summary: "PLIC 中断控制器测试程序"
+    - path: "perf/gem5-model/tests/interrupt/test_smrnmi.c"
+      action: created
+      summary: "Smrnmi NMI 测试程序"
+    - path: "perf/gem5-model/tests/interrupt/Makefile"
+      action: created
+      summary: "中断测试编译 Makefile"
+    - path: "perf/gem5-model/tests/interrupt/freestanding.ld"
+      action: created
+      summary: "RV32 freestanding 链接脚本"
+    - path: "perf/gem5-model/configs/gem5-overlay/configs/lumi-interrupt.py"
+      action: created
+      summary: "gem5 中断建模配置脚本"
+    - path: "audit/risk-register.yaml"
+      action: modified
+      summary: "追加 RISK-002/003/004 (中断建模 SE 模式限制)"
+    - path: "audit/errata/known-issues.yaml"
+      action: modified
+      summary: "追加 ERR-001 (gem5 SE 模式中断限制)"
+    - path: "audit/compliance-reports/setup-20260701.yaml"
+      action: created
+      summary: "M0 门禁合规报告 (14 PASS, 1 WARN, 0 FAIL)"
+    - path: "docs/project/milestone-plan.yaml"
+      action: modified
+      summary: "M0 status=completed, version=1.1"
+    - path: "agents/*/context/current-state.yaml"
+      action: modified
+      summary: "全部 4 个角色 current_milestone 更新为 M1"
+    - path: "audit/instruction-log/2026-07-01.yaml"
+      action: modified
+      summary: "追加本操作日志"
+
+  # ──────────────────────────────────────────────
+  # 指令 4：M0 交付物质量分析与完善
+  # ──────────────────────────────────────────────
+  - timestamp: "19:00:00"
+    role: pm-infra
+    session_mode: main
+    action: m0_deliverable_improvement
+    details:
+      description: "系统性分析 M0 交付物质量，按优先级执行 11 项改进。"
+      user_request: >
+        分析 M0 当前工作，评估交付物内容是否需要进一步丰富，并执行改进。
+      improvement_categories:
+        p0_critical_fixes:
+          - "master-plan.html M0 状态同步 Active→Completed，Gate pending→pass"
+          - "index.html M0 里程碑状态更新为 Completed"
+          - "platform-spec.html §4.4 分支预测器修正: BHT+BTB→LTAGE (与 lumi_cpu.py 一致)"
+          - "platform-spec.html §5.3.2 CLIC CSR 表去重 mintstatus"
+        p1_content_enrichment:
+          - "platform-spec 新增 §4.6 流水线冒险处理策略 (数据/控制/结构冒险)"
+          - "platform-spec 新增 §5.5 中断信号流向图、响应时序、嵌套规则"
+          - "platform-spec 新增 §6.3 Debug Module 寄存器映射、JTAG TAP、Abstract Command"
+          - "platform-spec 新增 §7.6 全局内存地址映射表、§7.7 AXI 信号列表"
+          - "platform-spec 新增 §8.3 复位与启动序列、§8.4 NMI 处理流程"
+          - "10-traceability.yaml 追溯矩阵从 5 条扩展到 31+ 条硬件需求全覆盖"
+          - "08-milestones.yaml M0 状态 Pending→Pass、M1 标题和日期修正"
+        p2_maintenance:
+          - "risk-register.yaml RISK-001+RISK-004 合并（同本质问题）"
+      rules_checked: ["03", "07", "08", "14", "16", "18", "20"]
+    outcome: "成功。架构说明书从 478 行增长到 638+ 行，新增 6 个技术子章节。追溯矩阵覆盖率从 5/31 提升到 31/31。合规检查 13 PASS/2 WARN/0 FAIL。"
+
+  files_created_or_modified:
+    - path: "docs/project/master-plan.html"
+      action: modified
+      summary: "M0 状态同步: Active→Completed, Gate pending→pass, 任务状态→Completed, 合规报告链接"
+    - path: "docs/index.html"
+      action: modified
+      summary: "M0 里程碑状态 Active→Completed"
+    - path: "docs/architecture/platform-spec.html"
+      action: modified
+      summary: "版本 0.1→0.2。新增 §4.6流水线冒险、§5.5中断流向、§6.3 Debug寄存器、§7.6内存映射、§7.7 AXI信号、§8.3复位序列、§8.4 NMI流程。修正§4.4分支预测器、去重§5.3.2 CLIC CSR"
+    - path: "docs/project/product-requirements/10-traceability.yaml"
+      action: modified
+      summary: "追溯矩阵从 5 条扩展到 31+ 条，新增 PPA目标追溯、完整RTL功能追溯、覆盖统计"
+    - path: "docs/project/product-requirements/08-milestones.yaml"
+      action: modified
+      summary: "M0 状态 Pending→Pass, M1 标题修正、日期统一"
+    - path: "audit/risk-register.yaml"
+      action: modified
+      summary: "RISK-001 合并 RISK-004，RISK-004 标记 resolved+merged"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "重新生成 (12章节, 23分类表格)"
+    - path: "audit/instruction-log/2026-07-01.yaml"
+      action: modified
+      summary: "追加本操作日志"
+
+  # ──────────────────────────────────────────────
+  # 指令 5：PRD 完善与定版准备
+  # ──────────────────────────────────────────────
+  - timestamp: "21:00:00"
+    role: pm-infra
+    session_mode: main
+    action: prd_refinement_for_baseline
+    details:
+      description: "执行 PRD 完善计划，从五个维度完善需求定义，为 M1 里程碑 BL-1.0 基线定版做准备。"
+      user_request: >
+        制定 PRD 完善计划，重点处理：信息安全需求范围界定（IP级边界）、
+        功能安全需求阶段性处理（v1.0 IP级/v2.0车规）、验收标准延后到 HRD/SRD、
+        需求依赖关系梳理、增量需求清理。
+      options_and_decisions:
+        - topic: "信息安全范围"
+          options: ["包含 SoC 级安全需求", "仅 IP 级安全功能", "全部延后"]
+          decision: "仅 IP 级安全功能 (5条需求)，SoC 级由集成方实现"
+        - topic: "功能安全处理"
+          options: ["全部保留当前需求", "ISO 26262 流程级延后到 v2.0", "全部删除"]
+          decision: "IP 级安全机制保留 (3条 Must)，ISO 26262 流程级降级为 Proposed (2条)"
+        - topic: "验收标准细化"
+          options: ["当前 PRD 中细化", "延后到 HRD/SRD 下级文档"]
+          decision: "延后到 HRD/SRD (M2 阶段)"
+      steps:
+        - "step 1: 重写 06-security.yaml: 1条→5条 IP 级安全需求 (SEC-001~005)"
+        - "step 2: 重写 05-safety.yaml: 分两阶段，v1.0 IP级(3条) + v2.0 车规(2条 Proposed)"
+        - "step 3: 03-hardware.yaml 低功耗需求边界明确 (PWR-003/SYS-004/SYS-008 互引边界说明)"
+        - "step 4: 03-hardware.yaml Zce 状态 Proposed→Draft，纳入基线"
+        - "step 5: 03-hardware.yaml 增量需求章节清理 (空数组→注释说明)"
+        - "step 6: 10-traceability.yaml 全面扩展: 新增交付物/安全/软件追溯 + 依赖关系 (10.3~10.7节)"
+        - "step 7: 更新 11-changelog.yaml 版本记录"
+        - "step 8: 重新生成 product-requirements.html"
+      rules_checked: ["03", "09", "14", "16", "22"]
+    outcome: "成功。PRD 需求从 62 条扩展到 82 条。信息安全从 1 条扩充到 5 条 IP 级需求。功能安全分阶段处理。新增三维度依赖关系图 (硬件/软硬件/Profile)。追溯矩阵覆盖 82 条需求。"
+
+  files_created_or_modified:
+    - path: "docs/project/product-requirements/06-security.yaml"
+      action: modified
+      summary: "信息安全需求从 1 条扩充到 5 条 IP 级需求 (SEC-001~005)，明确排除 SoC 级安全功能"
+    - path: "docs/project/product-requirements/05-safety.yaml"
+      action: modified
+      summary: "功能安全分两阶段: v1.0 IP级(3条 Must) + v2.0 车规(2条 Proposed)"
+    - path: "docs/project/product-requirements/03-hardware.yaml"
+      action: modified
+      summary: "低功耗需求边界明确、Zce Proposed→Draft、增量需求章节清理"
+    - path: "docs/project/product-requirements/10-traceability.yaml"
+      action: modified
+      summary: "追溯矩阵全面扩展: 新增交付物/安全/软件追溯，新增三维度依赖关系节 (10.3~10.7)"
+    - path: "docs/project/product-requirements/11-changelog.yaml"
+      action: modified
+      summary: "新增 v0.3-draft 变更记录"
+    - path: "docs/project/product-requirements.html"
+      action: modified
+      summary: "重新生成"
+    - path: "audit/instruction-log/2026-07-01.yaml"
+      action: modified
+      summary: "追加本操作日志"
+
+  # ──────────────────────────────────────────────
+  # 指令 6：RTL 参考文档修正更新
+  # ──────────────────────────────────────────────
+  - timestamp: "22:00:00"
+    role: hw-design
+    session_mode: main
+    action: rtl_reference_v33_update
+    details:
+      description: "修正 RTL 参考文档中的二进制路径错误，补充 Dhrystone 文件索引。"
+      user_request: "根据现在的信息更新 lumi-core-gem5-rtl-reference.md"
+      steps:
+        - "修正 Section 9.2: coremark.rv32 → coremark.riscv (实际文件名)"
+        - "新增 Dhrystone 运行命令到仿真复现章节"
+        - "基准测试文件索引从 3 项扩展到 6 项 (含 Dhrystone: dhrystone.c, m5_stubs.c, Makefile)"
+        - "编译参数补充完整 RV32 flags"
+        - "版本号 v3.2 → v3.3"
+      rules_checked: ["03", "16"]
+    outcome: "成功。文档从 v3.2 更新到 v3.3，修正 2 处路径错误，新增 3 个文件索引条目。"
+
+  # ──────────────────────────────────────────────
+  # 指令 7：流水线优化全盘评估
+  # ──────────────────────────────────────────────
+  - timestamp: "23:00:00"
+    role: hw-design
+    session_mode: main
+    action: pipeline_optimization_assessment
+    details:
+      description: >
+        对当前 8 级流水线设计进行全盘审查和评估，通过 gem5 参数扫描实验
+        定量分析性能提升、时序拉平、总线接口优化、PPA 优化四个维度。
+      user_request: >
+        对当前的流水线设计做一个全盘的审查和评估，看一看是否有可能通过流水线优化，
+        模块重排，存储接口优化的方式解决以下问题：性能进一步提升；流水线时序拉平；
+        总线接口时序优化（约束：总线接口约占总接口时延的30%）；PPA优化。
+        这些工作，可以通过性能模型做一个不准确的定量分析吗？
+      options_and_decisions:
+        - topic: "评估方法"
+          options: ["纯架构推理", "gem5 参数扫描 + 架构推理", "RTL 综合实验"]
+          decision: "gem5 参数扫描 + 架构推理"
+        - topic: "扫描参数范围"
+          options: ["仅 ALU 数量", "全参数扫描", "分阶段扫描"]
+          decision: "全参数扫描 (14 组实验, 含组合最优)"
+      key_findings:
+        - "性能: IPC=1.915 已接近顺序执行 ILP 天花板 (63.8% 利用率)，最优组合仅 +0.2%"
+        - "性能: Load 推测关键 (-6.9% if off)，D-Cache 延迟最敏感 (-11.9% if 2-cycle)"
+        - "时序: Decode2 分割代价 -0.5%，主频可提升 +30-50%，净吞吐量 +29-49%"
+        - "总线: 利用率仅 0.15%，AXI 寄存器切片零代价隔离总线时序 (估算 +43% 主频)"
+        - "PPA: 3 ALU + no-skip 的 Perf/W 比基线高 24%"
+      rules_checked: ["06", "16", "18"]
+    outcome: >
+      成功。完成 14 组参数扫描实验，生成 537 行评估报告。
+      核心结论: 当前配置已达 ILP 天花板；时序拉平通过 Decode2/Execute 分割和 AXI 寄存器切片
+      可实现 +29-49% 净吞吐量；gem5 可提供性能精确分析和时序/PPA 半定量估算。
+
+  files_changed:
+    - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+      action: modified
+      summary: "create_lumi_cpu 新增 num_alu/num_mul 参数，FU 池改为动态生成"
+    - path: "perf/gem5-model/gem5/configs/lumi-core.py"
+      action: modified
+      summary: "新增 --num-alu/--num-mul CLI 参数"
+    - path: "perf/gem5-model/gem5/configs/sweep_pipeline_opt.py"
+      action: created
+      summary: "参数扫描脚本 (14 组实验, 自动收集 stats 并输出 CSV)"
+    - path: "perf/gem5-model/gem5/results/sweep-opt/sweep_results.csv"
+      action: created
+      summary: "14 组扫描实验原始数据"
+    - path: "perf/gem5-model/docs/output/pipeline-optimization-assessment.md"
+      action: created
+      summary: "流水线优化全盘评估报告 v1.0 (537 行, 四维度分析)"
+    - path: "audit/instruction-log/2026-07-01.yaml"
+      action: modified
+      summary: "追加指令 6 和 7"

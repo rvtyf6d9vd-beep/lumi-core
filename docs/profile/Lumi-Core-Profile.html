@@ -213,6 +213,21 @@
             color: #1a1a2e;
         }
 
+        .nav-back {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            padding: 0.4rem 1rem;
+            background: #f0f4f8;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--link);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .nav-back:hover { background: #e1e8f0; text-decoration: none; }
+
         /* Print */
         @media print {
             body {
@@ -229,6 +244,8 @@
     </style>
 </head>
 <body>
+
+<a href="../index.html" class="nav-back">&larr; 返回文档地图</a>
 
 <div class="cover">
     <p class="doc-id">文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0-draft</p>
@@ -1980,6 +1997,7 @@
 
 <hr/>
 <p style="text-align: center; color: #90a4ae; font-size: 0.85rem; margin-top: 2rem;">
+    <a href="../index.html" class="nav-back" style="margin-bottom:0.5rem;">&larr; 返回文档地图</a><br>
     <em>本文档由 Lumi-Core 架构团队维护。最新版本和变更历史请参见项目审计记录 <code>audit/instruction-log/</code>。</em>
 </p>
 

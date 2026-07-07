@@ -1,0 +1,60 @@
+# Phase 8: 深入性能优化
+
+phase: 8
+title: "CPI 瓶颈分析与深入性能优化"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  深入分析 MinorCPU CPI 开销分解，确认瓶颈根因，
+  实施分支预测器升级、skip-stalled 优化和 load 延迟预测调优。
+
+cpi_breakdown:
+  data_hazard_stalls: "37%"
+  pipeline_latency: "40%"
+  structural_hazards: "12%"
+  memory_stalls: "7%"
+  branch_mispredict: "2.3%"
+
+key_changes:
+  - component: "分支预测器升级"
+    before: "TournamentBP 2K/1K/2bit"
+    after: "TournamentBP 8K/2K/3bit"
+    impact: "BTB miss 降低, 分支误判率下降"
+
+  - component: "skip-stalled 启用"
+    parameter: "executeEnableSkipStalled = True"
+    max_skip_width: 16
+    impact: >
+      允许在第一条指令停顿时发射后续独立指令，
+      减少数据冒险导致的流水线气泡。
+
+  - component: "load 延迟预测"
+    parameter: "executeLoadAssumedLatency = 2"
+    impact: >
+      推测性假设 load 2 周期完成，依赖指令提前发射。
+      Phase 9 进一步降至 1 周期获得更大收益。
+
+  - component: "分支反馈延迟"
+    parameter: "executeBranchDelay = 1"
+    note: "从 Phase 5 的 2 降至 1，减少 1 周期分支惩罚"
+
+results:
+  coremark_triple: 4.62
+  coremark_dual: 3.86
+  dhrystone_triple: 1.36
+  dhrystone_dual: 1.18
+  improvement: "+20% vs Phase 7"
+  ipc: 1.51
+
+analysis: >
+  数据冒险停顿 (37%) 和流水线延迟 (40%) 合计占 CPI 的 77%，
+  是 in-order CPU 的固有特征。skip-stalled 和 load prediction
+  是 MinorCPU 模型中缓解此瓶颈的主要手段。
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "分支预测器升级, skip-stalled 配置"
+  - path: "perf/gem5-model/gem5/src/cpu/minor/execute.cc"
+    description: "FU 统计标签, skip 逻辑调整"

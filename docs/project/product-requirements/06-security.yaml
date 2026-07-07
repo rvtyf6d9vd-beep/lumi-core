@@ -1,20 +1,92 @@
 # ═══════════════ 6. 信息安全需求 ═══════════════
 section: "6. 信息安全需求"
 id: sec-security
-description: "安全启动 (Secure Boot)、加密加速 (Crypto Acceleration)、密钥管理等信息安全相关需求。"
+description: |
+  信息安全需求聚焦于 Lumi-Core IP 产品交付范围内的安全功能。
+  IP 级安全能力包括：安全启动验证、加密指令加速、安全调试策略、PMP 隔离保护和总线完整性。
+  明确排除项（由 SoC 集成方实现，不在本 IP 产品范围内）：
+    - 密钥管理/存储 (Key Management/Storage)
+    - 物理攻击防护 (Side-channel 防护、Glitch Detection)
+    - 真随机数生成器 (TRNG)
+    - TrustZone 等价安全域隔离机制
+  上述排除项将在 IP 集成指南中说明集成建议，但不作为本 IP 的功能需求。
 
 categories:
   - id: SEC
     title: "信息安全"
-    description: ""
+    description: "IP 级信息安全功能，覆盖安全启动、加密指令支持、调试安全、隔离保护和总线完整性。"
     requirements:
       - req_id: LUMI-SEC-001
         name: "安全启动 ROM"
         priority: Must
-        status: Draft
-        version: v0.1
+        status: Approved
+        version: v1.0
         source: 客户要求
-        ref_doc: ""
-        acceptance: "启动固件签名验证通过"
-        change_date: ""
-        note: ""
+        ref_doc: "LUMI-BOOT-003"
+        acceptance: |
+          IP 内置 Boot ROM 固件支持签名验证（RSA-2048 或 ECDSA-P256），
+          启动固件签名验证通过后方可跳转执行；
+          Boot ROM 容量 4~32KB 可配置（引用 LUMI-BOOT-003）；
+          不含 SoC 级密钥存储（OTP/eFuse），密钥由外部安全存储提供
+        change_date: "2026-07-01"
+        note: "IP 提供签名验证逻辑，密钥注入接口由 SoC 集成方实现"
+
+      - req_id: LUMI-SEC-002
+        name: "加密加速指令支持"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: 客户要求
+        ref_doc: "LUMI-ISA-009/LUMI-ISA-010"
+        acceptance: |
+          通过 RISC-V Vector Crypto 扩展 (zvkg/zvkn 等) 和/或 Packed SIMD 扩展
+          实现加密算法加速（AES/SHA/SM3/SM4），指令功能正确；
+          IP 不提供独立硬件加密引擎模块
+        change_date: "2026-07-01"
+        note: "加密加速通过 ISA 扩展实现，引用 LUMI-ISA-009 (Vector Crypto) 和 LUMI-ISA-010 (Packed SIMD)"
+
+      - req_id: LUMI-SEC-003
+        name: "安全调试策略"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: "LUMI-FEAT-001/RISC-V Debug V1.0.0"
+        acceptance: |
+          支持 Debug Authentication 机制：
+          (1) Debug Lock/Unlock 功能，通过 CSR 或外部引脚控制调试端口使能状态；
+          (2) 锁定状态下禁止调试器连接和内存/寄存器访问；
+          (3) 支持安全调试等级配置（完全锁定/仅断点/完全开放）；
+          (4) Lock 状态不可通过软件绕过，需硬件复位或密钥认证解锁
+        change_date: "2026-07-01"
+        note: "对应 RISC-V Debug V1.0.0 (LUMI-FEAT-001)，调试安全是 IP 产品级必备功能"
+
+      - req_id: LUMI-SEC-004
+        name: "PMP 安全隔离 (引用 LUMI-MEM-001 + Smepmp)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: RISC-V Profile/Lumi-Core Profile
+        ref_doc: "LUMI-MEM-001/Lumi-Core Profile Mandatory Smepmp"
+        acceptance: |
+          满足 LUMI-MEM-001 全部 PMP 功能要求，另外：
+          (1) Smepmp 扩展生效，M-mode 下 PMP 配置不可被 S/U-mode 代码修改；
+          (2) PMP 配置锁定后，非特权代码无法篡改内存访问权限；
+          (3) 支持至少 8 个 PMP Region（可配置扩展到 16）；
+          IP 提供的隔离能力边界：基于 PMP 的内存访问控制，不含 MMU-based 安全域隔离
+        change_date: "2026-07-01"
+        note: "Lumi-Core Profile Mandatory Smepmp 要求，IP 级隔离能力上限为 PMP，不含 TrustZone 等价机制"
+
+      - req_id: LUMI-SEC-005
+        name: "总线完整性保护"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: "LUMI-SAFE-003"
+        acceptance: |
+          AXI 主总线和 FFP 外设总线支持 Parity 校验（引用 LUMI-SAFE-003），
+          检测到总线数据完整性错误时触发异常 (bus_error_exception)，
+          异常处理策略可配置（异常中断 / NMI / 系统复位）
+        change_date: "2026-07-01"
+        note: "从信息安全视角补充总线保护，对应功能安全需求 LUMI-SAFE-003"

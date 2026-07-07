@@ -119,3 +119,60 @@ entries:
       (红=关键路径, 蓝=GEM5+线, 绿=验证线, 灰=管理线)。
     files_changed:
       - "docs/project/project-flowchart.html"
+
+  # ──────────────────────────────────────────────
+  # 指令 3：Phase 11 冲击 6.0 CoreMark/MHz
+  # ──────────────────────────────────────────────
+  - timestamp: "23:00:00"
+    role: hw-design
+    session_mode: main
+    action: implement_plan
+    details:
+      description: >
+        实施 Phase 11 优化计划，将 CoreMark 从 5.85 提升至 6.22 CM/MHz (+6.3%)，
+        突破 6.0 CM/MHz 目标。五项优化：LTAGE 分支预测器、2nd Memory FU、
+        BTB/RAS 扩容、编译器 -O3 测试（回退）、组合回归验证。
+      user_request: >
+        Implement the plan as specified. Phase 11: 冲击 6.0 CoreMark/MHz.
+      options_and_decisions:
+        - topic: "分支预测器选择"
+          options:
+            - "TournamentBP（当前，2.39% 误判率）"
+            - "LTAGE（TAGE + Loop Predictor，Cortex-A520 参考）"
+            - "LocalBP（局部历史预测）"
+          decision: "LTAGE（TAGE 12 张表 + Loop Predictor 对 CoreMark 紧密循环近乎零误判）"
+        - topic: "2nd MEM FU dual-issue 兼容性"
+          options:
+            - "所有 issue_width 均启用 2nd MEM FU"
+            - "仅 issue_width >= 3 启用（避免 dual-issue LSQ bug）"
+            - "移除 2nd MEM FU"
+          decision: "仅 issue_width >= 3 启用（dual-issue + 2nd MEM FU 触发 MinorCPU LSQ 边界条件 bug，导致 guest page fault）"
+        - topic: "编译器 -O3 测试结果"
+          options:
+            - "保留 -O3（8,460,082 ticks，-4.6% 退化）"
+            - "回退 -O2（8,089,500 ticks，更优）"
+          decision: "回退 -O2（-O3 生成更多指令，对 in-order CPU 反而增加发射压力）"
+      problems_encountered:
+        - problem: "io_getevents syscall unimplemented — gem5 SE 模式不支持此 Linux syscall，仿真 abort"
+          solution: "在 core_main.c 的 GEM5_SIMULATION 块末尾添加 _exit(0) 强制干净退出，绕过 cleanup 阶段的 io_getevents 调用"
+        - problem: "Dual-issue + 2nd MEM FU 崩溃 — Page table fault at virtual address 0x2c"
+          solution: "将 2nd MEM FU 设为条件化（if issue_width >= 3），同步 execute.cc 动态 FU 标签（9 vs 10 FUs）"
+      steps:
+        - "step 1: 替换 TournamentBP 为 LTAGE + SimpleBTB(8192) + ReturnAddrStack(32)"
+        - "step 2: 添加 _exit(0) 解决 io_getevents fatal error"
+        - "step 3: 运行 triple-issue — BP misprediction 67729→9593 (-85.8%), IPC 1.911→2.010"
+        - "step 4: 添加 2nd Memory FU — FU Unavailable stalls -66.5%"
+        - "step 5: 发现 dual-issue 崩溃，条件化 2nd MEM FU"
+        - "step 6: 测试 -O3 编译器选项 — 退化 -4.6%，回退 -O2"
+        - "step 7: 组合回归 — Triple: 6.22 CM/MHz (+6.3%), Dual: 4.78 CM/MHz (+5.1%)"
+        - "step 8: CRC 验证通过 (crcfinal: 0x0158)"
+      rules_checked: ["03", "16", "18", "20"]
+    outcome: >
+      成功。Phase 11 全部 5 项任务完成。Triple-issue: 6.22 CM/MHz (+6.3% vs P10 5.85)，
+      Dual-issue: 4.78 CM/MHz (+5.1% vs P10 4.55)。LTAGE 将分支误判率从 2.39% 降至 0.34%，
+      2nd MEM FU 将 FU stall 降低 66.5%。6.0 CM/MHz 目标达成。
+    files_changed:
+      - "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+      - "perf/gem5-model/gem5/src/cpu/minor/execute.cc"
+      - "perf/benchmarks/coremark/core_main.c"
+      - "perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_cpu.py"

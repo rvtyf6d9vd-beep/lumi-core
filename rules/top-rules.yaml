@@ -1,4 +1,4 @@
-# Lumi 通用项目规则（15 条）
+# Lumi 通用项目规则（19 条）
 # 源自 Top Rules_Optimized.md 第三章
 
 rules:
@@ -287,4 +287,36 @@ rules:
       - "每个 Skill 文件含 name、description、usage 和 files_required 字段"
       - "任务执行前检查 skills/ 目录是否有匹配 Skill"
       - "审计周期内重复造轮次数为 0"
+    audit_role: true
+
+  # ── 3.9 里程碑层级定义 ──
+  - id: "23"
+    title: "Milestone/Stage/Phase 层级定义"
+    category: general
+    severity: high
+    applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      项目进度采用三层结构管理：
+
+      Milestone (MS) —— 项目级大里程碑，对应强制门禁节点。
+      命名：M0, M1, M2, ... 定义在 docs/project/milestone-plan.yaml 中。
+      每个 Milestone 必须通过门禁检查（规则 10）才能进入下一个。
+
+      Stage (S) —— Milestone 内部的工作阶段细分，一组有明确交付目标的任务集合。
+      命名：MS-{序号}-S{阶段号}，如 M1-S1（需求定版）、M1-S2（架构定义）。
+      Stage 根据里程碑计划按需定义和调整。
+
+      Phase (P) —— 具体任务的不同工序阶段，复用 schema.yaml 中定义的 valid_phases
+      （setup / requirements / architecture / design / implementation / verification / delivery）。
+      每项任务使用 Phase 标签标识当前所在的工序阶段。
+
+      关系示例：Milestone M1（架构与需求冻结）包含 Stage M1-S1（需求定版），
+      其中 PRD 任务处于 Phase: review/approved 阶段。
+    check_type: automated
+    check_criteria:
+      - "docs/project/milestone-plan.yaml 存在且定义所有 MS 和 S"
+      - "每个任务有明确的 Phase 标记"
+      - "Milestone 门禁报告引用 MS 编号（规则 10）"
+      - "role-mapping.yaml 中 applicable_phases 与 schema.yaml 一致"
     audit_role: true

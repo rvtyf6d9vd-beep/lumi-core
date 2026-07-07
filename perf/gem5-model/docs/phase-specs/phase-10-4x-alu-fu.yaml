@@ -1,0 +1,50 @@
+# Phase 10: 4x ALU FU 扩展
+
+phase: 10
+title: "ALU 功能单元扩展 — 3x -> 4x LumiIntFU"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  将 ALU FU 从 3x 增加到 4x，进一步减少 FU 竞争。
+  CoreMark 约 60% 指令为 ALU 操作，3 个 FU 在 triple-issue 下
+  仍有较高竞争概率。
+
+baseline:
+  phase: 9
+  coremark_triple: 5.54
+  coremark_dual: 4.46
+
+key_changes:
+  - component: "ALU FU 数量"
+    before: "3x LumiIntFU (opLat=1)"
+    after: "4x LumiIntFU (opLat=1)"
+    rationale: >
+      FU 总数独立于 issue_width。更多 FU 给 skip-stalled
+      更多调度目标，减少 FU Unavailable 停顿。
+
+fu_pool_after:
+  total: 9
+  list:
+    - "4x LumiIntFU (opLat=1)"
+    - "1x LumiIntMulFU (opLat=1)"
+    - "1x MinorDefaultIntDivFU (opLat=9)"
+    - "1x MinorDefaultFloatSimdFU (opLat=6)"
+    - "1x MinorDefaultMemFU (opLat=1)"
+    - "1x MinorDefaultMiscFU (opLat=1)"
+
+results:
+  coremark_triple: 5.85
+  coremark_dual: 4.55
+  improvement_triple: "+5.6% vs Phase 9"
+  improvement_dual: "+2.0% vs Phase 9"
+
+analysis: >
+  ALU FU 从 3x 扩至 4x 在 triple-issue 下贡献 +5.6%，
+  说明 ALU FU 竞争仍是可观测的瓶颈。Dual-issue 收益较小 (+2.0%)
+  因为 2 发射宽度下 3x ALU 已较充裕。
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "FU 列表新增第 4 个 LumiIntFU"

@@ -1,0 +1,30 @@
+report_version: '1.0'
+generated_at: '2026-07-01T10:58:36'
+environment:
+  compiler: riscv64-unknown-elf-gcc (GCC) 16.1.0
+  optimization: -O2 -march=rv64im -mabi=lp64
+  simulator: gem5 (build/RISCV/gem5.opt)
+  cpu_model: 8-stage MinorCPU (Cortex-R82 reference)
+  issue_width: 3
+  clock: 1GHz
+  cache: L1I 32KB 8-way / L1D 32KB 8-way
+  memory: DDR3_1600_8x8
+benchmarks:
+  coremark:
+    status: PASS
+    metric_name: CM/MHz
+    metric_value: 5.73
+    sim_iterations: 50
+    sim_ticks: 8722059
+    target: 5.5
+    target_met: true
+  dhrystone:
+    status: PASS
+    metric_name: DMIPS/MHz
+    metric_value: 1.49
+    sim_ticks: 190079
+  irq_latency:
+    status: deferred
+    reason: Requires gem5 FS mode with CLIC/PLIC support
+    target: <= 16 cycles
+    see: audit/risk-register.yaml RISK-001

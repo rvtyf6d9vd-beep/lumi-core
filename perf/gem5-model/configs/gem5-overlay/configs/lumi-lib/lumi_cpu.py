@@ -16,6 +16,9 @@ from m5.objects import (
     MinorDefaultMemFU,
     MinorDefaultMiscFU,
     TournamentBP,
+    LTAGE,
+    SimpleBTB,
+    ReturnAddrStack,
 )
 
 
@@ -107,31 +110,39 @@ def create_lumi_cpu(issue_width=3):
     cpu.executeLSQTransfersQueueSize = 6
     cpu.executeLSQMaxStoreBufferStoresPerCycle = issue_width
 
-    # --- Functional Unit Pool (triple-issue: 3x ALU) ---
+    # --- Functional Unit Pool (triple-issue: 4x ALU) ---
     # Phase 7: use LumiIntFU (opLat=1) and LumiIntMulFU (opLat=1)
     # to match realistic Cortex-R82-class latencies.
+    # Phase 10: 4x ALU (was 3x) to reduce FU contention.
+    # FU count is independent of issue width -- more FUs give
+    # skip-stalled more scheduling targets.
+    # Phase 11: add 2nd MEM FU only for triple-issue to allow dual mem ops.
+    # Dual-issue (iw=2) triggers a MinorCPU LSQ edge case with 2 MEM FUs,
+    # causing guest page faults.  Triple-issue (iw=3) works correctly.
     fu_list = [
         LumiIntFU(),
         LumiIntFU(),
-        LumiIntFU(),  # 3x single-cycle ALU (opLat=1, was 3)
-        LumiIntMulFU(),  # 1x single-cycle MUL (opLat=1, was 3)
+        LumiIntFU(),
+        LumiIntFU(),  # 4x single-cycle ALU (opLat=1)
+        LumiIntMulFU(),  # 1x single-cycle MUL (opLat=1)
         MinorDefaultIntDivFU(),  # 1x DIV (opLat=9, unchanged)
         MinorDefaultFloatSimdFU(),  # 1x FP/SIMD (opLat=6, unchanged)
         MinorDefaultMemFU(),  # 1x MEM (opLat=1, unchanged)
-        MinorDefaultMiscFU(),  # 1x MISC (opLat=1, unchanged)
     ]
+    if issue_width >= 3:
+        fu_list.append(MinorDefaultMemFU())  # Phase 11: 2nd MEM FU
+    fu_list.append(MinorDefaultMiscFU())  # 1x MISC (opLat=1, unchanged)
     cpu.executeFuncUnits = MinorFUPool(funcUnits=fu_list)
 
-    # --- Branch Predictor (Phase 5: enlarged for better accuracy) ---
-    cpu.branchPred = TournamentBP(
-        localPredictorSize=2048,
-        localCtrBits=3,
-        localHistoryTableSize=2048,
-        globalPredictorSize=8192,
-        globalCtrBits=3,
-        choicePredictorSize=8192,
-        choiceCtrBits=2,
-        numThreads=1,
-    )
+    # --- Branch Predictor (Phase 11: LTAGE -- Cortex-A520 inspired) ---
+    # Upgrade from TournamentBP to LTAGE (TAGE + Loop Predictor).
+    # TAGE: 12 history tables, geometric history lengths (4..640), 256Kbits.
+    # Loop Predictor: records loop iteration counts for near-perfect loop
+    # prediction -- critical for CoreMark's tight loops.
+    # BTB enlarged to 8192 entries (from default 4096) for higher hit ratio.
+    # RAS enlarged to 32 entries (from default 16) for deeper call chains.
+    cpu.branchPred = LTAGE()
+    cpu.branchPred.btb = SimpleBTB(numEntries=8192)
+    cpu.branchPred.ras = ReturnAddrStack(numEntries=32)
 
     return cpu

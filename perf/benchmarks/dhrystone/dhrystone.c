@@ -235,13 +235,18 @@ int main (int argc, char** argv)
    * DMIPS/MHz = DMIPS / freq_MHz
    * At 1GHz (freq_MHz = 1000):
    *   DMIPS/MHz = Dhrystones_Per_Second / (1757 * 1000)
-   *   DMIPS/MHz * 100 = Number_Of_Runs * 1e6 * 100 / (1757 * User_Time)
+   *
+   * RV32 overflow-safe calculation:
+   *   User_Time is in CPU cycles (from rdcycle). At 1GHz, 1 cycle = 1ns.
+   *   DMIPS/MHz * 100 = Number_Of_Runs * 10^8 / (1757 * User_Time)
+   *   Split into: scaled_dps = N_Runs * 10000 / User_Time (fits RV32)
+   *   Then: dmips_x100 = scaled_dps * 10000 / 1757
    */
   {
-    unsigned long dmips_mhz_x100;
-    /* Avoid overflow: Number_Of_Runs * 100000000UL / (1757 * User_Time) */
-    dmips_mhz_x100 = ((unsigned long)Number_Of_Runs * 100000000UL)
-                     / (1757UL * (unsigned long)User_Time);
+    unsigned long scaled_dps, dmips_mhz_x100;
+    scaled_dps = ((unsigned long)Number_Of_Runs * 10000UL)
+                 / (unsigned long)User_Time;
+    dmips_mhz_x100 = (scaled_dps * 10000UL) / 1757UL;
     printf ("Dhrystone_DMIPS_per_MHz_x100 : %lu\n", dmips_mhz_x100);
     printf ("Dhrystone_sim_runs : %d\n", Number_Of_Runs);
     printf ("Dhrystone_sim_ticks : %ld\n", User_Time);

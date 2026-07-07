@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 里程碑主计划</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --card-bg: #fff; --accent: #16213e; --text: #333;
+            --link: #0d47a1; --border: #e0e0e0; --note: #546e7a;
+            --ms-active: #2e7d32; --ms-planned: #1976d2; --ms-completed: #757575;
+            --gate-pass: #2e7d32; --gate-pending: #ff9800; --gate-na: #bdbdbd;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--bg); max-width: 1060px; margin: 0 auto; padding: 2rem; }
+        header { text-align: center; padding: 2rem 0; border-bottom: 3px solid var(--accent); margin-bottom: 2.5rem; }
+        header h1 { font-size: 2.2rem; color: var(--accent); }
+        header .subtitle { color: var(--note); font-size: 1.05rem; margin-top: 0.3rem; }
+        header .meta { font-size: 0.85rem; color: #90a4ae; margin-top: 0.8rem; }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 3rem; margin: 2rem 0 3rem; }
+        .timeline::before { content: ''; position: absolute; left: 1.2rem; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--ms-active) 0%, var(--ms-planned) 30%, #ccc 70%); border-radius: 2px; }
+        .ms-block { position: relative; margin-bottom: 2.5rem; }
+        .ms-block::before { content: ''; position: absolute; left: -2.15rem; top: 0.4rem; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--ms-planned); }
+        .ms-block.active::before { background: var(--ms-active); box-shadow: 0 0 0 2px var(--ms-active); }
+        .ms-block.completed::before { background: var(--ms-completed); box-shadow: 0 0 0 2px var(--ms-completed); }
+        .ms-block.planned::before { background: var(--ms-planned); box-shadow: 0 0 0 2px var(--ms-planned); }
+
+        .ms-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem; }
+        .ms-id { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .ms-title { font-size: 1.1rem; color: #1a3a5c; font-weight: 600; }
+        .ms-badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 3px; font-size: 0.78rem; font-weight: 600; color: #fff; }
+        .ms-badge.active { background: var(--ms-active); }
+        .ms-badge.planned { background: var(--ms-planned); }
+        .ms-badge.completed { background: var(--ms-completed); }
+        .ms-date { font-size: 0.85rem; color: #90a4ae; }
+
+        .ms-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); padding: 1.3rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+
+        /* Gates */
+        .gates { margin-bottom: 1.2rem; }
+        .gates h4 { font-size: 0.9rem; color: #546e7a; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .gate-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .gate { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: #f5f5f5; border: 1px solid var(--border); }
+        .gate .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .gate .dot.pending { background: var(--gate-pending); }
+        .gate .dot.pass { background: var(--gate-pass); }
+        .gate .dot.na { background: var(--gate-na); }
+
+        /* Stages */
+        .stages { }
+        .stages h4 { font-size: 0.9rem; color: #546e7a; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stage-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .stage-table th { background: #f5f5f5; padding: 0.5rem 0.8rem; text-align: left; font-weight: 600; color: #37474f; border-bottom: 2px solid var(--border); }
+        .stage-table td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        .task-tag { display: inline-block; background: #e3f2fd; color: #1565c0; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem; margin: 0.1rem 0.2rem; }
+
+        /* Compliance */
+        .compliance { margin-top: 0.8rem; font-size: 0.85rem; color: #78909c; }
+        .compliance a { color: var(--link); }
+
+        .nav-top { text-align: center; margin-bottom: 1.5rem; }
+        .nav-top a { color: var(--link); font-size: 0.9rem; }
+
+        .footer { text-align: center; color: #90a4ae; font-size: 0.85rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+        @media print { .ms-card { break-inside: avoid; } body { font-size: 11pt; } }
+    </style>
+</head>
+<body>
+
+<div class="nav-top"><a href="../index.html">&larr; 返回文档地图</a></div>
+
+<header>
+    <h1>Lumi-Core 里程碑主计划</h1>
+    <p class="subtitle">Milestone Master Plan &mdash; MS0 ~ MS4</p>
+    <p class="meta">版本: 1.1 &nbsp;|&nbsp; 最后更新: 2026-07-01 &nbsp;|&nbsp; 数据源: <code>milestone-plan.yaml</code></p>
+</header>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- M0: 项目启动完成 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="timeline">
+
+<div class="ms-block completed">
+    <div class="ms-header">
+        <span class="ms-id">M0</span>
+        <span class="ms-title">项目启动完成</span>
+        <span class="ms-badge completed">Completed</span>
+        <span class="ms-date">完成: 2026-07-01</span>
+    </div>
+    <div class="ms-card">
+        <div class="gates">
+            <h4>门禁条件 (Gates)</h4>
+            <div class="gate-list">
+                <div class="gate"><span class="dot pass"></span>基础设施就绪</div>
+                <div class="gate"><span class="dot pass"></span>PRD 草案完成</div>
+                <div class="gate"><span class="dot pass"></span>架构说明书初稿</div>
+                <div class="gate"><span class="dot pass"></span>GEM5+ 环境搭建完成</div>
+            </div>
+        </div>
+        <div class="stages">
+            <h4>Stage: M0-S1 &mdash; 项目启动 (2026-06 ~ 2026-07)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T0.1</td><td>PRD 需求完善</td><td><span class="task-tag">requirements</span></td><td>Completed</td></tr>
+                    <tr><td>T0.2</td><td>基础设施搭建</td><td><span class="task-tag">setup</span></td><td>Completed</td></tr>
+                    <tr><td>T0.3</td><td>架构说明书起草</td><td><span class="task-tag">architecture</span></td><td>Completed</td></tr>
+                    <tr><td>T0.4</td><td>GEM5+ ISA 扩展</td><td><span class="task-tag">implementation</span></td><td>Completed</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compliance">门禁报告: <a href="../../audit/compliance-reports/setup-20260701.yaml">setup-20260701.yaml</a> (14 PASS / 1 WARN / 0 FAIL)</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- M1: 架构与需求冻结 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="ms-block planned">
+    <div class="ms-header">
+        <span class="ms-id">M1</span>
+        <span class="ms-title">架构与需求冻结</span>
+        <span class="ms-badge completed">Completed</span>
+        <span class="ms-date">目标: 2026-09 | 完成: 2026-07-02</span>
+    </div>
+    <div class="ms-card">
+        <div class="gates">
+            <h4>门禁条件 (Gates)</h4>
+            <div class="gate-list">
+                <div class="gate"><span class="dot pass"></span>PRD 评审定版</div>
+                <div class="gate"><span class="dot pass"></span>架构说明书定版</div>
+                <div class="gate"><span class="dot pass"></span>验证方案启动</div>
+                <div class="gate"><span class="dot pass"></span>GEM5+ 中断建模完成</div>
+            </div>
+        </div>
+        <div class="stages">
+            <h4>Stage: M1-S1 &mdash; 需求定版 (2026-07 ~ 2026-08)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T1.1</td><td>PRD 评审定版</td><td><span class="task-tag">requirements</span></td><td>Pending</td></tr>
+                    <tr><td>T1.3</td><td>验证方案启动</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+            <h4 style="margin-top:1rem;">Stage: M1-S2 &mdash; 架构定义 (2026-07 ~ 2026-09)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T1.2</td><td>架构说明书定版</td><td><span class="task-tag">architecture</span></td><td>Pending</td></tr>
+                    <tr><td>T1.4</td><td>GEM5+ 中断建模</td><td><span class="task-tag">implementation</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compliance">门禁报告: 尚未生成</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- M2: 详细设计与验证框架完成 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="ms-block planned">
+    <div class="ms-header">
+        <span class="ms-id">M2</span>
+        <span class="ms-title">详细设计与验证框架完成</span>
+        <span class="ms-badge planned">Planned</span>
+        <span class="ms-date">目标: 2026-12</span>
+    </div>
+    <div class="ms-card">
+        <div class="gates">
+            <h4>门禁条件 (Gates)</h4>
+            <div class="gate-list">
+                <div class="gate"><span class="dot na"></span>14 份模块设计文档完成</div>
+                <div class="gate"><span class="dot na"></span>验证方案定版</div>
+                <div class="gate"><span class="dot na"></span>GEM5+ 微架构模型完成</div>
+                <div class="gate"><span class="dot na"></span>RTL 骨架搭建完成</div>
+            </div>
+        </div>
+        <div class="stages">
+            <h4>Stage: M2-S1 &mdash; 详细设计 (2026-10 ~ 2026-12)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T2.1</td><td>模块设计文档 x14</td><td><span class="task-tag">design</span></td><td>Pending</td></tr>
+                    <tr><td>T2.3</td><td>GEM5+ 微架构</td><td><span class="task-tag">implementation</span></td><td>Pending</td></tr>
+                    <tr><td>T2.4</td><td>RTL 骨架搭建</td><td><span class="task-tag">implementation</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+            <h4 style="margin-top:1rem;">Stage: M2-S2 &mdash; 验证框架 (2026-10 ~ 2026-12)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T2.2</td><td>验证方案定版</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compliance">门禁报告: 尚未生成</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- M3: RTL 冻结 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="ms-block planned">
+    <div class="ms-header">
+        <span class="ms-id">M3</span>
+        <span class="ms-title">RTL 冻结</span>
+        <span class="ms-badge planned">Planned</span>
+        <span class="ms-date">目标: 2027-06</span>
+    </div>
+    <div class="ms-card">
+        <div class="gates">
+            <h4>门禁条件 (Gates)</h4>
+            <div class="gate-list">
+                <div class="gate"><span class="dot na"></span>RTL 全模块实现完成</div>
+                <div class="gate"><span class="dot na"></span>单元验证通过</div>
+                <div class="gate"><span class="dot na"></span>系统集成验证通过</div>
+                <div class="gate"><span class="dot na"></span>回归测试通过率 100%</div>
+                <div class="gate"><span class="dot na"></span>性能达标验证</div>
+            </div>
+        </div>
+        <div class="stages">
+            <h4>Stage: M3-S1 &mdash; RTL 实现与单元验证 (2027-01 ~ 2027-03)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T3.1</td><td>RTL 逐模块实现</td><td><span class="task-tag">implementation</span></td><td>Pending</td></tr>
+                    <tr><td>T3.2</td><td>单元验证</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                    <tr><td>T3.3</td><td>每日集成回归</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                    <tr><td>T3.4</td><td>GEM5+ 交叉校准</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+            <h4 style="margin-top:1rem;">Stage: M3-S2 &mdash; 集成验证与冻结 (2027-04 ~ 2027-06)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T4.1</td><td>系统集成验证</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                    <tr><td>T4.2</td><td>回归 + Bug 用例</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                    <tr><td>T4.3</td><td>性能达标验证</td><td><span class="task-tag">verification</span></td><td>Pending</td></tr>
+                    <tr><td>T4.4</td><td>交付物准备</td><td><span class="task-tag">delivery</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compliance">门禁报告: 尚未生成</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- M4: 交付就绪 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="ms-block planned">
+    <div class="ms-header">
+        <span class="ms-id">M4</span>
+        <span class="ms-title">交付就绪</span>
+        <span class="ms-badge planned">Planned</span>
+        <span class="ms-date">目标: 2027-09</span>
+    </div>
+    <div class="ms-card">
+        <div class="gates">
+            <h4>门禁条件 (Gates)</h4>
+            <div class="gate-list">
+                <div class="gate"><span class="dot na"></span>交付物整理完成</div>
+                <div class="gate"><span class="dot na"></span>文档体系检查通过</div>
+                <div class="gate"><span class="dot na"></span>项目总结完成</div>
+                <div class="gate"><span class="dot na"></span>Consultant 审阅通过</div>
+            </div>
+        </div>
+        <div class="stages">
+            <h4>Stage: M4-S1 &mdash; 交付准备 (2027-07 ~ 2027-09)</h4>
+            <table class="stage-table">
+                <thead><tr><th>任务编号</th><th>任务名称</th><th>Phase</th><th>状态</th></tr></thead>
+                <tbody>
+                    <tr><td>T5.1</td><td>交付物整理</td><td><span class="task-tag">delivery</span></td><td>Pending</td></tr>
+                    <tr><td>T5.2</td><td>文档体系检查</td><td><span class="task-tag">delivery</span></td><td>Pending</td></tr>
+                    <tr><td>T5.3</td><td>项目总结</td><td><span class="task-tag">delivery</span></td><td>Pending</td></tr>
+                    <tr><td>T5.4</td><td>Consultant 审阅</td><td><span class="task-tag">delivery</span></td><td>Pending</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compliance">门禁报告: 尚未生成</div>
+    </div>
+</div>
+
+</div><!-- end timeline -->
+
+<div class="footer">
+    <p>Lumi-Core Milestone Master Plan &mdash; 三层结构: Milestone &rarr; Stage &rarr; Phase<br>
+    数据源: <code>docs/project/milestone-plan.yaml</code> &nbsp;|&nbsp; Phase 选项: setup / requirements / architecture / design / implementation / verification / delivery</p>
+</div>
+
+</body>
+</html>

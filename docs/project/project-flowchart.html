@@ -14,6 +14,8 @@
     --c-gate: #f39c12; --bg-gate: #fef9e7;
   }
   body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 20px; background: #fafafa; color: #2c3e50; }
+  .nav-back { display: inline-block; margin-bottom: 1rem; padding: 0.4rem 1rem; background: #f0f4f8; border: 1px solid #ddd; border-radius: 4px; color: #2980b9; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: background 0.2s; }
+  .nav-back:hover { background: #e1e8f0; text-decoration: none; }
   h1 { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 12px; }
   h2 { margin-top: 40px; border-left: 5px solid #3498db; padding-left: 12px; }
   h3 { margin-top: 24px; color: #2c3e50; }
@@ -50,6 +52,7 @@
 </style>
 </head>
 <body>
+<a href="../index.html" class="nav-back">&larr; 返回文档地图</a>
 <div class="container">
 
 <h1>Lumi-Core 项目流程图<br><small style="font-size:50%;color:#7f8c8d">任务依赖与并行路径分析 (2026-06 ~ 2027-09)</small></h1>
@@ -377,5 +380,6 @@ mermaid.initialize({
   gantt: { fontSize: 12, barGap: 4, barHeight: 24, topPadding: 50, sectionFontSize: 14 }
 });
 </script>
+<p style="text-align:center;margin-top:2rem;"><a href="../index.html" class="nav-back">&larr; 返回文档地图</a></p>
 </body>
 </html>

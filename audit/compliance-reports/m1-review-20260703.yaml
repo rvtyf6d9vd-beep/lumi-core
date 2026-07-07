@@ -1,0 +1,205 @@
+# M1 独立审查补强门禁报告 (Independent Review Enhancement Gate Report)
+# Lumi-Core 架构与需求冻结 — M1 阶段末独立硬件 IP 产品完整性审查补强
+
+milestone: M1
+report_type: gate-review-enhancement
+date: "2026-07-03"
+target_date: "2026-09"
+project_root: /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core
+parent_report: m1-20260702.yaml
+trigger: "M1 门禁完成后独立硬件 IP 视角的完整性审查，发现 4 项缺口"
+
+enhancement_summary:
+  scope: "PRD + 架构说明书 + 追溯矩阵 + 基线同步"
+  baseline_before: "BL-1.0 (91 条需求)"
+  baseline_after: "BL-1.1 (99 条需求, 新增 8 条)"
+  files_modified:
+    - docs/architecture/platform-spec.html (1128 行, +305 行)
+    - docs/project/product-requirements/03-hardware.yaml (799 行, +70 行)
+    - docs/project/product-requirements/04-deliverables.yaml (141 行, +20 行)
+    - docs/project/product-requirements/10-traceability.yaml (214 行, +8 行)
+    - docs/project/product-requirements.html (重新生成)
+    - docs/project/baselines/baseline-BL-1.1.yaml (新增)
+    - docs/project/baselines/baseline-BL-1.1.html (新增)
+    - docs/project/baselines/gen_baseline.py (支持版本号参数)
+
+gates:
+  # ═══ 门禁 1: PRD 评审定版 (BL-1.1) ═══
+  - id: GATE-1
+    title: "PRD 评审定版 (BL-1.1 增强)"
+    status: PASS
+    checks:
+      - id: G1-1
+        title: "BL-1.1 基线存在"
+        status: PASS
+        detail: "baseline-BL-1.1.yaml 存在，包含 99 条 Approved 需求 (BL-1.0:91 + 新增 8 条)"
+      - id: G1-2
+        title: "Approved 需求数量 > 0"
+        status: PASS
+        detail: "Must:84 (BL-1.0 77 + 7), Should:12 (BL-1.0 11 + 1), Could:3 不变, 共 99 条"
+      - id: G1-3
+        title: "需求无 Draft 状态残留"
+        status: PASS
+        detail: "03-hardware(66 含 5 条新增 RTL-CLK), 04-deliverables(12 含 PRM+Compliance), 05-safety(3), 06-security(5), 07-software(13) 全部 Approved"
+      - id: G1-4
+        title: "PRD HTML 已生成"
+        status: PASS
+        detail: "product-requirements.html + baseline-BL-1.1.html 均已重新生成"
+      - id: G1-5
+        title: "追溯矩阵覆盖与统计校准"
+        status: PASS
+        detail: "10-traceability.yaml §10.8 统计已校准: 硬件 66/交付 12/安全 3/信息安全 5/软件 13/总计 99, 覆盖率 9.1%"
+      - id: G1-6
+        title: "新增需求追溯可达"
+        status: PASS
+        detail: "MEM-009→§7.8, CLK-001/002/003→§8.9.1/2/3, PWR-004/005→§8.9.4, DEL-011/012→§4, 全部 8 条新增需求追溯到架构章节"
+
+  # ═══ 门禁 2: 架构说明书定版 (补强) ═══
+  - id: GATE-2
+    title: "架构说明书定版 (独立审查补强)"
+    status: PASS
+    checks:
+      - id: G2-1
+        title: "§1.5 顶层框图新增"
+        status: PASS
+        detail: "添加 ASCII 框图展示 Hart/CLIC/PLIC/Debug/ITCM/DTCM/Trace 顶层模块划分 + 12 项边界信号表"
+      - id: G2-2
+        title: "§4.7 寄存器堆架构新增"
+        status: PASS
+        detail: "整数堆(32×32bit, 3R+2W)/浮点堆(32×64bit, 2R+1W)/向量堆(32×VLEN, 4 banks)/CSR堆(≤4096, 1R+1W) 四种寄存器堆规格"
+      - id: G2-3
+        title: "§4.8 性能监控计数器新增"
+        status: PASS
+        detail: "Zicntr (mcycle/minstret/mhpmcounter3) + Zihpm (mhpmevent/mhpmcounter) CSR 映射 + 事件定义表"
+      - id: G2-4
+        title: "§5.6 异常处理新增"
+        status: PASS
+        detail: "mcause 异常码表(12条) + medeleg/mideleg 委托 CSR + 7 级异常优先级 + mtval/stval/mnval 说明"
+      - id: G2-5
+        title: "§7.8 PMA 检查器新增"
+        status: PASS
+        detail: "7 种内存属性 (cacheable/executable/idempotent/amo_supported/misaligned_ok/main_memory/io) + Hardwired PMA 区域表 + 可选 cfgaddr/cfgdata CSR + gem5 pma_checker.hh 引用"
+      - id: G2-6
+        title: "§8.9 时钟与复位架构新增"
+        status: PASS
+        detail: "4 个子节: §8.9.1 时钟域 (clk_core/clk_bus/clk_tcm/tck/clk_trace) + §8.9.2 Clock Gating 策略 + §8.9.3 复位域 (Cold/Core/Bus/Debug/Power-on) + §8.9.4 UPF 电源约束 (PD_CORE 域 + isolation cell + retention register)"
+      - id: G2-7
+        title: "§9 需求表补全 6 条"
+        status: PASS
+        detail: "新增 LUMI-MEM-009/CLK-001/002/003/PWR-004/005 共 6 条需求至 §9.2 RTL 需求表"
+      - id: G2-8
+        title: "§10 配置表补充电源域配置项"
+        status: PASS
+        detail: "新增 3 项配置: #21 多电源域(数量可配), #22 PMA 区域数(1~16), #23 CSR Retention(可选)"
+      - id: G2-9
+        title: "§10 配置表 Bug 修复"
+        status: PASS
+        detail: "Bug #15 核数配置 -- → §8.6 修复, Bug #16 双核锁步 §8.5.2 → §8.6.2 修复"
+      - id: G2-10
+        title: "TOC 索引与导航同步"
+        status: PASS
+        detail: "TOC 补充 §1.5/§4.7/§4.8/§5.6/§7.8/§8.6/§8.7/§8.8/§8.9 链接, 导航 ch8 标签更新为 8.安全/多核/DFT/时钟复位"
+
+  # ═══ 门禁 3: 验证方案启动 (无变化) ═══
+  - id: GATE-3
+    title: "验证方案启动 (无变化)"
+    status: PASS
+    checks:
+      - id: G3-1
+        title: "验证策略文档存在"
+        status: PASS
+        detail: "docs/verification/verification-strategy.html 存在 (LUMI-VER-001, v0.1-draft)"
+      - id: G3-2
+        title: "覆盖率计划框架存在"
+        status: PASS
+        detail: "docs/verification/coverage-plan.yaml 存在 (LUMI-VER-002, 22 个 Cover Group)"
+      - id: G3-3
+        title: "新增需求验证路径规划"
+        status: PASS
+        detail: "10-traceability.yaml 已为 MEM-009/CLK-001~003/PWR-004/005/DEL-011/012 规划验证用例 ID 模式 (tc_pma_*/tc_clock_domain_*/tc_clk_gate_*/tc_rst_domain_*/tc_power_domain_*/tc_retention_*/tc_arch_test_*)"
+
+  # ═══ 门禁 4: GEM5+ 中断建模 (无变化) ═══
+  - id: GATE-4
+    title: "GEM5+ 中断建模 (无变化)"
+    status: CONDITIONAL_PASS
+    checks:
+      - id: G4-1
+        title: "中断测试已编译"
+        status: PASS
+        detail: "4 个测试二进制 (test_pmp/clic/plic/smrnmi.riscv) 使用 riscv64-unknown-elf-gcc 成功编译"
+      - id: G4-2
+        title: "中断测试运行"
+        status: CONDITIONAL_PASS
+        detail: "gem5 SE 模式不支持裸机 ELF (ERR-002)。补强调研确认: CLIC (clic.hh) 和 PLIC (plic.hh) 模型已编译到 gem5 二进制中，但 CLIC 未接线到 RiscvISA。需 FS 模式 + 接线工作"
+      - id: G4-3
+        title: "已知限制已记录"
+        status: PASS
+        detail: "ERR-001 (SE 模式不支持中断注入，CLIC/PLIC 已编译), ERR-002 (SE 不支持裸机 ELF), ERR-003 (合规脚本兼容性问题) 已记录"
+      - id: G4-4
+        title: "m5 stub 创建"
+        status: PASS
+        detail: "perf/gem5-model/tests/m5-test/syscalls.c 已创建，提供 m5_exit/m5_dump_stats 函数"
+
+summary:
+  total_gates: 4
+  PASS: 3
+  CONDITIONAL_PASS: 1
+  FAIL: 0
+  overall: "M1 独立审查补强完成 (GATE-4 仍为 Conditional Pass, 待 M2 解决 FS 模式中断测试)"
+  baseline_progression:
+    - "BL-1.0 (2026-07-02): 91 条 (Must:77/Should:11/Could:3)"
+    - "BL-1.1 (2026-07-03): 99 条 (Must:84/Should:12/Could:3) — 新增 8 条 (7 Must + 1 Should)"
+  new_requirements:
+    - id: LUMI-MEM-009
+      name: PMA 物理内存属性检查器
+      priority: Must
+      architecture_ref: "§7.8"
+    - id: LUMI-CLK-001
+      name: 多时钟域架构
+      priority: Must
+      architecture_ref: "§8.9.1"
+    - id: LUMI-CLK-002
+      name: Clock Gating 策略
+      priority: Must
+      architecture_ref: "§8.9.2"
+    - id: LUMI-CLK-003
+      name: 复位域划分
+      priority: Must
+      architecture_ref: "§8.9.3"
+    - id: LUMI-PWR-004
+      name: 电源域划分与 UPF 交付
+      priority: Must
+      architecture_ref: "§8.9.4"
+    - id: LUMI-PWR-005
+      name: 关键 CSR Retention 寄存器
+      priority: Should
+      architecture_ref: "§8.9.4"
+    - id: LUMI-DEL-011
+      name: 程序员参考手册 (PRM)
+      priority: Must
+      architecture_ref: "§4"
+    - id: LUMI-DEL-012
+      name: RISC-V Compliance Test 结果报告
+      priority: Must
+      architecture_ref: "§4"
+
+action_items:
+  - "M2 阶段: CLIC 接线到 RiscvISA + 搭建 gem5 FS 模式 + 运行中断测试 (GATE-4 收尾)"
+  - "M2 阶段: 修复 check_compliance.py 格式兼容性问题 (ERR-003)"
+  - "M2 阶段: 14 份模块设计文档 + RTL 骨架搭建 (含新增的 PMA/Clock/Reset/Power 模块)"
+  - "M2 阶段: 实现新增需求的验证用例 (tc_pma_*/tc_clock_*/tc_power_*/tc_arch_test_*)"
+  - "M2 阶段: 编写 LUMI-DEL-011 PRM 文档模板 + 集成 riscv-arch-test 框架 (LUMI-DEL-012)"
+  - "持续: 随 RTL 实现逐步填充覆盖率计划中的验证用例"
+
+sign_off:
+  prepared_by: "pm-infra + hw-design"
+  prepared_at: "2026-07-03T16:50:00+08:00"
+  pending_signatures:
+    - role: hw-design
+      status: pending
+    - role: hw-ver
+      status: pending
+    - role: qa-audit
+      status: pending
+    - role: 项目负责人
+      status: pending

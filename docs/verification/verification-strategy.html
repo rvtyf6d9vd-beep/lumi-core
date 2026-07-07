@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 验证策略</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        .cover .confidential{display:inline-block;border:1px solid #c62828;color:#c62828;padding:0.2rem 1rem;margin-top:1rem;font-size:0.85rem}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h1:first-of-type{page-break-before:avoid}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        blockquote strong{color:#1565c0}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        @media print{body{font-size:11pt;max-width:none}h1{page-break-before:always}h1:first-of-type{page-break-before:avoid}table{page-break-inside:avoid}}
+    </style>
+</head>
+<body>
+
+<div class="cover">
+    <h1>Lumi-Core 验证策略</h1>
+    <p class="subtitle">Verification Strategy Framework</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-VER-001 &nbsp;|&nbsp; <strong>版本:</strong> 0.1-draft</p>
+        <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>状态:</strong> 框架 (M1 基线)</p>
+        <p><strong>负责人:</strong> 验证组 (hw-ver)</p>
+    </div>
+    <div class="confidential">CONFIDENTIAL &mdash; Lumi Project Internal</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 验证方法论</h1>
+
+<h2>1.1 验证方法组合</h2>
+<p>Lumi-Core 采用多层次验证方法组合，确保设计正确性和完备性：</p>
+<table>
+    <tr><th>验证方法</th><th>适用范围</th><th>工具/平台</th><th>覆盖目标</th></tr>
+    <tr><td><strong>Simulation</strong></td><td>全模块功能验证</td><td>UVM + SystemVerilog</td><td>功能覆盖率 + 代码覆盖率</td></tr>
+    <tr><td><strong>FPGA 原型</strong></td><td>系统集成验证、软件联调</td><td>Xilinx/Intel FPGA 平台</td><td>端到端功能、RTOS 联调</td></tr>
+    <tr><td><strong>Formal 验证</strong></td><td>关键属性验证 (安全/一致性)</td><td>JasperGold / VC Formal</td><td>PMP 隔离、锁步一致性、CDC</td></tr>
+    <tr><td><strong>Emulation</strong></td><td>大规模软件回归</td><td>Palladium / Veloce (可选)</td><td>OS Boot、Benchmark 运行</td></tr>
+</table>
+
+<h2>1.2 验证原则</h2>
+<ul>
+    <li><strong>需求驱动</strong>：每个 PRD 需求 (&ge; BL-1.0) 至少对应一个验证用例</li>
+    <li><strong>分层收敛</strong>：单元验证 &rarr; 子系统验证 &rarr; 系统集成验证，逐层收敛</li>
+    <li><strong>回归保护</strong>：所有通过用例进入回归套件，每日自动化运行</li>
+    <li><strong>覆盖率量化</strong>：代码覆盖率 (Line/Toggle/Branch/Condition) + 功能覆盖率 (Cross Coverage)</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 验证层次</h1>
+
+<h2>2.1 单元验证 (Block Level)</h2>
+<table>
+    <tr><th>模块</th><th>验证重点</th><th>Testbench 类型</th></tr>
+    <tr><td>Fetch (F1/F2)</td><td>分支预测、Cache 命中/缺失、压缩指令展开</td><td>UVM Agent + Scoreboard</td></tr>
+    <tr><td>Decode (D)</td><td>全 ISA 解码正确性、非法指令检测</td><td>UVM + Constraint-Random</td></tr>
+    <tr><td>Issue (I)</td><td>发射仲裁、数据旁路、FU 分配</td><td>UVM + Directed + Random</td></tr>
+    <tr><td>Execute (E1/E2)</td><td>ALU/MUL/DIV/Branch 功能正确性</td><td>UVM + Reference Model</td></tr>
+    <tr><td>LSU (M)</td><td>Load/Store/AMO、TCM/Cache 访问</td><td>UVM + Memory Model</td></tr>
+    <tr><td>FPU (可选)</td><td>FP32/FP16/BF16 运算、特殊值处理</td><td>UVM + SoftFloat Reference</td></tr>
+    <tr><td>Vector (可选)</td><td>RVV1.0 全指令、掩码操作、SEW/LMUL</td><td>UVM + Spike Reference</td></tr>
+    <tr><td>CLIC</td><td>中断仲裁、优先级抢占、向量中断</td><td>UVM + Interrupt Agent</td></tr>
+    <tr><td>PLIC</td><td>多源中断聚合、优先级路由</td><td>UVM + Interrupt Agent</td></tr>
+    <tr><td>Debug Module</td><td>JTAG 访问、Abstract Command、Halt/Resume</td><td>UVM + JTAG VIP</td></tr>
+    <tr><td>Trace Encoder</td><td>指令流编码、AXI4 写出</td><td>UVM + AXI VIP</td></tr>
+    <tr><td>PMP</td><td>TOR/NA4/NAPOT 匹配、权限检查、Smepmp</td><td>UVM + Formal</td></tr>
+</table>
+
+<h2>2.2 子系统验证 (Subsystem Level)</h2>
+<table>
+    <tr><th>子系统</th><th>验证重点</th></tr>
+    <tr><td>Core Pipeline (F1~W)</td><td>流水线冒险处理、多发射正确性、中断注入</td></tr>
+    <tr><td>Memory Subsystem</td><td>ICache/DCache/TCM 交互、ECC 注入/检测</td></tr>
+    <tr><td>Interrupt Subsystem</td><td>CLIC+PLIC 联动、嵌套中断、NMI 处理</td></tr>
+    <tr><td>Debug &amp; Trace</td><td>调试 + 跟踪同时工作、断点触发 Trace</td></tr>
+    <tr><td>Bus Interface</td><td>AXI4 协议合规、多 Master 仲裁</td></tr>
+</table>
+
+<h2>2.3 系统集成验证 (SoC Level)</h2>
+<table>
+    <tr><th>验证场景</th><th>描述</th></tr>
+    <tr><td>Boot Sequence</td><td>复位 &rarr; Bootloader &rarr; RTOS 启动</td></tr>
+    <tr><td>RTOS Integration</td><td>FreeRTOS/Zephyr 在多核配置下的调度、中断处理</td></tr>
+    <tr><td>Benchmark Suite</td><td>CoreMark/Dhrystone/SpecINT 运行并性能达标</td></tr>
+    <tr><td>Security Flow</td><td>安全启动签名验证、PMP 隔离、调试锁定</td></tr>
+    <tr><td>Lock-Step Mode</td><td>双核锁步错误注入与检测</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 测试平台架构</h1>
+
+<h2>3.1 Testbench 拓扑</h2>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.88rem;">
+ ┌─────────────────────────────────────────────────────┐
+ │                  Top-Level Testbench                 │
+ │  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
+ │  │ Sequence │  │ Coverage │  │ Report   │          │
+ │  │  Layer   │  │ Collector│  │ Manager  │          │
+ │  └─────┬────┘  └─────┬────┘  └──────────┘          │
+ │        │             │                              │
+ │  ┌─────▼─────────────▼──────────────────┐          │
+ │  │         UVM Environment              │          │
+ │  │  ┌──────┐ ┌──────┐ ┌───────────┐    │          │
+ │  │  │Agent │ │Agent │ │ Scoreboard│    │          │
+ │  │  │(ISA) │ │(AXI) │ │ (Compare) │    │          │
+ │  │  └──┬───┘ └──┬───┘ └─────┬─────┘    │          │
+ │  └─────┼────────┼───────────┼──────────┘          │
+ │        │        │           │                       │
+ │  ┌─────▼────────▼───────────▼──────────┐          │
+ │  │         DUT (Lumi-Core RTL)          │          │
+ │  └─────────────────────────────────────┘          │
+ │                                                      │
+ │  ┌──────────────────────────────────────┐          │
+ │  │    Reference Model (Spike/gem5)      │          │
+ │  └──────────────────────────────────────┘          │
+ └─────────────────────────────────────────────────────┘
+</pre>
+
+<h2>3.2 关键组件</h2>
+<table>
+    <tr><th>组件</th><th>功能</th></tr>
+    <tr><td>ISA Agent</td><td>生成随机/定向指令序列，注入中断/异常</td></tr>
+    <tr><td>AXI VIP</td><td>AXI4 总线协议检查、内存模型响应</td></tr>
+    <tr><td>Scoreboard</td><td>比对 DUT 执行结果与 Reference Model (Spike)</td></tr>
+    <tr><td>Coverage Collector</td><td>收集代码覆盖率和功能覆盖率数据</td></tr>
+    <tr><td>JTAG VIP</td><td>JTAG 协议模拟，Debug Module 访问</td></tr>
+    <tr><td>Interrupt Agent</td><td>可配置中断注入（边沿/电平、时序、优先级）</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 覆盖率目标</h1>
+
+<h2>4.1 代码覆盖率目标</h2>
+<table>
+    <tr><th>指标</th><th>目标</th><th>排除项</th></tr>
+    <tr><td>Line Coverage</td><td>&ge;95%</td><td>Dead Code (经 Waiver 审批)</td></tr>
+    <tr><td>Toggle Coverage</td><td>&ge;90%</td><td>Reserved Bits, Unused Ports</td></tr>
+    <tr><td>Branch Coverage</td><td>&ge;95%</td><td>不可达分支 (经 Formal 证明)</td></tr>
+    <tr><td>Condition Coverage</td><td>&ge;90%</td><td>--</td></tr>
+    <tr><td>FSM Coverage</td><td>100%</td><td>全部状态和转换必须覆盖</td></tr>
+</table>
+
+<h2>4.2 功能覆盖率目标</h2>
+<table>
+    <tr><th>Cover Group</th><th>覆盖目标</th><th>对应 PRD 需求</th></tr>
+    <tr><td>ISA Instructions</td><td>全部 RV32GCBV + Zce 指令覆盖</td><td><span class="req-tag">ISA-001~011</span></td></tr>
+    <tr><td>PMP Regions</td><td>全部 Region x 匹配模式 x 权限组合</td><td><span class="req-tag">MEM-001</span></td></tr>
+    <tr><td>Interrupt Scenarios</td><td>优先级组合 x 嵌套深度 x 类型组合</td><td><span class="req-tag">SYS-001~003</span></td></tr>
+    <tr><td>AXI Transactions</td><td>Burst 类型 x 长度 x 位宽组合</td><td><span class="req-tag">IF-001~004</span></td></tr>
+    <tr><td>Power States</td><td>Active/Sleep/DeepSleep x 转换路径</td><td><span class="req-tag">PWR-003</span></td></tr>
+    <tr><td>Debug Operations</td><td>Halt/Resume/Step/Breakpoint/Abstract Cmd</td><td><span class="req-tag">FEAT-001</span></td></tr>
+    <tr><td>ECC Scenarios</td><td>单 bit 纠正 x 双 bit 检测 x 多 bit 错误</td><td><span class="req-tag">SAFE-001</span></td></tr>
+    <tr><td>Security Scenarios</td><td>Debug Lock x PMP Lock x Boot Verify</td><td><span class="req-tag">SEC-001~005</span></td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 回归测试框架</h1>
+
+<h2>5.1 回归层次</h2>
+<table>
+    <tr><th>层次</th><th>频率</th><th>范围</th><th>超时</th></tr>
+    <tr><td>Smoke Test</td><td>每次提交 (CI)</td><td>核心用例 Top-50</td><td>&le;30 min</td></tr>
+    <tr><td>Quick Regression</td><td>每日 (Nightly)</td><td>全模块覆盖用例 (~500 条)</td><td>&le;8 hr</td></tr>
+    <tr><td>Full Regression</td><td>每周 / 里程碑</td><td>全部用例 + 覆盖率收集</td><td>&le;72 hr</td></tr>
+    <tr><td>Performance Regression</td><td>每月</td><td>Benchmark 套件运行</td><td>&le;24 hr</td></tr>
+</table>
+
+<h2>5.2 回归规则</h2>
+<ul>
+    <li>Smoke Test 失败 &rarr; 阻塞提交，需立即修复</li>
+    <li>Quick Regression 新增 Failure &rarr; 自动创建 Bug Ticket</li>
+    <li>Full Regression 覆盖率未达标 &rarr; 生成 Waiver Report 供评审</li>
+    <li>Performance Regression 性能回退 &gt;2% &rarr; 触发性能分析</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 需求覆盖映射</h1>
+
+<p>验证用例与 PRD 需求的映射关系详见 <a href="coverage-plan.yaml">coverage-plan.yaml</a>。映射结构如下：</p>
+
+<table>
+    <tr><th>映射维度</th><th>说明</th></tr>
+    <tr><td>REQ-ID &rarr; Testcase</td><td>每条 PRD 需求 (&ge; BL-1.0) 至少映射到一个验证用例</td></tr>
+    <tr><td>Testcase &rarr; Cover Group</td><td>每个验证用例关联功能覆盖组</td></tr>
+    <tr><td>Cover Group &rarr; Target</td><td>每个覆盖组定义覆盖率目标</td></tr>
+</table>
+
+<blockquote><strong>覆盖统计:</strong> BL-1.0 基线包含 91 条 Approved 需求。其中硬件需求 57 条为验证主要覆盖对象，安全需求 5 条和功能安全需求 3 条需专项验证用例。详细覆盖率计划见 <a href="coverage-plan.yaml">coverage-plan.yaml</a>。</blockquote>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Verification Strategy &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-VER-001 &nbsp;|&nbsp; 版本: 0.1-draft &nbsp;|&nbsp; 更新: 2026-07-01<br>
+    承接: <a href="../project/product-requirements.html">PRD</a> &amp; <a href="../architecture/platform-spec.html">架构说明书</a></p>
+</div>
+
+</body>
+</html>

@@ -1,8 +1,32 @@
-role: hw-arch
-last_active: null
-current_milestone: "M0-Setup"
+role: hw-design
+last_active: "2026-07-07"
+current_milestone: "M2-S1"
 
 active_tasks: []
+
+completed_tasks:
+  - id: M1-ENH
+    title: "M1 独立审查补强 - 架构说明书 (S1.5/S4.7/S4.8/S5.6/S7.8/S8.9)"
+    phase: architecture
+    started: "2026-07-03"
+    completed: "2026-07-03"
+    baseline: "BL-1.1"
+  - id: REC-001
+    title: "platform-spec.html Bug #15/#16 修复历史注释"
+    phase: design
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: REC-002-HW
+    title: "GATE-4 FS 模式配置脚本 + CLIC 接线"
+    phase: design
+    started: "2026-07-06"
+    completed: "2026-07-06"
+    note: "CONFIGURATION_COMPLETE, gem5 build pending"
+  - id: M1-ADDENDUM
+    title: "M1 GATE-4 升级归档 (CONDITIONAL_PASS → PASS)"
+    phase: architecture
+    started: "2026-07-07"
+    completed: "2026-07-07"
 
 pending_decisions: []
 

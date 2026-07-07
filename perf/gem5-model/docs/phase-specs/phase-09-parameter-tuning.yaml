@@ -1,0 +1,124 @@
+# Phase 9: 深度参数调优
+
+phase: 9
+title: "MinorCPU 深度参数调优 — 三视角分析与目标 5.5 达成"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+target: 5.5
+target_met: true
+
+objective: >
+  从编译器、RTL 对标、理论极限三视角分析 MinorCPU 性能瓶颈，
+  实施参数调优和源码修改。CoreMark 从 4.62 提升至 5.54 CM/MHz (+19.9%)。
+
+baseline:
+  phase: 8
+  coremark_triple: 4.62
+  coremark_dual: 3.86
+  ipc: 1.51
+
+task1_parameter_scan:
+  description: "无需重编译的参数快速扫描"
+
+  task1_1_backward_delay:
+    param: fetch1ToFetch2BackwardDelay
+    before: 1
+    after: 0
+    result_cm_mhz: 4.93
+    improvement: "+6.7%"
+    mechanism: >
+      pipeline.cc L64-65 中 f2ToF1 TimeBuffer 构造时传入 true 允许 0 delay。
+      分支预测反馈与取指同周期完成，减少 1 周期分支惩罚。
+
+  task1_2_load_latency:
+    param: executeLoadAssumedLatency
+    before: 2
+    after: 1
+    result_cm_mhz: 5.54
+    improvement: "+12.4% (cumulative)"
+    mechanism: >
+      推测性 L1D hit 预测: 假设 load 1 周期完成 (实际 99.99%+ 命中率)，
+      依赖指令更快发射。L1D miss 时惩罚更大但概率极低。
+
+  task1_3_max_accesses:
+    param: executeMaxAccessesInMemory
+    tested_values: [4, 8]
+    result: "no effect (both 5.54 CM/MHz)"
+    action: reverted
+
+task2_compiler_optimization:
+  description: "编译器选项组合测试"
+  base_flags: "-O2 -funroll-loops"
+  tested_options:
+    - flag: "-fmodulo-sched"
+      result: "5.54 (no improvement)"
+    - flag: "-fpeel-loops"
+      result: "5.54 (no improvement)"
+    - flag: "-faggressive-loop-optimizations"
+      result: "5.54 (no improvement)"
+    - flag: "-fschedule-insns2"
+      result: "5.54 (no improvement)"
+  conclusion: "-O2 -funroll-loops 已是最优组合"
+
+task3_lsq_disambiguation:
+  description: "LSQ 内存解歧"
+  files_modified:
+    - "src/cpu/minor/lsq.cc (L1035-1039)"
+    - "src/cpu/minor/buffers.hh (Queue iterator)"
+  change: >
+    将 load 无条件等待所有 store 的逻辑改为逐条检查 store 物理地址
+    是否与 load 冲突。不冲突的 load 可绕过 store。
+  result: "CoreMark 5.54 (no change for CoreMark)"
+  benefit: "改善建模精度，对 memory-heavy 工作负载有益"
+
+task4_load_skip_war:
+  description: "Load Skip WAR 安全修复 (尝试后回退)"
+  approach: >
+    修改 skip 条件从 !isMemRef() 改为 !isStore()，允许 load 被 skip。
+    在 skip 时保存源寄存器值，issue 时验证 WAR 安全性。
+  result: "FAILED — hello world crashed (page fault at address 0)"
+  root_cause: >
+    WAR 检查创建无限循环: 检测到寄存器修改 -> break -> 下周期重试 ->
+    同样检测到修改 -> break -> load 永远无法发射。
+  action: "全部回退 execute.cc 修改，清理 dyn_inst.hh 死代码"
+
+stall_analysis:
+  scoreboard_stalls:
+    before: "1.72M"
+    after: "46K"
+    reduction: "-97.3%"
+  fu_unavailable:
+    change: "+48% (rose as scoreboard stalls dropped)"
+  conclusion: >
+    Scoreboard stalls 几乎消除，瓶颈转移到 FU contention。
+    这是预期行为: 参数调优释放了不必要的停顿，暴露了 FU 竞争的真实瓶颈。
+
+results:
+  coremark_triple: 5.54
+  coremark_dual: 4.46
+  dhrystone_triple: 1.48
+  dhrystone_dual: 1.41
+  improvement_triple: "+19.9% vs Phase 8"
+  ipc: 1.80
+
+three_perspective_analysis:
+  compiler:
+    finding: "-O2 -funroll-loops 已发挥大部分收益，额外选项无效果"
+    conclusion: "编译器优化已饱和"
+  rtl_comparison:
+    finding: "LSQ 过度保守已修复。Load skip WAR 修复失败。FU 每周期 1 条是固有限制。"
+    conclusion: "gem5 MinorCPU 建模精度已接近可改善上限"
+  theoretical_limit:
+    finding: "IPC 从 1.51 提升到 1.80 (+19%)。实际 5.54 超过乐观上限 5.3-5.5。"
+    conclusion: "executeLoadAssumedLatency=1 的推测性 L1D hit 预测贡献超预期"
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "Phase 9 参数: backwardDelay=0, loadAssumedLatency=1"
+  - path: "perf/gem5-model/gem5/src/cpu/minor/lsq.cc"
+    description: "LSQ 内存解歧 (地址冲突检测)"
+  - path: "perf/gem5-model/gem5/src/cpu/minor/buffers.hh"
+    description: "Queue 类新增 begin()/end() 迭代器"
+  - path: "perf/benchmarks/perf-report.yaml"
+    description: "Phase 9 完整优化数据段 (+160 行)"

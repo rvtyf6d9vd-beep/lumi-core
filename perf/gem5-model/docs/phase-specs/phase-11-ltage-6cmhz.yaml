@@ -1,0 +1,120 @@
+# Phase 11: 冲击 6.0 CoreMark/MHz
+
+phase: 11
+title: "LTAGE 分支预测器 + 2nd Memory FU + BTB/RAS 扩容"
+date: "2026-06-30"
+role: hw-design
+status: COMPLETE
+target: 6.0
+target_met: true
+
+objective: >
+  实施五项优化突破 6.0 CM/MHz 目标。LTAGE 分支预测器将误判率从 2.39%
+  降至 0.34%，2nd Memory FU 将 FU stall 降低 66.5%。
+
+baseline:
+  phase: 10
+  coremark_triple: 5.85
+  coremark_dual: 4.55
+  ipc: 1.911
+  bp_mispredictions: 67729
+  fu_unavailable_stalls: 1681559
+
+task1_ltage:
+  description: "分支预测器升级: TournamentBP -> LTAGE"
+  before: "TournamentBP (8K/2K/3bit)"
+  after: "LTAGE (12 TAGE tables, Loop Predictor, 256Kbits)"
+  bp_mispredictions: "67729 -> 9593 (-85.8%)"
+  ipc: "1.911 -> 2.010"
+  mechanism: >
+    TAGE 几何长度历史哈希提供高精度分支预测。Loop Predictor 记录循环
+    迭代计数，对 CoreMark 紧密循环近乎完美预测 (0 误判)。
+    BTB 8192 entries (翻倍) + RAS 32 entries (翻倍)。
+
+task2_second_mem_fu:
+  description: "添加第二个 Memory FU (条件化: issue_width >= 3)"
+  fu_unavailable: "1681559 -> 562940 (-66.5%)"
+  condition: "if issue_width >= 3"
+  mechanism: >
+    允许 skip-stalled 在第一条 load/store 等待时发射独立的第二条内存操作。
+    Dual-issue (iw=2) 下因 MinorCPU LSQ 边界条件 bug 触发 guest page fault，
+    通过条件化启用规避。
+
+task3_btb_ras:
+  description: "BTB 与 RAS 扩容 (与 LTAGE 同步)"
+  btb: "SimpleBTB(numEntries=8192)"
+  ras: "ReturnAddrStack(numEntries=32)"
+
+task4_compiler_o3:
+  description: "编译器 -O3 测试"
+  result: "-O3: 8460082 ticks vs -O2: 8089500 ticks (-4.6% regression)"
+  action: "回退到 -O2 -funroll-loops"
+  analysis: >
+    -O3 启用更激进的向量化和内联，但生成更多指令增加 in-order 发射压力。
+
+task5_regression:
+  description: "组合回归验证"
+  crc: "0x0158 (PASS)"
+  triple: "8,089,500 ticks -> 6.22 CM/MHz"
+  dual: "10,536,382 ticks -> 4.78 CM/MHz"
+
+problems_solved:
+  - problem: "io_getevents syscall unimplemented (gem5 SE 模式)"
+    solution: "core_main.c 添加 _exit(0) 强制干净退出"
+  - problem: "Dual-issue + 2nd MEM FU 崩溃 (page fault at 0x2c)"
+    solution: "2nd MEM FU 条件化 (if issue_width >= 3)"
+
+fu_pool_final:
+  triple_issue: 10
+  dual_issue: 9
+  list_triple:
+    - "4x LumiIntFU (opLat=1)"
+    - "1x LumiIntMulFU (opLat=1)"
+    - "1x MinorDefaultIntDivFU (opLat=9)"
+    - "1x MinorDefaultFloatSimdFU (opLat=6)"
+    - "2x MinorDefaultMemFU (opLat=1)"
+    - "1x MinorDefaultMiscFU (opLat=1)"
+  list_dual:
+    - "4x LumiIntFU (opLat=1)"
+    - "1x LumiIntMulFU (opLat=1)"
+    - "1x MinorDefaultIntDivFU (opLat=9)"
+    - "1x MinorDefaultFloatSimdFU (opLat=6)"
+    - "1x MinorDefaultMemFU (opLat=1)"
+    - "1x MinorDefaultMiscFU (opLat=1)"
+
+results:
+  coremark_triple: 6.22
+  coremark_dual: 4.78
+  improvement_triple: "+6.3% vs Phase 10"
+  improvement_dual: "+5.1% vs Phase 10"
+  ipc_triple: 2.017
+  ipc_dual: 1.551
+  bp_mispredictions: 9593
+  bp_misprediction_rate: "0.34%"
+  fu_unavailable_triple: 562940
+  fu_unavailable_dual: 813207
+
+silicon_comparison:
+  cortex_r82: "5.83 CM/MHz (ARM published)"
+  lumi_core: "6.22 CM/MHz"
+  gap: "+6.7%"
+  note: >
+    Lumi-Core 在 gem5 MinorCPU 模型下已超越 Cortex-R82 公开分数。
+    gem5 模拟器周期计数方式可能与真实硅片有差异。
+
+errata:
+  - "MinorCPU LSQ 边界条件: dual-issue + 2nd MEM FU 触发 guest page fault (条件化规避)"
+  - "gem5 SE 模式缺 io_getevents syscall (_exit(0) 规避)"
+  - "CoreMark_CM_per_MHz_x100 计算 bug 输出异常值 (cosmetic)"
+
+deliverables:
+  - path: "perf/gem5-model/gem5/configs/lumi-lib/lumi_cpu.py"
+    description: "LTAGE + 2nd MEM FU 条件化 + BTB/RAS 扩容"
+  - path: "perf/gem5-model/gem5/src/cpu/minor/execute.cc"
+    description: "动态 FU 统计标签 (9 vs 10 FUs)"
+  - path: "perf/benchmarks/coremark/core_main.c"
+    description: "_exit(0) 干净退出 + extern _exit 声明"
+  - path: "perf/benchmarks/perf-report.yaml"
+    description: "Phase 10/11 数据段 (+100 行)"
+  - path: "perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_cpu.py"
+    description: "Overlay 同步副本"

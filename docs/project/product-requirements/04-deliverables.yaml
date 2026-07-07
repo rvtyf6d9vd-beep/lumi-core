@@ -4,37 +4,137 @@ id: sec-deliver
 description: "定义 IP 交付的完整清单，确保客户能够独立集成和验证处理器核。"
 
 categories:
-  - id: DEL
-    title: "交付物清单"
+  - id: DEL-RTL
+    title: "RTL 与验证交付"
     description: ""
     requirements:
       - req_id: LUMI-DEL-001
         name: "RTL 源码 (Verilog)"
         priority: Must
-        status: Draft
+        status: Approved
         version: v0.1
         source: 客户要求
         ref_doc: ""
-        acceptance: "通过 lint 检查，无 warning"
+        acceptance: "通过 lint 检查（工具集见 LUMI-QUAL-002），无 Error，Warning 有明确 Waiver"
         change_date: ""
         note: ""
       - req_id: LUMI-DEL-002
         name: "验证测试台"
         priority: Must
-        status: Draft
+        status: Approved
         version: v0.1
         source: 客户要求
         ref_doc: ""
-        acceptance: "回归测试 100% 通过"
+        acceptance: "回归测试 100% 通过，测试用例覆盖所有 Must 需求"
         change_date: ""
         note: ""
       - req_id: LUMI-DEL-003
         name: "Cycle Accurate Model"
         priority: Must
-        status: Draft
+        status: Approved
         version: v0.1
         source: Lumi Req
         ref_doc: ""
-        acceptance: "提供可用的 Cycle Accurate Model"
+        acceptance: "提供可用的 Cycle Accurate Model，支持软件性能评估"
         change_date: "2026-06-26"
         note: ""
+
+  - id: DEL-INT
+    title: "集成与物理交付"
+    description: ""
+    requirements:
+      - req_id: LUMI-DEL-004
+        name: "集成手册 (Integration Guide)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "包含 IP 实例化示例、接口连接指南、配置参数说明、典型应用电路"
+        change_date: "2026-07-02"
+        note: "客户集成的关键交付物"
+      - req_id: LUMI-DEL-005
+        name: "时序模型 (Liberty/LEF)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "交付 .lib (Liberty) 和 .lef (LEF) 文件，覆盖所有角落条件"
+        change_date: "2026-07-02"
+        note: ""
+      - req_id: LUMI-DEL-006
+        name: "综合约束文件 (SDC)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "交付完整 SDC 文件，覆盖所有工作模式和角落条件"
+        change_date: "2026-07-02"
+        note: ""
+      - req_id: LUMI-DEL-007
+        name: "Formality 等价性验证网表"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "提供综合后网表的等价性验证脚本和参考结果"
+        change_date: "2026-07-02"
+        note: ""
+
+  - id: DEL-DOC
+    title: "文档与支持交付"
+    description: ""
+    requirements:
+      - req_id: LUMI-DEL-008
+        name: "IP-XACT/RTL 描述文件"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: "IP-XACT IEEE 1685"
+        acceptance: "提供符合 IP-XACT 标准的 IP 描述文件，支持 EDA 工具自动集成"
+        change_date: "2026-07-02"
+        note: ""
+      - req_id: LUMI-DEL-009
+        name: "FPGA 原型/评估板支持包"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "提供 FPGA 综合约束和参考设计，支持客户早期评估"
+        change_date: "2026-07-02"
+        note: ""
+      - req_id: LUMI-DEL-010
+        name: "BSDL 文件"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: "IEEE 1149.1"
+        acceptance: "提供完整的 BSDL 边界扫描描述文件"
+        change_date: "2026-07-02"
+        note: "对应 LUMI-DFT-003"
+      - req_id: LUMI-DEL-011
+        name: "程序员参考手册 (PRM)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: 客户要求 / IP 产品标准
+        ref_doc: ""
+        acceptance: "完整的 PRM 文档包含: 全部 CSR 地址/位域/复位值、全部指令编码/语义/异常、特权级/异常/中断/复位编程模型、调试接口使用指南、性能计数器说明"
+        change_date: "2026-07-02"
+        note: "竞品 IP 标配交付物，客户编程关键参考"
+      - req_id: LUMI-DEL-012
+        name: "RISC-V Compliance Test 结果报告"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: RISC-V International
+        ref_doc: "riscv-arch-test 仓库"
+        acceptance: "提供 Lumi-Core Profile 全部 Mandatory 扩展的 riscv-arch-test 测试结果报告 (含签名验证、测试通过证明、版本号对应表)"
+        change_date: "2026-07-02"
+        note: "对应 LUMI-PROF-001，独立交付便于客户审计"

@@ -38,6 +38,10 @@
 - **16 指令记录:** 每次操作追加到 `audit/instruction-log/YYYY-MM-DD.yaml`，选择类记录全部选项与最终选择
 - **17 批量删除须确认:** >3 文件删除须询问用户，优先存档
 - **18 问题不跳过:** 解决问题或登记为风险项写入 `audit/risk-register.yaml`
+- **20 Errata 维护:** 所有已知问题记录到 `audit/errata/known-issues.yaml`，解决后保留记录
+- **21 Bug 回归:** RTL Freeze 后每个 Bug 必须有回归测试用例
+- **22 Skill 复用:** 任务执行前检查 `skills/` 目录是否有可用 Skill
+- **23 三层进度:** Milestone/Stage/Phase 结构管理，进度计划定义在 `docs/project/milestone-plan.yaml`
 
 ## 5. 里程碑门禁协议
 
@@ -133,7 +137,7 @@ status: unread           # unread | acknowledged | resolved
 - 选择类指令需记录全部选项和最终选择
 
 ### [17] 批量删除须确认 — high
-批量（一次超过三个文件）删除任何小于 1MB 的文件都需要询问用户，更好的办法是存档而不是删除。
+批量（一次超过三个文件）删除任何大于 1MB 的文件都需要询问用户，更好的办法是存档而不是删除。
 - audit/instruction-log/ 中批量删除操作有用户确认记录
 
 ### [18] 问题不允许跳过 — critical
@@ -145,3 +149,29 @@ status: unread           # unread | acknowledged | resolved
 每次里程碑达成时必须对相关文档做一轮全局检查，确认是否需要更新，可制定相关策略。
 - 里程碑门禁报告中包含文档时效检查项
 - 所有文档的最后更新日期在里程碑周期内
+
+### [20] Errata/Known Issue 维护 — high
+维护一份 Errata/Known Issue 文档，专门记录所有已知问题（Known Issue / Errata），直到该问题被彻底解决。Errata 条目应包含：问题标识、简要描述、发现日期、影响范围、当前状态（open/resolved）、临时规避方案（如有）等。问题解决后更新状态为 resolved 并注明解决日期和方式，但保留记录不删除。
+- audit/errata/known-issues.yaml 存在且格式合规
+- 所有已知问题在 errata 中有对应条目
+- 已解决问题保留记录且标注 resolved
+
+### [21] Bug 回归测试用例 — critical
+在达到 RTL Freeze 里程碑之后，每个发现的 Bug 必须增加对应的回归测试用例，以保证后续修改不会导致相同问题重现。回归测试用例随项目持续维护，直到该回归测试用例因设计变更不再适用（此时应更新或废弃该用例并记录原因）。
+- 每个已修复 Bug 有对应的回归测试用例
+- 回归测试用例可追溯至对应的 Bug/Errata 记录
+- 废弃的回归测试用例有废弃原因记录
+
+### [22] Skill 优先复用 — high
+在项目根目录维护一个 skills/ 目录作为项目 Skill 列表，收录经过验证的可用 Skill（如 GEM5 建模、CLIC 验证、回归测试运行等可复用能力）。每当执行任务时，应优先从 skills/ 列表中查找是否已有可用 Skill，或能否通过轻量修改后复用，避免重复造轮。新 Skill 收录需经过 review，确保质量。
+- skills/ 目录存在且包含 index.yaml 索引
+- 每个 Skill 文件含 name、description、usage 和 files_required 字段
+- 任务执行前检查 skills/ 目录是否有匹配 Skill
+- 审计周期内重复造轮次数为 0
+
+### [23] Milestone/Stage/Phase 层级定义 — high
+项目进度采用三层结构管理：Milestone (MS) 为项目级大里程碑（M0, M1, M2...），Stage (S) 为 Milestone 内部的工作阶段（MS-序号-S阶段号），Phase (P) 为具体任务的工序阶段（setup/requirements/architecture/design/implementation/verification/delivery）。
+- docs/project/milestone-plan.yaml 存在且定义所有 MS 和 S
+- 每个任务有明确的 Phase 标记
+- Milestone 门禁报告引用 MS 编号（规则 10）
+- role-mapping.yaml 中 applicable_phases 与 schema.yaml 一致

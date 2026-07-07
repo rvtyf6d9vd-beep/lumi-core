@@ -1,0 +1,136 @@
+# Lumi-Core Skill 复用索引 (规则 22)
+# 收录经过验证的可复用能力，避免重复造轮。
+# 任务执行前优先检查本索引是否有可用 Skill。
+
+version: "1.0"
+last_updated: "2026-07-01"
+
+skills:
+  - name: "GEM5 性能建模"
+    id: skill-gem5-model
+    description: >
+      基于 gem5 MinorCPU 的参数化性能模型，支持 RV32/RV64 双模式 SE 仿真。
+      可配置 ISA 扩展、流水线参数、缓存大小等。
+    usage: >
+      运行 RV64: python3 perf/gem5-model/configs/simple-riscv-se.py
+      运行 RV32: python3 perf/gem5-model/configs/simple-riscv-se-rv32.py
+      需在 gem5 虚拟环境中执行。
+    files_required:
+      - perf/gem5-model/configs/simple-riscv-se.py
+      - perf/gem5-model/configs/simple-riscv-se-rv32.py
+      - perf/gem5-model/configs/lumi-lib/
+      - perf/gem5-model/gem5/
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "CoreMark 基准测试"
+    id: skill-coremark
+    description: >
+      CoreMark 基准测试编译与运行。支持 RV32/RV64 双模式，
+      已记录完整参数（编译器版本/优化等级/迭代次数）。
+    usage: >
+      编译: cd perf/benchmarks/coremark && make
+      运行: gem5 simple-riscv-se.py coremark.riscv
+      参数: -O2 -funroll-loops, ITERATIONS 根据配置调整
+    files_required:
+      - perf/benchmarks/coremark/
+      - perf/benchmarks/libc/
+      - perf/benchmarks/perf-baseline.yaml
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "Dhrystone 基准测试"
+    id: skill-dhrystone
+    description: >
+      Dhrystone 基准测试编译与运行。RV32 需移除 libm5.a 并提供 m5_stub，
+      DMIPS 计算需防 32 位整数溢出。
+    usage: >
+      编译: cd perf/benchmarks/dhrystone && make
+      注意: m5 函数需在独立 .c 文件中非 static 定义
+      DMIPS 计算使用 64 位中间变量防止溢出
+    files_required:
+      - perf/benchmarks/dhrystone/
+      - perf/benchmarks/libc/
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "PRD 文档生成"
+    id: skill-prd-gen
+    description: >
+      从 12 个 YAML 数据文件生成 product-requirements.html。
+      支持在线编辑、CSV 批量导入、基线定版导出。
+    usage: >
+      生成: cd docs/project && python3 generate_prd.py
+      校验: python3 generate_prd.py --validate
+    files_required:
+      - docs/project/generate_prd.py
+      - docs/project/product-requirements/
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "需求基线生成"
+    id: skill-baseline-gen
+    description: >
+      从 baseline YAML 快照生成 HTML 基线报告。
+    usage: >
+      生成: cd docs/project/baselines && python3 generate_baseline_html.py baseline-{BL}.yaml
+    files_required:
+      - docs/project/baselines/generate_baseline_html.py
+      - docs/project/baselines/
+    status: verified
+    last_used: "2026-06-26"
+
+  - name: "规则合规检查"
+    id: skill-compliance-check
+    description: >
+      运行项目规则合规性检查脚本，输出门禁报告。
+    usage: >
+      运行: python3 rules/scripts/check_compliance.py
+      报告输出: audit/compliance-reports/
+    files_required:
+      - rules/scripts/check_compliance.py
+      - rules/top-rules.yaml
+      - rules/sub-rules/
+    status: verified
+    last_used: "2026-06-10"
+
+  - name: "角色提示词生成"
+    id: skill-role-prompt
+    description: >
+      根据规则配置自动生成各角色的 role-prompt.md 文件。
+    usage: >
+      运行: python3 rules/scripts/role_prompt_builder.py
+      输出: agents/{role}/role-prompt.md
+    files_required:
+      - rules/scripts/role_prompt_builder.py
+      - rules/top-rules.yaml
+      - rules/sub-rules/
+      - rules/role-mapping.yaml
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "ISA 扩展验证"
+    id: skill-isa-verify
+    description: >
+      RISC-V ISA 扩展功能验证测试套件，包含原子操作(A)、Zcmp、特权模式等测试。
+    usage: >
+      编译测试: riscv32-unknown-elf-gcc -march=rv32imac -mabi=ilp32 test.c -o test.riscv
+      运行: gem5 simple-riscv-se-rv32.py test.riscv
+    files_required:
+      - perf/gem5-model/tests/isa/
+    status: verified
+    last_used: "2026-07-01"
+
+  - name: "中断建模测试"
+    id: skill-interrupt-model
+    description: >
+      CLIC/PLIC/PMP/Smrnmi 中断建模测试套件。包含软件测试模拟和 gem5 配置脚本。
+      已知限制: SE 模式不支持外部中断注入，需 FS 模式完整验证。
+    usage: >
+      编译测试: cd perf/gem5-model/tests/interrupt && make
+      运行: gem5 configs/gem5-overlay/configs/lumi-interrupt.py --test all
+    files_required:
+      - perf/gem5-model/tests/interrupt/
+      - perf/gem5-model/configs/gem5-overlay/configs/lumi-interrupt.py
+    status: verified
+    last_used: "2026-07-01"

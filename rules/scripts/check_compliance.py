@@ -200,6 +200,11 @@ def tier2_content_checks(root: Path) -> list[dict]:
             continue
         cs = load_yaml(role_dir / "context" / "current-state.yaml")
         for task in cs.get("active_tasks", []):
+            # REC-005 fix: 兼容 task 为字符串或 dict 两种格式
+            if isinstance(task, str):
+                continue  # 字符串格式无 started 字段，跳过期限检查
+            if not isinstance(task, dict):
+                continue  # 非预期类型，安全跳过
             started = task.get("started")
             if started:
                 try:

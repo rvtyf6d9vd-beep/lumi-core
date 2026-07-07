@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lumi 合规检查报告</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2em auto; padding: 0 1em; color: #1e293b; }
+    h1 { color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 0.5em; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; }
+    .summary { display: flex; gap: 1em; margin: 1em 0; }
+    .stat { padding: 1em; border-radius: 8px; text-align: center; flex: 1; }
+    .stat-pass { background: #ecfdf5; color: #065f46; }
+    .stat-warn { background: #fffbeb; color: #92400e; }
+    .stat-fail { background: #fef2f2; color: #991b1b; }
+    code { background: #f1f5f9; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+    .nav-back { display: inline-block; margin-bottom: 1em; padding: 0.4em 1em; background: #f0f4f8;
+      border: 1px solid #e2e8f0; border-radius: 4px; color: #3b82f6; text-decoration: none;
+      font-size: 0.9em; font-weight: 500; transition: background 0.2s; }
+    .nav-back:hover { background: #e1e8f0; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <a href="../../docs/index.html" class="nav-back">&larr; 返回文档地图</a>
+  <h1>Lumi 合规检查报告</h1>
+  <p>生成时间: 2026-06-10T22:37:36.636309 | 里程碑: None</p>
+
+  <div class="summary">
+    <div class="stat stat-pass"><strong>6</strong><br>通过</div>
+    <div class="stat stat-warn"><strong>2</strong><br>警告</div>
+    <div class="stat stat-fail"><strong>0</strong><br>失败</div>
+  </div>
+
+  <table>
+    <tr><th>规则 ID</th><th>名称</th><th>状态</th><th>详情</th></tr>
+    
+        <tr>
+          <td><code>SETUP</code></td>
+          <td>核心文件完整性</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>所有核心文件存在</td>
+        </tr>
+        <tr>
+          <td><code>ROLES</code></td>
+          <td>角色提示词完整性</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>所有 6 个角色提示词存在</td>
+        </tr>
+        <tr>
+          <td><code>03</code></td>
+          <td>工作留痕</td>
+          <td style="color: #f59e0b; font-weight: 600;">WARN</td>
+          <td>今日日志 不存在: 2026-06-10.yaml</td>
+        </tr>
+        <tr>
+          <td><code>13</code></td>
+          <td>GitHub 版本管理</td>
+          <td style="color: #f59e0b; font-weight: 600;">WARN</td>
+          <td>.git 目录 不存在</td>
+        </tr>
+        <tr>
+          <td><code>14</code></td>
+          <td>HTML 文档格式</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>HTML 文件: 0, 非 HTML 文件: 0</td>
+        </tr>
+        <tr>
+          <td><code>17</code></td>
+          <td>批量删除须确认</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>运行时约束（由 CLAUDE.md 强制执行）</td>
+        </tr>
+        <tr>
+          <td><code>18</code></td>
+          <td>问题不允许跳过</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>无跳过的风险项</td>
+        </tr>
+        <tr>
+          <td><code>IT-1</code></td>
+          <td>知识库规模</td>
+          <td style="color: #10b981; font-weight: 600;">PASS</td>
+          <td>当前 0/256 条</td>
+        </tr>
+  </table>
+
+  <p style="color: #64748b; font-size: 0.85em; margin-top: 2em;">
+    <a href="../../docs/index.html" class="nav-back" style="margin-bottom:0.5em;">&larr; 返回文档地图</a><br>
+    由 generate_report.py 自动生成 | Lumi 项目合规检查引擎
+  </p>
+</body>
+</html>

@@ -43,7 +43,7 @@ CFLAGS = $(OPT) -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-builtin \
          -DMEM_METHOD=MEM_STATIC \
          -DMULTITHREAD=1
 
-LDFLAGS = -nostdlib -T $(LIBC_DIR)/lumi-se.ld
+LDFLAGS = -nostdlib -T $(LIBC_DIR)/$(if $(findstring ilp32,$(ABI)),lumi-se-rv32.ld,lumi-se.ld)
 LDLIBS  = $(LIBC_DIR)/libmini.a $(GEM5_DIR)/libm5.a
 
 # Source files

@@ -25,10 +25,12 @@
 - `agents/pm-infra/**`
 - `audit/instruction-log/**`
 - `audit/decision-log/**`
+- `audit/errata/**`
 - `infra/**`
 - `knowledge/**`
 - `.github/**`
 - `rules/scripts/**`
+- `skills/**`
 
 **重要：** 不在可写路径列表上的文件，本角色不应修改。如需修改，请通过变更通知告知对应角色。
 
@@ -91,7 +93,7 @@ Token 成本预算要算好，不能超过售价的 1/5。 需要模型调用有
 - 审计通过 qodercli 独立进程执行（进程级隔离）
 - 人类项目负责人最终签署确认
 
-> **通用规则：** 本角色同时受 AGENTS.md 第 7 节全部通用规则约束（共 10 条），此处不再重复。
+> **通用规则：** 本角色同时受 AGENTS.md 第 7 节全部通用规则约束（共 14 条），此处不再重复。
 
 ## Pre-Check 流程
 

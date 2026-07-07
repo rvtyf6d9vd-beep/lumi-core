@@ -1,0 +1,240 @@
+# ═══════════════ Lumi-Core 覆盖率计划 ═══════════════
+# 文档编号: LUMI-VER-002
+# 版本: 0.1-draft
+# 创建日期: 2026-07-01
+# 状态: 框架 (M1 基线)
+
+meta:
+  doc_id: LUMI-VER-002
+  version: "0.2-draft"
+  created: "2026-07-01"
+  last_updated: "2026-07-06"
+  status: framework
+  baseline_ref: BL-1.1
+  total_requirements: 99
+
+# ── 验证用例命名规范 ──
+naming_convention:
+  format: "tc_{module}_{feature}_{seq}"
+  examples:
+    - tc_fetch_bpred_ltage_001
+    - tc_decode_rv32i_alu_001
+    - tc_clic_priority_preempt_001
+    - tc_pmp_napot_access_001
+    - tc_axi_burst_write_001
+
+# ── 代码覆盖率目标 ──
+code_coverage:
+  line:
+    target: 95
+    unit: percent
+    exclusion: "Dead Code (经 Waiver 审批)"
+  toggle:
+    target: 90
+    unit: percent
+    exclusion: "Reserved Bits, Unused Ports"
+  branch:
+    target: 95
+    unit: percent
+    exclusion: "不可达分支 (经 Formal 证明)"
+  condition:
+    target: 90
+    unit: percent
+  fsm:
+    target: 100
+    unit: percent
+    exclusion: "全部状态和转换必须覆盖"
+
+# ── 功能覆盖目标矩阵 (需求 → 覆盖组) ──
+functional_coverage:
+  # ISA 覆盖
+  - cover_group: cg_isa_rv32i
+    description: "RV32I 基础整数指令全覆盖"
+    requirements: [LUMI-ISA-001]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_m_ext
+    description: "M 扩展乘除法指令覆盖"
+    requirements: [LUMI-ISA-002]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_a_ext
+    description: "A 扩展原子操作覆盖"
+    requirements: [LUMI-ISA-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_fd_ext
+    description: "F/D 浮点指令覆盖"
+    requirements: [LUMI-ISA-004]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_c_ext
+    description: "C 压缩指令覆盖"
+    requirements: [LUMI-ISA-005]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_b_ext
+    description: "B 位操作指令覆盖"
+    requirements: [LUMI-ISA-006]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_v_ext
+    description: "V 向量指令 + zvfh/zvfbf 覆盖"
+    requirements: [LUMI-ISA-007]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_zce
+    description: "Zce 代码压缩扩展覆盖"
+    requirements: [LUMI-ISA-008]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_mandatory
+    description: "Profile Mandatory 扩展覆盖 (Zicsr/Zicntr 等)"
+    requirements: [LUMI-ISA-011]
+    target: 100
+    status: pending
+
+  # PMP 覆盖
+  - cover_group: cg_pmp_regions
+    description: "PMP Region x 匹配模式 x 权限组合"
+    requirements: [LUMI-MEM-001, LUMI-SEC-004]
+    target: 100
+    status: pending
+
+  # 中断覆盖
+  - cover_group: cg_interrupt_clic
+    description: "CLIC 中断优先级 x 嵌套 x 类型组合"
+    requirements: [LUMI-SYS-002, LUMI-SYS-003]
+    target: 95
+    status: pending
+
+  - cover_group: cg_interrupt_plic
+    description: "PLIC 中断源 x 优先级 x 路由组合"
+    requirements: [LUMI-SYS-001]
+    target: 95
+    status: pending
+
+  # 总线覆盖
+  - cover_group: cg_axi_transactions
+    description: "AXI4 Burst 类型 x 长度 x 位宽组合"
+    requirements: [LUMI-IF-001, LUMI-IF-002]
+    target: 95
+    status: pending
+
+  - cover_group: cg_axi_tcm_slave
+    description: "TCM DMA 从接口读写覆盖"
+    requirements: [LUMI-IF-003]
+    target: 95
+    status: pending
+
+  # 内存系统覆盖
+  - cover_group: cg_tcm_access
+    description: "TCM 容量 x 延迟模式 x 区域组合"
+    requirements: [LUMI-MEM-002, LUMI-MEM-003, LUMI-MEM-004]
+    target: 95
+    status: pending
+
+  - cover_group: cg_cache_config
+    description: "L1 Cache 容量配置 x 命中/缺失模式"
+    requirements: [LUMI-MEM-006]
+    target: 95
+    status: pending
+
+  - cover_group: cg_ecc_scenarios
+    description: "ECC 单 bit 纠正 x 双 bit 检测 x 多 bit 错误"
+    requirements: [LUMI-MEM-005, LUMI-MEM-007, LUMI-SAFE-001]
+    target: 100
+    status: pending
+
+  # 功耗覆盖
+  - cover_group: cg_power_states
+    description: "Active/Sleep/DeepSleep x 转换路径组合"
+    requirements: [LUMI-PWR-003, LUMI-SYS-004, LUMI-SYS-008]
+    target: 100
+    status: pending
+
+  # 调试覆盖
+  - cover_group: cg_debug_operations
+    description: "Halt/Resume/Step/Breakpoint/Abstract Command"
+    requirements: [LUMI-FEAT-001, LUMI-FEAT-004]
+    target: 95
+    status: pending
+
+  - cover_group: cg_trace_output
+    description: "Trace 编码 x AXI4 写出场景"
+    requirements: [LUMI-FEAT-002, LUMI-FEAT-003]
+    target: 95
+    status: pending
+
+  # 安全覆盖
+  - cover_group: cg_security_debug_lock
+    description: "Debug Lock/Unlock x 安全等级组合"
+    requirements: [LUMI-SEC-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_security_boot
+    description: "安全启动签名验证场景"
+    requirements: [LUMI-SEC-001, LUMI-BOOT-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_security_bus_parity
+    description: "总线 Parity 错误注入与检测"
+    requirements: [LUMI-SEC-005, LUMI-SAFE-003]
+    target: 100
+    status: pending
+
+  # 多核覆盖
+  - cover_group: cg_lockstep
+    description: "双核锁步错误注入与检测"
+    requirements: [LUMI-MCORE-002, LUMI-SAFE-002]
+    target: 100
+    status: pending
+
+  # 复位覆盖
+  - cover_group: cg_reset_types
+    description: "冷/暖/软复位 x 状态保持验证"
+    requirements: [LUMI-BOOT-001, LUMI-BOOT-002]
+    target: 100
+    status: pending
+
+  # ── M1 补强新增需求 Cover Group (REC-003, 2026-07-06) ──
+  - cover_group: cg_pma_attr
+    description: "PMA 区域属性 x 访问类型组合覆盖"
+    requirements: [LUMI-MEM-009]
+    target: 100
+    status: pending
+
+  - cover_group: cg_clock_architecture
+    description: "时钟域 x 频率配置 x 切换场景覆盖"
+    requirements: [LUMI-CLK-001, LUMI-CLK-002, LUMI-CLK-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_power_management
+    description: "DVFS x 电压域 x 功耗状态转换覆盖"
+    requirements: [LUMI-PWR-004, LUMI-PWR-005]
+    target: 100
+    status: pending
+
+  - cover_group: cg_deliverable_prm
+    description: "PRM 文档模板完整性 + riscv-arch-test 集成覆盖"
+    requirements: [LUMI-DEL-011, LUMI-DEL-012]
+    target: 100
+    status: pending
+
+# ── 待覆盖列表 (从 BL-1.0 Pending 需求提取) ──
+pending_coverage_summary:
+  total_cover_groups: 26
+  total_covered: 0
+  coverage_rate: "0%"
+  note: "M1 阶段为框架建立，实际覆盖率随 RTL 实现逐步提升 (BL-1.1 基线, 99 条需求)"

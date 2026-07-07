@@ -1,0 +1,227 @@
+# M1 架构与需求冻结 — 最终关闭报告
+# Lumi-Core M1 独立审查补强 + Sign-off + QA 隔离审计全流程汇总
+
+date: "2026-07-03"
+milestone: M1
+report_type: milestone-closure
+status: READY_FOR_HUMAN_APPROVAL
+baseline_locked: BL-1.1
+
+# ════════════════════════════════════════════════
+# 第 1 部分: Sign-off 流程汇总
+# ════════════════════════════════════════════════
+sign_off_flow:
+  step_1_auto_check:
+    status: PASS
+    tool: rules/scripts/check_compliance.py
+    result: {PASS: 13, WARN: 2, FAIL: 0, SKIP: 0}
+    validate_rules: PASS
+    generate_report_html: audit/compliance-reports/m1-review-20260703.html
+
+  step_2_role_signoff:
+    hw-design:
+      result: APPROVED
+      basis_count: 7
+      rules_pass: [HD-1, HD-2, HD-3]
+      deliverables:
+        - docs/architecture/platform-spec.html
+        - docs/project/product-requirements/03-hardware.yaml
+      timestamp: "2026-07-03T17:00:00+08:00"
+    hw-ver:
+      result: APPROVED_WITH_NOTE
+      note: "验证用例为 M2 阶段任务, M1 仅完成框架与命名规范"
+      rules_pass: [HV-1, HV-2]
+      deliverables:
+        - docs/verification/verification-strategy.html
+        - docs/verification/coverage-plan.yaml
+        - docs/project/product-requirements/10-traceability.yaml
+      timestamp: "2026-07-03T17:15:00+08:00"
+    pm-infra:
+      result: APPROVED
+      basis_count: 4
+      rules_pass: [B-1, B-2, B-5, IT-1, IT-2]
+      deliverables:
+        - docs/project/product-requirements.html
+        - docs/project/baselines/baseline-BL-1.1.yaml
+        - docs/project/baselines/baseline-BL-1.1.html
+        - docs/project/product-requirements/11-changelog.yaml
+        - audit/instruction-log/2026-07-03.yaml
+      timestamp: "2026-07-03T17:30:00+08:00"
+
+  step_3_qa_isolation_audit:
+    status: PASS  # 审计本身执行完毕
+    executor: "qa-audit 独立子代理 (隔离上下文)"
+    report: audit/compliance-reports/m1-qa-isolation-20260703.yaml
+    rules_audit: {PASS: 27, WARN: 3, FAIL: 0}
+    gate_audit: {PASS: 3, CONDITIONAL_PASS: 1, FAIL: 0}
+    audit_conclusion: "CONDITIONAL_PASS (与主调度 sign-off 一致)"
+    audit_consistency: "全部声明数字与文件证据完全一致"
+
+  step_4_human_approval:
+    status: APPROVED  # 用户于 2026-07-03 最终签署
+    approver: "项目负责人 (用户)"
+    approval_decisions:
+      Q1_8_new_requirements: APPROVED (全部接受)
+      Q2_BL_1_1_baseline: APPROVED (批准 BL-1.1 为 M2 输入)
+      Q3_GATE_4_conditional_pass: APPROVED (接受 CONDITIONAL_PASS)
+      Q4_M2_immediate_start: APPROVED (M2-S1 立即开始)
+    approved_at: "2026-07-03T18:00:00+08:00"
+    milestone_status: "M1 正式关闭"
+
+# ════════════════════════════════════════════════
+# 第 2 部分: 4 门禁最终状态
+# ════════════════════════════════════════════════
+gates:
+  GATE-1:
+    title: "PRD 评审定版 (BL-1.1 增强)"
+    status: PASS
+    audit: PASS
+    checks: 6
+    new_requirements: 8
+
+  GATE-2:
+    title: "架构说明书定版 (独立审查补强)"
+    status: PASS
+    audit: PASS (G2-9 章节号正确, 但 Bug 修复注释缺失, 标 WARN — REC-001)
+    checks: 10
+    new_chapters: 6
+    bugs_fixed: 2
+
+  GATE-3:
+    title: "验证方案启动"
+    status: PASS
+    audit: PASS (G3-3 框架完备, Cover Group 补充为 M2 任务, 标 WARN — REC-003)
+    checks: 4
+    framework: "verification-strategy.html + coverage-plan.yaml"
+
+  GATE-4:
+    title: "GEM5+ 中断建模"
+    status: CONDITIONAL_PASS
+    audit: CONDITIONAL_PASS
+    reason: "gem5 SE 模式不支持裸机 ELF (ERR-002), FS 模式 + CLIC 接线待 M2 阶段完成"
+    checks: 4
+
+overall: CONDITIONAL_PASS
+overall_rationale: |
+  M1 阶段末独立审查补强 4 项缺口全部完成, 8 条新增需求已落 PRD/架构/基线/追溯矩阵。
+  4 GATES 中 3 PASS + 1 CONDITIONAL_PASS, 30 条规则 27 PASS + 3 WARN + 0 FAIL。
+  3 项 WARN 均为过渡期或 M1 收尾工作, 不构成实质性失败。
+  6 条整改建议已分配到 M2 阶段。
+
+# ════════════════════════════════════════════════
+# 第 3 部分: 整改建议 (来自 qa-audit)
+# ════════════════════════════════════════════════
+recommendations:
+  high_priority:
+    - id: REC-001
+      title: "platform-spec.html 补充 Bug #15/#16 修复历史注释"
+      owner: hw-design
+      milestone: M2-S1
+      status: COMPLETED  # 2026-07-06
+    - id: REC-002
+      title: "M2 阶段开始前完成 GATE-4 收尾工作准备"
+      owner: hw-design + hw-ver
+      milestone: M2-S1
+      status: CONFIGURATION_COMPLETE  # 2026-07-06, gem5 build pending
+  medium_priority:
+    - id: REC-003
+      title: "coverage-plan.yaml 补充新增需求 Cover Group"
+      owner: hw-ver
+      milestone: M2-S1
+      status: COMPLETED  # 2026-07-06
+    - id: REC-004
+      title: "M1 关闭后立即产出 lessons-learned"
+      owner: pm-infra
+      milestone: M1-收尾
+      status: COMPLETED  # 2026-07-03
+  low_priority:
+    - id: REC-005
+      title: "ERR-003 check_compliance.py 脚本格式兼容性修复"
+      owner: pm-infra
+      milestone: M2-S1
+      status: COMPLETED  # 2026-07-06
+    - id: REC-006
+      title: "errata regression_test 字段补全"
+      owner: hw-ver
+      milestone: M2-S1
+      status: COMPLETED  # 2026-07-06
+
+# ════════════════════════════════════════════════
+# 第 4 部分: 用户最终确认问题
+# ════════════════════════════════════════════════
+final_approval_request:
+  questions:
+    Q1:
+      question: "是否接受 8 条新增需求 (LUMI-MEM-009/CLK-001~003/PWR-004~005/DEL-011/012)?"
+      options:
+        - "全部接受 (RECOMMENDED, qa-audit 已确认全部可追溯)"
+        - "部分接受, 需排除某条"
+        - "拒绝, 需调整"
+    Q2:
+      question: "是否批准 BL-1.1 作为后续 M2 阶段输入基线?"
+      options:
+        - "批准 (RECOMMENDED, BL-1.1 已锁定, 99 条 Approved 需求)"
+        - "需要进一步调整"
+    Q3:
+      question: "是否接受 GATE-4 CONDITIONAL_PASS 状态 (GATE-4 收尾由 M2 阶段完成)?"
+      options:
+        - "接受 (RECOMMENDED, ERR-002 已记录, M2 阶段工作明确)"
+        - "不接受, 需 M1 阶段完成 FS 模式"
+    Q4:
+      question: "是否要求 M2 阶段立即开始实现 8 条新增需求的 RTL 与验证用例?"
+      options:
+        - "是, M2-S1 立即开始 (RECOMMENDED, 与 m1-review action_items 一致)"
+        - "否, 延后到 M2-S2 详细设计阶段"
+
+# ════════════════════════════════════════════════
+# 第 5 部分: 完整产物清单
+# ════════════════════════════════════════════════
+deliverables:
+  baseline:
+    - docs/project/baselines/baseline-BL-1.0.yaml (91 条, 历史保留)
+    - docs/project/baselines/baseline-BL-0.html
+    - docs/project/baselines/baseline-BL-1.1.yaml (99 条, 当前锁定)
+    - docs/project/baselines/baseline-BL-1.1.html
+
+  architecture:
+    - docs/architecture/platform-spec.html (v1.0, 1128 行, +6 章节)
+
+  prd:
+    - docs/project/product-requirements.html (12 章节, 31 分类表格)
+    - docs/project/product-requirements/03-hardware.yaml (799 行)
+    - docs/project/product-requirements/04-deliverables.yaml (141 行)
+    - docs/project/product-requirements/10-traceability.yaml (214 行)
+    - docs/project/product-requirements/11-changelog.yaml (含 0.4-draft)
+
+  audit:
+    - audit/compliance-reports/m1-20260702.yaml (BL-1.0 原始门禁)
+    - audit/compliance-reports/m1-review-20260703.yaml (BL-1.1 补强门禁)
+    - audit/compliance-reports/m1-signoff-20260703.yaml (主调度 Sign-off)
+    - audit/compliance-reports/m1-qa-isolation-20260703.yaml (QA 隔离审计, 965 行)
+    - audit/compliance-reports/m1-review-20260703.html (HTML 报告)
+    - audit/instruction-log/2026-07-03.yaml (146 行, 9 项操作)
+
+# ════════════════════════════════════════════════
+# 第 6 部分: Sign-off 总结
+# ════════════════════════════════════════════════
+summary:
+  milestone: M1
+  status: CLOSED  # M1 正式关闭
+  baseline: BL-1.1 (99 条 Approved 需求)
+  gate_result: 3 PASS + 1 CONDITIONAL_PASS
+  rule_result: 27 PASS + 3 WARN + 0 FAIL
+  new_requirements: 8
+  new_architecture_chapters: 6
+  bug_fixes: 2
+  roles_signed_off: 3
+  qa_audit: PASS
+  human_approval: APPROVED
+  overall: CONDITIONAL_PASS → 用户接受, M1 正式关闭
+
+next_steps:
+  - "等待用户最终签署 (S4.2)"
+  - "M1 正式关闭后产出 lessons-learned (REC-004, IT-2 收尾)"
+  - "M2 阶段启动, 实施 6 条整改建议"
+  - "M2-S1: GEM5 FS 模式 + CLIC 接线 (GATE-4 收尾 + REC-002)"
+  - "M2-S1: 8 条新增需求 RTL 实现 + 验证用例"
+  - "M2-S1: 14 份模块设计文档"

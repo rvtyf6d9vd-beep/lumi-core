@@ -22,10 +22,8 @@ static inline unsigned long read_csr_mcycle(void) {
 }
 #define read_csr(reg) read_csr_mcycle()
 
-/* ---- m5 pseudo-instructions for stats control ---- */
-extern void m5_reset_stats(unsigned long ns, unsigned long ns2);
-extern void m5_dump_stats(unsigned long ns, unsigned long ns2);
-extern void m5_exit(unsigned long code);
+/* ---- m5 pseudo-instructions: stub for RV32 compatibility ---- */
+/* Provided by m5_stubs.c when libm5.a is not linked (RV32 builds) */
 
 /* ---- setStats mapped to m5 instructions ---- */
 static inline void setStats(int enable) {

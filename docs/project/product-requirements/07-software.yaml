@@ -10,34 +10,154 @@ categories:
       - req_id: LUMI-TOOL-001
         name: "GCC 14+ 支持"
         priority: Must
-        status: Draft
+        status: Approved
         version: v0.1
         source: 客户要求
         ref_doc: ""
-        acceptance: "可编译并运行裸机程序"
+        acceptance: "可编译并运行裸机程序，支持 RV32IMAFDCBV + Zce 全部已实现扩展"
         change_date: ""
         note: ""
+      - req_id: LUMI-TOOL-002
+        name: "LLVM/Clang 支持"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "LLVM 后端支持 Lumi-Core 的全部已实现 ISA 扩展，可编译裸机程序"
+        change_date: "2026-07-02"
+        note: "部分客户偏好 LLVM 工具链"
 
   - id: SW-SDK
     title: "7.2 SDK"
-    requirements: []
+    requirements:
+      - req_id: LUMI-SDK-001
+        name: "HAL/BSP 硬件抽象层"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "提供寄存器级 HAL 库，覆盖全部外设寄存器访问、中断配置、时钟管理"
+        change_date: "2026-07-02"
+        note: ""
+      - req_id: LUMI-SDK-002
+        name: "外设驱动库"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "提供 UART/SPI/I2C/GPIO/Timer 等常用外设驱动"
+        change_date: "2026-07-02"
+        note: ""
 
   - id: SW-FW
     title: "7.3 固件 (Firmware)"
-    requirements: []
+    requirements:
+      - req_id: LUMI-FW-001
+        name: "Boot Firmware"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi原始需求
+        ref_doc: "LUMI-BOOT-001/LUMI-SEC-001"
+        acceptance: "提供 Boot ROM 固件源码，支持安全启动签名验证和基本硬件初始化"
+        change_date: "2026-07-02"
+        note: "对应 LUMI-BOOT-003 Boot ROM"
+      - req_id: LUMI-FW-002
+        name: "RTOS 移植支持"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: 客户要求
+        ref_doc: ""
+        acceptance: "提供 FreeRTOS 和 Zephyr RTOS 的 BSP 移植，可编译运行基本任务调度"
+        change_date: "2026-07-02"
+        note: "汽车/工业客户普遍使用 RTOS"
 
   - id: SW-IDE
     title: "7.4 IDE"
-    requirements: []
+    requirements:
+      - req_id: LUMI-IDE-001
+        name: "Eclipse/VS Code 调试支持"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "提供 GDB 调试配置文件和 IDE 集成指南，支持断点、单步、变量查看"
+        change_date: "2026-07-02"
+        note: ""
 
   - id: SW-SIM
     title: "7.5 仿真器"
-    requirements: []
+    requirements:
+      - req_id: LUMI-SIM-001
+        name: "指令集模拟器 (ISS)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: IP 产品标准
+        ref_doc: ""
+        acceptance: "提供兼容 Spike 或 Whisper 的指令集模拟器，支持 Lumi-Core 全部已实现 ISA 扩展"
+        change_date: "2026-07-02"
+        note: "用于软件开发早期和回归测试 Golden Model"
+      - req_id: LUMI-SIM-002
+        name: "Cycle Accurate Model (gem5)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi Req
+        ref_doc: "LUMI-DEL-003"
+        acceptance: "gem5 模型支持 Lumi-Core 微架构参数配置，性能评估误差 <=10%"
+        change_date: "2026-07-02"
+        note: "对应交付物 LUMI-DEL-003"
 
   - id: SW-DBG
     title: "7.6 调试工具"
-    requirements: []
+    requirements:
+      - req_id: LUMI-DBG-001
+        name: "GDB + OpenOCD 支持"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: RISC-V Debug Spec
+        ref_doc: "RISC-V Debug V1.0.0"
+        acceptance: "GDB 通过 OpenOCD 连接 Lumi-Core，支持断点、单步、内存读写、寄存器查看"
+        change_date: "2026-07-02"
+        note: "对应 LUMI-FEAT-001 调试模块"
+      - req_id: LUMI-DBG-002
+        name: "Trace 解码工具"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: RISC-V Nexus Trace
+        ref_doc: "RISC-V Nexus Trace V1.0.0"
+        acceptance: "提供 Trace 数据包解码工具，可将 Trace AXI4 输出还原为指令流"
+        change_date: "2026-07-02"
+        note: "对应 LUMI-FEAT-002/F003"
 
   - id: SW-PERF
     title: "7.7 性能工具"
-    requirements: []
+    requirements:
+      - req_id: LUMI-PERF-001
+        name: "基准测试套件"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: Lumi Req
+        ref_doc: "LUMI-IPC-001/002/003"
+        acceptance: "提供 CoreMark、Dhrystone、Crypto 基准测试的可编译源码和运行脚本"
+        change_date: "2026-07-02"
+        note: "对应 perf/benchmarks/ 目录"
+      - req_id: LUMI-PERF-002
+        name: "性能计数器工具"
+        priority: Should
+        status: Approved
+        version: v1.0
+        source: RISC-V Spec
+        ref_doc: "Zihpm/Zicntr"
+        acceptance: "提供读取和分析硬件性能计数器 (cycle/instret/hpm) 的工具库"
+        change_date: "2026-07-02"
+        note: ""

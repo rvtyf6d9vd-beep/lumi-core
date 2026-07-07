@@ -30,11 +30,11 @@ CFLAGS = $(OPT) -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-builtin \
          -DNUMBER_OF_RUNS=$(NUMBER_OF_RUNS) \
          -DFLAGS_STR=\"$(FLAGS_STR)\"
 
-LDFLAGS = -nostdlib -T $(LIBC_DIR)/lumi-se.ld
-LDLIBS  = $(LIBC_DIR)/libmini.a $(GEM5_DIR)/libm5.a
+LDFLAGS = -nostdlib -T $(LIBC_DIR)/$(if $(findstring ilp32,$(ABI)),lumi-se-rv32.ld,lumi-se.ld)
+LDLIBS  = $(LIBC_DIR)/libmini.a
 
 # Source files
-SRCS = dhrystone.c
+SRCS = dhrystone.c m5_stubs.c
 OBJS = $(SRCS:.c=.o)
 
 LIBC_CRT0 = $(LIBC_DIR)/crt0.o
@@ -45,7 +45,7 @@ TARGET = dhrystone.riscv
 
 all: $(TARGET)
 
-$(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a $(GEM5_DIR)/libm5.a
+$(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS) -lgcc
 
 %.o: %.c dhrystone.h lumi_dhry_port.h

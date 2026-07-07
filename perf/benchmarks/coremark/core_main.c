@@ -22,6 +22,9 @@ Original Author: Shay Gal-on
 */
 #include "coremark.h"
 
+/* Forward declaration for clean exit (defined in mini_libc) */
+extern void _exit(int code);
+
 /* Function: iterate
         Run the benchmark for a specified number of iterations.
 
@@ -439,12 +442,22 @@ for (i = 0; i < MULTITHREAD; i++)
          */
         {
             unsigned long iters = default_num_contexts * results[0].iterations;
-            /* Scale to 2 decimal places: CM/MHz * 100
-             * = (iters * 1e6 / total_ticks) * 100 = iters * 1e8 / total_ticks */
-            unsigned long cm_mhz_x100 = (iters * 100000000UL) / (unsigned long)total_time;
+            /* CM/MHz * 100 = iters * 1e8 / total_ticks
+             * On RV32, iters*1e8 overflows unsigned long (32-bit).
+             * Compute as: (iters * 1e6 / total_ticks) * 100 + remainder*100/total_ticks
+             * Use iterative subtraction to avoid modulo issues */
+            unsigned long ticks = (unsigned long)total_time;
+            unsigned long per_iter = ticks / iters;  /* ticks per iteration */
+            unsigned long cm_mhz_x100 = 0;
+            if (per_iter > 0) {
+                /* CM/MHz = 1e6 / per_iter, * 100 = 1e8 / per_iter */
+                cm_mhz_x100 = 100000000UL / per_iter;
+            }
             ee_printf("CoreMark_CM_per_MHz_x100 : %lu\n", cm_mhz_x100);
             ee_printf("CoreMark_sim_iters : %lu\n", iters);
             ee_printf("CoreMark_sim_ticks : %lu\n", (unsigned long)total_time);
+            /* Force clean exit to avoid io_getevents syscall in cleanup */
+            _exit(0);
         }
 #endif
     }

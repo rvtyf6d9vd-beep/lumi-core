@@ -52,6 +52,8 @@ blockquote strong{color:#1565C0}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 hr{border:none;border-top:2px solid var(--accent);margin:3rem 0 1rem}
 .req-desc{margin:.6rem 0 1rem;color:#546e7a;font-size:.95rem;line-height:1.8}
+.nav-back{display:inline-block;margin-bottom:1.5rem;padding:.4rem 1rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:.9rem;font-weight:500;transition:background .2s}
+.nav-back:hover{background:#e1e8f0;text-decoration:none}
 #toolbar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#16213e;color:#fff;padding:.5rem 1rem;display:flex;align-items:center;gap:.6rem;font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.3);flex-wrap:wrap}
 #toolbar select,#toolbar button{padding:.3rem .6rem;border-radius:3px;font-size:.82rem;border:1px solid rgba(255,255,255,.3);cursor:pointer}
 #toolbar select{background:#fff;color:#333}
@@ -80,6 +82,8 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 </style>
 </head>
 <body>
+
+<a href="../index.html" class="nav-back">&larr; 返回文档地图</a>
 
 <div class="cover">
     <p class="doc-id">文档编号: LUMI-PRD-001 &nbsp;|&nbsp; 版本: 0.1-draft</p>
@@ -137,9 +141,9 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 </tbody></table></div>
 <h2>2.2 竞品分析</h2>
 <div class="table-wrapper"><table><thead><tr><th>竞品名称</th><th>厂商</th><th>架构</th><th>优势</th><th>劣势</th><th>与 Lumi 对比</th></tr></thead><tbody>
-<tr class="example-row"><td><span class="ph">ARM Cortex-M7</span></td><td><span class="ph">ARM</span></td><td><span class="ph">ARMv7E-M</span></td><td><span class="ph">生态成熟</span></td><td><span class="ph">授权费高，不可定制</span></td><td><span class="ph">--</span></td></tr>
-<tr class="example-row"><td><span class="ph">ARM Cortex-R52</span></td><td><span class="ph">ARM</span></td><td><span class="ph">ARMv7E-M</span></td><td><span class="ph">生态成熟</span></td><td><span class="ph">授权费高，不可定制</span></td><td><span class="ph">--</span></td></tr>
-<tr class="example-row"><td><span class="ph">Nuclei NA900</span></td><td><span class="ph">RISC-V</span></td><td><span class="ph">RV32GCBV</span></td><td><span class="ph">授权灵活，配置丰富，可以定制</span></td><td><span class="ph">--</span></td><td><span class="ph">--</span></td></tr>
+<tr class="example-row"><td><span class="ph">ARM Cortex-M7</span></td><td><span class="ph">ARM</span></td><td><span class="ph">ARMv7E-M</span></td><td><span class="ph">生态成熟，性能优秀</span></td><td><span class="ph">授权费高，不可定制</span></td><td><span class="ph">Lumi 性能对标，架构更灵活</span></td></tr>
+<tr class="example-row"><td><span class="ph">ARM Cortex-R52</span></td><td><span class="ph">ARM</span></td><td><span class="ph">ARMv8-R</span></td><td><span class="ph">生态成熟，功能安全认证完善</span></td><td><span class="ph">授权费高，不可定制，多核扩展受限</span></td><td><span class="ph">Lumi 安全岛场景对标，支持双锁步</span></td></tr>
+<tr class="example-row"><td><span class="ph">Nuclei NA900</span></td><td><span class="ph">RISC-V</span></td><td><span class="ph">RV32GCBV</span></td><td><span class="ph">授权灵活，配置丰富，可以定制</span></td><td><span class="ph">生态相对年轻，车规认证经验有限</span></td><td><span class="ph">同架构竞争，Lumi 侧重全验证交付</span></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>2.3 典型应用场景</h2>
@@ -174,7 +178,7 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-PIPE"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-PIPE-001</td><td><span class="ph">8 级流水线架构</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">流水线级数为 8 级，微架构设计以达到预定性能参数为准</span></td><td><span class="ph">2026-06-29</span></td><td>其他微架构设计由架构组自行决定</td></tr>
+<tr class="example-row"><td>LUMI-PIPE-001</td><td><span class="ph">8 级流水线架构</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">流水线级数为 8 级，微架构设计以达到预定性能参数为准</span></td><td><span class="ph">2026-06-29</span></td><td>其他微架构设计由架构组自行决定</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.1.2 频率目标</h3>
@@ -182,7 +186,7 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-FREQ"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-FREQ-001</td><td><span class="ph">TSMC 28HPC 主频 &gt;=1.0GHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TSMC 28HPC 工艺下达到 &gt;=1.0GHz 时钟频率</span></td><td><span class="ph">2026-06-29</span></td><td>基于 TSMC 28HPC 工艺</td></tr>
+<tr class="example-row"><td>LUMI-FREQ-001</td><td><span class="ph">TSMC 28HPC 主频 &gt;=1.0GHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TSMC 28HPC 工艺下达到 &gt;=1.0GHz 时钟频率</span></td><td><span class="ph">2026-06-29</span></td><td>基于 TSMC 28HPC 工艺</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.1.3 性能基准</h3>
@@ -190,9 +194,9 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-IPC"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-IPC-001</td><td><span class="ph">Coremark &gt;=5.5 CM/MHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Coremark 基准测试达到 &gt;=5.5 CM/MHz</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-IPC-002</td><td><span class="ph">Dhrystone &gt;=3.8 DMIPS/MHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Dhrystone 基准测试达到 &gt;=3.8 DMIPS/MHz</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-IPC-003</td><td><span class="ph">售前售后基准测试覆盖</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Coremark、Dhrystone、Crypto (AES/SHA/CRC32) 基准测试可运行并输出报告</span></td><td><span class="ph">2026-06-29</span></td><td>支撑售前和售后客户支持</td></tr>
+<tr class="example-row"><td>LUMI-IPC-001</td><td><span class="ph">Coremark &gt;=5.5 CM/MHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Coremark 基准测试达到 &gt;=5.5 CM/MHz</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-IPC-002</td><td><span class="ph">Dhrystone &gt;=3.8 DMIPS/MHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Dhrystone 基准测试达到 &gt;=3.8 DMIPS/MHz</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-IPC-003</td><td><span class="ph">售前售后基准测试覆盖</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Coremark、Dhrystone、Crypto (AES/SHA/CRC32) 基准测试可运行并输出报告</span></td><td><span class="ph">2026-06-29</span></td><td>支撑售前和售后客户支持</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.1.4 面积约束</h3>
@@ -200,7 +204,7 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-AREA"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-AREA-001</td><td><span class="ph">STDCELL 面积 &lt;=0.32 mm²</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TSMC 28HPC 工艺下 STDCELL 面积不超过 0.32 mm²</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-AREA-001</td><td><span class="ph">STDCELL 面积 &lt;=0.32 mm²</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TSMC 28HPC 工艺下 STDCELL 面积不超过 0.32 mm²</span></td><td><span class="ph">2026-06-29</span></td><td>面积边界为 Core + L1 Cache 基准配置（不含 TCM/FPU/Vector）。启用 FPU+Vector(VLEN128) 预计增加约 30%~50% 面积</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.1.5 功耗预算</h3>
@@ -208,8 +212,9 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-PWR"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-PWR-001</td><td><span class="ph">单核动态功耗 &lt;=100mW/GHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Dynamic power &lt;=100mW/GHz (单核)</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-PWR-002</td><td><span class="ph">单核泄漏功耗 &lt;=32mW</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Leakage Power &lt;=32mW (单核)</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-PWR-001</td><td><span class="ph">单核动态功耗 &lt;=100mW/GHz</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Dynamic power &lt;=100mW/GHz (单核)</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-PWR-002</td><td><span class="ph">单核泄漏功耗 &lt;=32mW</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Leakage Power &lt;=32mW (单核)</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-PWR-003</td><td><span class="ph">功耗状态定义与切换</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持 Active/Sleep/Deep Sleep 三种功耗状态，状态切换延时可配置，WFI 进入 Sleep 延时 &lt;=8 周期</span></td><td><span class="ph">2026-07-02</span></td><td>本需求定义功耗状态本身的规格（电压/频率/唤醒延时），不含 ISA 入口（见 LUMI-SYS-004）和外部系统接口（见 LUMI-SYS-008）。Sleep 状态下保持 L1 Cache/TCM 内容，Deep Sleep 仅保留寄存器文件</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.1.6 中断性能</h3>
@@ -217,7 +222,7 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="PPA-INT"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-SYS-003</td><td><span class="ph">快速中断延时 &lt;=16 周期</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">从中断信号到第一条中断处理指令执行 &lt;=16 时钟周期</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SYS-003</td><td><span class="ph">快速中断延时 &lt;=16 周期</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">从中断信号到第一条中断处理指令执行 &lt;=16 时钟周期</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.1 Profile 合规</h3>
@@ -225,7 +230,8 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="RTL-PROF"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-PROF-001</td><td><span class="ph">Lumi-Core Profile 技术特性合规</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>Lumi-Core Profile</td><td><span class="ph">Profile 定义的全部 Mandatory 技术特性通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-PROF-001</td><td><span class="ph">Lumi-Core Profile 技术特性合规</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>Lumi-Core Profile</td><td><span class="ph">Profile 定义的全部 Mandatory 技术特性通过 riscv-arch-test 合规测试</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-PROF-002</td><td><span class="ph">特权级配置支持 (CoreM/CoreS/CoreU)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi-Core Profile</span></td><td>Lumi-Core Profile A2.3/A2.4</td><td><span class="ph">三种特权级配置可独立配置，对应 Mandatory 扩展全部实现（S/Sstvecd/Ssstrict/Sstc/Ssclic + Sm/Smpmp/Smepmp/Smrnmi/Smclic）</span></td><td><span class="ph">2026-07-02</span></td><td>明确 Lumi-Core 的默认配置级别为 CoreM（Machine-only）</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.2 ISA 扩展</h3>
@@ -234,15 +240,16 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
 <tr class="example-row"><td>LUMI-ISA-001</td><td><span class="ph">RV32I 基础整数指令集</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">全部 RV32I 指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-ISA-002</td><td><span class="ph">M 扩展 — 整数乘除法</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">MUL/DIV 系列指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含</td></tr>
-<tr class="example-row"><td>LUMI-ISA-003</td><td><span class="ph">A 扩展 — 原子操作</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">AMO/LR/SC 系列指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含</td></tr>
-<tr class="example-row"><td>LUMI-ISA-004</td><td><span class="ph">F/D 双精度浮点扩展</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">FP32/FP16/BF16 浮点运算正确，支持标量和向量，数据格式互转正确</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含，FPU 可配置</td></tr>
-<tr class="example-row"><td>LUMI-ISA-005</td><td><span class="ph">C 扩展 — 压缩指令</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">16bit 压缩指令解码执行正确</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含</td></tr>
-<tr class="example-row"><td>LUMI-ISA-006</td><td><span class="ph">B 扩展 — 位操作</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">位操作指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-ISA-007</td><td><span class="ph">V 向量扩展 + zvfh/zvfbf</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">基于 RVV1.0，支持 zvfh/zvfbf，VLEN=128bit 向量运算正确</span></td><td><span class="ph">2026-06-29</span></td><td>支持 128bit/256bit 位宽（可配置）</td></tr>
-<tr class="example-row"><td>LUMI-ISA-008</td><td><span class="ph">Zce 代码压缩扩展</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-proposed">Proposed</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Zca+Zcb+Zcmp+Zcmt 全部子扩展通过</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-ISA-009</td><td><span class="ph">Vector Crypto 向量加密指令</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">向量加密指令功能正确 (zvkg/zvkn 等)</span></td><td><span class="ph">2026-06-29</span></td><td>可选支持</td></tr>
-<tr class="example-row"><td>LUMI-ISA-010</td><td><span class="ph">Packed SIMD 扩展</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.9.4</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Packed SIMD 指令功能正确</span></td><td><span class="ph">2026-06-29</span></td><td>基于 v0.9.4 规范，可选支持</td></tr>
+<tr class="example-row"><td>LUMI-ISA-002</td><td><span class="ph">M 扩展 — 整数乘除法</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">MUL/DIV 系列指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含</td></tr>
+<tr class="example-row"><td>LUMI-ISA-003</td><td><span class="ph">A 扩展 — 原子操作</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">AMO/LR/SC 系列指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含</td></tr>
+<tr class="example-row"><td>LUMI-ISA-004</td><td><span class="ph">F/D 双精度浮点扩展</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">FP32/FP16/BF16 浮点运算正确，支持标量和向量，数据格式互转正确</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含，FPU 可配置。超出 Profile 要求（Profile 中为 Optional），产品决策强制实现</td></tr>
+<tr class="example-row"><td>LUMI-ISA-005</td><td><span class="ph">C 扩展 — 压缩指令</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">16bit 压缩指令解码执行正确</span></td><td><span class="ph">2026-06-29</span></td><td>RV32G 包含。Profile 中由 Zce 的 Zca 子扩展覆盖，本产品显式列出以确保 RV32G 完整覆盖</td></tr>
+<tr class="example-row"><td>LUMI-ISA-006</td><td><span class="ph">B 扩展 — 位操作</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">位操作指令通过合规测试</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-ISA-007</td><td><span class="ph">V 向量扩展 + zvfh/zvfbf</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Spec</td><td><span class="ph">基于 RVV1.0，支持 zvfh/zvfbf，VLEN=128bit 向量运算正确</span></td><td><span class="ph">2026-06-29</span></td><td>支持 128bit/256bit 位宽（可配置）。超出 Profile 要求（Profile 中为 Optional），产品决策强制实现。VLEN=128 时对面积影响显著，需在配置表中列出典型配置面积</td></tr>
+<tr class="example-row"><td>LUMI-ISA-008</td><td><span class="ph">Zce 代码压缩扩展</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>Lumi-Core Profile</td><td><span class="ph">Zca+Zcb+Zcmp+Zcmt 全部子扩展通过 riscv-arch-test 合规测试</span></td><td><span class="ph">2026-07-01</span></td><td>Profile Mandatory 扩展，纳入基线实现</td></tr>
+<tr class="example-row"><td>LUMI-ISA-009</td><td><span class="ph">Vector Crypto 向量加密指令</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">向量加密指令功能正确 (zvkg/zvkn 等)</span></td><td><span class="ph">2026-06-29</span></td><td>可选支持</td></tr>
+<tr class="example-row"><td>LUMI-ISA-010</td><td><span class="ph">Packed SIMD 扩展</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.9.4</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">Packed SIMD 指令功能正确</span></td><td><span class="ph">2026-06-29</span></td><td>基于 v0.9.4 规范，可选支持</td></tr>
+<tr class="example-row"><td>LUMI-ISA-011</td><td><span class="ph">Profile Mandatory 扩展完整覆盖</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi-Core Profile</span></td><td>Lumi-Core Profile A2.2</td><td><span class="ph">Zicsr/Zicntr/Zihpm/Zicbom/Zicbop/Zicboz/Zicond/Zihintpause/Zihintntl/Zimop/Zcmop/Ziccamoa/Zifencei 全部通过 riscv-arch-test 合规测试</span></td><td><span class="ph">2026-07-02</span></td><td>Profile A2.2 定义的 13 个 Mandatory 扩展，LUMI-PROF-001 的具体分解</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.3 内存模型</h3>
@@ -250,15 +257,17 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="RTL-MEM"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-MEM-001</td><td><span class="ph">PMP 物理内存保护 (可配, 默认 8 Region)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">PMP Region 数量可配（默认 8），越界访问触发异常</span></td><td><span class="ph">2026-06-29</span></td><td>Region 数为可配置参数</td></tr>
-<tr class="example-row"><td>LUMI-MEM-002</td><td><span class="ph">TCM 紧耦合内存 (0~128KB 可配)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TCM 大小 0~128KB 可配置，必须为 8KB 的 2 的幂次倍数</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
-<tr class="example-row"><td>LUMI-MEM-003</td><td><span class="ph">TCM 三区域 (代码+数据双区)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">代码单一区域 + 数据双区域（奇偶地址），三个区域独立访问正确</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-MEM-004</td><td><span class="ph">TCM 0 拍 / 1 拍延迟访问</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持 0 拍延迟和 1 拍延迟两种访问模式</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-MEM-005</td><td><span class="ph">TCM ECC 内存保护</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TCM ECC 保护功能正确，单 bit 翻转可检测并纠正</span></td><td><span class="ph">2026-06-29</span></td><td>可选配置</td></tr>
-<tr class="example-row"><td>LUMI-MEM-006</td><td><span class="ph">L1 Cache 可配 (8/16/32KB)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">L1 I-Cache/D-Cache 容量可选 8KB/16KB/32KB</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-MEM-007</td><td><span class="ph">L1 Cache ECC 内存保护</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">L1 Cache ECC 保护功能正确</span></td><td><span class="ph">2026-06-29</span></td><td>可选配置</td></tr>
-<tr class="example-row"><td>LUMI-SYS-006</td><td><span class="ph">32bit 物理寻址</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">32bit 物理地址空间寻址正确</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SYS-007</td><td><span class="ph">Little-Endian 字节序</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">所有内存访问符合 Little-Endian 字节序</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-MEM-001</td><td><span class="ph">PMP 物理内存保护 (可配, 默认 8 Region)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>Lumi-Core Profile B2.1</td><td><span class="ph">PMP Region 数量可配（默认 8），越界访问触发异常</span></td><td><span class="ph">2026-06-29</span></td><td>Region 数为可配置参数。Profile 要求 PMP entries=16，本产品默认配置为 8（可通过参数扩展到 16）</td></tr>
+<tr class="example-row"><td>LUMI-MEM-002</td><td><span class="ph">TCM 紧耦合内存 (0~128KB 可配)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TCM 大小 0~128KB 可配置，必须为 8KB 的 2 的幂次倍数</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-MEM-003</td><td><span class="ph">TCM 三区域 (代码+数据双区)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">代码单一区域 + 数据双区域（奇偶地址），三个区域独立访问正确</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-MEM-004</td><td><span class="ph">TCM 0 拍 / 1 拍延迟访问</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持 0 拍延迟和 1 拍延迟两种访问模式</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-MEM-005</td><td><span class="ph">TCM ECC 内存保护</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TCM ECC 保护功能正确，单 bit 翻转可检测并纠正</span></td><td><span class="ph">2026-06-29</span></td><td>可选配置</td></tr>
+<tr class="example-row"><td>LUMI-MEM-006</td><td><span class="ph">L1 Cache 可配 (8/16/32KB)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">L1 I-Cache/D-Cache 容量可选 8KB/16KB/32KB</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-MEM-007</td><td><span class="ph">L1 Cache ECC 内存保护</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">L1 Cache ECC 保护功能正确</span></td><td><span class="ph">2026-06-29</span></td><td>可选配置</td></tr>
+<tr class="example-row"><td>LUMI-SYS-006</td><td><span class="ph">32bit 物理寻址</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">32bit 物理地址空间寻址正确</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SYS-007</td><td><span class="ph">Little-Endian 字节序</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">所有内存访问符合 Little-Endian 字节序</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-MEM-008</td><td><span class="ph">RVWMO 内存序模型</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Spec</span></td><td>RISC-V Unprivileged Spec Ch.17</td><td><span class="ph">内存访问顺序符合 RVWMO (RISC-V Weak Memory Ordering) 模型，FENCE 指令正确约束内存序</span></td><td><span class="ph">2026-07-02</span></td><td>RV32G 隐含要求，单核场景下与顺序一致但对多核互斥有影响</td></tr>
+<tr class="example-row"><td>LUMI-MEM-009</td><td><span class="ph">PMA 物理内存属性检查器</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">默认 3 个 PMA 区域 (TCM/DDR/MMIO)，cacheable/executable/idempotent/amo_supported 等属性检查正确，越界触发 access fault 异常</span></td><td><span class="ph">2026-07-02</span></td><td>硬连线 PMA 方案，可选 cfgaddr/cfgdata CSR 支持运行时定制</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.4 外部接口</h3>
@@ -266,11 +275,12 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="RTL-IF"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-IF-001</td><td><span class="ph">AMBA4 AXI 主总线 (128bit)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">AXI4 协议合规，128bit 位宽</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-IF-002</td><td><span class="ph">FFP 外设接口 (AXI 32bit)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">FFP 接口 AXI 协议合规，32bit 位宽</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-IF-003</td><td><span class="ph">TCM 从接口 (DMA 数据导入导出)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">DMA 通过从接口正确读写 TCM 数据</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SYS-001</td><td><span class="ph">PLIC 中断控制器支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">PLIC 中断控制器功能正确，中断数可配置 32~960（32 的 2 的幂次倍数）</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SYS-002</td><td><span class="ph">CLIC 快速中断控制器</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">CLIC 中断控制器功能正确，中断数可配置 1~240</span></td><td><span class="ph">2026-06-29</span></td><td>中断数为可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-IF-001</td><td><span class="ph">AMBA4 AXI 主总线 (128bit)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">AXI4 协议合规，128bit 位宽</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-IF-002</td><td><span class="ph">FFP 外设接口 (AXI 32bit)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">FFP 接口 AXI 协议合规，32bit 位宽</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-IF-003</td><td><span class="ph">TCM 从接口 (DMA 数据导入导出)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">DMA 通过从接口正确读写 TCM 数据</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SYS-001</td><td><span class="ph">PLIC 中断控制器支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">PLIC 中断控制器功能正确，中断数可配置 32~960（32 的 2 的幂次倍数）</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SYS-002</td><td><span class="ph">CLIC 快速中断控制器</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">CLIC 中断控制器功能正确，中断数可配置 1~240</span></td><td><span class="ph">2026-06-29</span></td><td>中断数为可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-IF-004</td><td><span class="ph">中断信号线规格</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">PLIC/CLIC 中断输入支持边沿触发和电平触发可配置，优先级位数可配置 (2~8 bit)，中断抢占机制正确</span></td><td><span class="ph">2026-07-02</span></td><td>中断优先级和触发类型为客户集成关键参数</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.5 调试与跟踪</h3>
@@ -280,7 +290,8 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 </thead><tbody>
 <tr class="example-row"><td>LUMI-FEAT-001</td><td><span class="ph">RISC-V Debug V1.0.0</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Debug Spec V1.0.0</td><td><span class="ph">调试模块功能符合 RISC-V Debug V1.0.0 规范</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
 <tr class="example-row"><td>LUMI-FEAT-002</td><td><span class="ph">RISC-V Nexus Trace V1.0.0</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>RISC-V Nexus Trace V1.0.0</td><td><span class="ph">跟踪模块功能符合 Nexus Trace V1.0.0 规范</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-FEAT-003</td><td><span class="ph">跟踪指令流 AXI4 写出</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">跟踪指令流数据通过 AXI4 接口正确写出</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-FEAT-003</td><td><span class="ph">跟踪指令流 AXI4 写出</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">跟踪指令流数据通过 AXI4 接口正确写出</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-FEAT-004</td><td><span class="ph">JTAG/cJTAG 调试物理接口</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>IEEE 1149.1 / IEEE 1149.7</td><td><span class="ph">支持标准 JTAG (IEEE 1149.1) 和可选 cJTAG (IEEE 1149.7) 物理接口，TAP 控制器功能正确</span></td><td><span class="ph">2026-07-02</span></td><td>JTAG 为必要接口，cJTAG 为可配置选项</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h3>3.2.6 其他 RTL 功能</h3>
@@ -288,17 +299,70 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="RTL-OTHER"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-SYS-004</td><td><span class="ph">WFI/WRS 低功耗指令</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">WFI 和 WRS 指令正确进入低功耗状态</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SYS-005</td><td><span class="ph">多时钟域多电压域管理</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持多个电压域的功耗管理机制</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SYS-008</td><td><span class="ph">低功耗状态管理接口</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">可配置 CPU 进入睡眠或深度睡眠状态，进行系统功率管理</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-FEAT-005</td><td><span class="ph">自定义协处理器接口</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">协处理器接口功能正确，可扩展自定义标量/矢量协处理器</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
+<tr class="example-row"><td>LUMI-SYS-004</td><td><span class="ph">WFI/WRS 低功耗指令</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">WFI 和 WRS 指令正确进入低功耗状态</span></td><td><span class="ph">2026-06-29</span></td><td>本需求定义 ISA 层面的 WFI/WRS 指令行为（指令解码、状态转换触发），不含功耗状态规格（见 LUMI-PWR-003）和外部系统接口（见 LUMI-SYS-008）</td></tr>
+<tr class="example-row"><td>LUMI-SYS-005</td><td><span class="ph">多时钟域多电压域管理</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持多个电压域的功耗管理机制</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SYS-008</td><td><span class="ph">低功耗状态管理接口</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">可配置 CPU 进入睡眠或深度睡眠状态，进行系统功率管理</span></td><td><span class="ph">2026-06-29</span></td><td>本需求定义外部系统接口层面的功耗控制信号（如 sys_sleep_req/ack、sys_wake_event），不含功耗状态规格（见 LUMI-PWR-003）和 ISA 入口（见 LUMI-SYS-004）</td></tr>
+<tr class="example-row"><td>LUMI-FEAT-005</td><td><span class="ph">自定义协处理器接口</span></td><td><span class="pri pri-could">Could</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">协处理器接口功能正确，可扩展自定义标量/矢量协处理器</span></td><td><span class="ph">2026-06-29</span></td><td>可配置选项</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
-<h2>3.3 增量需求</h2>
-<p class="req-desc">未来版本计划引入的增量功能，当前版本暂不实现但需在架构上预留扩展空间。</p>
-<div class="table-wrapper" data-cat="INC"><table><thead>
+<h3>3.2.7 DFT (可测试性设计)</h3>
+<p class="req-desc">可测试性设计需求，确保芯片制造后的高测试覆盖率和量产良率。</p>
+<div class="table-wrapper" data-cat="RTL-DFT"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-DFT-001</td><td><span class="ph">Scan Chain 扫描链</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td></td><td><span class="ph">全扫描链插入，扫描覆盖率 &gt;=98%，支持 DFT 插入和 ATPG 生成</span></td><td><span class="ph">2026-07-02</span></td><td>RTL 设计需保留 DFT 插入点</td></tr>
+<tr class="example-row"><td>LUMI-DFT-002</td><td><span class="ph">MBIST 内存内建自测试</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td></td><td><span class="ph">TCM 和 L1 Cache 支持 MBIST，可检测制造缺陷</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DFT-003</td><td><span class="ph">JTAG 边界扫描 (IEEE 1149.1)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td>IEEE 1149.1</td><td><span class="ph">BSDL 文件完整，支持 EXTEST/INTEST/SAMPLE/PRELOAD</span></td><td><span class="ph">2026-07-02</span></td><td>与调试 JTAG 复用物理接口</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3>3.2.8 多核配置</h3>
+<p class="req-desc">多核场景下的核间互联、一致性和锁步机制需求。</p>
+<div class="table-wrapper" data-cat="RTL-MCORE"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-MCORE-001</td><td><span class="ph">多核互联拓扑</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持 1~4 核配置，核间通过共享 L2 或互连总线通信，缓存一致性协议正确</span></td><td><span class="ph">2026-07-02</span></td><td>默认单核，可扩展到多核配置</td></tr>
+<tr class="example-row"><td>LUMI-MCORE-002</td><td><span class="ph">双核锁步 (Dual Lock-Step)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">双核锁步模式下，两核执行相同指令流并比较结果，检测到不一致时触发异常。比较粒度为指令级，错误处理策略可配置</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-SAFE-002，面向 ASIL-D 场景。异步互锁需明确时钟域关系</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3>3.2.9 复位与启动机制</h3>
+<p class="req-desc">处理器复位、启动流程和 Boot ROM 相关需求。</p>
+<div class="table-wrapper" data-cat="RTL-BOOT"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-BOOT-001</td><td><span class="ph">复位类型支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">支持冷复位 (Power-on Reset)、暖复位 (Warm Reset) 和软复位 (Software Reset)，各复位类型的影响范围明确定义</span></td><td><span class="ph">2026-07-02</span></td><td>冷复位清除全部状态，暖复位保持调试状态，软复位仅复位 CPU 核心</td></tr>
+<tr class="example-row"><td>LUMI-BOOT-002</td><td><span class="ph">启动流程与向量表</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Spec</span></td><td>RISC-V Privileged Spec §3.1</td><td><span class="ph">复位后从可配置的复位向量地址开始执行，支持 Boot ROM/TCM/外部存储三种启动模式</span></td><td><span class="ph">2026-07-02</span></td><td>复位向量地址为可配置参数</td></tr>
+<tr class="example-row"><td>LUMI-BOOT-003</td><td><span class="ph">Boot ROM 支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">可选内置 Boot ROM，容量可配置 (4~32KB)，支持安全启动固件验证</span></td><td><span class="ph">2026-07-02</span></td><td>与 LUMI-SEC-001 安全启动联动</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3>3.2.10 时钟架构</h3>
+<p class="req-desc">处理器时钟域划分、Clock Gating 策略和复位域定义，满足 SoC 集成与功耗管理需求。</p>
+<div class="table-wrapper" data-cat="RTL-CLK"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-CLK-001</td><td><span class="ph">多时钟域架构</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">支持 clk_core / clk_bus / clk_tcm / tck 多时钟域划分，跨域信号使用 2-FF 同步器 + Async FIFO，CDC 验证由 LUMI-QUAL-001 覆盖</span></td><td><span class="ph">2026-07-02</span></td><td>为 IP 产品集成必需，定义 SoC 接口约束</td></tr>
+<tr class="example-row"><td>LUMI-CLK-002</td><td><span class="ph">Clock Gating 策略</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">细粒度 ICG (Integrated Clock Gating) + WFI 触发门控，WFI 唤醒后首条指令到执行 &lt;=8 cycle，手动 core_clk_gate_req 信号支持</span></td><td><span class="ph">2026-07-02</span></td><td>对应低功耗设计，与 LUMI-PWR-003 联动</td></tr>
+<tr class="example-row"><td>LUMI-CLK-003</td><td><span class="ph">复位域划分</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">Core / Bus / Debug 复位域独立，最小化复位范围，复位释放顺序：Bus -&gt; Core</span></td><td><span class="ph">2026-07-02</span></td><td>复位策略与 LUMI-BOOT-001 互补</td></tr>
+<tr class="example-row"><td>LUMI-PWR-004</td><td><span class="ph">电源域划分与 UPF 交付</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td>IEEE 1801 (UPF 2.1)</td><td><span class="ph">交付 UPF 2.1 电源约束文件，定义 power domain / isolation strategy / level shifter / retention register。默认 PD_CORE 单域，可扩展多域</span></td><td><span class="ph">2026-07-02</span></td><td>UPF 交付物为物理设计必需</td></tr>
+<tr class="example-row"><td>LUMI-PWR-005</td><td><span class="ph">关键 CSR Retention 寄存器</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">mstatus / mepc / mtvec / mnepc 等关键 CSR 使用 retention register，深度睡眠后状态保持</span></td><td><span class="ph">2026-07-02</span></td><td>与 LUMI-PWR-004 电源域策略协同</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3>3.2.11 时序与物理约束</h3>
+<p class="req-desc">时序约束、综合约束和物理实现相关需求。</p>
+<div class="table-wrapper" data-cat="RTL-TIMING"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-TIMING-001</td><td><span class="ph">综合约束文件 (SDC)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td></td><td><span class="ph">交付完整的 SDC 时序约束文件，覆盖所有工作模式和角落条件 (ss/tt/ff x temp x voltage)</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-TIMING-002</td><td><span class="ph">关键路径时序目标</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">TSMC 28HPC ss corner (0.81V, 125°C) 下时序收敛，WNS &gt;= 0</span></td><td><span class="ph">2026-07-02</span></td><td>需明确目标工艺库和角落条件</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3>3.2.12 IP 质量指标</h3>
+<p class="req-desc">IP 产品级的质量指标要求，面向车规和工业客户。</p>
+<div class="table-wrapper" data-cat="RTL-QUAL"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-QUAL-001</td><td><span class="ph">CDC/RDC 验证</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td></td><td><span class="ph">通过 CDC (Clock Domain Crossing) 和 RDC (Reset Domain Crossing) 验证，无未解析的跨域路径</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-QUAL-002</td><td><span class="ph">Lint 检查</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 质量标准</span></td><td></td><td><span class="ph">RTL 通过 SpyGlass 或同等工具 Lint 检查，无 Error，Warning 有明确解释或 Waiver</span></td><td><span class="ph">2026-07-02</span></td><td>Lint 工具选择需在交付文档中明确</td></tr>
+<tr class="example-row"><td>LUMI-QUAL-003</td><td><span class="ph">DEF/FIT 率目标</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">车规客户要求</span></td><td>AEC-Q100 / IEC 61508</td><td><span class="ph">DEF (Defects per FIT) 率符合目标安全完整性等级要求，FMEDA 分析完成并输出报告</span></td><td><span class="ph">2026-07-02</span></td><td>具体目标值待安全分析后确定，车规客户要求 ASIL-B/D 对应的 FIT 率</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>3.4 可选配置表</h2>
@@ -311,50 +375,138 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <tr class="example-row"><td><span class="ph">6</span></td><td><span class="ph">Vector 向量单元</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph">True</span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">7</span></td><td><span class="ph">VLEN 向量位宽</span></td><td><span class="ph">128bit / 256bit</span></td><td><span class="ph">128bit</span></td><td><span class="ph">需 Vector=Yes</span></td></tr>
 <tr class="example-row"><td><span class="ph">8</span></td><td><span class="ph">Vector Crypto 向量加密</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph">需 Vector=Yes</span></td></tr>
-<tr class="example-row"><td><span class="ph">9</span></td><td><span class="ph">PMP Region 数量</span></td><td><span class="ph">可配置</span></td><td><span class="ph">8</span></td><td><span class="ph"></span></td></tr>
+<tr class="example-row"><td><span class="ph">9</span></td><td><span class="ph">PMP Region 数量</span></td><td><span class="ph">8/16</span></td><td><span class="ph">8</span></td><td><span class="ph">Profile 要求 16，产品默认 8，可配置扩展到 16</span></td></tr>
 <tr class="example-row"><td><span class="ph">10</span></td><td><span class="ph">PLIC 中断数</span></td><td><span class="ph">32~960 (32 的 2 的幂次倍数)</span></td><td><span class="ph">32</span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">11</span></td><td><span class="ph">CLIC 中断数</span></td><td><span class="ph">1~240</span></td><td><span class="ph">16</span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">12</span></td><td><span class="ph">Trace AXI4 写出</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">13</span></td><td><span class="ph">协处理器接口</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">14</span></td><td><span class="ph">L1 Cache ECC</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph"></span></td></tr>
 <tr class="example-row"><td><span class="ph">15</span></td><td><span class="ph">TCM ECC</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph"></span></td></tr>
+<tr class="example-row"><td><span class="ph">16</span></td><td><span class="ph">核数配置</span></td><td><span class="ph">1/2/4</span></td><td><span class="ph">1</span></td><td><span class="ph">默认单核，支持多核扩展</span></td></tr>
+<tr class="example-row"><td><span class="ph">17</span></td><td><span class="ph">双核锁步模式</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph">需核数 &gt;= 2</span></td></tr>
+<tr class="example-row"><td><span class="ph">18</span></td><td><span class="ph">Boot ROM</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph">启用时容量 4~32KB 可配</span></td></tr>
+<tr class="example-row"><td><span class="ph">19</span></td><td><span class="ph">cJTAG 接口</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph"></span></td><td><span class="ph">标准 JTAG 始终支持</span></td></tr>
+<tr class="example-row"><td><span class="ph">20</span></td><td><span class="ph">功耗状态数</span></td><td><span class="ph">2/3</span></td><td><span class="ph">3</span></td><td><span class="ph">Active/Sleep/Deep Sleep</span></td></tr>
+<tr class="example-row"><td><span class="ph">21</span></td><td><span class="ph">多电源域</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph">No</span></td><td><span class="ph">默认单电源域，启用后需提供 UPF 文件</span></td></tr>
+<tr class="example-row"><td><span class="ph">22</span></td><td><span class="ph">PMA 区域数</span></td><td><span class="ph">3 / 4 / 5 / 6</span></td><td><span class="ph">3</span></td><td><span class="ph">默认 TCM/DDR/MMIO 三个区域</span></td></tr>
+<tr class="example-row"><td><span class="ph">23</span></td><td><span class="ph">CSR Retention</span></td><td><span class="ph">Yes / No</span></td><td><span class="ph">No</span></td><td><span class="ph">关键 CSR 睡眠保持</span></td></tr>
+<tr class="example-row"><td><span class="ph">24</span></td><td><span class="ph">硬件参考 RTL</span></td><td><span class="ph">见 §10 文档</span></td><td><span class="ph">基准配置</span></td><td><span class="ph">详 platform-spec.html §10</span></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
 <!-- ══════ 4. 交付物需求 ══════ -->
 <h1 id="sec-deliver">4. 交付物需求</h1>
 <p class="req-desc">定义 IP 交付的完整清单，确保客户能够独立集成和验证处理器核。</p>
-<h2>交付物清单</h2>
-<div class="table-wrapper" data-cat="DEL"><table><thead>
+<h2>RTL 与验证交付</h2>
+<div class="table-wrapper" data-cat="DEL-RTL"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-DEL-001</td><td><span class="ph">RTL 源码 (Verilog)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">通过 lint 检查，无 warning</span></td><td><span class="ph"></span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-DEL-002</td><td><span class="ph">验证测试台</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">回归测试 100% 通过</span></td><td><span class="ph"></span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-DEL-003</td><td><span class="ph">Cycle Accurate Model</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">提供可用的 Cycle Accurate Model</span></td><td><span class="ph">2026-06-26</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-001</td><td><span class="ph">RTL 源码 (Verilog)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">通过 lint 检查（工具集见 LUMI-QUAL-002），无 Error，Warning 有明确 Waiver</span></td><td><span class="ph"></span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-002</td><td><span class="ph">验证测试台</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">回归测试 100% 通过，测试用例覆盖所有 Must 需求</span></td><td><span class="ph"></span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-003</td><td><span class="ph">Cycle Accurate Model</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td></td><td><span class="ph">提供可用的 Cycle Accurate Model，支持软件性能评估</span></td><td><span class="ph">2026-06-26</span></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>集成与物理交付</h2>
+<div class="table-wrapper" data-cat="DEL-INT"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-DEL-004</td><td><span class="ph">集成手册 (Integration Guide)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">包含 IP 实例化示例、接口连接指南、配置参数说明、典型应用电路</span></td><td><span class="ph">2026-07-02</span></td><td>客户集成的关键交付物</td></tr>
+<tr class="example-row"><td>LUMI-DEL-005</td><td><span class="ph">时序模型 (Liberty/LEF)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">交付 .lib (Liberty) 和 .lef (LEF) 文件，覆盖所有角落条件</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-006</td><td><span class="ph">综合约束文件 (SDC)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">交付完整 SDC 文件，覆盖所有工作模式和角落条件</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-007</td><td><span class="ph">Formality 等价性验证网表</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">提供综合后网表的等价性验证脚本和参考结果</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>文档与支持交付</h2>
+<div class="table-wrapper" data-cat="DEL-DOC"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-DEL-008</td><td><span class="ph">IP-XACT/RTL 描述文件</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td>IP-XACT IEEE 1685</td><td><span class="ph">提供符合 IP-XACT 标准的 IP 描述文件，支持 EDA 工具自动集成</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-009</td><td><span class="ph">FPGA 原型/评估板支持包</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">提供 FPGA 综合约束和参考设计，支持客户早期评估</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-DEL-010</td><td><span class="ph">BSDL 文件</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td>IEEE 1149.1</td><td><span class="ph">提供完整的 BSDL 边界扫描描述文件</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-DFT-003</td></tr>
+<tr class="example-row"><td>LUMI-DEL-011</td><td><span class="ph">程序员参考手册 (PRM)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求 / IP 产品标准</span></td><td></td><td><span class="ph">完整的 PRM 文档包含: 全部 CSR 地址/位域/复位值、全部指令编码/语义/异常、特权级/异常/中断/复位编程模型、调试接口使用指南、性能计数器说明</span></td><td><span class="ph">2026-07-02</span></td><td>竞品 IP 标配交付物，客户编程关键参考</td></tr>
+<tr class="example-row"><td>LUMI-DEL-012</td><td><span class="ph">RISC-V Compliance Test 结果报告</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V International</span></td><td>riscv-arch-test 仓库</td><td><span class="ph">提供 Lumi-Core Profile 全部 Mandatory 扩展的 riscv-arch-test 测试结果报告 (含签名验证、测试通过证明、版本号对应表)</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-PROF-001，独立交付便于客户审计</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
 <!-- ══════ 5. 功能安全需求 ══════ -->
 <h1 id="sec-safety">5. 功能安全需求</h1>
-<p class="req-desc">面向 ISO 26262 等功能安全标准的需求，涵盖 ECC 纠错、TLB 保护、双锁步 (Dual Lock-Step) 等安全机制。</p>
-<h2>功能安全</h2>
+<p class="req-desc">功能安全需求分两个阶段实现：
+- 第一阶段（当前版本 v1.0）：聚焦 IP 级安全机制（ECC/LockStep/Parity），
+  确保处理器 IP 本身具备硬件级故障检测与保护能力，面向嵌入式系统客户交付。
+- 第二阶段（v2.0 车规版本）：引入 ISO 26262 流程级需求，包括
+  FMEDA 故障模式分析、Safety Plan/Safety Case、DFA (Dependent Failure Analysis)、
+  Safety Manual 等车规认证工作产品，支撑 ASIL-B/D 认证。
+当前版本仅定义第一阶段 IP 级安全机制需求。
+</p>
+<h2>功能安全 (第一阶段 IP 级安全机制)</h2>
+<p class="req-desc">IP 级硬件安全机制，覆盖内存保护、锁步执行和总线校验。</p>
 <div class="table-wrapper" data-cat="SAFE"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-SAFE-001</td><td><span class="ph">PMP 物理内存保护 (可配, 默认 8 Region)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">PMP Region 数量可配（默认 8），越界访问全部触发异常</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SAFE-002</td><td><span class="ph">双核异步互锁</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">双核异步互锁机制正确，检测到不一致时触发异常</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
-<tr class="example-row"><td>LUMI-SAFE-003</td><td><span class="ph">总线 Parity 保护机制</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">总线 Parity 校验正确，检测到错误时触发异常</span></td><td><span class="ph">2026-06-29</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SAFE-001</td><td><span class="ph">PMP 物理内存保护 (引用 LUMI-MEM-001)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>LUMI-MEM-001</td><td><span class="ph">满足 LUMI-MEM-001 的全部要求，另外在安全模式下
+PMP 配置不可被非特权代码修改（Smepmp 扩展）
+</span></td><td><span class="ph">2026-07-02</span></td><td>与硬件需求 LUMI-MEM-001 保持一致，安全视角增加 Smepmp 约束；同时引用 LUMI-SEC-004</td></tr>
+<tr class="example-row"><td>LUMI-SAFE-002</td><td><span class="ph">双核异步互锁</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>LUMI-MCORE-002</td><td><span class="ph">双核异步互锁机制正确，检测到不一致时触发异常。
+比较粒度为指令级，错误处理策略可配置
+</span></td><td><span class="ph">2026-06-29</span></td><td>对应硬件需求 LUMI-MCORE-002</td></tr>
+<tr class="example-row"><td>LUMI-SAFE-003</td><td><span class="ph">总线 Parity 保护机制</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td></td><td><span class="ph">总线 Parity 校验正确，检测到错误时触发异常</span></td><td><span class="ph">2026-06-29</span></td><td>信息安全视角引用见 LUMI-SEC-005</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>功能安全 (第二阶段 车规版本 v2.0 规划)</h2>
+<p class="req-desc">以下需求计划在 v2.0 车规版本中实现，当前版本标记为 Proposed。
+第二阶段将引入完整的 ISO 26262 合规工作产品。
+</p>
+<div class="table-wrapper" data-cat="SAFE-V2"><table><thead>
+<tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
+</thead><tbody>
+<tr class="example-row"><td>LUMI-SAFE-004</td><td><span class="ph">FMEDA 故障模式分析</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-proposed">Proposed</span></td><td>v2.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">ISO 26262</span></td><td>ISO 26262 Part 5 §8</td><td><span class="ph">完成 FMEDA 分析，输出诊断覆盖率 (DC) 和 FIT 率报告，满足 ASIL-B 目标
+</span></td><td><span class="ph">2026-07-02</span></td><td>[v2.0 车规版本] 需与 LUMI-QUAL-003 配合，当前版本暂不实现</td></tr>
+<tr class="example-row"><td>LUMI-SAFE-005</td><td><span class="ph">安全手册 (Safety Manual)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-proposed">Proposed</span></td><td>v2.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">ISO 26262</span></td><td>ISO 26262 Part 6</td><td><span class="ph">交付安全手册，包含安全机制描述、集成约束、安全使用条件、假设失效模式
+</span></td><td><span class="ph">2026-07-02</span></td><td>[v2.0 车规版本] IP 安全认证的关键交付物，当前版本暂不实现</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
 <!-- ══════ 6. 信息安全需求 ══════ -->
 <h1 id="sec-security">6. 信息安全需求</h1>
-<p class="req-desc">安全启动 (Secure Boot)、加密加速 (Crypto Acceleration)、密钥管理等信息安全相关需求。</p>
+<p class="req-desc">信息安全需求聚焦于 Lumi-Core IP 产品交付范围内的安全功能。
+IP 级安全能力包括：安全启动验证、加密指令加速、安全调试策略、PMP 隔离保护和总线完整性。
+明确排除项（由 SoC 集成方实现，不在本 IP 产品范围内）：
+  - 密钥管理/存储 (Key Management/Storage)
+  - 物理攻击防护 (Side-channel 防护、Glitch Detection)
+  - 真随机数生成器 (TRNG)
+  - TrustZone 等价安全域隔离机制
+上述排除项将在 IP 集成指南中说明集成建议，但不作为本 IP 的功能需求。
+</p>
 <h2>信息安全</h2>
+<p class="req-desc">IP 级信息安全功能，覆盖安全启动、加密指令支持、调试安全、隔离保护和总线完整性。</p>
 <div class="table-wrapper" data-cat="SEC"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-SEC-001</td><td><span class="ph">安全启动 ROM</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">启动固件签名验证通过</span></td><td><span class="ph"></span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SEC-001</td><td><span class="ph">安全启动 ROM</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td>LUMI-BOOT-003</td><td><span class="ph">IP 内置 Boot ROM 固件支持签名验证（RSA-2048 或 ECDSA-P256），
+启动固件签名验证通过后方可跳转执行；
+Boot ROM 容量 4~32KB 可配置（引用 LUMI-BOOT-003）；
+不含 SoC 级密钥存储（OTP/eFuse），密钥由外部安全存储提供
+</span></td><td><span class="ph">2026-07-01</span></td><td>IP 提供签名验证逻辑，密钥注入接口由 SoC 集成方实现</td></tr>
+<tr class="example-row"><td>LUMI-SEC-002</td><td><span class="ph">加密加速指令支持</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td>LUMI-ISA-009/LUMI-ISA-010</td><td><span class="ph">通过 RISC-V Vector Crypto 扩展 (zvkg/zvkn 等) 和/或 Packed SIMD 扩展
+实现加密算法加速（AES/SHA/SM3/SM4），指令功能正确；
+IP 不提供独立硬件加密引擎模块
+</span></td><td><span class="ph">2026-07-01</span></td><td>加密加速通过 ISA 扩展实现，引用 LUMI-ISA-009 (Vector Crypto) 和 LUMI-ISA-010 (Packed SIMD)</td></tr>
+<tr class="example-row"><td>LUMI-SEC-003</td><td><span class="ph">安全调试策略</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td>LUMI-FEAT-001/RISC-V Debug V1.0.0</td><td><span class="ph">支持 Debug Authentication 机制：
+(1) Debug Lock/Unlock 功能，通过 CSR 或外部引脚控制调试端口使能状态；
+(2) 锁定状态下禁止调试器连接和内存/寄存器访问；
+(3) 支持安全调试等级配置（完全锁定/仅断点/完全开放）；
+(4) Lock 状态不可通过软件绕过，需硬件复位或密钥认证解锁
+</span></td><td><span class="ph">2026-07-01</span></td><td>对应 RISC-V Debug V1.0.0 (LUMI-FEAT-001)，调试安全是 IP 产品级必备功能</td></tr>
+<tr class="example-row"><td>LUMI-SEC-004</td><td><span class="ph">PMP 安全隔离 (引用 LUMI-MEM-001 + Smepmp)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Profile/Lumi-Core Profile</span></td><td>LUMI-MEM-001/Lumi-Core Profile Mandatory Smepmp</td><td><span class="ph">满足 LUMI-MEM-001 全部 PMP 功能要求，另外：
+(1) Smepmp 扩展生效，M-mode 下 PMP 配置不可被 S/U-mode 代码修改；
+(2) PMP 配置锁定后，非特权代码无法篡改内存访问权限；
+(3) 支持至少 8 个 PMP Region（可配置扩展到 16）；
+IP 提供的隔离能力边界：基于 PMP 的内存访问控制，不含 MMU-based 安全域隔离
+</span></td><td><span class="ph">2026-07-01</span></td><td>Lumi-Core Profile Mandatory Smepmp 要求，IP 级隔离能力上限为 PMP，不含 TrustZone 等价机制</td></tr>
+<tr class="example-row"><td>LUMI-SEC-005</td><td><span class="ph">总线完整性保护</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td>LUMI-SAFE-003</td><td><span class="ph">AXI 主总线和 FFP 外设总线支持 Parity 校验（引用 LUMI-SAFE-003），
+检测到总线数据完整性错误时触发异常 (bus_error_exception)，
+异常处理策略可配置（异常中断 / NMI / 系统复位）
+</span></td><td><span class="ph">2026-07-01</span></td><td>从信息安全视角补充总线保护，对应功能安全需求 LUMI-SAFE-003</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
@@ -365,43 +517,55 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <div class="table-wrapper" data-cat="SW-TOOL"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
-<tr class="example-row"><td>LUMI-TOOL-001</td><td><span class="ph">GCC 14+ 支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-draft">Draft</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">可编译并运行裸机程序</span></td><td><span class="ph"></span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-TOOL-001</td><td><span class="ph">GCC 14+ 支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v0.1</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">可编译并运行裸机程序，支持 RV32IMAFDCBV + Zce 全部已实现扩展</span></td><td><span class="ph"></span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-TOOL-002</td><td><span class="ph">LLVM/Clang 支持</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">LLVM 后端支持 Lumi-Core 的全部已实现 ISA 扩展，可编译裸机程序</span></td><td><span class="ph">2026-07-02</span></td><td>部分客户偏好 LLVM 工具链</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.2 SDK</h2>
 <div class="table-wrapper" data-cat="SW-SDK"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-SDK-001</td><td><span class="ph">HAL/BSP 硬件抽象层</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">提供寄存器级 HAL 库，覆盖全部外设寄存器访问、中断配置、时钟管理</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
+<tr class="example-row"><td>LUMI-SDK-002</td><td><span class="ph">外设驱动库</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">提供 UART/SPI/I2C/GPIO/Timer 等常用外设驱动</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.3 固件 (Firmware)</h2>
 <div class="table-wrapper" data-cat="SW-FW"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-FW-001</td><td><span class="ph">Boot Firmware</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi原始需求</span></td><td>LUMI-BOOT-001/LUMI-SEC-001</td><td><span class="ph">提供 Boot ROM 固件源码，支持安全启动签名验证和基本硬件初始化</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-BOOT-003 Boot ROM</td></tr>
+<tr class="example-row"><td>LUMI-FW-002</td><td><span class="ph">RTOS 移植支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">客户要求</span></td><td></td><td><span class="ph">提供 FreeRTOS 和 Zephyr RTOS 的 BSP 移植，可编译运行基本任务调度</span></td><td><span class="ph">2026-07-02</span></td><td>汽车/工业客户普遍使用 RTOS</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.4 IDE</h2>
 <div class="table-wrapper" data-cat="SW-IDE"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-IDE-001</td><td><span class="ph">Eclipse/VS Code 调试支持</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">提供 GDB 调试配置文件和 IDE 集成指南，支持断点、单步、变量查看</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.5 仿真器</h2>
 <div class="table-wrapper" data-cat="SW-SIM"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-SIM-001</td><td><span class="ph">指令集模拟器 (ISS)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">IP 产品标准</span></td><td></td><td><span class="ph">提供兼容 Spike 或 Whisper 的指令集模拟器，支持 Lumi-Core 全部已实现 ISA 扩展</span></td><td><span class="ph">2026-07-02</span></td><td>用于软件开发早期和回归测试 Golden Model</td></tr>
+<tr class="example-row"><td>LUMI-SIM-002</td><td><span class="ph">Cycle Accurate Model (gem5)</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td>LUMI-DEL-003</td><td><span class="ph">gem5 模型支持 Lumi-Core 微架构参数配置，性能评估误差 &lt;=10%</span></td><td><span class="ph">2026-07-02</span></td><td>对应交付物 LUMI-DEL-003</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.6 调试工具</h2>
 <div class="table-wrapper" data-cat="SW-DBG"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-DBG-001</td><td><span class="ph">GDB + OpenOCD 支持</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Debug Spec</span></td><td>RISC-V Debug V1.0.0</td><td><span class="ph">GDB 通过 OpenOCD 连接 Lumi-Core，支持断点、单步、内存读写、寄存器查看</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-FEAT-001 调试模块</td></tr>
+<tr class="example-row"><td>LUMI-DBG-002</td><td><span class="ph">Trace 解码工具</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Nexus Trace</span></td><td>RISC-V Nexus Trace V1.0.0</td><td><span class="ph">提供 Trace 数据包解码工具，可将 Trace AXI4 输出还原为指令流</span></td><td><span class="ph">2026-07-02</span></td><td>对应 LUMI-FEAT-002/F003</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 <h2>7.7 性能工具</h2>
 <div class="table-wrapper" data-cat="SW-PERF"><table><thead>
 <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th><th>基线</th><th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th></tr>
 </thead><tbody>
+<tr class="example-row"><td>LUMI-PERF-001</td><td><span class="ph">基准测试套件</span></td><td><span class="pri pri-must">Must</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">Lumi Req</span></td><td>LUMI-IPC-001/002/003</td><td><span class="ph">提供 CoreMark、Dhrystone、Crypto 基准测试的可编译源码和运行脚本</span></td><td><span class="ph">2026-07-02</span></td><td>对应 perf/benchmarks/ 目录</td></tr>
+<tr class="example-row"><td>LUMI-PERF-002</td><td><span class="ph">性能计数器工具</span></td><td><span class="pri pri-should">Should</span></td><td><span class="badge badge-approved">Approved</span></td><td>v1.0</td><td><span class="bl-empty">(空)</span></td><td><span class="ph">RISC-V Spec</span></td><td>Zihpm/Zicntr</td><td><span class="ph">提供读取和分析硬件性能计数器 (cycle/instret/hpm) 的工具库</span></td><td><span class="ph">2026-07-02</span></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
@@ -409,9 +573,11 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 <h1 id="sec-milestone">8. 项目里程碑</h1>
 <p class="req-desc">定义项目关键时间节点，包括评审点、交付点和发布点。</p>
 <div class="table-wrapper"><table><thead><tr><th>里程碑</th><th>计划日期</th><th>实际日期</th><th>交付物</th><th>门禁状态</th><th>备注</th></tr></thead><tbody>
-<tr class="example-row"><td><span class="ph">M1: 需求评审</span></td><td><span class="ph">2026-Q3</span></td><td><span class="ph">--</span></td><td><span class="ph">PRD 基线 BL-1.0</span></td><td><span class="ph">Pending</span></td><td><span class="ph">--</span></td></tr>
-<tr class="example-row"><td><span class="ph">M2: 架构设计评审</span></td><td><span class="ph">2026-Q4</span></td><td><span class="ph">--</span></td><td><span class="ph">Platform Spec</span></td><td><span class="ph">Pending</span></td><td><span class="ph">--</span></td></tr>
-<tr class="example-row"><td><span class="ph">M3: RTL 冻结</span></td><td><span class="ph">2027-Q2</span></td><td><span class="ph">--</span></td><td><span class="ph">RTL + 验证报告</span></td><td><span class="ph">Pending</span></td><td><span class="ph">--</span></td></tr>
+<tr class="example-row"><td><span class="ph">M0: 项目启动完成</span></td><td><span class="ph">2026-07</span></td><td><span class="ph">2026-07-01</span></td><td><span class="ph">PRD 草案 + 架构说明书初稿 + GEM5 环境</span></td><td><span class="ph">Pass</span></td><td><span class="ph">基础设施就绪、PRD草案、架构说明书、GEM5环境</span></td></tr>
+<tr class="example-row"><td><span class="ph">M1: 架构与需求冻结</span></td><td><span class="ph">2026-09</span></td><td><span class="ph">2026-07-02</span></td><td><span class="ph">BL-1.0 基线 + 架构说明书 v1.0 + 验证策略</span></td><td><span class="ph">Pass</span></td><td><span class="ph">PRD定版(91条) + 架构说明书v1.0 + 验证方案启动 + 中断测试编译</span></td></tr>
+<tr class="example-row"><td><span class="ph">M2: 架构设计评审</span></td><td><span class="ph">2026-Q4</span></td><td><span class="ph">--</span></td><td><span class="ph">Platform Spec</span></td><td><span class="ph">Pending</span></td><td><span class="ph">14份设计文档 + 验证方案 + 微架构模型</span></td></tr>
+<tr class="example-row"><td><span class="ph">M3: RTL 冻结</span></td><td><span class="ph">2027-Q2</span></td><td><span class="ph">--</span></td><td><span class="ph">RTL + 验证报告</span></td><td><span class="ph">Pending</span></td><td><span class="ph">全模块实现 + 回归100% + 性能达标</span></td></tr>
+<tr class="example-row"><td><span class="ph">M4: 交付就绪</span></td><td><span class="ph">2027-Q3</span></td><td><span class="ph">--</span></td><td><span class="ph">交付物 + 项目总结</span></td><td><span class="ph">Pending</span></td><td><span class="ph">文档体系检查 + Consultant审阅</span></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
@@ -427,21 +593,166 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 </ul></blockquote>
 <h2>9.1 基线索引表</h2>
 <div class="table-wrapper"><table><thead><tr><th>基线版本</th><th>定版日期</th><th>需求数量</th><th>YAML 文件</th><th>HTML 报告</th><th>说明</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="bl-badge">BL-1.0</span></td><td><span class="ph">2026-07-01</span></td><td><span class="ph">91</span></td><td><a href="baselines/baseline-BL-1.0.yaml">baseline-BL-1.0.yaml</a></td><td><a href="baselines/baseline-BL-1.0.html">baseline-BL-1.0.html</a></td><td><span class="ph">M1 里程碑需求基线 — 全部已评审需求定版快照（Must:77, Should:11, Could:3）</span></td></tr>
 <tr class="example-row"><td><span class="bl-badge">BL-EXAMPLE</span></td><td><span class="ph">2026-06-26</span></td><td><span class="ph">5</span></td><td><a href="baselines/baseline-BL-EXAMPLE.yaml">baseline-BL-EXAMPLE.yaml</a></td><td><a href="baselines/baseline-BL-EXAMPLE.html">baseline-BL-EXAMPLE.html</a></td><td><span class="ph">示例基线</span></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
 <!-- ══════ 10. 需求追溯矩阵 ══════ -->
 <h1 id="sec-trace">10. 需求追溯矩阵</h1>
-<p class="req-desc">展示需求 → 设计文档 → 验证用例的完整追溯链，确保每条需求有对应的设计和验证覆盖。</p>
-<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
-<tr class="example-row"><td><span class="ph">LUMI-ISA-001</span></td><td><span class="ph">RV32I</span></td><td><span class="ph">docs/design/isa/rv32i.html</span></td><td><span class="ph">tc_isa_rv32i_001~040</span></td><td><span class="ph">Covered</span></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<p class="req-desc">展示需求 → 架构章节 → 设计文档 → 验证用例的完整追溯链，确保每条需求有对应的设计和验证覆盖。</p>
+<h2>10.1 PPA 目标追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-PIPE-001</span></td><td><span class="ph">8级流水线架构</span></td><td><span class="ph">§4 微架构定义</span></td><td><span class="ph">docs/design/pipeline/</span></td><td><span class="ph">tc_pipe_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FREQ-001</span></td><td><span class="ph">TSMC 28HPC 主频≥1.0GHz</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">tc_synth_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IPC-001</span></td><td><span class="ph">CoreMark ≥5.5 CM/MHz</span></td><td><span class="ph">§4.1</span></td><td><span class="ph">—</span></td><td><span class="ph">perf/benchmarks/coremark/</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IPC-002</span></td><td><span class="ph">Dhrystone ≥3.8 DMIPS/MHz</span></td><td><span class="ph">§4.1</span></td><td><span class="ph">—</span></td><td><span class="ph">perf/benchmarks/dhrystone/</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IPC-003</span></td><td><span class="ph">售前售后基准测试覆盖</span></td><td><span class="ph">§4.1</span></td><td><span class="ph">—</span></td><td><span class="ph">perf/benchmarks/</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-AREA-001</span></td><td><span class="ph">STDCELL 面积 ≤0.32 mm²</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">tc_area_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PWR-001</span></td><td><span class="ph">单核动态功耗 ≤100mW/GHz</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">tc_power_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PWR-002</span></td><td><span class="ph">单核泄漏功耗 ≤32mW</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">tc_leakage_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PWR-003</span></td><td><span class="ph">功耗状态定义与切换</span></td><td><span class="ph">§8.2</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_power_state_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-003</span></td><td><span class="ph">快速中断延时 ≤16 周期</span></td><td><span class="ph">§5.3.3</span></td><td><span class="ph">docs/design/clic/</span></td><td><span class="ph">tc_irq_latency_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.2 RTL 功能需求追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-PROF-001</span></td><td><span class="ph">Profile 技术特性合规</span></td><td><span class="ph">§2 指令集架构</span></td><td><span class="ph">docs/design/isa/</span></td><td><span class="ph">tc_profile_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PROF-002</span></td><td><span class="ph">特权级配置支持</span></td><td><span class="ph">§3.1</span></td><td><span class="ph">docs/design/privilege/</span></td><td><span class="ph">tc_priv_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-001</span></td><td><span class="ph">RV32I 基础整数指令集</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/rv32i.html</span></td><td><span class="ph">tc_isa_rv32i_001~040</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-002</span></td><td><span class="ph">M 扩展 — 整数乘除法</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/m_ext.html</span></td><td><span class="ph">tc_isa_m_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-003</span></td><td><span class="ph">A 扩展 — 原子操作</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/a_ext.html</span></td><td><span class="ph">tc_isa_a_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-004</span></td><td><span class="ph">F/D 双精度浮点扩展</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/fpu.html</span></td><td><span class="ph">tc_isa_fpu_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-005</span></td><td><span class="ph">C 扩展 — 压缩指令</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/c_ext.html</span></td><td><span class="ph">tc_isa_c_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-006</span></td><td><span class="ph">B 扩展 — 位操作</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/b_ext.html</span></td><td><span class="ph">tc_isa_b_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-007</span></td><td><span class="ph">V 向量扩展 + zvfh/zvfbf</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/v_ext.html</span></td><td><span class="ph">tc_isa_v_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-008</span></td><td><span class="ph">Zce 代码压缩扩展</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/zce.html</span></td><td><span class="ph">tc_isa_zce_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-009</span></td><td><span class="ph">Vector Crypto 向量加密</span></td><td><span class="ph">§2.3</span></td><td><span class="ph">docs/design/isa/vcrypto.html</span></td><td><span class="ph">tc_isa_vcrypto_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-010</span></td><td><span class="ph">Packed SIMD 扩展</span></td><td><span class="ph">§2.3</span></td><td><span class="ph">docs/design/isa/simd.html</span></td><td><span class="ph">tc_isa_simd_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-ISA-011</span></td><td><span class="ph">Profile Mandatory 扩展完整覆盖</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">docs/design/isa/</span></td><td><span class="ph">tc_isa_profile_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-001</span></td><td><span class="ph">PMP 物理内存保护 (8 Region)</span></td><td><span class="ph">§3.2</span></td><td><span class="ph">docs/design/pmp/</span></td><td><span class="ph">tc_pmp_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-002</span></td><td><span class="ph">TCM 紧耦合内存 (0~128KB)</span></td><td><span class="ph">§7.2</span></td><td><span class="ph">docs/design/tcm/</span></td><td><span class="ph">tc_tcm_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-003</span></td><td><span class="ph">TCM 三区域 (代码+数据双区)</span></td><td><span class="ph">§7.2</span></td><td><span class="ph">docs/design/tcm/</span></td><td><span class="ph">tc_tcm_region_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-004</span></td><td><span class="ph">TCM 0/1 拍延迟访问</span></td><td><span class="ph">§7.2</span></td><td><span class="ph">docs/design/tcm/</span></td><td><span class="ph">tc_tcm_latency_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-005</span></td><td><span class="ph">TCM ECC 内存保护</span></td><td><span class="ph">§7.2</span></td><td><span class="ph">docs/design/tcm/ecc.html</span></td><td><span class="ph">tc_tcm_ecc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-006</span></td><td><span class="ph">L1 Cache 可配 (8/16/32KB)</span></td><td><span class="ph">§7.3</span></td><td><span class="ph">docs/design/cache/</span></td><td><span class="ph">tc_cache_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-007</span></td><td><span class="ph">L1 Cache ECC 保护</span></td><td><span class="ph">§7.3</span></td><td><span class="ph">docs/design/cache/ecc.html</span></td><td><span class="ph">tc_cache_ecc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-008</span></td><td><span class="ph">RVWMO 内存序模型</span></td><td><span class="ph">§7.4</span></td><td><span class="ph">docs/design/mmu/</span></td><td><span class="ph">tc_rvwmo_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MEM-009</span></td><td><span class="ph">PMA 物理内存属性检查器</span></td><td><span class="ph">§7.8</span></td><td><span class="ph">docs/design/pma/</span></td><td><span class="ph">tc_pma_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-CLK-001</span></td><td><span class="ph">多时钟域架构</span></td><td><span class="ph">§8.9.1</span></td><td><span class="ph">docs/design/clock/</span></td><td><span class="ph">tc_clock_domain_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-CLK-002</span></td><td><span class="ph">Clock Gating 策略</span></td><td><span class="ph">§8.9.2</span></td><td><span class="ph">docs/design/clock/</span></td><td><span class="ph">tc_clk_gate_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-CLK-003</span></td><td><span class="ph">复位域划分</span></td><td><span class="ph">§8.9.3</span></td><td><span class="ph">docs/design/clock/</span></td><td><span class="ph">tc_rst_domain_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PWR-004</span></td><td><span class="ph">电源域划分与 UPF 交付</span></td><td><span class="ph">§8.9.4</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_power_domain_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PWR-005</span></td><td><span class="ph">关键 CSR Retention 寄存器</span></td><td><span class="ph">§8.9.4</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_retention_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-001</span></td><td><span class="ph">PLIC 中断控制器</span></td><td><span class="ph">§5.4</span></td><td><span class="ph">docs/design/plic/</span></td><td><span class="ph">tc_plic_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-002</span></td><td><span class="ph">CLIC 快速中断控制器</span></td><td><span class="ph">§5.3</span></td><td><span class="ph">docs/design/clic/</span></td><td><span class="ph">tc_clic_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-004</span></td><td><span class="ph">WFI/WRS 低功耗指令</span></td><td><span class="ph">§8.2</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_power_wfi_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-005</span></td><td><span class="ph">多时钟域多电压域管理</span></td><td><span class="ph">§8.2</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_power_domain_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-006</span></td><td><span class="ph">32bit 物理寻址</span></td><td><span class="ph">§7.4</span></td><td><span class="ph">docs/design/mmu/</span></td><td><span class="ph">tc_addr_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-007</span></td><td><span class="ph">Little-Endian 字节序</span></td><td><span class="ph">§7.4</span></td><td><span class="ph">docs/design/mmu/</span></td><td><span class="ph">tc_endian_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SYS-008</span></td><td><span class="ph">低功耗状态管理接口</span></td><td><span class="ph">§8.2</span></td><td><span class="ph">docs/design/power/</span></td><td><span class="ph">tc_power_state_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IF-001</span></td><td><span class="ph">AMBA4 AXI 主总线 (128bit)</span></td><td><span class="ph">§7.5</span></td><td><span class="ph">docs/design/bus/axi.html</span></td><td><span class="ph">tc_axi_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IF-002</span></td><td><span class="ph">FFP 外设接口 (AXI 32bit)</span></td><td><span class="ph">§7.5</span></td><td><span class="ph">docs/design/bus/ffp.html</span></td><td><span class="ph">tc_ffp_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IF-003</span></td><td><span class="ph">TCM 从接口 (DMA)</span></td><td><span class="ph">§7.5</span></td><td><span class="ph">docs/design/tcm/dma.html</span></td><td><span class="ph">tc_tcm_dma_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IF-004</span></td><td><span class="ph">中断信号线规格</span></td><td><span class="ph">§5.3/5.4</span></td><td><span class="ph">docs/design/clic/</span></td><td><span class="ph">tc_irq_signal_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FEAT-001</span></td><td><span class="ph">RISC-V Debug V1.0.0</span></td><td><span class="ph">§6.1</span></td><td><span class="ph">docs/design/debug/</span></td><td><span class="ph">tc_debug_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FEAT-002</span></td><td><span class="ph">RISC-V Nexus Trace V1.0.0</span></td><td><span class="ph">§6.2</span></td><td><span class="ph">docs/design/trace/</span></td><td><span class="ph">tc_trace_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FEAT-003</span></td><td><span class="ph">Trace AXI4 写出</span></td><td><span class="ph">§6.2</span></td><td><span class="ph">docs/design/trace/</span></td><td><span class="ph">tc_trace_axi_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FEAT-004</span></td><td><span class="ph">JTAG/cJTAG 调试物理接口</span></td><td><span class="ph">§6.3</span></td><td><span class="ph">docs/design/debug/jtag.html</span></td><td><span class="ph">tc_jtag_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FEAT-005</span></td><td><span class="ph">自定义协处理器接口</span></td><td><span class="ph">§2.3</span></td><td><span class="ph">docs/design/coproc/</span></td><td><span class="ph">tc_coproc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DFT-001</span></td><td><span class="ph">Scan Chain 扫描链</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/dft/scan.html</span></td><td><span class="ph">tc_dft_scan_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DFT-002</span></td><td><span class="ph">MBIST 内存内建自测试</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/dft/mbist.html</span></td><td><span class="ph">tc_dft_mbist_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DFT-003</span></td><td><span class="ph">JTAG 边界扫描</span></td><td><span class="ph">§6.3</span></td><td><span class="ph">docs/design/dft/bscan.html</span></td><td><span class="ph">tc_dft_bscan_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MCORE-001</span></td><td><span class="ph">多核互联拓扑</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/multicore/</span></td><td><span class="ph">tc_multicore_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-MCORE-002</span></td><td><span class="ph">双核锁步 (Dual Lock-Step)</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/multicore/lockstep.html</span></td><td><span class="ph">tc_lockstep_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-BOOT-001</span></td><td><span class="ph">复位类型支持</span></td><td><span class="ph">§8.3</span></td><td><span class="ph">docs/design/boot/</span></td><td><span class="ph">tc_reset_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-BOOT-002</span></td><td><span class="ph">启动流程与向量表</span></td><td><span class="ph">§8.3</span></td><td><span class="ph">docs/design/boot/</span></td><td><span class="ph">tc_boot_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-BOOT-003</span></td><td><span class="ph">Boot ROM 支持</span></td><td><span class="ph">§8.3</span></td><td><span class="ph">docs/design/boot/rom.html</span></td><td><span class="ph">tc_bootrom_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-TIMING-001</span></td><td><span class="ph">综合约束文件 (SDC)</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/sdc.html</span></td><td><span class="ph">tc_sdc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-TIMING-002</span></td><td><span class="ph">关键路径时序目标</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">tc_timing_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-QUAL-001</span></td><td><span class="ph">CDC/RDC 验证</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/quality/cdc.html</span></td><td><span class="ph">tc_cdc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-QUAL-002</span></td><td><span class="ph">Lint 检查</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/quality/lint.html</span></td><td><span class="ph">tc_lint_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-QUAL-003</span></td><td><span class="ph">DEF/FIT 率目标</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/quality/fmeda.html</span></td><td><span class="ph">tc_fmeda_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.3 交付物需求追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-001</span></td><td><span class="ph">RTL 源码 (Verilog)</span></td><td><span class="ph">—</span></td><td><span class="ph">src/</span></td><td><span class="ph">tc_lint_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-002</span></td><td><span class="ph">验证测试台</span></td><td><span class="ph">—</span></td><td><span class="ph">tests/</span></td><td><span class="ph">tc_regression_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-003</span></td><td><span class="ph">Cycle Accurate Model</span></td><td><span class="ph">—</span></td><td><span class="ph">perf/gem5-model/</span></td><td><span class="ph">tc_gem5_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-004</span></td><td><span class="ph">集成手册</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/integration/</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-005</span></td><td><span class="ph">时序模型 (Liberty/LEF)</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-006</span></td><td><span class="ph">综合约束文件 (SDC)</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/physical/sdc.html</span></td><td><span class="ph">tc_sdc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-007</span></td><td><span class="ph">Formality 等价性验证</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">tc_formality_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-008</span></td><td><span class="ph">IP-XACT/RTL 描述文件</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-009</span></td><td><span class="ph">FPGA 原型/评估板支持包</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-010</span></td><td><span class="ph">BSDL 文件</span></td><td><span class="ph">§6.3</span></td><td><span class="ph">docs/design/dft/bscan.html</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-011</span></td><td><span class="ph">程序员参考手册 (PRM)</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/programmer/</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DEL-012</span></td><td><span class="ph">RISC-V Compliance Test 结果报告</span></td><td><span class="ph">—</span></td><td><span class="ph">riscv-arch-test/</span></td><td><span class="ph">tc_arch_test_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.4 功能安全需求追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-SAFE-001</span></td><td><span class="ph">PMP 安全保护 (Smepmp)</span></td><td><span class="ph">§3.2</span></td><td><span class="ph">docs/design/pmp/</span></td><td><span class="ph">tc_pmp_smepmp_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SAFE-002</span></td><td><span class="ph">双核异步互锁</span></td><td><span class="ph">—</span></td><td><span class="ph">docs/design/multicore/lockstep.html</span></td><td><span class="ph">tc_lockstep_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SAFE-003</span></td><td><span class="ph">总线 Parity 保护</span></td><td><span class="ph">§7.5</span></td><td><span class="ph">docs/design/bus/parity.html</span></td><td><span class="ph">tc_bus_parity_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SAFE-004</span></td><td><span class="ph">FMEDA 故障模式分析</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">Proposed (v2.0)</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SAFE-005</span></td><td><span class="ph">安全手册</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">—</span></td><td><span class="ph">Proposed (v2.0)</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.5 信息安全需求追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-SEC-001</span></td><td><span class="ph">安全启动 ROM</span></td><td><span class="ph">§8.3</span></td><td><span class="ph">docs/design/boot/secure.html</span></td><td><span class="ph">tc_secure_boot_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SEC-002</span></td><td><span class="ph">加密加速指令支持</span></td><td><span class="ph">§2.3</span></td><td><span class="ph">docs/design/isa/vcrypto.html</span></td><td><span class="ph">tc_isa_vcrypto_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SEC-003</span></td><td><span class="ph">安全调试策略</span></td><td><span class="ph">§6.1</span></td><td><span class="ph">docs/design/debug/auth.html</span></td><td><span class="ph">tc_debug_auth_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SEC-004</span></td><td><span class="ph">PMP 安全隔离 (Smepmp)</span></td><td><span class="ph">§3.2</span></td><td><span class="ph">docs/design/pmp/</span></td><td><span class="ph">tc_pmp_isolation_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SEC-005</span></td><td><span class="ph">总线完整性保护</span></td><td><span class="ph">§7.5</span></td><td><span class="ph">docs/design/bus/parity.html</span></td><td><span class="ph">tc_bus_integrity_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.6 软件需求追溯</h2>
+<div class="table-wrapper"><table><thead><tr><th>REQ-ID</th><th>需求名称</th><th>架构章节</th><th>设计文档</th><th>验证用例</th><th>覆盖状态</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">LUMI-TOOL-001</span></td><td><span class="ph">GCC 14+ 支持</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">software/gcc/</span></td><td><span class="ph">tc_gcc_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-TOOL-002</span></td><td><span class="ph">LLVM/Clang 支持</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">software/llvm/</span></td><td><span class="ph">tc_llvm_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SDK-001</span></td><td><span class="ph">HAL/BSP 硬件抽象层</span></td><td><span class="ph">—</span></td><td><span class="ph">software/hal/</span></td><td><span class="ph">tc_hal_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SDK-002</span></td><td><span class="ph">外设驱动库</span></td><td><span class="ph">—</span></td><td><span class="ph">software/drivers/</span></td><td><span class="ph">tc_driver_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FW-001</span></td><td><span class="ph">Boot Firmware</span></td><td><span class="ph">§8.3</span></td><td><span class="ph">software/bootfw/</span></td><td><span class="ph">tc_bootfw_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-FW-002</span></td><td><span class="ph">RTOS 移植支持</span></td><td><span class="ph">—</span></td><td><span class="ph">software/rtos/</span></td><td><span class="ph">tc_rtos_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-IDE-001</span></td><td><span class="ph">Eclipse/VS Code 调试支持</span></td><td><span class="ph">§6.1</span></td><td><span class="ph">software/ide/</span></td><td><span class="ph">—</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SIM-001</span></td><td><span class="ph">指令集模拟器 (ISS)</span></td><td><span class="ph">§2.2</span></td><td><span class="ph">perf/gem5-model/</span></td><td><span class="ph">tc_iss_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-SIM-002</span></td><td><span class="ph">Cycle Accurate Model (gem5)</span></td><td><span class="ph">§4</span></td><td><span class="ph">perf/gem5-model/</span></td><td><span class="ph">tc_gem5_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DBG-001</span></td><td><span class="ph">GDB + OpenOCD 支持</span></td><td><span class="ph">§6.1</span></td><td><span class="ph">software/debug/</span></td><td><span class="ph">tc_gdb_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-DBG-002</span></td><td><span class="ph">Trace 解码工具</span></td><td><span class="ph">§6.2</span></td><td><span class="ph">software/trace/</span></td><td><span class="ph">tc_trace_decode_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PERF-001</span></td><td><span class="ph">基准测试套件</span></td><td><span class="ph">§4.1</span></td><td><span class="ph">perf/benchmarks/</span></td><td><span class="ph">tc_bench_*</span></td><td><span class="ph">Covered</span></td></tr>
+<tr class="example-row"><td><span class="ph">LUMI-PERF-002</span></td><td><span class="ph">性能计数器工具</span></td><td><span class="ph">§4</span></td><td><span class="ph">software/perf/</span></td><td><span class="ph">tc_hpm_*</span></td><td><span class="ph">Pending</span></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>10.7 需求依赖关系</h2>
+<div class="table-wrapper"><table><thead><tr></tr></thead><tbody>
+<tr></tr>
+</tbody></table></div>
+<h2>10.8 覆盖统计</h2>
+<div class="table-wrapper"><table><thead><tr><th>指标</th><th>数值</th><th>备注</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">硬件需求总数</span></td><td><span class="ph">66</span></td><td><span class="ph">§3 硬件需求 (PPA 10 + RTL 56, 含 DFT/多核/复位/时序/质量/时钟架构/PMA)</span></td></tr>
+<tr class="example-row"><td><span class="ph">交付物需求</span></td><td><span class="ph">12</span></td><td><span class="ph">§4 交付物需求 (RTL 3 + INT 4 + DOC 5, 含 PRM 和 Compliance Test 报告)</span></td></tr>
+<tr class="example-row"><td><span class="ph">功能安全需求</span></td><td><span class="ph">3</span></td><td><span class="ph">§5 v1.0 Must 需求 (另 2 条 LUMI-SAFE-004/005 为 Proposed v2.0)</span></td></tr>
+<tr class="example-row"><td><span class="ph">信息安全需求</span></td><td><span class="ph">5</span></td><td><span class="ph">§6 信息安全需求</span></td></tr>
+<tr class="example-row"><td><span class="ph">软件需求</span></td><td><span class="ph">13</span></td><td><span class="ph">§7 依赖软件需求 (TOOL/SDK/FW/IDE/SIM/DBG/PERF)</span></td></tr>
+<tr class="example-row"><td><span class="ph">需求总数</span></td><td><span class="ph">99</span></td><td><span class="ph">全部章节汇总 (BL-1.1 校准, M1 独立审查补强后)</span></td></tr>
+<tr class="example-row"><td><span class="ph">Must 需求数</span></td><td><span class="ph">84</span></td><td><span class="ph">BL-1.0 77 + M1 补强 7 条 Must (MEM-009/CLK-001~003/PWR-004/DEL-011/DEL-012)</span></td></tr>
+<tr class="example-row"><td><span class="ph">Should 需求数</span></td><td><span class="ph">12</span></td><td><span class="ph">BL-1.0 11 + PWR-005 1 条</span></td></tr>
+<tr class="example-row"><td><span class="ph">Could 需求数</span></td><td><span class="ph">3</span></td><td><span class="ph">LUMI-ISA-009/010, LUMI-FEAT-005</span></td></tr>
+<tr class="example-row"><td><span class="ph">Proposed (v2.0)</span></td><td><span class="ph">2</span></td><td><span class="ph">LUMI-SAFE-004/005, 不纳入当前基线</span></td></tr>
+<tr class="example-row"><td><span class="ph">已覆盖 (Covered)</span></td><td><span class="ph">9</span></td><td><span class="ph">RV32I/A/C/Zce/PMP/CLIC/PLIC/CoreMark/Dhrystone/Bench</span></td></tr>
+<tr class="example-row"><td><span class="ph">待覆盖 (Pending)</span></td><td><span class="ph">90</span></td><td><span class="ph">设计文档和验证用例待 M1~M3 阶段逐步完成</span></td></tr>
+<tr class="example-row"><td><span class="ph">覆盖率</span></td><td><span class="ph">9.1%</span></td><td><span class="ph">目标: M1 结束达到 30%, M2 结束达到 100%</span></td></tr>
+<tr><td></td><td></td><td></td></tr>
 </tbody></table></div>
 
 <!-- ══════ 11. 变更历史 ══════ -->
 <h1 id="sec-changelog">11. 变更历史</h1>
 <div class="table-wrapper"><table><thead><tr><th>日期</th><th>文档版本</th><th>变更内容</th><th>影响需求 ID</th><th>作者</th></tr></thead><tbody>
+<tr class="example-row"><td><span class="ph">2026-07-01</span></td><td><span class="ph">0.3-draft</span></td><td><span class="ph">PRD 完善与定版准备: 信息安全边界界定(5条需求, IP级范围)、功能安全阶段性简化(v1.0 IP级+v2.0车规)、需求重叠边界明确(PWR-003/SYS-004/SYS-008)、Zce状态Proposed→Draft、增量需求清理、依赖关系梳理(硬件/软硬件/Profile三维度)、追溯矩阵全面扩展(82条需求)</span></td><td><span class="ph">信息安全5条新增/功能安全分阶段/硬件需求边界明确</span></td><td><span class="ph">PRD完善计划</span></td></tr>
+<tr class="example-row"><td><span class="ph">2026-07-02</span></td><td><span class="ph">0.2-draft</span></td><td><span class="ph">PRD 完整性补充: P0冲突修正+Profile Mandatory覆盖+P1新增DFT/多核/复位/软件生态+P2质量指标+P3一致性修正</span></td><td><span class="ph">新增 28 条需求，修改 8 条现有需求</span></td><td><span class="ph">PRD完整性分析</span></td></tr>
 <tr class="example-row"><td><span class="ph">2026-06-26</span></td><td><span class="ph">0.1-draft</span></td><td><span class="ph">初始创建 PRD 模板（12 章节结构）</span></td><td><span class="ph">--</span></td><td><span class="ph">--</span></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody></table></div>
@@ -455,6 +766,7 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
 
 <hr>
 <p style="text-align:center;color:#90a4ae;font-size:.85rem;margin-top:2rem;">
+    <a href="../index.html" class="nav-back" style="margin-bottom:.5rem;">&larr; 返回文档地图</a><br>
     Lumi-Core Product Requirements Document &mdash; Confidential<br>
     自动生成自 YAML 数据 &nbsp;|&nbsp; 模板版本 2.0
 </p>
@@ -476,10 +788,17 @@ table{page-break-inside:avoid}.badge,.pri,.bl-badge{border:1px solid #999}
         <option value="RTL-IF">外部接口</option>
         <option value="RTL-FEAT">调试与跟踪</option>
         <option value="RTL-OTHER">其他RTL功能</option>
+        <option value="RTL-DFT">DFT</option>
+        <option value="RTL-MCORE">多核</option>
+        <option value="RTL-BOOT">复位启动</option>
+        <option value="RTL-TIMING">时序约束</option>
+        <option value="RTL-QUAL">IP质量</option>
         <option value="INC">增量需求</option>
     </optgroup>
     <optgroup label="交付 &amp; 安全">
-        <option value="DEL">交付物</option>
+        <option value="DEL-RTL">RTL交付</option>
+        <option value="DEL-INT">集成交付</option>
+        <option value="DEL-DOC">文档交付</option>
         <option value="SAFE">功能安全</option>
         <option value="SEC">信息安全</option>
     </optgroup>

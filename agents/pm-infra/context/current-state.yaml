@@ -1,8 +1,31 @@
-role: pm
-last_active: null
-current_milestone: "M0-Setup"
+role: pm-infra
+last_active: "2026-07-07"
+current_milestone: "M2-S1"
 
 active_tasks: []
+
+completed_tasks:
+  - id: M1-ENH
+    title: "M1 独立审查补强 - PRD/基线/门禁报告"
+    phase: requirements
+    started: "2026-07-03"
+    completed: "2026-07-03"
+    baseline: "BL-1.1"
+  - id: REC-005
+    title: "check_compliance.py 格式兼容性修复 (ERR-003)"
+    phase: setup
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: M2-RECT
+    title: "M2 收尾整改计划执行与留痕"
+    phase: setup
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: M1-ADDENDUM
+    title: "M1 补充归档 (GATE-4 CONDITIONAL_PASS → PASS)"
+    phase: setup
+    started: "2026-07-07"
+    completed: "2026-07-07"
 
 pending_decisions: []
 

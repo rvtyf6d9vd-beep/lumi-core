@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lumi 项目部署计划 v3.0 — Qoder 适配版</title>
+<title>Lumi 项目部署计划 v3.1 — Qoder 适配版</title>
 <style>
   :root {
     --primary: #1a56db;
@@ -138,11 +138,21 @@
   RISC-V 处理器 AI 驱动开发 — Qoder 平台适配版
 </p>
 <p style="color: var(--text-muted); font-size: .9em;">
-  文档版本: v3.0 (Qoder 适配 + 架构优化) &nbsp;|&nbsp; 更新日期: 2026-06-15 &nbsp;|&nbsp;
-  演进: v1.0 理想架构 → v2.1 Cowork 双引擎 → <strong>v3.0 Qoder 适配</strong> &nbsp;|&nbsp; 状态: <span class="badge badge-green">已评审</span>
+  文档版本: v3.1 (规则体系扩充 + 一致性同步) &nbsp;|&nbsp; 更新日期: 2026-07-01 &nbsp;|&nbsp;
+  演进: v1.0 理想架构 → v2.1 Cowork 双引擎 → v3.0 Qoder 适配 → <strong>v3.1 规则扩充</strong> &nbsp;|&nbsp; 状态: <span class="badge badge-green">已评审</span>
 </p>
 
 <div class="highlight-info">
+<strong>v3.1 变更总览（相对 v3.0）：</strong>
+<ol style="margin: 8px 0 0 20px; line-height: 2;">
+  <li><strong>规则扩充</strong>：26 条 → 30 条，新增规则 20 (Errata 维护) / 21 (Bug 回归测试) / 22 (Skill 复用) / 23 (里程碑层级定义)</li>
+  <li><strong>通用规则更新</strong>：15 条 → 19 条，top-rules.yaml 补充 4 条新的通用规则</li>
+  <li><strong>合规评分更新</strong>：总权重从 79 调整为 98，严重度分布更新（12 critical / 14 high / 4 medium）</li>
+  <li><strong>文档同步</strong>：AGENTS.md、role-prompt.md、部署计划全部同步更新</li>
+</ol>
+</div>
+
+<div class="highlight">
 <strong>v3.0 变更总览（相对 v2.1）：</strong>
 <ol style="margin: 8px 0 0 20px; line-height: 2;">
   <li><strong>角色合并</strong>：6 角色精简为 4 个（hw-arch + sw-arch → hw-design；pm + ai-infra → pm-infra）</li>
@@ -208,7 +218,7 @@
 <h2 id="sec1">一、执行摘要</h2>
 
 <div class="card card-primary">
-<p>本计划为 Lumi 项目在 <strong>QoderWork</strong> 平台上建立一套<strong>规则驱动、子代理调度、三级合规</strong>的开发治理体系。核心架构是<strong>主调度 + Task 子代理</strong>模式：QoderWork 主会话通过 AGENTS.md 加载通用规则和任务路由，根据任务类型调度 Task 子代理注入角色专属上下文执行工作。文件系统持久化状态和跨角色变更通知。26 条有效规则编码为结构化 YAML，通过实时检查、定时扫描、里程碑门禁三重机制确保执行。</p>
+<p>本计划为 Lumi 项目在 <strong>QoderWork</strong> 平台上建立一套<strong>规则驱动、子代理调度、三级合规</strong>的开发治理体系。核心架构是<strong>主调度 + Task 子代理</strong>模式：QoderWork 主会话通过 AGENTS.md 加载通用规则和任务路由，根据任务类型调度 Task 子代理注入角色专属上下文执行工作。文件系统持久化状态和跨角色变更通知。30 条有效规则编码为结构化 YAML，通过实时检查、定时扫描、里程碑门禁三重机制确保执行。</p>
 </div>
 
 <div class="grid-4">
@@ -217,8 +227,8 @@
     <span style="color: var(--text-muted); font-size:.9em;">PM-Infra / HW-Design / HW-Ver / QA-Audit</span>
   </div>
   <div class="card card-accent">
-    <strong>26 条规则</strong><br>
-    <span style="color: var(--text-muted); font-size:.9em;">10 critical / 9 high / 5 medium / 2 low</span>
+    <strong>30 条规则</strong><br>
+    <span style="color: var(--text-muted); font-size:.9em;">12 critical / 14 high / 4 medium</span>
   </div>
   <div class="card card-accent">
     <strong>3 级合规</strong><br>
@@ -550,9 +560,9 @@ notices:
 <hr class="section-divider">
 <h2 id="sec5">五、规则管理系统</h2>
 
-<h3 id="sec5-1">5.1 规则精简：34 → 26</h3>
+<h3 id="sec5-1">5.1 规则精简：34 → 26 → 30</h3>
 
-<p>原 34 条中有 8 条被移除或合并，原因如下：</p>
+<p>v3.0 将原 34 条精简为 26 条，v3.1 新增 4 条通用规则（20-23）以覆盖 Errata 维护、Bug 回归、Skill 复用和里程碑层级管理。</p>
 
 <div class="card card-warn">
 <h4>移除条目（备忘性质，迁移到 docs/project/notes/）</h4>
@@ -574,19 +584,28 @@ notices:
 </table>
 </div>
 
-<h4>精简后规则总览（26 条）</h4>
+<h4>精简后规则总览（30 条）</h4>
 
 <table>
 <tr><th>类别</th><th>编号</th><th>数量</th><th>严重度</th></tr>
-<tr><td>通用规则</td><td>03, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16, 17, 18, 19</td><td>15</td><td>8 critical / 5 high / 2 medium</td></tr>
+<tr><td>通用规则</td><td>03, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23</td><td>19</td><td>8 critical / 8 high / 2 medium / 1 low</td></tr>
 <tr><td>硬件设计</td><td>HD-1, HD-2, HD-3</td><td>3</td><td>1 critical / 2 high</td></tr>
 <tr><td>硬件验证</td><td>HV-1, HV-2</td><td>2</td><td>1 critical / 1 high</td></tr>
 <tr><td>IT 基础设施</td><td>IT-1, IT-2</td><td>2</td><td>1 high / 1 medium</td></tr>
 <tr><td>QA 审计</td><td>QA-1</td><td>1</td><td>1 critical</td></tr>
 <tr><td>商业规则</td><td>B-1, B-2, B-5</td><td>3</td><td>2 high / 1 medium</td></tr>
 <tr style="font-weight: 700; background: var(--primary-light);">
-  <td>合计</td><td></td><td>26</td><td>10 critical / 9 high / 5 medium / 2 low</td>
+  <td>合计</td><td></td><td>30</td><td>12 critical / 14 high / 4 medium / 0 low</td>
 </tr>
+</table>
+
+<h4>v3.1 新增规则（4 条）</h4>
+<table>
+<tr><th>编号</th><th>标题</th><th>严重度</th><th>说明</th></tr>
+<tr><td>20</td><td>Errata/Known Issue 维护</td><td>high</td><td>记录所有已知问题直到解决，保留已解决记录</td></tr>
+<tr><td>21</td><td>Bug 回归测试用例</td><td>critical</td><td>RTL Freeze 后每个 Bug 必须有回归测试用例</td></tr>
+<tr><td>22</td><td>Skill 优先复用</td><td>high</td><td>建立 skills/ 目录，任务优先查找复用现有 Skill</td></tr>
+<tr><td>23</td><td>Milestone/Stage/Phase 层级定义</td><td>high</td><td>三层进度管理结构：MS/S/P</td></tr>
 </table>
 
 <h3 id="sec5-2">5.2 角色-规则映射（4 角色）</h3>
@@ -597,19 +616,19 @@ notices:
   <td><code>pm-infra</code></td>
   <td>项目管理 / 基础设施</td>
   <td>B-1, B-2, B-5, IT-1, IT-2, QA-1</td>
-  <td>03, 07, 09, 10, 13, 14, 16, 17, 18, 19</td>
+  <td>03, 07, 09, 10, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23</td>
 </tr>
 <tr>
   <td><code>hw-design</code></td>
   <td>硬件设计（含软件）</td>
   <td>HD-1, HD-2, HD-3</td>
-  <td>03, 05, 06, 07, 08, 10, 11, 12, 13, 14, 16, 18, 19</td>
+  <td>03, 05, 06, 07, 08, 10, 11, 12, 13, 14, 16, 18, 19, 20, 21, 22, 23</td>
 </tr>
 <tr>
   <td><code>hw-ver</code></td>
   <td>硬件验证</td>
   <td>HV-1, HV-2</td>
-  <td>03, 05, 07, 09, 10, 11, 12, 13, 14, 16, 18, 19</td>
+  <td>03, 05, 07, 09, 10, 11, 12, 13, 14, 16, 18, 19, 20, 21, 22, 23</td>
 </tr>
 <tr>
   <td><code>qa-audit</code></td>
@@ -693,12 +712,12 @@ notices:
 
 <table>
 <tr><th>严重度</th><th>权重</th><th>条目数</th><th>满分</th></tr>
-<tr><td>critical</td><td>4</td><td>10</td><td>40</td></tr>
-<tr><td>high</td><td>3</td><td>9</td><td>27</td></tr>
-<tr><td>medium</td><td>2</td><td>5</td><td>10</td></tr>
-<tr><td>low</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>critical</td><td>4</td><td>12</td><td>48</td></tr>
+<tr><td>high</td><td>3</td><td>14</td><td>42</td></tr>
+<tr><td>medium</td><td>2</td><td>4</td><td>8</td></tr>
+<tr><td>low</td><td>1</td><td>0</td><td>0</td></tr>
 <tr style="font-weight: 700; background: var(--primary-light);">
-  <td colspan="2">总分</td><td>26</td><td>79</td>
+  <td colspan="2">总分</td><td>30</td><td>98</td>
 </tr>
 </table>
 
@@ -715,14 +734,13 @@ notices:
 
 <h4>评分报告示例</h4>
 <pre><code>═══════════════════════════════════════
-  Lumi 合规评分报告  2026-06-15
+  Lumi 合规评分报告  2026-07-01
 ═══════════════════════════════════════
-  总分: 71.2 / 79  (90.1%)    ■ PASS
+  总分: 89.5 / 98  (91.3%)    ■ PASS
 
-  Critical: 38/40  (95.0%)
-  High:     24/27  (88.9%)
-  Medium:    8/10  (80.0%)
-  Low:       1.2/2 (60.0%)
+  Critical: 46/48  (95.8%)
+  High:     37/42  (88.1%)
+  Medium:    6.5/8 (81.3%)
 
   未通过项:
   ✗ [HD-2] 两天期限预警 — 任务 TASK-012 已超期 3 天
@@ -951,7 +969,7 @@ entries:
 
 <hr class="section-divider">
 <p style="text-align: center; color: var(--text-muted); margin-top: 40px; font-size: .85em;">
-  Lumi 项目部署计划 v3.0 &nbsp;|&nbsp; Qoder 适配版 &nbsp;|&nbsp; 2026-06-15 &nbsp;|&nbsp;
+  Lumi 项目部署计划 v3.1 &nbsp;|&nbsp; Qoder 适配版 &nbsp;|&nbsp; 2026-07-01 &nbsp;|&nbsp;
   由 QoderWork 生成
 </p>
 

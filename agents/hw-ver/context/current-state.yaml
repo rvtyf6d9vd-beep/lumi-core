@@ -1,8 +1,36 @@
 role: hw-ver
-last_active: null
-current_milestone: "M0-Setup"
+last_active: "2026-07-07"
+current_milestone: "M2-S1"
 
 active_tasks: []
+
+completed_tasks:
+  - id: T1.3
+    title: "验证方案启动 (验证策略 + 覆盖率计划)"
+    phase: verification
+    started: "2026-07-01"
+    completed: "2026-07-01"
+  - id: T2.0
+    title: "M1 独立审查补强 - 验证侧确认"
+    phase: verification
+    started: "2026-07-03"
+    completed: "2026-07-03"
+    baseline: "BL-1.1"
+  - id: REC-003
+    title: "coverage-plan.yaml 补充 8 条新增需求 Cover Group"
+    phase: verification
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: REC-006
+    title: "errata regression_test 字段补全 (ERR-003)"
+    phase: verification
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: M1-ADDENDUM
+    title: "M1 GATE-4 升级归档 (FS 模式 4/4 PASS 确认)"
+    phase: verification
+    started: "2026-07-07"
+    completed: "2026-07-07"
 
 pending_decisions: []
 

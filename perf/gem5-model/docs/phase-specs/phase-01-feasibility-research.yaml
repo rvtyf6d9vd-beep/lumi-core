@@ -1,0 +1,66 @@
+# Phase 1: GEM5+ CPU 建模可行性调研
+
+phase: 1
+title: "GEM5+ RISC-V CPU 建模技术可行性调研与筹备计划"
+date: "2026-06-24"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  评估 gem5/gem5+ 框架对 Lumi-Core Profile 34+ RISC-V 扩展的技术支持现状，
+  确定 CPU 建模策略，制定 6 阶段筹备计划。
+
+key_decisions:
+  - topic: "CPU 模型选择"
+    options: [MinorCPU, O3CPU, AtomicSimpleCPU]
+    decision: "MinorCPU (in-order, 可参数化, 匹配 Lumi-Core 微架构)"
+
+  - topic: "gem5 版本策略"
+    options: ["锁定官方稳定版 v24.0+", "跟踪 develop 分支", "使用 tud-ccc fork"]
+    decision: "锁定 v24.1 官方稳定版，补丁独立管理于 patches/"
+
+  - topic: "CLIC 实现策略"
+    options: ["gem5 内从零实现", "参考 QEMU/Renode 移植", "外部模块集成"]
+    decision: "gem5 内从零实现，参考 QEMU/Renode 和 pulp-platform/clic"
+
+  - topic: "渐进精度策略"
+    options: ["先纯 gem5 MinorCPU 后切换 gem5+rtl", "一步到位 gem5+rtl", "仅功能仿真"]
+    decision: "先纯 gem5 MinorCPU，后续切换 gem5+rtl (渐进式精度提升)"
+
+research_scope:
+  - "gem5 CPU 模型: AtomicSimpleCPU / TimingSimpleCPU / MinorCPU / O3CPU"
+  - "gem5+ 框架: gem5+rtl + Verilator 集成, cycle-accurate 建模"
+  - "Lumi-Core Profile 34+ 扩展在 gem5 中的支持状态"
+  - "CLIC 中断控制器在仿真环境中的支持现状"
+  - "自定义指令扩展的实现路径和难度评估"
+
+extension_support_summary:
+  native_supported: "~12 项 (35%)"
+  partial_supported: "~8 项 (23%)"
+  need_simple_impl: "~10 项 (29%)"
+  need_medium_impl: "~3 项 (8%)"
+  need_from_scratch: "~1 项 CLIC (5%)"
+
+risk_assessment:
+  - risk: "CLIC 中断控制器"
+    level: HIGH
+    mitigation: "分阶段实现，两天无进展触发 HD-2 回退预警"
+  - risk: "扩展指令补全"
+    level: MEDIUM
+    mitigation: "逐扩展添加，每步立即回归测试"
+  - risk: "确定性建模"
+    level: MEDIUM
+    mitigation: "与 RTL 仿真结果交叉校准"
+  - risk: "MinorCPU 微架构适配"
+    level: MEDIUM
+    mitigation: "初期默认参数快速验证，逐步调参"
+  - risk: "gem5+rtl 框架成熟度"
+    level: LOW
+    mitigation: "跟踪 BSC 进展，备选纯 Verilator"
+
+conclusion: "总体可行，中等风险。主要工作量集中在 CLIC 实现 (40%) 和扩展指令补全 (30%)。"
+
+deliverables:
+  - path: "docs/architecture/gem5-modeling-feasibility-analysis.md"
+    description: "技术可行性分析报告 (537行)"
+  - plan: "6 阶段筹备计划 (环境搭建 -> 扩展补全 -> 中断建模 -> 微架构 -> 基准测试 -> 验证文档)"

@@ -15,9 +15,9 @@ sub_sections:
     table_type: data
     headers: [竞品名称, 厂商, 架构, 优势, 劣势, 与 Lumi 对比]
     rows:
-      - [ARM Cortex-M7, ARM, ARMv7E-M, 生态成熟, "授权费高，不可定制", "--"]
-      - [ARM Cortex-R52, ARM, ARMv7E-M, 生态成熟, "授权费高，不可定制", "--"]
-      - [Nuclei NA900, RISC-V, RV32GCBV, "授权灵活，配置丰富，可以定制", "--", "--"]
+      - [ARM Cortex-M7, ARM, ARMv7E-M, "生态成熟，性能优秀", "授权费高，不可定制", "Lumi 性能对标，架构更灵活"]
+      - [ARM Cortex-R52, ARM, ARMv8-R, "生态成熟，功能安全认证完善", "授权费高，不可定制，多核扩展受限", "Lumi 安全岛场景对标，支持双锁步"]
+      - [Nuclei NA900, RISC-V, RV32GCBV, "授权灵活，配置丰富，可以定制", "生态相对年轻，车规认证经验有限", "同架构竞争，Lumi 侧重全验证交付"]
 
   - title: "2.3 典型应用场景"
     table_type: data

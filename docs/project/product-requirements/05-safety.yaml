@@ -1,40 +1,83 @@
 # ═══════════════ 5. 功能安全需求 ═══════════════
 section: "5. 功能安全需求"
 id: sec-safety
-description: "面向 ISO 26262 等功能安全标准的需求，涵盖 ECC 纠错、TLB 保护、双锁步 (Dual Lock-Step) 等安全机制。"
+description: |
+  功能安全需求分两个阶段实现：
+  - 第一阶段（当前版本 v1.0）：聚焦 IP 级安全机制（ECC/LockStep/Parity），
+    确保处理器 IP 本身具备硬件级故障检测与保护能力，面向嵌入式系统客户交付。
+  - 第二阶段（v2.0 车规版本）：引入 ISO 26262 流程级需求，包括
+    FMEDA 故障模式分析、Safety Plan/Safety Case、DFA (Dependent Failure Analysis)、
+    Safety Manual 等车规认证工作产品，支撑 ASIL-B/D 认证。
+  当前版本仅定义第一阶段 IP 级安全机制需求。
 
 categories:
   - id: SAFE
-    title: "功能安全"
-    description: ""
+    title: "功能安全 (第一阶段 IP 级安全机制)"
+    description: "IP 级硬件安全机制，覆盖内存保护、锁步执行和总线校验。"
     requirements:
       - req_id: LUMI-SAFE-001
-        name: "PMP 物理内存保护 (可配, 默认 8 Region)"
+        name: "PMP 物理内存保护 (引用 LUMI-MEM-001)"
         priority: Must
-        status: Draft
-        version: v0.1
+        status: Approved
+        version: v1.0
         source: Lumi原始需求
-        ref_doc: ""
-        acceptance: "PMP Region 数量可配（默认 8），越界访问全部触发异常"
-        change_date: "2026-06-29"
-        note: ""
+        ref_doc: "LUMI-MEM-001"
+        acceptance: |
+          满足 LUMI-MEM-001 的全部要求，另外在安全模式下
+          PMP 配置不可被非特权代码修改（Smepmp 扩展）
+        change_date: "2026-07-02"
+        note: "与硬件需求 LUMI-MEM-001 保持一致，安全视角增加 Smepmp 约束；同时引用 LUMI-SEC-004"
+
       - req_id: LUMI-SAFE-002
         name: "双核异步互锁"
         priority: Must
-        status: Draft
-        version: v0.1
+        status: Approved
+        version: v1.0
         source: Lumi原始需求
-        ref_doc: ""
-        acceptance: "双核异步互锁机制正确，检测到不一致时触发异常"
+        ref_doc: "LUMI-MCORE-002"
+        acceptance: |
+          双核异步互锁机制正确，检测到不一致时触发异常。
+          比较粒度为指令级，错误处理策略可配置
         change_date: "2026-06-29"
-        note: ""
+        note: "对应硬件需求 LUMI-MCORE-002"
+
       - req_id: LUMI-SAFE-003
         name: "总线 Parity 保护机制"
         priority: Must
-        status: Draft
-        version: v0.1
+        status: Approved
+        version: v1.0
         source: Lumi原始需求
         ref_doc: ""
         acceptance: "总线 Parity 校验正确，检测到错误时触发异常"
         change_date: "2026-06-29"
-        note: ""
+        note: "信息安全视角引用见 LUMI-SEC-005"
+
+  - id: SAFE-V2
+    title: "功能安全 (第二阶段 车规版本 v2.0 规划)"
+    description: |
+      以下需求计划在 v2.0 车规版本中实现，当前版本标记为 Proposed。
+      第二阶段将引入完整的 ISO 26262 合规工作产品。
+    requirements:
+      - req_id: LUMI-SAFE-004
+        name: "FMEDA 故障模式分析"
+        priority: Must
+        status: Proposed
+        version: v2.0
+        source: ISO 26262
+        ref_doc: "ISO 26262 Part 5 §8"
+        acceptance: |
+          完成 FMEDA 分析，输出诊断覆盖率 (DC) 和 FIT 率报告，满足 ASIL-B 目标
+        change_date: "2026-07-02"
+        note: "[v2.0 车规版本] 需与 LUMI-QUAL-003 配合，当前版本暂不实现"
+
+      - req_id: LUMI-SAFE-005
+        name: "安全手册 (Safety Manual)"
+        priority: Must
+        status: Proposed
+        version: v2.0
+        source: ISO 26262
+        ref_doc: "ISO 26262 Part 6"
+        acceptance: |
+          交付安全手册，包含安全机制描述、集成约束、安全使用条件、假设失效模式
+        change_date: "2026-07-02"
+        note: "[v2.0 车规版本] IP 安全认证的关键交付物，当前版本暂不实现"

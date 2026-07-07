@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 项目文档地图</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --card-bg: #fff; --accent: #16213e; --text: #333;
+            --link: #0d47a1; --border: #e0e0e0; --note: #546e7a;
+            --status-active: #2e7d32; --status-planned: #1976d2; --status-completed: #757575;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--bg); max-width: 960px; margin: 0 auto; padding: 2rem; }
+        header { text-align: center; padding: 2rem 0; border-bottom: 3px solid var(--accent); margin-bottom: 2.5rem; }
+        header h1 { font-size: 2.2rem; color: var(--accent); margin-bottom: 0.5rem; }
+        header .subtitle { color: var(--note); font-size: 1.1rem; }
+        header .project-badge { display: inline-block; background: var(--accent); color: #fff; padding: 0.3rem 1rem; border-radius: 3px; font-size: 0.9rem; margin-top: 1rem; letter-spacing: 0.05em; }
+        .section { margin-bottom: 2.5rem; }
+        .section h2 { font-size: 1.4rem; color: var(--accent); padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.2rem; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+        .card { background: var(--card-bg); border-radius: 8px; padding: 1.3rem; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
+        .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .card h3 { font-size: 1.05rem; color: #1a3a5c; margin-bottom: 0.5rem; }
+        .card h3 a { color: var(--link); text-decoration: none; }
+        .card h3 a:hover { text-decoration: underline; }
+        .card .desc { font-size: 0.9rem; color: var(--note); line-height: 1.6; }
+        .card .status { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 3px; color: #fff; margin-left: 0.5rem; vertical-align: middle; }
+        .card .status.active { background: var(--status-active); }
+        .card .status.planned { background: var(--status-planned); }
+        .card .status.completed { background: var(--status-completed); }
+        .list-group { list-style: none; }
+        .list-group li { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; }
+        .list-group li:last-child { border-bottom: none; }
+        .list-group li a { color: var(--link); text-decoration: none; font-weight: 500; }
+        .list-group li a:hover { text-decoration: underline; }
+        .list-group .file-path { font-family: "SF Mono", Menlo, monospace; font-size: 0.8rem; color: #90a4ae; margin-left: 0.5rem; }
+        .milestone-bar { display: flex; gap: 0.5rem; margin: 1.5rem 0; flex-wrap: wrap; }
+        .milestone-chip { padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600; color: #fff; cursor: default; }
+        .milestone-chip.m0 { background: var(--status-active); }
+        .milestone-chip.m1 { background: var(--status-planned); }
+        .milestone-chip.m2 { background: var(--status-planned); opacity: 0.75; }
+        .milestone-chip.m3 { background: var(--status-planned); opacity: 0.6; }
+        .milestone-chip.m4 { background: var(--status-planned); opacity: 0.45; }
+        .footer { text-align: center; color: #90a4ae; font-size: 0.85rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+        @media print { .card { break-inside: avoid; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Lumi-Core 文档地图</h1>
+    <p class="subtitle">Project Documentation Map</p>
+    <div class="project-badge">RISC-V Processor IP &mdash; Confidential</div>
+</header>
+
+<!-- ═══ 里程碑进度总览 ═══ -->
+<div class="section">
+    <h2>里程碑进度总览</h2>
+    <div class="milestone-bar">
+        <div class="milestone-chip m0" style="opacity:0.6;">M0: 项目启动 [Completed]</div>
+        <div class="milestone-chip m1" style="opacity:0.8;">M1: 架构与需求冻结 [Completed]</div>
+        <div class="milestone-chip m2">M2: 详细设计完成 [Planned]</div>
+        <div class="milestone-chip m3">M3: RTL 冻结 [Planned]</div>
+        <div class="milestone-chip m4">M4: 交付就绪 [Planned]</div>
+    </div>
+    <p style="font-size:0.9rem;color:#78909c;">详细里程碑定义: <a href="project/master-plan.html">master-plan.html</a></p>
+</div>
+
+<!-- ═══ 核心文档 ═══ -->
+<div class="section">
+    <h2>核心项目文档</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="project/product-requirements.html">产品需求文档 (PRD)</a></h3>
+            <p class="desc">完整的产品需求定义，含 12 章节、硬件/软件/安全/交付全维度需求。支持在线编辑、CSV 导入、基线定版。</p>
+        </div>
+        <div class="card">
+            <h3><a href="architecture/platform-spec.html">平台架构说明书</a></h3>
+            <p class="desc">处理器架构全局定义，含微架构、中断系统、内存模型、安全/多核/DFT/物理约束、硬件需求清单。承接 PRD 并指导详细设计。</p>
+        </div>
+        <div class="card">
+            <h3><a href="profile/Lumi-Core-Profile.html">RISC-V Profile</a></h3>
+            <p class="desc">Lumi-Core 的 RISC-V ISA Profile 定义，基于 RV32 架构，含全部 Mandatory/Optional 扩展清单。</p>
+        </div>
+        <div class="card">
+            <h3><a href="project/master-plan.html">里程碑主计划</a></h3>
+            <p class="desc">MS0~MS4 里程碑可视化索引，含各 Stage 任务定义、门禁条件和进度状态。</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ 验证文档 ═══ -->
+<div class="section">
+    <h2>验证方案</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="verification/verification-strategy.html">验证策略文档</a></h3>
+            <p class="desc">验证方法论、层次、Testbench 架构、覆盖率目标、回归框架、需求覆盖映射。</p>
+        </div>
+        <div class="card">
+            <h3><a href="verification/coverage-plan.yaml">覆盖率计划 (YAML)</a></h3>
+            <p class="desc">22 个 Cover Group，覆盖 ISA/PMP/中断/AXI/内存/功耗/调试/安全/多核/复位。</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ 项目管理 ═══ -->
+<div class="section">
+    <h2>项目管理</h2>
+    <ul class="list-group">
+        <li>
+            <a href="project/milestone-plan.yaml">里程碑计划 (YAML)</a>
+            <span class="file-path">docs/project/milestone-plan.yaml</span>
+        </li>
+        <li>
+            <a href="project/project-flowchart.html">项目流程图</a>
+            <span class="file-path">docs/project/project-flowchart.html</span>
+        </li>
+        <li>
+            <a href="project/notes/business-notes.md">商务备忘录</a>
+            <span class="file-path">docs/project/notes/business-notes.md</span>
+        </li>
+        <li>
+            <a href="project/baselines/baseline-BL-EXAMPLE.html">基线示例</a>
+            <span class="file-path">docs/project/baselines/</span>
+        </li>
+    </ul>
+</div>
+
+<!-- ═══ 性能基准 ═══ -->
+<div class="section">
+    <h2>性能基准与模型</h2>
+    <ul class="list-group">
+        <li>
+            <a href="../perf/benchmarks/perf-report.yaml">性能报告 (YAML)</a>
+            <span class="file-path">perf/benchmarks/perf-report.yaml</span>
+        </li>
+        <li>
+            <a href="../perf/benchmarks/perf-baseline.yaml">性能基线定义</a>
+            <span class="file-path">perf/benchmarks/perf-baseline.yaml</span>
+        </li>
+        <li>
+            <a href="../perf/benchmarks/baseline-csv.csv">性能数据 CSV</a>
+            <span class="file-path">perf/benchmarks/baseline-csv.csv</span>
+        </li>
+    </ul>
+</div>
+
+<!-- ═══ 审计与合规 ═══ -->
+<div class="section">
+    <h2>审计与合规</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3>指令日志</h3>
+            <p class="desc">每日操作指令记录。<br>
+                <a href="../audit/instruction-log/2026-07-02.yaml">2026-07-02</a> |
+                <a href="../audit/instruction-log/2026-07-01.yaml">07-01</a> |
+                <a href="../audit/instruction-log/2026-06-29.yaml">06-29</a> |
+                <a href="../audit/instruction-log/2026-06-26.yaml">06-26</a> |
+                <a href="../audit/instruction-log/2026-06-24.yaml">06-24</a> |
+                <a href="../audit/instruction-log/2026-06-10.yaml">06-10</a>
+            </p>
+        </div>
+        <div class="card">
+            <h3>风险登记</h3>
+            <p class="desc">项目风险项追踪。<br><a href="../audit/risk-register.yaml">risk-register.yaml</a></p>
+        </div>
+        <div class="card">
+            <h3>Errata / 已知问题</h3>
+            <p class="desc">已知问题与勘误记录。<br><a href="../audit/errata/known-issues.yaml">known-issues.yaml</a></p>
+        </div>
+        <div class="card">
+            <h3>合规报告</h3>
+            <p class="desc">里程碑门禁检查报告。<br><a href="../audit/compliance-reports/">compliance-reports/</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ 规则体系 ═══ -->
+<div class="section">
+    <h2>规则与角色</h2>
+    <ul class="list-group">
+        <li><a href="../rules/top-rules.yaml">通用规则 (top-rules.yaml)</a></li>
+        <li><a href="../rules/business-rules.yaml">商业规则 (business-rules.yaml)</a></li>
+        <li><a href="../rules/role-mapping.yaml">角色映射 (role-mapping.yaml)</a></li>
+        <li><a href="../rules/schema.yaml">规则 Schema (schema.yaml)</a></li>
+        <li>子规则:
+            <a href="../rules/sub-rules/hardware-design.yaml">hw-design</a> |
+            <a href="../rules/sub-rules/hardware-verify.yaml">hw-ver</a> |
+            <a href="../rules/sub-rules/it-infra.yaml">it-infra</a> |
+            <a href="../rules/sub-rules/qa-audit.yaml">qa-audit</a>
+        </li>
+    </ul>
+</div>
+
+<!-- ═══ RISC-V 标准 ═══ -->
+<div class="section">
+    <h2>RISC-V 标准文档</h2>
+    <ul class="list-group">
+        <li><a href="standards/riscv-specs/index.yaml">标准文档索引</a> <span class="file-path">docs/standards/riscv-specs/index.yaml</span></li>
+        <li><a href="standards/Profiles/">RISC-V Profiles</a> <span class="file-path">docs/standards/Profiles/</span></li>
+        <li><a href="standards/riscv-specs/isa/">ISA Specifications</a> <span class="file-path">docs/standards/riscv-specs/isa/</span></li>
+        <li><a href="standards/riscv-specs/extensions/">Extensions</a> <span class="file-path">docs/standards/riscv-specs/extensions/</span></li>
+    </ul>
+</div>
+
+<!-- ═══ GEM5 性能模型 ═══ -->
+<div class="section">
+    <h2>GEM5 性能模型</h2>
+    <ul class="list-group">
+        <li>RV64 配置: <a href="../perf/gem5-model/configs/simple-riscv-se.py">simple-riscv-se.py</a></li>
+        <li>RV32 配置: <a href="../perf/gem5-model/configs/simple-riscv-se-rv32.py">simple-riscv-se-rv32.py</a></li>
+        <li>Phase Specs: <a href="../perf/gem5-model/docs/phase-specs/">phase-specs/</a></li>
+    </ul>
+</div>
+
+<!-- ═══ 性能模型输出 (RTL 设计参考) ═══ -->
+<div class="section">
+    <h2>性能模型输出 — RTL 设计参考</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="../perf/gem5-model/docs/output/lumi-core-gem5-rtl-reference.md">RTL 参考说明书 (v3.3)</a></h3>
+            <p class="desc">基于 gem5 MinorCPU 的流水线参数规格、FU 配置、分支预测器、缓存参数、RV32 性能基线 (CoreMark 6.97 / Dhrystone 1.65) 及 RTL 实现建议。</p>
+        </div>
+        <div class="card">
+            <h3><a href="../perf/gem5-model/docs/output/pipeline-optimization-assessment.md">流水线优化评估报告 (v1.0)</a></h3>
+            <p class="desc">14 组参数扫描实验，定量分析性能/时序/总线/PPA 四维度优化空间。含级间功能重分配可行性分析。供 RTL 时序拉平与 PPA 优化参考。</p>
+        </div>
+    </div>
+    <ul class="list-group" style="margin-top:0.8rem;">
+        <li>参数扫描原始数据: <a href="../perf/gem5-model/gem5/results/sweep-opt/sweep_results.csv">sweep_results.csv</a> <span class="file-path">perf/gem5-model/gem5/results/sweep-opt/</span></li>
+        <li>扫描脚本: <a href="../perf/gem5-model/gem5/configs/sweep_pipeline_opt.py">sweep_pipeline_opt.py</a> <span class="file-path">perf/gem5-model/gem5/configs/</span></li>
+        <li>FPGA 规模估算: <a href="../perf/gem5-model/docs/output/fpga-sizing-estimate.md">fpga-sizing-estimate.md</a> <span class="file-path">perf/gem5-model/docs/output/</span></li>
+    </ul>
+</div>
+
+<div class="footer">
+    <p>Lumi-Core Documentation Map &mdash; Auto-maintained<br>
+    最后更新: 2026-07-02 &nbsp;|&nbsp; <a href="../AGENTS.md">AGENTS.md</a> &nbsp;|&nbsp; <a href="../rules/changelog.md">规则变更日志</a></p>
+</div>
+
+</body>
+</html>

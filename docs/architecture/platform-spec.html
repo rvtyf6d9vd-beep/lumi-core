@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 平台架构说明书</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        .cover .confidential{display:inline-block;border:1px solid #c62828;color:#c62828;padding:0.2rem 1rem;margin-top:1rem;font-size:0.85rem}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border);page-break-before:always}
+        h1:first-of-type{page-break-before:avoid}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        blockquote strong{color:#1565c0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn strong{color:#e65100}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:1rem;font-size:0.85rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.85rem}.nav a:hover{color:#fff}
+        .toc{background:#f8f9fa;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin:1rem 0 2rem}
+        .toc h2{margin-top:0;font-size:1.1rem}
+        .toc ol{margin-left:1.5rem}
+        .toc li{margin:0.3rem 0}
+        .toc a{color:var(--link)}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        @media print{body{font-size:11pt;max-width:none}.nav{display:none}h1{page-break-before:always}h1:first-of-type{page-break-before:avoid}table{page-break-inside:avoid}}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.ISA</a>
+    <a href="#ch3">3.特权架构</a>
+    <a href="#ch4">4.微架构</a>
+    <a href="#ch5">5.中断</a>
+    <a href="#ch6">6.调试</a>
+    <a href="#ch7">7.内存</a>
+    <a href="#ch8">8.安全/多核/DFT/时钟复位</a>
+    <a href="#ch9">9.需求清单</a>
+    <a href="#ch10">10.配置</a>
+</div>
+
+<div class="cover">
+    <h1>Lumi-Core 平台架构说明书</h1>
+    <p class="subtitle">Platform Architecture Specification</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-ARCH-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0</p>
+        <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>状态:</strong> 定版</p>
+        <p><strong>负责人:</strong> 架构组 (hw-design)</p>
+    </div>
+    <div class="confidential">CONFIDENTIAL &mdash; Lumi Project Internal</div>
+</div>
+
+<div class="toc">
+    <h2>目录</h2>
+    <ol>
+        <li><a href="#ch1">概述与范围</a>
+            <ul style="list-style:none;margin:0;padding-left:1em;font-size:0.9em">
+                <li><a href="#s15">1.5 顶层框图</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch2">指令集架构 (ISA)</a></li>
+        <li><a href="#ch3">特权架构 (Privileged Architecture)</a></li>
+        <li><a href="#ch4">微架构定义 (Micro-architecture)</a>
+            <ul style="list-style:none;margin:0;padding-left:1em;font-size:0.9em">
+                <li><a href="#s47">4.7 寄存器堆架构</a></li>
+                <li><a href="#s48">4.8 性能监控计数器</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch5">中断架构 (Interrupt Architecture)</a>
+            <ul style="list-style:none;margin:0;padding-left:1em;font-size:0.9em">
+                <li><a href="#s56">5.6 异常处理</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch6">调试与跟踪 (Debug &amp; Trace)</a></li>
+        <li><a href="#ch7">内存系统 (Memory System)</a>
+            <ul style="list-style:none;margin:0;padding-left:1em;font-size:0.9em">
+                <li><a href="#s78">7.8 PMA 检查器</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch8">安全扩展 / 多核 / DFT / 物理约束</a>
+            <ul style="list-style:none;margin:0;padding-left:1em;font-size:0.9em">
+                <li><a href="#s86">8.6 多核架构</a></li>
+                <li><a href="#s87">8.7 可测试性设计</a></li>
+                <li><a href="#s88">8.8 物理设计约束</a></li>
+                <li><a href="#s89">8.9 时钟与复位架构</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch9">硬件需求清单 (Hardware Requirements)</a></li>
+        <li><a href="#ch10">可配置特性列表 (Configurable Features)</a></li>
+    </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 概述与范围</h1>
+
+<h2>1.1 文档目的</h2>
+<p>本文档定义 Lumi-Core RISC-V 处理器 IP 的平台级架构，作为项目全局的技术基线。承上承接 PRD 产品需求，启下指导各模块的详细设计文档。所有章节内容均从 PRD <a href="../project/product-requirements.html">product-requirements.html</a> 需求条目追溯而来。</p>
+
+<h2>1.2 产品定位</h2>
+<p>Lumi-Core 是一款面向汽车电子、工业控制和嵌入式消费电子的高性能安全嵌入式 RISC-V 处理器 IP。架构定位为 RV32 顺序执行超标量处理器，对标 ARM Cortex-R52/M7 级别性能，同时具备完全可定制的开放架构优势。</p>
+
+<h2>1.3 设计约束 <span class="constraint">HARD CONSTRAINTS</span></h2>
+<ul>
+    <li><strong>顺序执行 (In-Order)</strong>：禁止乱序执行，保证确定性和可分析性</li>
+    <li><strong>发射宽度 &le; 3</strong>：最大三发射，不支持更宽配置</li>
+    <li><strong>流水线深度固定 8 级</strong>：不加深流水线</li>
+    <li><strong>XLEN = 32</strong>：仅 RV32 架构</li>
+    <li><strong>物理地址 32bit</strong>：Little-Endian 字节序</li>
+</ul>
+
+<h2>1.4 参考文档</h2>
+<table>
+    <tr><th>编号</th><th>文档</th><th>路径/链接</th></tr>
+    <tr><td>REF-01</td><td>Lumi-Core Profile</td><td><a href="../profile/Lumi-Core-Profile.html">docs/profile/Lumi-Core-Profile.html</a></td></tr>
+    <tr><td>REF-02</td><td>RISC-V ISA Specification</td><td><code>docs/standards/riscv-specs/isa/</code></td></tr>
+    <tr><td>REF-03</td><td>RISC-V Privileged Spec v1.12</td><td><code>docs/standards/riscv-specs/isa/riscv-privileged.pdf</code></td></tr>
+    <tr><td>REF-04</td><td>RISC-V Debug Spec V1.0.0</td><td><code>docs/standards/riscv-specs/extensions/riscv-debug-specification.pdf</code></td></tr>
+    <tr><td>REF-05</td><td>RISC-V Nexus Trace V1.0.0</td><td><code>docs/standards/riscv-specs/extensions/riscv-nexus-trace.pdf</code></td></tr>
+</table>
+
+<h2 id="s15">1.5 顶层框图 (Top-Level Block Diagram)</h2>
+<p>以下框图展示 Lumi-Core 处理器 IP 的顶层模块划分与外部接口：</p>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;">
+ ┌─────────────────────────── Lumi-Core ─────────────────────────────┐
+ │                                                                    │
+ │  ┌──────────┐   ┌───────┐   ┌──────┐   ┌───────────┐              │
+ │  │  Hart 0  │   │ CLIC  │   │ PLIC │   │ Debug Mod │              │
+ │  │ ┌──────┐ │   │(per-  │   │(plat │   │ (JTAG/    │              │
+ │  │ │FPU/VU│ │   │ hart) │   │ form)│   │  cJTAG)   │              │
+ │  │ └──────┘ │   └───┬───┘   └──┬───┘   └─────┬─────┘              │
+ │  │ ┌──────┐ │       │          │              │                    │
+ │  │ │ I/D  │ │       │          │              │                    │
+ │  │ │Cache │ │       │          │              │                    │
+ │  │ └──┬───┘ │       │          │              │                    │
+ │  └────┼─────┘       │          │              │                    │
+ │       │              │          │              │                    │
+ │  ┌────┴────┐   ┌─────┴────┐    │         ┌────┴────┐              │
+ │  │  ITCM   │   │  DTCM0/1 │    │         │  Trace  │              │
+ │  │ (0~128K)│   │ (0~128K) │    │         │ Encoder │              │
+ │  └─────────┘   └──────────┘    │         └────┬────┘              │
+ │                                │              │                    │
+ │  ══════════ AXI Interconnect ════════════════════════             │
+ │                                                                    │
+ └───┬───────────┬──────────┬───────────┬────────────────┘
+     │           │          │           │
+  AXI4 128bit  AXI4 32bit  AXI4      JTAG/cJTAG
+  (Main Bus)   (FFP)      (Trace Out) (Debug In)
+</pre>
+
+<h3>1.5.1 边界信号摘要</h3>
+<table>
+    <tr><th>信号组</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>AXI4_MAIN_*</code></td><td>Master</td><td>128bit 数据</td><td>主 AXI4 总线 (指令/数据/外设)</td></tr>
+    <tr><td><code>AXI4_FFP_*</code></td><td>Master</td><td>32bit 数据</td><td>FFP 外设接口 (Fast Peripheral Port)</td></tr>
+    <tr><td><code>AXI4_TRACE_*</code></td><td>Master</td><td>--</td><td>Trace 数据写出 (可选)</td></tr>
+    <tr><td><code>IRQ_EXT[N-1:0]</code></td><td>In</td><td>可配 (32~960)</td><td>PLIC 外部中断输入</td></tr>
+    <tr><td><code>IRQ_LOCAL[N-1:0]</code></td><td>In</td><td>可配 (1~240)</td><td>CLIC 本地中断输入</td></tr>
+    <tr><td><code>NMI</code></td><td>In</td><td>1</td><td>不可屏蔽中断 (Smrnmi)</td></tr>
+    <tr><td><code>reset_n</code></td><td>In</td><td>1</td><td>全局冷复位 (低有效)</td></tr>
+    <tr><td><code>clk_core</code></td><td>In</td><td>1</td><td>CPU 核心时钟</td></tr>
+    <tr><td><code>clk_bus</code></td><td>In</td><td>1</td><td>总线时钟 (可异步)</td></tr>
+    <tr><td><code>JTAG_*</code></td><td>Bidir</td><td>tck/tms/tdi/tdo/trst_n</td><td>调试/边界扫描接口</td></tr>
+    <tr><td><code>DMA_AXI_*</code></td><td>Slave</td><td>--</td><td>TCM 从接口 (DMA 访问)</td></tr>
+    <tr><td><code>sleep_req / sleep_ack</code></td><td>In / Out</td><td>1</td><td>低功耗状态控制</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 指令集架构 (ISA)</h1>
+
+<h2>2.1 基础架构</h2>
+<p>Lumi-Core 基于 <strong>RV32</strong> 整数基础指令集 (RV32I)，所有 Mandatory 扩展定义详见 <a href="../profile/Lumi-Core-Profile.html">Lumi-Core Profile</a>。</p>
+
+<h2>2.2 Mandatory 扩展清单</h2>
+<table>
+    <tr><th>扩展</th><th>描述</th><th>状态</th><th>来源 REQ-ID</th></tr>
+    <tr><td><code>RV32I</code></td><td>基础整数指令集 (40 条)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-001</span></td></tr>
+    <tr><td><code>M</code></td><td>整数乘除法 (MUL/DIV)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-002</span></td></tr>
+    <tr><td><code>A</code></td><td>原子操作 (AMO/LR/SC)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-003</span></td></tr>
+    <tr><td><code>F/D</code></td><td>单/双精度浮点 (FPU 可配置)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-004</span></td></tr>
+    <tr><td><code>C</code></td><td>压缩指令 (16bit)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-005</span></td></tr>
+    <tr><td><code>B</code></td><td>位操作 (Zba/Zbb/Zbc/Zbs)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-006</span></td></tr>
+    <tr><td><code>V</code></td><td>向量扩展 (VLEN=128/256, 含 zvfh/zvfbf)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-007</span></td></tr>
+    <tr><td><code>Zce</code></td><td>代码压缩 (Zca+Zcb+Zcmp+Zcmt)</td><td>Mandatory</td><td><span class="req-tag">LUMI-ISA-008</span></td></tr>
+    <tr><td><code>Zicsr</code></td><td>CSR 指令</td><td>Mandatory</td><td>--</td></tr>
+    <tr><td><code>Zicntr/Zihpm</code></td><td>计数器与性能监控</td><td>Mandatory</td><td>--</td></tr>
+    <tr><td><code>Zicbom/bop/boz</code></td><td>Cache Block 操作</td><td>Mandatory</td><td>--</td></tr>
+    <tr><td><code>Zicond</code></td><td>条件操作</td><td>Mandatory</td><td>--</td></tr>
+    <tr><td><code>Zimop/Zcmop</code></td><td>May-Be-Operations</td><td>Mandatory</td><td>--</td></tr>
+    <tr><td><code>Zifencei</code></td><td>指令栅栏</td><td>Mandatory</td><td>--</td></tr>
+</table>
+
+<h2>2.3 Optional 扩展</h2>
+<table>
+    <tr><th>扩展</th><th>描述</th><th>来源 REQ-ID</th></tr>
+    <tr><td><code>Vector Crypto</code></td><td>向量加密指令 (zvkg/zvkn)</td><td><span class="req-tag">LUMI-ISA-009</span></td></tr>
+    <tr><td><code>Packed SIMD</code></td><td>标量 SIMD 扩展 (v0.9.4)</td><td><span class="req-tag">LUMI-ISA-010</span></td></tr>
+    <tr><td><code>协处理器接口</code></td><td>自定义标量/矢量协处理器</td><td><span class="req-tag">LUMI-FEAT-005</span></td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 特权架构 (Privileged Architecture)</h1>
+
+<h2>3.1 特权模式</h2>
+<p>Lumi-Core 支持 RISC-V 标准三级特权模式：</p>
+<table>
+    <tr><th>模式</th><th>名称</th><th>用途</th><th>实现</th></tr>
+    <tr><td>M-mode</td><td>Machine Mode</td><td>固件/Bootloader、硬件管理</td><td>Must</td></tr>
+    <tr><td>S-mode</td><td>Supervisor Mode</td><td>RTOS/OS 内核</td><td>Must</td></tr>
+    <tr><td>U-mode</td><td>User Mode</td><td>应用程序</td><td>Must</td></tr>
+</table>
+
+<h2>3.2 PMP 物理内存保护</h2>
+<p>实现 RISC-V PMP (Physical Memory Protection) 机制，支持 Smepmp 增强模式。</p>
+<ul>
+    <li><strong>Region 数量</strong>：可配置（默认 8 个 Region）<span class="req-tag">LUMI-MEM-001</span></li>
+    <li><strong>匹配模式</strong>：TOR (Top of Range) / NA4 (Naturally aligned 4-byte) / NAPOT (Naturally aligned power-of-two)</li>
+    <li><strong>权限字段</strong>：R (Read) / W (Write) / X (Execute)，按 M/S/U-mode 分别配置</li>
+    <li><strong>Smepmp 增强</strong>：通过 <code>mseccfg</code> CSR 实现 M-mode 的 ePMP 配置
+        <ul>
+            <li><code>MML</code> (Machine Mode Lockdown)：锁定 M-mode 权限</li>
+            <li><code>MMWP</code> (Machine Mode Whitelist Policy)：默认拒绝 M-mode 未显式授权区域</li>
+            <li><code>RLB</code> (Rule Locking Bypass)：允许修改已锁定规则</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>3.3 CSR 架构</h2>
+<p>实现 RISC-V 标准 CSR 寄存器集，关键 CSR 包括：</p>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>描述</th></tr>
+    <tr><td><code>mstatus</code></td><td>0x300</td><td>Machine 状态寄存器</td></tr>
+    <tr><td><code>mtvec</code></td><td>0x305</td><td>Machine 陷阱向量基址</td></tr>
+    <tr><td><code>mepc</code></td><td>0x341</td><td>Machine 异常程序计数器</td></tr>
+    <tr><td><code>mcause</code></td><td>0x342</td><td>Machine 陷阱原因</td></tr>
+    <tr><td><code>mip</code></td><td>0x344</td><td>Machine 中断挂起</td></tr>
+    <tr><td><code>mie</code></td><td>0x304</td><td>Machine 中断使能</td></tr>
+    <tr><td><code>pmpcfg0~15</code></td><td>0x3A0~0x3AF</td><td>PMP 配置寄存器</td></tr>
+    <tr><td><code>pmpaddr0~63</code></td><td>0x3B0~0x3EF</td><td>PMP 地址寄存器</td></tr>
+    <tr><td><code>mseccfg</code></td><td>0x747</td><td>Smepmp 安全配置 (ePMP)</td></tr>
+    <tr><td><code>mnscratch</code></td><td>0x740</td><td>Smrnmi NMI 暂存</td></tr>
+    <tr><td><code>mnepc</code></td><td>0x741</td><td>Smrnmi NMI 异常 PC</td></tr>
+    <tr><td><code>mncause</code></td><td>0x742</td><td>Smrnmi NMI 原因</td></tr>
+    <tr><td><code>mnstatus</code></td><td>0x744</td><td>Smrnmi NMI 状态</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 微架构定义 (Micro-architecture)</h1>
+
+<h2>4.1 流水线概述</h2>
+<p>Lumi-Core 采用 <strong>8 级顺序执行超标量流水线</strong> <span class="req-tag">LUMI-PIPE-001</span>，设计目标是在 RV32 架构上达到 CoreMark &ge;5.5 CM/MHz <span class="req-tag">LUMI-IPC-001</span>。</p>
+
+<blockquote><strong>性能基线 (gem5 MinorCPU 实测):</strong> CoreMark Triple 5.54 CM/MHz (目标 5.5 已达成), IPC 约 1.80。编译器: GCC -O2 -funroll-loops。</blockquote>
+
+<h2>4.2 流水线级定义</h2>
+<table>
+    <tr><th>级</th><th>名称</th><th>功能描述</th><th>延迟</th></tr>
+    <tr><td>1</td><td>Fetch1 (F1)</td><td>PC 生成、分支预测目标计算、ICache 地址送出</td><td>1 cycle</td></tr>
+    <tr><td>2</td><td>Fetch2 (F2)</td><td>ICache 数据返回、指令预解码、压缩指令展开</td><td>1 cycle</td></tr>
+    <tr><td>3</td><td>Decode (D)</td><td>完整指令解码、寄存器读取、操作数准备</td><td>1 cycle</td></tr>
+    <tr><td>4</td><td>Issue (I)</td><td>指令发射到功能单元 (FU)、数据旁路、发射仲裁</td><td>1 cycle</td></tr>
+    <tr><td>5</td><td>Execute 1 (E1)</td><td>ALU 运算、地址计算、分支判断</td><td>1 cycle</td></tr>
+    <tr><td>6</td><td>Execute 2 (E2)</td><td>乘法/除法第 1 级、Load/Store 地址锁存、多周期指令</td><td>1 cycle</td></tr>
+    <tr><td>7</td><td>Memory (M)</td><td>DCache/TCM 访问、Load 数据返回、Store 提交</td><td>1 cycle</td></tr>
+    <tr><td>8</td><td>Writeback (W)</td><td>结果写回寄存器堆、异常/中断检测与提交</td><td>1 cycle</td></tr>
+</table>
+
+<h2>4.3 功能单元 (Functional Units)</h2>
+<table>
+    <tr><th>FU 类型</th><th>数量</th><th>操作延迟</th><th>支持操作</th></tr>
+    <tr><td>ALU</td><td>3</td><td>1 cycle</td><td>整数运算、比较、移位、位操作</td></tr>
+    <tr><td>MUL/DIV</td><td>1</td><td>MUL: 3 cycle / DIV: 迭代</td><td>整数乘除法</td></tr>
+    <tr><td>Load/Store (LSU)</td><td>1</td><td>Load: 1 cycle (TCM) / 1+ cycle (Cache)</td><td>内存访问、AMO</td></tr>
+    <tr><td>FPU (可选)</td><td>1</td><td>FADD: 4 cycle / FMUL: 4 cycle / FDIV: 迭代</td><td>单/双精度浮点</td></tr>
+    <tr><td>Branch</td><td>1</td><td>1 cycle</td><td>分支判断与跳转</td></tr>
+</table>
+
+<h2>4.4 分支预测</h2>
+<ul>
+    <li><strong>预测器</strong>：LTAGE (TAGE + Loop Predictor)，12 张 TAGE 表，minHist=4, maxHist=640, 总量 256Kbits</li>
+    <li><strong>BTB</strong>：SimpleBTB, 8192 条目</li>
+    <li><strong>RAS</strong>：Return Address Stack, 32 条目，支持函数调用快速返回</li>
+    <li><strong>误判率</strong>：TournamentBP 2.39% &rarr; LTAGE 显著降低，Loop Predictor 对紧密循环近乎零误判</li>
+    <li><strong>fetch1ToFetch2BackwardDelay</strong> = 0（已优化，消除分支惩罚）</li>
+</ul>
+
+<h2>4.5 发射策略</h2>
+<p>每个周期最多发射 <strong>3 条指令</strong>（Triple-issue），遵循以下规则：</p>
+<ul>
+    <li>指令按程序顺序发射到可用 FU</li>
+    <li>同一 FU 类型不可超额分配（如 3 条 ALU 指令可同时发射，但 4 条不可）</li>
+    <li>Load/Store 指令独占 LSU</li>
+    <li>当前主瓶颈：ALU FU contention（FU 饱和时性能受限）</li>
+</ul>
+
+<div class="warn"><strong>架构约束:</strong> 明确禁止乱序执行、超过三发射、更深流水线。这些是 Lumi-Core 的硬性设计约束，不可通过配置突破。</div>
+
+<h2>4.6 流水线冒险处理 (Pipeline Hazards)</h2>
+
+<h3>4.6.1 数据冒险 (Data Hazards)</h3>
+<table>
+    <tr><th>冒险类型</th><th>处理策略</th><th>代价</th></tr>
+    <tr><td>RAW (读后写)</td><td>全程数据旁路 (Forwarding/Bypass) 网络，E1&rarr;D, E2&rarr;D, M&rarr;D</td><td>0 cycle (旁路命中时)</td></tr>
+    <tr><td>Load-Use RAW</td><td>Load 数据在 M 级才可用，若后指令 D 级需要，插入 1 个 stall cycle</td><td>1 cycle stall</td></tr>
+    <tr><td>WAW (写后写)</td><td>顺序提交保证 WAW 不发生</td><td>0</td></tr>
+    <tr><td>WAR (写后读)</td><td>顺序执行自然消除 WAR</td><td>0</td></tr>
+</table>
+
+<h3>4.6.2 控制冒险 (Control Hazards)</h3>
+<ul>
+    <li><strong>分支解析</strong>：在 E1 级完成分支判断，误预测时 flush F2/D/I 级流水线</li>
+    <li><strong>误预测惩罚</strong>：3 cycle flush (F2 + D + I 级)</li>
+    <li><strong>LTAGE 优化</strong>：典型误判率 &lt;1%，Loop Predictor 对紧密循环近乎零误判</li>
+    <li><strong>JAL/JALR</strong>：JAL 在 F1 级即可解析目标，JALR 需等 E1 级寄存器值</li>
+</ul>
+
+<h3>4.6.3 结构冒险 (Structural Hazards)</h3>
+<ul>
+    <li><strong>FU 冲突</strong>：同一周期内同类 FU 请求超过可用数量时，发射级仲裁并 stall</li>
+    <li><strong>当前瓶颈</strong>：ALU FU contention (3x ALU 饱和时性能受限)</li>
+    <li><strong>LSU 独占</strong>：Load/Store 指令独占 LSU，同周期只允许 1 条内存访问</li>
+    <li><strong>MUL/DIV 多周期</strong>：乘法 3 cycle，除法迭代式，期间 FU 不可用</li>
+</ul>
+
+<h2 id="s47">4.7 寄存器堆架构 (Register File Architecture)</h2>
+<p>三发射超标量架构对寄存器堆提出多端口读写需求，以下是各寄存器堆规格：</p>
+
+<h3>4.7.1 整数寄存器堆 (Integer Register File)</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>说明</th></tr>
+    <tr><td>条目数</td><td>32 entry (x0~x31)</td><td>RISC-V RV32I 标准</td></tr>
+    <tr><td>位宽</td><td>32 bit</td><td>XLEN=32</td></tr>
+    <tr><td>读端口数</td><td><strong>3 read ports</strong></td><td>支持三发射同时读 3 个源操作数</td></tr>
+    <tr><td>写端口数</td><td><strong>2 write ports</strong></td><td>支持同时写回 2 个结果（多周期 FU 依赖)</td></tr>
+    <tr><td>x0 处理</td><td>读恒为 0，写忽略</td><td>节省 1 个写端口使能</td></tr>
+    <tr><td>读延迟</td><td>1 cycle (D 级读)</td><td>旁路网络可转发从 E1/E2/M/W 读出</td></tr>
+</table>
+
+<h3>4.7.2 浮点寄存器堆 (Floating-Point Register File)</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>说明</th></tr>
+    <tr><td>条目数</td><td>32 entry (f0~f31)</td><td>RISC-V F/D 扩展</td></tr>
+    <tr><td>位宽</td><td>64 bit</td><td>支持 FP64 双精度</td></tr>
+    <tr><td>读端口数</td><td>2 read ports</td><td>FPU 三操作数仅需 2 读</td></tr>
+    <tr><td>写端口数</td><td>1 write port</td><td>FPU 流水线深度允许 1 写</td></tr>
+    <tr><td>读延迟</td><td>1 cycle (D 级读)</td><td>FP 旁路网络</td></tr>
+    <tr><td>NaN-Boxing</td><td>32bit FP 值保存</td><td>FP32/FP64 共享寄存器堆</td></tr>
+</table>
+
+<h3>4.7.3 向量寄存器堆 (Vector Register File)</h3>
+<table>
+    <tr><th>参数</th><th>规格</th><th>说明</th></tr>
+    <tr><td>条目数</td><td>32 entry (v0~v31)</td><td>RVV 1.0 标准</td></tr>
+    <tr><td>位宽</td><td>VLEN 可配 (128/256 bit)</td><td>决定单条向量指令处理位宽</td></tr>
+    <tr><td>Bank 结构</td><td>多 Bank 分体 (默认 4 banks)</td><td>支持 LMUL&gt;1 的多组访存并行</td></tr>
+    <tr><td>读端口数</td><td>每 Bank 1 read port</td><td>支持跨 Bank 并行读取</td></tr>
+    <tr><td>写端口数</td><td>每 Bank 1 write port</td><td>跨 Bank 并行写入</td></tr>
+    <tr><td>读延迟</td><td>1 cycle (Bank 命中) / 多周期 (跨 Bank)</td><td>跨 Bank 读需 stall 或转发</td></tr>
+</table>
+
+<h3>4.7.4 CSR 寄存器堆 (CSR File)</h3>
+<ul>
+    <li><strong>容量</strong>：&le;4096 entry (12bit CSR 地址)</li>
+    <li><strong>访问端口</strong>：1 read + 1 write，与整数堆解耦</li>
+    <li><strong>关键 CSR 分布</strong>：mstatus/mtvec/mepc/mcause/mip/mie/CSR映射见 &sect;3.3</li>
+    <li><strong>旁路网络</strong>：CSR 写后立即可读，无冲突</li>
+</ul>
+
+<h2 id="s48">4.8 性能监控计数器 (HPM - Hardware Performance Monitor)</h2>
+<p>实现 RISC-V <strong>Zicntr</strong> (基础计数器) + <strong>Zihpm</strong> (性能监控) 扩展，提供软硬件协同的性能分析能力。</p>
+
+<h3>4.8.1 Zicntr CSR 映射</h3>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>cycle</code></td><td>0xC00</td><td>32 (低 32bit)</td><td>当前周期数 (用户可读)</td></tr>
+    <tr><td><code>time</code></td><td>0xC01</td><td>32</td><td>挂钟时间 (需 timer 中断配合)</td></tr>
+    <tr><td><code>instret</code></td><td>0xC02</td><td>32</td><td>已退休指令数</td></tr>
+    <tr><td><code>cycleh</code></td><td>0xC80</td><td>32 (高 32bit)</td><td>RV32 中 cycle 高 32bit</td></tr>
+    <tr><td><code>timeh</code></td><td>0xC81</td><td>32</td><td>time 高 32bit</td></tr>
+    <tr><td><code>instreth</code></td><td>0xC82</td><td>32</td><td>instret 高 32bit</td></tr>
+    <tr><td><code>mcycle</code></td><td>0xB00</td><td>32 (低)</td><td>M-mode 周期计数</td></tr>
+    <tr><td><code>minstret</code></td><td>0xB02</td><td>32</td><td>M-mode 退休指令数</td></tr>
+    <tr><td><code>mcycleh</code></td><td>0xB80</td><td>32 (高)</td><td>RV32 中 mcycle 高 32bit</td></tr>
+    <tr><td><code>minstreth</code></td><td>0xB82</td><td>32</td><td>minstret 高 32bit</td></tr>
+</table>
+
+<h3>4.8.2 Zihpm CSR 映射</h3>
+<p>Zihpm 提供 29 个 32bit 硬件事件计数器（mcycle/minstret 占 2 个，剩余 29 个）：</p>
+<table>
+    <tr><th>CSR 范围</th><th>数量</th><th>描述</th></tr>
+    <tr><td><code>mhpmcounter3~31</code></td><td>0xB03~0xB1F (29个)</td><td>M-mode 性能计数器 (RV32 低 32bit)</td></tr>
+    <tr><td><code>mhpmcounterh3~31</code></td><td>0xB83~0xB9F (29个)</td><td>RV32 高 32bit</td></tr>
+    <tr><td><code>mhpmevent3~31</code></td><td>0x323~0x33F (29个)</td><td>事件选择寄存器 (10bit 事件 ID)</td></tr>
+</table>
+
+<h3>4.8.3 HPM 事件定义 (Product Scope)</h3>
+<p>以下为产品交付范围的事件子集（完整事件表见设计文档）：</p>
+<table>
+    <tr><th>事件 ID</th><th>事件名称</th><th>来源 REQ-ID</th></tr>
+    <tr><td>0x00</td><td>CPU_CYCLES</td><td>= mcycle</td></tr>
+    <tr><td>0x01</td><td>INST_RETIRED</td><td>= minstret</td></tr>
+    <tr><td>0x02</td><td>BRANCH_MISS</td><td>分支误预测计数</td></tr>
+    <tr><td>0x03</td><td>I_CACHE_MISS</td><td>ICache 缺失计数</td></tr>
+    <tr><td>0x04</td><td>D_CACHE_MISS</td><td>DCache 缺失计数</td></tr>
+    <tr><td>0x05</td><td>EXCEPTION_TAKEN</td><td>异常处理计数</td></tr>
+    <tr><td>0x06</td><td>IRQ_TAKEN</td><td>中断处理计数</td></tr>
+    <tr><td>0x07</td><td>CSR_READ / CSR_WRITE</td><td>CSR 访问计数</td></tr>
+</table>
+<blockquote><strong>说明:</strong> 完整事件定义随 RTL 设计展开，本节列出 M1 阶段确认的核心事件。M2 阶段补充 FPU/Vector 细分事件。</blockquote>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 中断架构 (Interrupt Architecture)</h1>
+
+<h2>5.1 总体方案：两层架构</h2>
+<p>Lumi-Core 采用 <strong>ISA 扩展层 + 平台控制器层</strong> 的中断两层架构：</p>
+
+<table>
+    <tr><th>层次</th><th>组件</th><th>作用</th><th>来源 REQ-ID</th></tr>
+    <tr><td>ISA 扩展层</td><td>CLIC (Smclic/Ssclic)</td><td>Hart 内部中断接收/响应机制</td><td><span class="req-tag">LUMI-SYS-002</span></td></tr>
+    <tr><td>平台控制器层</td><td>PLIC</td><td>外部中断源聚合、优先级仲裁、多 hart 路由</td><td><span class="req-tag">LUMI-SYS-001</span></td></tr>
+</table>
+
+<blockquote>
+<strong>设计决策:</strong>
+<ul>
+    <li>CLIC &ne; 单核：CLIC 是 per-hart ISA 扩展，不提供跨核路由</li>
+    <li>PLIC 是平台级 IP（非 ISA 扩展），提供多核有线中断分发</li>
+    <li>两者互补而非替代</li>
+    <li>不选择 AIA（APLIC+IMSIC）：面积大、生态较新，不适合嵌入式实时场景</li>
+    <li>RT-Europa 合规：ISA 扩展层选 CLIC 即满足 Profile 要求</li>
+</ul>
+</blockquote>
+
+<h2>5.2 中断信号路径</h2>
+<p><code>外部中断源 &rarr; PLIC（仲裁/路由）&rarr; MEIP/SEIP 信号 &rarr; CLIC（每 Hart）&rarr; Hart 核心</code></p>
+
+<h2>5.3 CLIC (Core-Local Interrupt Controller)</h2>
+<h3>5.3.1 功能概述</h3>
+<ul>
+    <li><strong>中断数范围</strong>：1 ~ 240（可配置，默认 16）</li>
+    <li><strong>per-hart 实例</strong>：每个 Hart 独立 CLIC 实例</li>
+    <li><strong>中断类型</strong>：软件中断、定时器中断、外部本地中断</li>
+    <li><strong>优先级仲裁</strong>：多级优先级，支持抢占</li>
+    <li><strong>硬件向量中断</strong>：直接跳转到中断处理入口，无需软件查表</li>
+</ul>
+
+<h3>5.3.2 CLIC CSR 空间</h3>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>描述</th></tr>
+    <tr><td><code>mintstatus</code></td><td>0xFB1</td><td>中断状态 (当前中断级/子级/处理状态)</td></tr>
+    <tr><td><code>mintthresh</code></td><td>0x347</td><td>中断阈值</td></tr>
+    <tr><td><code>mclick</code></td><td>0xFB0</td><td>CLIC 中断 claim/complete</td></tr>
+</table>
+
+<h3>5.3.3 性能要求</h3>
+<p>快速中断延时 &le;16 时钟周期 <span class="req-tag">LUMI-SYS-003</span>：从中断信号到第一条中断处理指令执行。</p>
+
+<h2>5.4 PLIC (Platform-Level Interrupt Controller)</h2>
+<h3>5.4.1 功能概述</h3>
+<ul>
+    <li><strong>中断数范围</strong>：32 ~ 960（必须为 32 的 2 的幂次倍数，默认 32）</li>
+    <li><strong>优先级</strong>：7 级优先级（0=禁用, 1=最低, 7=最高）</li>
+    <li><strong>路由</strong>：支持多 Hart 路由，通过 enable 位选择目标</li>
+    <li><strong>Claim/Complete</strong>：标准 PLIC 协议</li>
+</ul>
+
+<h3>5.4.2 PLIC 寄存器映射</h3>
+<table>
+    <tr><th>偏移</th><th>名称</th><th>描述</th></tr>
+    <tr><td>0x000000</td><td>priority</td><td>中断源优先级 (每个源 4 字节)</td></tr>
+    <tr><td>0x001000</td><td>pending</td><td>中断挂起位</td></tr>
+    <tr><td>0x002000</td><td>enable</td><td>中断使能 (per-context)</td></tr>
+    <tr><td>0x200000</td><td>threshold/claim</td><td>阈值与 claim (per-context)</td></tr>
+</table>
+
+<h2>5.5 中断信号流向 (Interrupt Signal Flow)</h2>
+<p>完整的中断传递路径如下：</p>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.88rem;overflow-x:auto;">
+ 外部设备 (UART, Timer, GPIO, ...)
+      │ IRQ[0..N-1]
+      ▼
+ ┌────────────┐
+ │   PLIC     │  ● 优先级仲裁 (7 级)
+ │ (平台级) │  ● 多 Hart 路由 (enable 位)
+ │            │  ● Threshold 过滤
+ └────┬─────┘
+      │ MEIP / SEIP (per-hart 信号)
+      ▼
+ ┌────────────┐
+ │   CLIC     │  ● Per-hart 实例
+ │ (ISA 层) │  ● 本地中断 + PLIC 传入的外部中断
+ │            │  ● 硬件向量中断 (mtvec vectored)
+ │            │  ● 优先级抢占
+ └────┬─────┘
+      │ 中断请求 (interrupt pending + enabled)
+      ▼
+ ┌────────────┐
+ │ Hart 核心 │  ● 当前指令完成后进入中断
+ │            │  ● mepc/mcause/mtval 保存上下文
+ │            │  ● 跳转到 mtvec 入口
+ └────────────┘
+</pre>
+
+<h3>5.5.1 中断响应时序</h3>
+<table>
+    <tr><th>步骤</th><th>流水线级</th><th>动作</th></tr>
+    <tr><td>1. 中断检测</td><td>W (Writeback)</td><td>检查 mip &amp; mie，判断是否有 pending+enabled 中断</td></tr>
+    <tr><td>2. 当前指令完成</td><td>W</td><td>当前指令提交，不取新指令</td></tr>
+    <tr><td>3. 上下文保存</td><td>--</td><td>mepc=pc+4, mcause=interrupt_id, mstatus.MIE&rarr;mstatus.MPIE, mstatus.MIE=0</td></tr>
+    <tr><td>4. 跳转</td><td>F1</td><td>PC = mtvec.BASE + ( vectored ? 4*mcause : 0 )</td></tr>
+    <tr><td>5. 首条处理指令</td><td>F1</td><td>开始取中断处理代码</td></tr>
+</table>
+
+<div class="warn"><strong>中断延时目标:</strong> 从信号到达到第一条中断处理指令执行 &le;16 时钟周期 <span class="req-tag">LUMI-SYS-003</span>。其中步骤 3~5 硬件流水线约 5~8 cycle，剩余预算用于 CLIC 仲裁延迟。</div>
+
+<h3>5.5.2 嵌套中断规则</h3>
+<ul>
+    <li>同优先级中断不嵌套，按 ID 顺序仲裁</li>
+    <li>高优先级中断可抢占低优先级 (CLIC 抢占模式)</li>
+    <li>中断处理中 mstatus.MIE=0，禁止同级/低级中断</li>
+    <li>软件可通过在中断处理中手动设 mstatus.MIE=1 允许高优先级抢占</li>
+</ul>
+
+<h2 id="s56">5.6 异常处理架构 (Exception Handling)</h2>
+<p>异常与中断均产生陷阱 (trap)，但异常是<strong>同步事件</strong>（与特定指令关联），中断是<strong>异步事件</strong>（与指令流无直接关联）。本节定义异常处理机制。</p>
+
+<h3>5.6.1 mcause 异常原因表</h3>
+<p>异常原因编码到 <code>mcause</code> 寄存器，最高位 Interrupt=0 表示异常：</p>
+<table>
+    <tr><th>mcause</th><th>名称</th><th>同步性</th><th>描述</th></tr>
+    <tr><td>0</td><td>Instruction Address Misaligned</td><td>同步</td><td>取指地址未 4 字节对齐</td></tr>
+    <tr><td>1</td><td>Instruction Access Fault</td><td>同步</td><td>取指访问违例 (PMP 拒绝)</td></tr>
+    <tr><td>2</td><td>Illegal Instruction</td><td>同步</td><td>未知/未实现指令</td></tr>
+    <tr><td>3</td><td>Breakpoint</td><td>同步</td><td>EBREAK 断点指令</td></tr>
+    <tr><td>4</td><td>Load Address Misaligned</td><td>同步</td><td>Load 地址未对齐</td></tr>
+    <tr><td>5</td><td>Load Access Fault</td><td>同步</td><td>Load 访问违例</td></tr>
+    <tr><td>6</td><td>Store/AMO Address Misaligned</td><td>同步</td><td>Store/AMO 地址未对齐</td></tr>
+    <tr><td>7</td><td>Store/AMO Access Fault</td><td>同步</td><td>Store/AMO 访问违例</td></tr>
+    <tr><td>8</td><td>Environment Call from U-mode</td><td>同步</td><td>ECALL (U-mode)</td></tr>
+    <tr><td>11</td><td>Environment Call from M-mode</td><td>同步</td><td>ECALL (M-mode)</td></tr>
+    <tr><td>12</td><td>Instruction Page Fault</td><td>同步</td><td>取指页面错误（未使用）</td></tr>
+    <tr><td>13</td><td>Load Page Fault</td><td>同步</td><td>Load 页面错误（未使用）</td></tr>
+    <tr><td>15</td><td>Store/AMO Page Fault</td><td>同步</td><td>Store/AMO 页面错误（未使用）</td></tr>
+</table>
+
+<h3>5.6.2 陷阱委托 (Trap Delegation) CSR</h3>
+<table>
+    <tr><th>CSR</th><th>地址</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>medeleg</code></td><td>0x302</td><td>32</td><td>M-mode 异常委托位图（bit 对应 mcause 异常码）</td></tr>
+    <tr><td><code>mideleg</code></td><td>0x303</td><td>32</td><td>M-mode 中断委托位图</td></tr>
+    <tr><td><code>sedeleg</code></td><td>0x102</td><td>32</td><td>S-mode 异常委托位图（未使用)</td></tr>
+    <tr><td><code>sideleg</code></td><td>0x103</td><td>32</td><td>S-mode 中断委托位图</td></tr>
+</table>
+<blockquote><strong>委托语义:</strong> 异常/中断被委托到 S-mode 时，<code>scause</code>/<code>sepc</code>/<code>stval</code>/<code>sstatus</code> 被写入，PC 跳转到 <code>stvec</code>。委托使能受 <code>mstatus.SUM</code>/<code>mstatus.MXR</code> 控制。</blockquote>
+
+<h3>5.6.3 异常优先级排序</h3>
+<p>同一周期内可能存在多个待处理异常/中断，优先级规则如下：</p>
+<table>
+    <tr><th>优先级</th><th>类型</th><th>说明</th></tr>
+    <tr><td>1 (最高)</td><td>Reset</td><td>复位不可抢占</td></tr>
+    <tr><td>2</td><td>同步异常 (本指令)</td><td>立即处理，不允许推迟</td></tr>
+    <tr><td>3</td><td>NMI (Smrnmi)</td><td>高优先级中断</td></tr>
+    <tr><td>4</td><td>外部中断 (PLIC → MEIP)</td><td>高优先级可抢占低优先级</td></tr>
+    <tr><td>5</td><td>CLIC 本地中断</td><td>本地中断源</td></tr>
+    <tr><td>6</td><td>软件中断 (MSI)</td><td>软件主动触发</td></tr>
+    <tr><td>7 (最低)</td><td>定时器中断</td><td>MTIP</td></tr>
+</table>
+
+<h3>5.6.4 陷阱值寄存器 (tval)</h3>
+<ul>
+    <li><strong>mtval (0x343)</strong>：保存导致异常的附加信息
+        <ul>
+            <li>地址未对齐异常：mtval = 失败地址</li>
+            <li>访问违例：mtval = 失败地址</li>
+            <li>非法指令：mtval = 指令编码</li>
+            <li>其他异常：mtval = 0</li>
+        </ul>
+    </li>
+    <li><strong>stval (0x143)</strong>：S-mode 委托异常时使用</li>
+    <li><strong>mnval (0x749)</strong>：Smrnmi NMI 触发的附加信息</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 调试与跟踪 (Debug &amp; Trace)</h1>
+
+<h2>6.1 RISC-V Debug</h2>
+<p>实现 RISC-V Debug V1.0.0 规范 <span class="req-tag">LUMI-FEAT-001</span>：</p>
+<ul>
+    <li><strong>Debug Module</strong>：JTAG 访问的调试模块，支持断点、单步、寄存器/内存访问</li>
+    <li><strong>Trigger Module</strong>：硬件断点/观察点</li>
+    <li><strong>Abstract Commands</strong>：通过 Debug Module 执行抽象命令</li>
+    <li><strong>Program Buffer</strong>：调试程序缓冲区</li>
+</ul>
+
+<h2>6.2 RISC-V Nexus Trace</h2>
+<p>实现 RISC-V Nexus Trace V1.0.0 规范 <span class="req-tag">LUMI-FEAT-002</span>：</p>
+<ul>
+    <li><strong>Trace Encoder</strong>：指令流压缩编码</li>
+    <li><strong>AXI4 写出接口</strong>：跟踪数据通过 AXI4 接口写出 <span class="req-tag">LUMI-FEAT-003</span>（可配置）</li>
+    <li><strong>Trace 模式</strong>：Instruction Trace / Data Trace（可分别使能）</li>
+</ul>
+
+<h2>6.3 Debug Module 寄存器映射</h2>
+<p>Debug Module 通过 DMI (Debug Module Interface) 访问，DMI 地址空间如下：</p>
+<table>
+    <tr><th>DMI 地址</th><th>寄存器</th><th>描述</th></tr>
+    <tr><td>0x04</td><td><code>data0</code></td><td>Abstract Data 寄存器 (数据传递)</td></tr>
+    <tr><td>0x10</td><td><code>dmcontrol</code></td><td>Debug Module 控制 (ndmreset/dmactive/hartreset)</td></tr>
+    <tr><td>0x11</td><td><code>dmstatus</code></td><td>Debug Module 状态 (allrunning/allhalted/...)</td></tr>
+    <tr><td>0x12</td><td><code>hartinfo</code></td><td>Hart 信息 (nscratch/dataaccess/...)</td></tr>
+    <tr><td>0x13</td><td><code>haltsum0</code></td><td>Halt 摘要 (每 bit 表示一个 hart 的 halt 状态)</td></tr>
+    <tr><td>0x17</td><td><code>abstractcs</code></td><td>Abstract Command 状态 (cmderr/busy/datacount)</td></tr>
+    <tr><td>0x18</td><td><code>command</code></td><td>Abstract Command 寄存器 (访问寄存器/内存)</td></tr>
+    <tr><td>0x19</td><td><code>abstractauto</code></td><td>Abstract Command 自动执行触发</td></tr>
+    <tr><td>0x20</td><td><code>progbuf0~7</code></td><td>Program Buffer (调试程序缓冲区, 8 字)</td></tr>
+    <tr><td>0x38</td><td><code>sbcs</code></td><td>System Bus Access 控制/状态</td></tr>
+    <tr><td>0x39~0x3C</td><td><code>sbaddress/sbdata</code></td><td>System Bus 地址/数据</td></tr>
+</table>
+
+<h3>6.3.1 JTAG TAP 信号</h3>
+<table>
+    <tr><th>信号</th><th>方向</th><th>位宽</th><th>描述</th></tr>
+    <tr><td><code>tck</code></td><td>In</td><td>1</td><td>JTAG 测试时钟</td></tr>
+    <tr><td><code>tms</code></td><td>In</td><td>1</td><td>JTAG 测试模式选择</td></tr>
+    <tr><td><code>tdi</code></td><td>In</td><td>1</td><td>JTAG 测试数据输入</td></tr>
+    <tr><td><code>tdo</code></td><td>Out</td><td>1</td><td>JTAG 测试数据输出</td></tr>
+    <tr><td><code>trst_n</code></td><td>In</td><td>1</td><td>JTAG 测试复位 (低有效)</td></tr>
+</table>
+
+<h3>6.3.2 Abstract Command 类型</h3>
+<ul>
+    <li><strong>Access Register (cmdtype=0)</strong>：读写 CSR/GPR，通过 <code>aarsize</code> 指定 32/64bit</li>
+    <li><strong>Quick Access (cmdtype=1)</strong>：快速内存访问，无需 halt hart</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 内存系统 (Memory System)</h1>
+
+<h2>7.1 内存层次</h2>
+<p><code>寄存器堆 &rarr; L1 Cache (I/D) &rarr; TCM (I/D) &rarr; AXI 总线 &rarr; 外部存储</code></p>
+
+<h2>7.2 TCM (Tightly Coupled Memory)</h2>
+<ul>
+    <li><strong>容量</strong>：0 ~ 128KB 可配置，必须为 8KB 的 2 的幂次倍数 <span class="req-tag">LUMI-MEM-002</span></li>
+    <li><strong>区域划分</strong>：代码单一区域 + 数据双区域（奇偶地址）<span class="req-tag">LUMI-MEM-003</span></li>
+    <li><strong>访问延迟</strong>：0 拍延迟 / 1 拍延迟两种模式 <span class="req-tag">LUMI-MEM-004</span></li>
+    <li><strong>ECC 保护</strong>：可选配置，单 bit 翻转可检测并纠正 <span class="req-tag">LUMI-MEM-005</span></li>
+    <li><strong>从接口</strong>：DMA 可通过从接口读写 TCM 数据 <span class="req-tag">LUMI-IF-003</span></li>
+</ul>
+
+<h2>7.3 L1 Cache</h2>
+<ul>
+    <li><strong>容量</strong>：I-Cache / D-Cache 独立配置，可选 8KB / 16KB / 32KB <span class="req-tag">LUMI-MEM-006</span></li>
+    <li><strong>ECC 保护</strong>：可选配置 <span class="req-tag">LUMI-MEM-007</span></li>
+    <li><strong>一致性</strong>：单核内 I/D Cache 无一致性问题；多核场景需软件/硬件一致性协议</li>
+</ul>
+
+<h2>7.4 物理地址空间</h2>
+<ul>
+    <li><strong>地址宽度</strong>：32bit 物理寻址 <span class="req-tag">LUMI-SYS-006</span></li>
+    <li><strong>字节序</strong>：Little-Endian <span class="req-tag">LUMI-SYS-007</span></li>
+</ul>
+
+<h2>7.5 AXI 总线接口</h2>
+<table>
+    <tr><th>接口</th><th>协议</th><th>位宽</th><th>来源 REQ-ID</th></tr>
+    <tr><td>主总线</td><td>AMBA4 AXI4</td><td>128bit</td><td><span class="req-tag">LUMI-IF-001</span></td></tr>
+    <tr><td>FFP 外设接口</td><td>AXI4</td><td>32bit</td><td><span class="req-tag">LUMI-IF-002</span></td></tr>
+    <tr><td>TCM 从接口</td><td>DMA</td><td>--</td><td><span class="req-tag">LUMI-IF-003</span></td></tr>
+    <tr><td>Trace 写出</td><td>AXI4</td><td>--</td><td><span class="req-tag">LUMI-FEAT-003</span></td></tr>
+</table>
+
+<h2>7.6 全局内存地址映射 (Memory Map)</h2>
+<p>以下是 Lumi-Core 参考平台的默认地址分配，实际地址可通过 AXI 互连配置调整：</p>
+<table>
+    <tr><th>起始地址</th><th>结束地址</th><th>大小</th><th>设备/区域</th><th>属性</th></tr>
+    <tr><td><code>0x0000_0000</code></td><td><code>0x0000_7FFF</code></td><td>32KB</td><td>ITCM (代码 TCM)</td><td>可执行, 0/1拍延迟</td></tr>
+    <tr><td><code>0x0001_0000</code></td><td><code>0x0001_7FFF</code></td><td>32KB</td><td>DTCM0 (数据 TCM 偶区)</td><td>读写, 0/1拍延迟</td></tr>
+    <tr><td><code>0x0002_0000</code></td><td><code>0x0002_7FFF</code></td><td>32KB</td><td>DTCM1 (数据 TCM 奇区)</td><td>读写, 0/1拍延迟</td></tr>
+    <tr><td><code>0x8000_0000</code></td><td><code>0xBFFF_FFFF</code></td><td>1GB</td><td>DDR 外部内存</td><td>Cacheable, AXI</td></tr>
+    <tr><td><code>0xC000_0000</code></td><td><code>0xC000_0FFF</code></td><td>4KB</td><td>CLIC (每 Hart)</td><td>MMIO, 不可缓存</td></tr>
+    <tr><td><code>0xC000_1000</code></td><td><code>0xC000_1FFF</code></td><td>4KB</td><td>PLIC</td><td>MMIO, 不可缓存</td></tr>
+    <tr><td><code>0xC000_2000</code></td><td><code>0xC000_2FFF</code></td><td>4KB</td><td>Debug Module</td><td>MMIO, JTAG 访问</td></tr>
+    <tr><td><code>0xC000_3000</code></td><td><code>0xC000_3FFF</code></td><td>4KB</td><td>Trace Encoder</td><td>MMIO, AXI4 写出</td></tr>
+    <tr><td><code>0xF000_0000</code></td><td><code>0xF000_FFFF</code></td><td>64KB</td><td>FFP 外设接口</td><td>MMIO, AXI 32bit</td></tr>
+</table>
+<blockquote><strong>地址说明:</strong> TCM 容量和地址范围随配置变化。以上为默认 32KB 配置。实际项目中地址映射应在 SoC 集成时根据具体外设配置确定。</blockquote>
+
+<h2>7.7 AXI 信号列表 (主要信号)</h2>
+<table>
+    <tr><th>信号</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>AWADDR[31:0]</code></td><td>Master&rarr;Slave</td><td>写地址</td></tr>
+    <tr><td><code>AWLEN[7:0]</code></td><td>Master&rarr;Slave</td><td>Burst 长度 (0~255)</td></tr>
+    <tr><td><code>AWVALID / AWREADY</code></td><td>M&rarr;S / S&rarr;M</td><td>写地址握手</td></tr>
+    <tr><td><code>WDATA[127:0]</code></td><td>Master&rarr;Slave</td><td>写数据 (128bit 主总线)</td></tr>
+    <tr><td><code>WSTRB[15:0]</code></td><td>Master&rarr;Slave</td><td>写数据字节使能</td></tr>
+    <tr><td><code>BRESP[1:0]</code></td><td>Slave&rarr;Master</td><td>写响应 (OKAY/EXOKAY/SLVERR/DECERR)</td></tr>
+    <tr><td><code>ARADDR[31:0]</code></td><td>Master&rarr;Slave</td><td>读地址</td></tr>
+    <tr><td><code>RDATA[127:0]</code></td><td>Slave&rarr;Master</td><td>读数据</td></tr>
+    <tr><td><code>RRESP[1:0]</code></td><td>Slave&rarr;Master</td><td>读响应</td></tr>
+</table>
+
+<h2 id="s78">7.8 PMA 检查器 (Physical Memory Attributes)</h2>
+<p>PMA (Physical Memory Attributes) 检查器为 Lumi-Core 提供<strong>按区域划分的内存属性控制</strong>，与 PMP 互为补充：</p>
+<ul>
+    <li><strong>PMA 作用域</strong>：按<strong>物理地址范围</strong>静态定义，不依赖 CSR 配置</li>
+    <li><strong>PMP 作用域</strong>：CSR 动态配置，由软件管理</li>
+    <li><strong>联合检查</strong>：访问必须同时通过 PMA + PMP 权限检查</li>
+</ul>
+
+<h3>7.8.1 内存属性 (Memory Attributes) <span class="req-tag">LUMI-MEM-009</span></h3>
+<table>
+    <tr><th>属性</th><th>含义</th><th>检查动作</th></tr>
+    <tr><td><code>cacheable</code></td><td>可缓存</td><td>是否允许 L1 Cache 缓存访问</td></tr>
+    <tr><td><code>executable</code></td><td>可执行</td><td>取指访问是否合法 (NX 位)</td></tr>
+    <tr><td><code>idempotent</code></td><td>幂等</td><td>读副作用检测 (用于推测读取)</td></tr>
+    <tr><td><code>amo_supported</code></td><td>支持原子操作</td><td>AMO 访问合法检查</td></tr>
+    <tr><td><code>misaligned_ok</code></td><td>允许未对齐</td><td>是否触发未对齐异常</td></tr>
+    <tr><td><code>main_memory</code></td><td>主存访问</td><td>用于 fence 顺序语义</td></tr>
+    <tr><td><code>io</code></td><td>MMIO I/O 访问</td><td>走 MMIO 路径（不缓存)</td></tr>
+</table>
+
+<h3>7.8.2 PMA 配置方式</h3>
+<p>Lumi-Core 采用<strong>硬连线 PMA</strong>方案（与 SoC 地址映射保持一致）：</p>
+<ul>
+    <li><strong>默认 PMA 映射</strong>：按 &sect;7.6 全局地址映射静态编码
+        <ul>
+            <li><code>0x0000_0000~0x0002_FFFF</code> (TCM)：cacheable=false, executable=true, main_memory=true</li>
+            <li><code>0x8000_0000~0xBFFF_FFFF</code> (DDR)：cacheable=true, executable=true, main_memory=true</li>
+            <li><code>0xC000_0000~0xF000_FFFF</code> (MMIO)：cacheable=false, executable=false, io=true</li>
+        </ul>
+    </li>
+    <li><strong>可配 PMA</strong>（选项）：提供 <code>cfgaddr (0xFD0) / cfgdata (0xFD1)</code> CSR 用于运行时 PMA 定制（高阶客户使用）</li>
+    <li><strong>PMA 越界</strong>：访问未配置 PMA 区域时触发 access fault 异常</li>
+</ul>
+
+<h3>7.8.3 gem5 参考实现</h3>
+<p>Lumi-Core 性能评估模型可参考 gem5 现有 PMA 实现：</p>
+<ul>
+    <li><strong>源码位置</strong>：<code>perf/gem5-model/gem5/src/arch/riscv/pma_checker.hh</code></li>
+    <li><strong>检查逻辑</strong>：使用区间树高效检索地址对应 PMA 条目</li>
+    <li><strong>验证复现</strong>：本架构定义的 PMA 属性可直接映射到 gem5 <code>PMAChecker</code> 参数</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 安全扩展 / 多核架构 / DFT / 物理设计约束</h1>
+
+<h2>8.1 Smrnmi (Resumable NMI)</h2>
+<p>实现不可屏蔽中断 (NMI) 支持：</p>
+<ul>
+    <li><strong>NMI 入口</strong>：<code>mtvec</code> 中 NMI 向量地址</li>
+    <li><strong>NMI CSR</strong>：<code>mnscratch</code> (0x740), <code>mnepc</code> (0x741), <code>mncause</code> (0x742), <code>mnstatus</code> (0x744)</li>
+    <li><strong>可恢复</strong>：NMI 处理完成后通过 <code>mnret</code> 指令恢复到被中断上下文</li>
+</ul>
+
+<h2>8.2 低功耗管理</h2>
+<ul>
+    <li><strong>WFI 指令</strong>：Wait For Interrupt，进入低功耗等待 <span class="req-tag">LUMI-SYS-004</span></li>
+    <li><strong>WRS 指令</strong>：Wait for Reservation Set，等待内存预约</li>
+    <li><strong>多时钟域/电压域</strong>：支持多个电压域的功耗管理 <span class="req-tag">LUMI-SYS-005</span></li>
+    <li><strong>低功耗状态接口</strong>：可配置 CPU 进入睡眠或深度睡眠 <span class="req-tag">LUMI-SYS-008</span></li>
+</ul>
+
+<h2>8.3 复位与启动序列 (Reset &amp; Boot)</h2>
+
+<h3>8.3.1 复位类型</h3>
+<table>
+    <tr><th>复位类型</th><th>触发源</th><th>行为</th></tr>
+    <tr><td>冷复位 (Cold Reset)</td><td>外部 <code>reset_n</code> 信号</td><td>全模块复位，PC 从复位向量开始</td></tr>
+    <tr><td>暖复位 (Warm Reset)</td><td>Debug Module <code>ndmreset</code></td><td>仅 Hart 复位，TCM/Cache 内容保留</td></tr>
+    <tr><td>NMI</td><td>外部 <code>nmi</code> 信号</td><td>不可屏蔽中断，通过 Smrnmi 机制处理</td></tr>
+</table>
+
+<h3>8.3.2 启动序列</h3>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.88rem;">
+ 1. reset_n 拉低 → 全模块复位
+ 2. reset_n 拉高 → Hart 从复位向量 (PC=0x0000_0000, ITCM) 开始执行
+ 3. M-mode 初始化:
+    - mstatus.MPP = M-mode
+    - mstatus.MIE = 0 (中断禁用)
+    - mtvec = 中断向量表地址 (vectored 模式)
+    - PMP 配置 (Smepmp: mseccfg.MML=1, MMWP=1)
+ 4. TCM 初始化: ITCM/DTCM 加载 Bootloader
+ 5. Cache 使能: I-Cache/D-Cache 开启
+ 6. 跳转到 Bootloader (TCM 或外部存储)
+ 7. 可选: 切换到 S-mode (RTOS) 或 U-mode (应用)
+</pre>
+
+<h2>8.4 NMI 处理流程 (Smrnmi)</h2>
+<p>NMI (不可屏蔽中断) 通过 Smrnmi 扩展实现可恢复的 NMI 处理：</p>
+
+<h3>8.4.1 NMI 进入流程</h3>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.88rem;">
+ NMI 信号到达
+      │
+      ▼
+ 1. mnepc = 当前 PC (被中断指令)
+ 2. mncause = NMI 原因码
+ 3. mnstatus.NMPP = 当前特权模式 (M/S/U)
+ 4. mnstatus.NMP = mstatus.MPP 的当前值
+ 5. mstatus.MPP = M-mode (强制切换到 M-mode)
+ 6. mstatus.MIE = 0 (禁止所有中断)
+ 7. mnscratch = 临时工作区 (软件管理)
+ 8. PC = mtvec.NMI_VECTOR (NMI 入口地址)
+</pre>
+
+<h3>8.4.2 NMI 返回 (mnret)</h3>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.88rem;">
+ mnret 执行:
+ 1. PC = mnepc (恢复被中断的 PC)
+ 2. mstatus.MPP = mnstatus.NMPP (恢复特权模式)
+ 3. mstatus.MIE = 恢复 (根据 NMPP 判断)
+ 注: NMI 与普通中断互斥，NMI 处理期间不接受新 NMI
+</pre>
+
+<h2>8.5 信息安全机制</h2>
+
+<h3>8.5.1 安全调试策略 <span class="req-tag">LUMI-SEC-003</span></h3>
+<p>调试安全机制基于 RISC-V Debug V1.0.0 规范，提供多级安全调试控制：</p>
+<ul>
+    <li><strong>Debug Lock/Unlock</strong>：通过 <code>dmcontrol</code> CSR 或外部 <code>debug_lock</code> 引脚控制调试端口使能状态</li>
+    <li><strong>安全等级配置</strong>：支持三级调试安全等级 — 完全锁定 / 仅断点 / 完全开放</li>
+    <li><strong>锁定保护</strong>：锁定状态下禁止调试器连接、Abstract Command 执行和 System Bus Access</li>
+    <li><strong>解锁机制</strong>：Lock 状态不可通过软件绕过，需硬件复位或密钥认证解锁</li>
+</ul>
+
+<h3>8.5.2 PMP 安全隔离 <span class="req-tag">LUMI-SEC-004</span></h3>
+<p>基于 PMP + Smepmp 的安全隔离机制（引用 &sect;3.2）：</p>
+<ul>
+    <li><strong>Smepmp 强制生效</strong>：M-mode 下 PMP 配置不可被 S/U-mode 代码修改</li>
+    <li><strong>PMP 配置锁定</strong>：锁定后非特权代码无法篡改内存访问权限</li>
+    <li><strong>IP 隔离能力边界</strong>：基于 PMP 的内存访问控制，不含 MMU-based 安全域隔离（如 TrustZone 等价机制）</li>
+</ul>
+
+<h3>8.5.3 总线完整性保护 <span class="req-tag">LUMI-SEC-005</span></h3>
+<p>从信息安全视角补充总线保护（引用 &sect;7.5，对应功能安全 LUMI-SAFE-003）：</p>
+<ul>
+    <li><strong>Parity 校验</strong>：AXI 主总线和 FFP 外设总线支持数据 Parity 校验</li>
+    <li><strong>异常处理</strong>：检测到完整性错误时触发 bus_error_exception</li>
+    <li><strong>策略可配</strong>：异常处理策略可配置（异常中断 / NMI / 系统复位）</li>
+</ul>
+
+<h2 id="s86">8.6 多核架构 (Multi-core Architecture)</h2>
+
+<h3>8.6.1 多核互联拓扑 <span class="req-tag">LUMI-MCORE-001</span></h3>
+<p>Lumi-Core 支持 1~4 核可配置的多核拓扑，默认单核配置：</p>
+<table>
+    <tr><th>配置</th><th>核数</th><th>互联方式</th><th>缓存一致性</th></tr>
+    <tr><td>单核 (默认)</td><td>1</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td>双核</td><td>2</td><td>共享 L2 或 AXI 互连</td><td>硬件缓存一致性 (可选)</td></tr>
+    <tr><td>四核</td><td>4</td><td>AXI 互连总线</td><td>软件维护 + 硬件辅助</td></tr>
+</table>
+<ul>
+    <li><strong>核间通信</strong>：通过共享内存 + 原子操作 (AMO) 实现互斥与同步</li>
+    <li><strong>PLIC 多核路由</strong>：PLIC 支持多 Hart 中断分发，通过 enable 位选择目标核</li>
+    <li><strong>CLIC 独立性</strong>：每个 Hart 拥有独立 CLIC 实例，本地中断不跨核</li>
+    <li><strong>缓存一致性</strong>：双核配置支持硬件一致性协议，四核配置采用软件维护 + CMO 指令</li>
+</ul>
+
+<h3>8.6.2 双核锁步 (Dual Lock-Step) <span class="req-tag">LUMI-MCORE-002</span></h3>
+<p>面向 ASIL-D 安全场景的双核锁步模式，对应功能安全需求 LUMI-SAFE-002：</p>
+<ul>
+    <li><strong>执行模型</strong>：两核执行相同指令流，每个指令周期后比较结果</li>
+    <li><strong>比较粒度</strong>：指令级比较（PC、寄存器值、内存写入数据）</li>
+    <li><strong>错误检测</strong>：检测到不一致时触发 Lock-Step Error 异常</li>
+    <li><strong>错误处理策略</strong>：可配置为 NMI / 系统复位 / 日志记录</li>
+    <li><strong>时钟域</strong>：锁步模式下两核必须共享同一时钟域</li>
+    <li><strong>配置参数</strong>：通过核数配置 (核数&ge;2) + 锁步使能位启用</li>
+</ul>
+
+<h2 id="s87">8.7 可测试性设计 (DFT)</h2>
+
+<h3>8.7.1 Scan Chain 扫描链 <span class="req-tag">LUMI-DFT-001</span></h3>
+<ul>
+    <li><strong>全扫描链插入</strong>：RTL 设计预留 DFT 插入点，支持扫描链自动插入</li>
+    <li><strong>扫描覆盖率</strong>：目标 &ge;98% stuck-at fault 覆盖率</li>
+    <li><strong>ATPG 支持</strong>：支持主流 ATPG 工具生成测试向量</li>
+    <li><strong>扫描链组织</strong>：支持多扫描链分组，减少测试时间</li>
+</ul>
+
+<h3>8.7.2 MBIST 内存内建自测试 <span class="req-tag">LUMI-DFT-002</span></h3>
+<ul>
+    <li><strong>覆盖范围</strong>：TCM (ITCM/DTCM0/DTCM1) 和 L1 Cache (I-Cache/D-Cache)</li>
+    <li><strong>测试算法</strong>：March C- 或等价算法，覆盖 stuck-at / transition / coupling 故障</li>
+    <li><strong>ECC 联调</strong>：MBIST 与 ECC 保护协同工作，MBIST 期间可禁用 ECC 检查</li>
+</ul>
+
+<h3>8.7.3 JTAG 边界扫描 <span class="req-tag">LUMI-DFT-003</span></h3>
+<ul>
+    <li><strong>标准合规</strong>：IEEE 1149.1 边界扫描，与调试 JTAG 复用物理接口</li>
+    <li><strong>BSDL 文件</strong>：交付完整 BSDL 描述文件</li>
+    <li><strong>支持指令</strong>：EXTEST / INTEST / SAMPLE / PRELOAD / BYPASS</li>
+</ul>
+
+<h2 id="s88">8.8 物理设计约束 (Physical Design Constraints)</h2>
+
+<h3>8.8.1 综合约束 <span class="req-tag">LUMI-TIMING-001</span></h3>
+<ul>
+    <li><strong>SDC 文件</strong>：交付完整时序约束文件 (SDC 格式)，覆盖全部工作模式</li>
+    <li><strong>角落条件</strong>：覆盖 ss/tt/ff x 温度 x 电压的全部 PVT 组合</li>
+    <li><strong>目标工艺</strong>：TSMC 28HPC+ 作为基准工艺节点</li>
+    <li><strong>多角多模 (MCMM)</strong>：支持多场景约束合并 (Functional / Scan / MBIST / Sleep)</li>
+</ul>
+
+<h3>8.8.2 时序目标 <span class="req-tag">LUMI-TIMING-002</span></h3>
+<ul>
+    <li><strong>ss corner</strong>：0.81V, 125&deg;C 下时序收敛，WNS &ge; 0</li>
+    <li><strong>ff corner</strong>：1.1V, -40&deg;C 下无 hold violation</li>
+    <li><strong>关键路径</strong>：预计关键路径在 ALU/分支预测/Cache Tag 之间</li>
+</ul>
+
+<h3>8.8.3 IP 质量指标</h3>
+<table>
+    <tr><th>指标</th><th>REQ-ID</th><th>要求</th><th>工具/方法</th></tr>
+    <tr><td>CDC/RDC 验证</td><td><span class="req-tag">LUMI-QUAL-001</span></td><td>无未解析的跨域路径</td><td>SpyGlass CDC / Conformal CDC</td></tr>
+    <tr><td>Lint 检查</td><td><span class="req-tag">LUMI-QUAL-002</span></td><td>无 Error，Warning 有明确解释或 Waiver</td><td>SpyGlass Lint / HAL</td></tr>
+    <tr><td>DEF/FIT 率</td><td><span class="req-tag">LUMI-QUAL-003</span></td><td>FMEDA 分析完成，FIT 率符合安全完整性等级</td><td>ISO 26262 FMEDA 流程</td></tr>
+</table>
+
+<h2 id="s89">8.9 时钟与复位架构 (Clock &amp; Reset Architecture)</h2>
+
+<h3>8.9.1 时钟域划分 <span class="req-tag">LUMI-CLK-001</span></h3>
+<p>Lumi-Core 采用多时钟域设计，以平衡性能、功耗和外部集成灵活性：</p>
+<table>
+    <tr><th>时钟域</th><th>信号名</th><th>驱动源</th><th>默认频率</th><th>说明</th></tr>
+    <tr><td>CPU Core Clock</td><td><code>clk_core</code></td><td>外部 PLL/SoC</td><td>同主频 (≥1.0GHz)</td><td>驱动 Hart 核心、FPU、向量单元</td></tr>
+    <tr><td>Bus Clock</td><td><code>clk_bus</code></td><td>外部 SoC</td><td>同主频或分频</td><td>驱动 AXI 总线接口、PLIC、CLIC MMIO</td></tr>
+    <tr><td>TCM Clock</td><td><code>clk_tcm</code></td><td>同 clk_core</td><td>同主频</td><td>驱动 TCM 存储阵列（与 Core 同步访问）</td></tr>
+    <tr><td>Debug TCK</td><td><code>tck</code></td><td>JTAG 调试器</td><td>异步 (通常 10~50MHz)</td><td>驱动 JTAG TAP 控制器，与 Core 异步</td></tr>
+    <tr><td>Trace Clock (可选)</td><td><code>clk_trace</code></td><td>同 clk_core</td><td>同主频</td><td>驱动 Trace Encoder，异步于 AXI 输出</td></tr>
+</table>
+<blockquote><strong>跨域处理:</strong> clk_core 与 clk_bus 间使用标准 2-FF 同步器 + Async FIFO 传递跨域数据；TCK 通过 dmi_rst/dmi_ack 异步握手。CDC 验证由 LUMI-QUAL-001 覆盖。</blockquote>
+
+<h3>8.9.2 Clock Gating 策略 <span class="req-tag">LUMI-CLK-002</span></h3>
+<p>采用<strong>条件时钟门控 (Clock Gating)</strong> 降低动态功耗：</p>
+<ul>
+    <li><strong>细粒度门控</strong>：每个流水线级寄存器使用 ICG (Integrated Clock Gating) cell，门控使能信号由空闲检测逻辑产生</li>
+    <li><strong>WFI 触发</strong>：WFI 指令执行后关闭 Core Clock 域，仅保留中断检测逻辑运行（引用 &sect;8.2）</li>
+    <li><strong>手动控制</strong>：SoC 可通过 <code>core_clk_gate_req</code> 信号强制门控 clk_core</li>
+    <li><strong>PLL Bypass</strong>：深度睡眠时 SoC 可关闭 PLL，由 <code>ext_clk</code> 维持寄存器状态</li>
+    <li><strong>门控恢复延时</strong>：WFI 唤醒后首条指令到执行 ≤8 cycle（门控使能 + 流水线填充）</li>
+</ul>
+
+<h3>8.9.3 复位域划分</h3>
+<p>复位信号按域分组，确保最小化复位影响范围：</p>
+<table>
+    <tr><th>复位域</th><th>信号名</th><th>触发源</th><th>影响范围</th></tr>
+    <tr><td>Cold Reset</td><td><code>reset_n</code></td><td>外部 SoC</td><td>全模块复位，PC=复位向量</td></tr>
+    <tr><td>Core Reset</td><td><code>core_rst_n</code></td><td>由 reset_n 派生</td><td>仅 Hart 核心、CSR、FPU 复位，TCM/Cache 内容保留</td></tr>
+    <tr><td>Bus Reset</td><td><code>bus_rst_n</code></td><td>由 reset_n 派生</td><td>仅 AXI 接口、PLIC、CLIC 寄存器复位</td></tr>
+    <tr><td>Debug Reset</td><td><code>ndmreset</code></td><td>Debug Module (dmcontrol)</td><td>仅 Hart 复位，不影响 TCM/外设</td></tr>
+    <tr><td>Power-on Reset</td><td><code>por_n</code></td><td>外部 SoC（可选）</td><td>全模块复位 + 模拟初始化</td></tr>
+</table>
+<blockquote><strong>复位顺序:</strong> Power-on → Cold → Core/Bus 分裂 → Debug Reset 可在任意时刻触发。复位释放顺序：先释放 Bus Reset，再释放 Core Reset，确保 AXI 互联稳定后 Hart 才取指。</blockquote>
+
+<h3>8.9.4 UPF/CPF 电源约束接口 <span class="req-tag">LUMI-PWR-004</span></h3>
+<p>交付标准 UPF (Unified Power Format) 2.1 电源约束文件，定义电源域、隔离策略和保持寄存器：</p>
+<ul>
+    <li><strong>电源域</strong>：默认单电源域 <code>PD_CORE</code>，可扩展多域（<code>PD_CACHE</code>、<code>PD_TCM</code>）用于高级功耗管理</li>
+    <li><strong>隔离策略</strong>：跨电源域信号使用 isolation cell（默认 clamp 0），由 <code>iso_en</code> 信号控制</li>
+    <li><strong>状态保持</strong>：关键 CSR（如 mstatus, mepc, mtvec）使用 retention register 保持状态 <span class="req-tag">LUMI-PWR-005</span></li>
+    <li><strong>电平转换</strong>：跨电压域信号使用 level shifter</li>
+    <li><strong>UPF 交付物</strong>：<code>docs/design/power/lumi-core.upf</code>，含完整 power intent 描述</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch9">9. 硬件需求清单 (Hardware Requirements)</h1>
+
+<p>以下清单从 PRD 第 3 章提取，每条需求标注 REQ-ID 和对应架构章节。确保每个需求都有承接（规则 08）。</p>
+
+<h2>9.1 PPA 目标</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>架构章节</th><th>验收标准</th></tr>
+    <tr><td>LUMI-PIPE-001</td><td>8 级流水线架构</td><td>Must</td><td>&sect;4.2</td><td>流水线级数为 8 级</td></tr>
+    <tr><td>LUMI-FREQ-001</td><td>TSMC 28HPC 主频 &ge;1.0GHz</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &ge;1.0GHz</td></tr>
+    <tr><td>LUMI-IPC-001</td><td>CoreMark &ge;5.5 CM/MHz</td><td>Must</td><td>&sect;4.1</td><td>CoreMark &ge;5.5 CM/MHz</td></tr>
+    <tr><td>LUMI-IPC-002</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td><td>Must</td><td>&sect;4.1</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td></tr>
+    <tr><td>LUMI-IPC-003</td><td>售前售后基准测试覆盖</td><td>Must</td><td>&sect;4.1</td><td>CoreMark/Dhrystone/Crypto 可运行</td></tr>
+    <tr><td>LUMI-AREA-001</td><td>STDCELL 面积 &le;0.32 mm&sup2;</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &le;0.32 mm&sup2;</td></tr>
+    <tr><td>LUMI-PWR-001</td><td>单核动态功耗 &le;100mW/GHz</td><td>Must</td><td>&sect;4.1</td><td>Dynamic &le;100mW/GHz</td></tr>
+    <tr><td>LUMI-PWR-002</td><td>单核泄漏功耗 &le;32mW</td><td>Must</td><td>&sect;4.1</td><td>Leakage &le;32mW</td></tr>
+    <tr><td>LUMI-SYS-003</td><td>快速中断延时 &le;16 周期</td><td>Must</td><td>&sect;5.3.3</td><td>中断信号到首条指令 &le;16 cycle</td></tr>
+    <tr><td>LUMI-PWR-003</td><td>功耗状态定义与切换</td><td>Must</td><td>&sect;8.2</td><td>Active/Sleep/Deep Sleep 三态，切换延时可配</td></tr>
+</table>
+
+<h2>9.2 RTL 功能需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>架构章节</th><th>验收标准</th></tr>
+    <tr><td>LUMI-PROF-001</td><td>Profile 技术特性合规</td><td>Must</td><td>&sect;2</td><td>全部 Mandatory 特性通过</td></tr>
+    <tr><td>LUMI-ISA-001</td><td>RV32I 基础整数指令集</td><td>Must</td><td>&sect;2.2</td><td>全部 RV32I 指令通过</td></tr>
+    <tr><td>LUMI-ISA-002</td><td>M 扩展 &mdash; 整数乘除法</td><td>Must</td><td>&sect;2.2</td><td>MUL/DIV 系列通过</td></tr>
+    <tr><td>LUMI-ISA-003</td><td>A 扩展 &mdash; 原子操作</td><td>Must</td><td>&sect;2.2</td><td>AMO/LR/SC 系列通过</td></tr>
+    <tr><td>LUMI-ISA-004</td><td>F/D 双精度浮点扩展</td><td>Must</td><td>&sect;2.2</td><td>FP32/FP16/BF16 运算正确</td></tr>
+    <tr><td>LUMI-ISA-005</td><td>C 扩展 &mdash; 压缩指令</td><td>Must</td><td>&sect;2.2</td><td>16bit 压缩指令正确</td></tr>
+    <tr><td>LUMI-ISA-006</td><td>B 扩展 &mdash; 位操作</td><td>Must</td><td>&sect;2.2</td><td>位操作指令通过</td></tr>
+    <tr><td>LUMI-ISA-007</td><td>V 向量扩展 + zvfh/zvfbf</td><td>Must</td><td>&sect;2.2</td><td>RVV1.0, VLEN=128/256</td></tr>
+    <tr><td>LUMI-ISA-008</td><td>Zce 代码压缩扩展</td><td>Must</td><td>&sect;2.2</td><td>Zca+Zcb+Zcmp+Zcmt</td></tr>
+    <tr><td>LUMI-ISA-009</td><td>Vector Crypto 向量加密</td><td>Could</td><td>&sect;2.3</td><td>向量加密指令正确</td></tr>
+    <tr><td>LUMI-ISA-010</td><td>Packed SIMD 扩展</td><td>Could</td><td>&sect;2.3</td><td>Packed SIMD 正确</td></tr>
+    <tr><td>LUMI-MEM-001</td><td>PMP 物理内存保护 (默认 8 Region)</td><td>Must</td><td>&sect;3.2</td><td>PMP 越界触发异常</td></tr>
+    <tr><td>LUMI-MEM-002</td><td>TCM 紧耦合内存 (0~128KB)</td><td>Must</td><td>&sect;7.2</td><td>TCM 大小可配置</td></tr>
+    <tr><td>LUMI-MEM-003</td><td>TCM 三区域 (代码+数据双区)</td><td>Must</td><td>&sect;7.2</td><td>三区域独立访问正确</td></tr>
+    <tr><td>LUMI-MEM-004</td><td>TCM 0/1 拍延迟访问</td><td>Must</td><td>&sect;7.2</td><td>两种访问模式正确</td></tr>
+    <tr><td>LUMI-MEM-005</td><td>TCM ECC 内存保护</td><td>Must</td><td>&sect;7.2</td><td>单 bit 翻转可纠正</td></tr>
+    <tr><td>LUMI-MEM-006</td><td>L1 Cache 可配 (8/16/32KB)</td><td>Must</td><td>&sect;7.3</td><td>I/D-Cache 独立配置</td></tr>
+    <tr><td>LUMI-MEM-007</td><td>L1 Cache ECC 保护</td><td>Must</td><td>&sect;7.3</td><td>ECC 保护正确</td></tr>
+    <tr><td>LUMI-SYS-006</td><td>32bit 物理寻址</td><td>Must</td><td>&sect;7.4</td><td>32bit 地址空间正确</td></tr>
+    <tr><td>LUMI-SYS-007</td><td>Little-Endian 字节序</td><td>Must</td><td>&sect;7.4</td><td>所有访问符合 LE</td></tr>
+    <tr><td>LUMI-IF-001</td><td>AMBA4 AXI 主总线 (128bit)</td><td>Must</td><td>&sect;7.5</td><td>AXI4 协议合规</td></tr>
+    <tr><td>LUMI-IF-002</td><td>FFP 外设接口 (AXI 32bit)</td><td>Must</td><td>&sect;7.5</td><td>FFP AXI 合规</td></tr>
+    <tr><td>LUMI-IF-003</td><td>TCM 从接口 (DMA)</td><td>Must</td><td>&sect;7.5</td><td>DMA 读写 TCM 正确</td></tr>
+    <tr><td>LUMI-SYS-001</td><td>PLIC 中断控制器</td><td>Must</td><td>&sect;5.4</td><td>中断数 32~960 可配</td></tr>
+    <tr><td>LUMI-SYS-002</td><td>CLIC 快速中断控制器</td><td>Must</td><td>&sect;5.3</td><td>中断数 1~240 可配</td></tr>
+    <tr><td>LUMI-FEAT-001</td><td>RISC-V Debug V1.0.0</td><td>Must</td><td>&sect;6.1</td><td>Debug 规范合规</td></tr>
+    <tr><td>LUMI-FEAT-002</td><td>RISC-V Nexus Trace V1.0.0</td><td>Must</td><td>&sect;6.2</td><td>Trace 规范合规</td></tr>
+    <tr><td>LUMI-FEAT-003</td><td>Trace AXI4 写出</td><td>Must</td><td>&sect;6.2</td><td>Trace 数据 AXI4 写出</td></tr>
+    <tr><td>LUMI-SYS-004</td><td>WFI/WRS 低功耗指令</td><td>Must</td><td>&sect;8.2</td><td>低功耗状态正确</td></tr>
+    <tr><td>LUMI-SYS-005</td><td>多时钟域多电压域管理</td><td>Must</td><td>&sect;8.2</td><td>多电压域管理正确</td></tr>
+    <tr><td>LUMI-SYS-008</td><td>低功耗状态管理接口</td><td>Must</td><td>&sect;8.2</td><td>睡眠/深度睡眠可配</td></tr>
+    <tr><td>LUMI-FEAT-005</td><td>自定义协处理器接口</td><td>Could</td><td>&sect;2.3</td><td>协处理器接口正确</td></tr>
+    <tr><td>LUMI-PROF-002</td><td>特权级配置支持 (CoreM/CoreS/CoreU)</td><td>Must</td><td>&sect;3</td><td>三种特权级配置可独立配置</td></tr>
+    <tr><td>LUMI-ISA-011</td><td>Profile Mandatory 扩展完整覆盖</td><td>Must</td><td>&sect;2.2</td><td>13 个 Mandatory 扩展全部通过合规测试</td></tr>
+    <tr><td>LUMI-MEM-008</td><td>RVWMO 内存序模型</td><td>Must</td><td>&sect;7</td><td>内存访问符合 RVWMO 模型</td></tr>
+    <tr><td>LUMI-IF-004</td><td>中断信号线规格</td><td>Must</td><td>&sect;5</td><td>边沿/电平触发可配，优先级位宽可配</td></tr>
+    <tr><td>LUMI-FEAT-004</td><td>JTAG/cJTAG 调试物理接口</td><td>Must</td><td>&sect;6.3</td><td>JTAG (IEEE 1149.1) + 可选 cJTAG (1149.7)</td></tr>
+    <tr><td>LUMI-DFT-001</td><td>Scan Chain 扫描链</td><td>Must</td><td>&sect;8.7.1</td><td>扫描覆盖率 &ge;98%</td></tr>
+    <tr><td>LUMI-DFT-002</td><td>MBIST 内存内建自测试</td><td>Must</td><td>&sect;8.7.2</td><td>TCM/L1 Cache MBIST 覆盖</td></tr>
+    <tr><td>LUMI-DFT-003</td><td>JTAG 边界扫描 (IEEE 1149.1)</td><td>Must</td><td>&sect;8.7.3</td><td>BSDL 完整，EXTEST/INTEST/SAMPLE/PRELOAD</td></tr>
+    <tr><td>LUMI-MCORE-001</td><td>多核互联拓扑</td><td>Must</td><td>&sect;8.6.1</td><td>1~4 核配置，缓存一致性正确</td></tr>
+    <tr><td>LUMI-MCORE-002</td><td>双核锁步 (Dual Lock-Step)</td><td>Must</td><td>&sect;8.6.2</td><td>指令级比较，不一致触发异常</td></tr>
+    <tr><td>LUMI-BOOT-001</td><td>复位类型支持</td><td>Must</td><td>&sect;8.3</td><td>冷/暖/软复位，影响范围明确</td></tr>
+    <tr><td>LUMI-BOOT-002</td><td>启动流程与向量表</td><td>Must</td><td>&sect;8.3</td><td>复位向量可配，Boot ROM/TCM/外部存储启动</td></tr>
+    <tr><td>LUMI-BOOT-003</td><td>Boot ROM 支持</td><td>Must</td><td>&sect;8.3</td><td>可选内置 4~32KB Boot ROM</td></tr>
+    <tr><td>LUMI-TIMING-001</td><td>综合约束文件 (SDC)</td><td>Must</td><td>&sect;8.8.1</td><td>完整 SDC 覆盖全角落条件</td></tr>
+    <tr><td>LUMI-TIMING-002</td><td>关键路径时序目标</td><td>Must</td><td>&sect;8.8.2</td><td>TSMC 28HPC ss corner WNS &ge; 0</td></tr>
+    <tr><td>LUMI-QUAL-001</td><td>CDC/RDC 验证</td><td>Must</td><td>&sect;8.8.3</td><td>无未解析跨域路径</td></tr>
+    <tr><td>LUMI-QUAL-002</td><td>Lint 检查</td><td>Must</td><td>&sect;8.8.3</td><td>SpyGlass 或同等 Lint 无 Error</td></tr>
+    <tr><td>LUMI-QUAL-003</td><td>DEF/FIT 率目标</td><td>Should</td><td>&sect;8.8.3</td><td>FMEDA 完成，FIT 率达标</td></tr>
+    <tr><td>LUMI-MEM-009</td><td>PMA 物理内存属性检查器</td><td>Must</td><td>&sect;7.8</td><td>默认 3 个 PMA 区域，cacheable/executable/idempotent 等属性检查正确</td></tr>
+    <tr><td>LUMI-CLK-001</td><td>多时钟域架构</td><td>Must</td><td>&sect;8.9.1</td><td>clk_core/clk_bus/clk_tcm/tck 多域划分，跨域 CDC 验证通过</td></tr>
+    <tr><td>LUMI-CLK-002</td><td>Clock Gating 策略</td><td>Must</td><td>&sect;8.9.2</td><td>细粒度 ICG + WFI 门控，唤醒首指令 ≤8 cycle</td></tr>
+    <tr><td>LUMI-CLK-003</td><td>复位域划分</td><td>Must</td><td>&sect;8.9.3</td><td>Core/Bus/Debug 复位域独立，最小化复位范围</td></tr>
+    <tr><td>LUMI-PWR-004</td><td>电源域划分与 UPF 交付</td><td>Must</td><td>&sect;8.9.4</td><td>UPF 2.1 文件定义电源域/隔离策略/电平转换</td></tr>
+    <tr><td>LUMI-PWR-005</td><td>关键 CSR Retention 寄存器</td><td>Should</td><td>&sect;8.9.4</td><td>mstatus/mepc/mtvec 等关键 CSR 睡眠后状态保持</td></tr>
+</table>
+
+<h2>9.3 功能安全需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>架构章节</th><th>验收标准</th></tr>
+    <tr><td>LUMI-SAFE-001</td><td>ECC/Parity 内存保护</td><td>Must</td><td>&sect;7.2/7.3</td><td>TCM/L1 Cache ECC 单 bit 纠正、双 bit 检测</td></tr>
+    <tr><td>LUMI-SAFE-002</td><td>双核锁步执行检测</td><td>Must</td><td>&sect;8.6.2</td><td>锁步模式指令级比较，不一致触发异常</td></tr>
+    <tr><td>LUMI-SAFE-003</td><td>总线 Parity 完整性</td><td>Must</td><td>&sect;7.5</td><td>AXI/FFP 总线 Parity 校验，错误触发异常</td></tr>
+</table>
+
+<h2>9.4 信息安全需求</h2>
+<table>
+    <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>架构章节</th><th>验收标准</th></tr>
+    <tr><td>LUMI-SEC-001</td><td>安全启动 ROM</td><td>Must</td><td>&sect;8.3/8.5.1</td><td>Boot ROM 固件签名验证 (RSA-2048/ECDSA-P256)</td></tr>
+    <tr><td>LUMI-SEC-002</td><td>加密加速指令支持</td><td>Should</td><td>&sect;2.3</td><td>Vector Crypto/Packed SIMD 加密加速正确</td></tr>
+    <tr><td>LUMI-SEC-003</td><td>安全调试策略</td><td>Must</td><td>&sect;8.5.1</td><td>Debug Lock/Unlock，安全等级可配</td></tr>
+    <tr><td>LUMI-SEC-004</td><td>PMP 安全隔离</td><td>Must</td><td>&sect;3.2/8.5.2</td><td>Smepmp 生效，PMP 锁定后不可篡改</td></tr>
+    <tr><td>LUMI-SEC-005</td><td>总线完整性保护</td><td>Should</td><td>&sect;7.5/8.5.3</td><td>AXI/FFP 总线 Parity，异常策略可配</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch10">10. 可配置特性列表 (Configurable Features)</h1>
+
+<p>以下参数支持实例化时配置，不同客户可按需选择：</p>
+
+<table>
+    <tr><th>编号</th><th>配置参数</th><th>可选值</th><th>默认值</th><th>架构章节</th></tr>
+    <tr><td>1</td><td>TCM 容量</td><td>0 / 8 / 16 / 32 / 64 / 128 KB</td><td>32KB</td><td>&sect;7.2</td></tr>
+    <tr><td>2</td><td>TCM 访问延迟</td><td>0 拍 / 1 拍</td><td>0 拍</td><td>&sect;7.2</td></tr>
+    <tr><td>3</td><td>L1 Cache 容量</td><td>8 / 16 / 32 KB</td><td>32KB</td><td>&sect;7.3</td></tr>
+    <tr><td>4</td><td>FPU 浮点单元</td><td>Yes / No</td><td>Yes</td><td>&sect;2.2</td></tr>
+    <tr><td>5</td><td>Vector 向量单元</td><td>Yes / No</td><td>Yes</td><td>&sect;2.2</td></tr>
+    <tr><td>6</td><td>VLEN 向量位宽</td><td>128bit / 256bit</td><td>128bit</td><td>&sect;2.2</td></tr>
+    <tr><td>7</td><td>Vector Crypto</td><td>Yes / No</td><td>No</td><td>&sect;2.3</td></tr>
+    <tr><td>8</td><td>PMP Region 数量</td><td>可配置</td><td>8</td><td>&sect;3.2</td></tr>
+    <tr><td>9</td><td>PLIC 中断数</td><td>32 ~ 960 (32 的 2 的幂次倍数)</td><td>32</td><td>&sect;5.4</td></tr>
+    <tr><td>10</td><td>CLIC 中断数</td><td>1 ~ 240</td><td>16</td><td>&sect;5.3</td></tr>
+    <tr><td>11</td><td>Trace AXI4 写出</td><td>Yes / No</td><td>No</td><td>&sect;6.2</td></tr>
+    <tr><td>12</td><td>协处理器接口</td><td>Yes / No</td><td>No</td><td>&sect;2.3</td></tr>
+    <tr><td>13</td><td>L1 Cache ECC</td><td>Yes / No</td><td>No</td><td>&sect;7.3</td></tr>
+    <tr><td>14</td><td>TCM ECC</td><td>Yes / No</td><td>No</td><td>&sect;7.2</td></tr>
+    <tr><td>15</td><td>核数配置</td><td>1 / 2 / 4</td><td>1</td><td>&sect;8.6</td></tr>
+    <tr><td>16</td><td>双核锁步模式</td><td>Yes / No</td><td>No</td><td>&sect;8.6.2</td></tr>
+    <!--
+      Bug Fix History (REC-001, M1 独立审查补强):
+      Bug #15: 核数配置 原章节号误标为 §8.5，2026-07-03 修正为 §8.6
+      Bug #16: 双核锁步模式 原章节号误标为 §8.6，2026-07-03 修正为 §8.6.2
+      修复人: hw-design | 审查来源: M1-GATE-2 独立审查
+    -->
+    <tr><td>17</td><td>Boot ROM</td><td>Yes / No</td><td>No</td><td>&sect;8.3</td></tr>
+    <tr><td>18</td><td>cJTAG 接口</td><td>Yes / No</td><td>No</td><td>&sect;6.3</td></tr>
+    <tr><td>19</td><td>功耗状态数</td><td>2 / 3</td><td>3</td><td>&sect;8.2</td></tr>
+    <tr><td>20</td><td>中断触发类型</td><td>边沿 / 电平 / 可配</td><td>可配</td><td>&sect;5</td></tr>
+    <tr><td>21</td><td>多电源域</td><td>Yes / No</td><td>No</td><td>&sect;8.9.4</td></tr>
+    <tr><td>22</td><td>PMA 区域数</td><td>3 / 4 / 5 / 6</td><td>3</td><td>&sect;7.8</td></tr>
+    <tr><td>23</td><td>CSR Retention</td><td>Yes / No</td><td>No</td><td>&sect;8.9.4</td></tr>
+</table>
+
+<blockquote><strong>基准 RTL 配置:</strong> Core=1, ITCM/DTCM0/DTCM1=32KB, L1=32KB, ECC=No, FPU=Yes, Vector=Yes(VLEN128), Crypto=No, PMP=8, Bus=AXI, Debug&amp;Trace=Yes</blockquote>
+
+<div class="footer">
+    <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
+    <p>Lumi-Core Platform Architecture Specification &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0.1 &nbsp;|&nbsp; 更新: 2026-07-06<br>
+    承接: <a href="../project/product-requirements.html">PRD (product-requirements.html)</a> &nbsp;|&nbsp;
+    引用: <a href="../profile/Lumi-Core-Profile.html">Profile (Lumi-Core-Profile.html)</a></p>
+</div>
+
+</body>
+</html>

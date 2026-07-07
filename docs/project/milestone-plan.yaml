@@ -1,0 +1,157 @@
+# Lumi-Core 里程碑计划 (规则 23)
+# 定义项目三层结构：Milestone → Stage → Phase
+
+version: "1.1"
+last_updated: "2026-07-01 (M2 status updated)"
+
+# ──────────────────────────────────────────────
+# Milestone 定义 (MS)
+# 项目级大里程碑，每个对应强制门禁节点
+# ──────────────────────────────────────────────
+milestones:
+  - id: "M0"
+    title: "项目启动完成"
+    target_date: "2026-07"
+    status: completed
+    gates:
+      - "基础设施就绪"
+      - "PRD 草案完成"
+      - "架构说明书初稿"
+      - "GEM5+ 环境搭建完成"
+    compliance_report: "audit/compliance-reports/setup-20260701.yaml"
+
+  - id: "M1"
+    title: "架构与需求冻结"
+    target_date: "2026-09"
+    status: completed
+    gates:
+      - "PRD 评审定版"
+      - "架构说明书定版"
+      - "验证方案启动"
+      - "GEM5+ 中断建模完成"
+    compliance_report: "audit/compliance-reports/m1-final-addendum-20260707.yaml"  # GATE-4 upgraded to PASS
+
+  - id: "M2"
+    title: "详细设计与验证框架完成"
+    target_date: "2026-12"
+    status: in_progress
+    gates:
+      - "14 份模块设计文档完成"
+      - "验证方案定版"
+      - "GEM5+ 微架构模型完成"
+      - "RTL 骨架搭建完成"
+    compliance_report: null
+
+  - id: "M3"
+    title: "RTL 冻结"
+    target_date: "2027-06"
+    status: planned
+    gates:
+      - "RTL 全模块实现完成"
+      - "单元验证通过"
+      - "系统集成验证通过"
+      - "回归测试通过率 100%"
+      - "性能达标验证"
+    compliance_report: null
+
+  - id: "M4"
+    title: "交付就绪"
+    target_date: "2027-09"
+    status: planned
+    gates:
+      - "交付物整理完成"
+      - "文档体系检查通过"
+      - "项目总结完成"
+      - "Consultant 审阅通过"
+    compliance_report: null
+
+# ──────────────────────────────────────────────
+# Stage 定义 (S)
+# Milestone 内部的工作阶段细分
+# ──────────────────────────────────────────────
+stages:
+  - id: "M0-S1"
+    title: "项目启动"
+    milestone: "M0"
+    tasks:
+      - "T0.1 PRD 需求完善"
+      - "T0.2 基础设施搭建"
+      - "T0.3 架构说明书起草"
+      - "T0.4 GEM5+ ISA 扩展"
+    duration: "2026-06 ~ 2026-07"
+
+  - id: "M1-S1"
+    title: "需求定版"
+    milestone: "M1"
+    tasks:
+      - "T1.1 PRD 评审定版"
+      - "T1.3 验证方案启动"
+    duration: "2026-07 ~ 2026-08"
+
+  - id: "M1-S2"
+    title: "架构定义"
+    milestone: "M1"
+    tasks:
+      - "T1.2 架构说明书定版"
+      - "T1.4 GEM5+ 中断建模"
+    duration: "2026-07 ~ 2026-09"
+
+  - id: "M2-S1"
+    title: "详细设计"
+    milestone: "M2"
+    tasks:
+      - "T2.1 模块设计文档 x14"
+      - "T2.3 GEM5+ 微架构"
+      - "T2.4 RTL 骨架搭建"
+    duration: "2026-10 ~ 2026-12"
+
+  - id: "M2-S2"
+    title: "验证框架"
+    milestone: "M2"
+    tasks:
+      - "T2.2 验证方案定版"
+    duration: "2026-10 ~ 2026-12"
+
+  - id: "M3-S1"
+    title: "RTL 实现与单元验证"
+    milestone: "M3"
+    tasks:
+      - "T3.1 RTL 逐模块实现"
+      - "T3.2 单元验证"
+      - "T3.3 每日集成回归"
+      - "T3.4 GEM5+ 交叉校准"
+    duration: "2027-01 ~ 2027-03"
+
+  - id: "M3-S2"
+    title: "集成验证与冻结"
+    milestone: "M3"
+    tasks:
+      - "T4.1 系统集成验证"
+      - "T4.2 回归 + Bug 用例"
+      - "T4.3 性能达标验证"
+      - "T4.4 交付物准备"
+    duration: "2027-04 ~ 2027-06"
+
+  - id: "M4-S1"
+    title: "交付准备"
+    milestone: "M4"
+    tasks:
+      - "T5.1 交付物整理"
+      - "T5.2 文档体系检查"
+      - "T5.3 项目总结"
+      - "T5.4 Consultant 审阅"
+    duration: "2027-07 ~ 2027-09"
+
+# ──────────────────────────────────────────────
+# Phase 定义 (P)
+# 具体任务的工序阶段，复用 schema.yaml valid_phases
+# ──────────────────────────────────────────────
+# Phase 取值固定为 schema.yaml 定义的 7 项：
+#   setup / requirements / architecture / design /
+#   implementation / verification / delivery
+#
+# 使用方式：每项任务附加 phase 标签标识当前工序阶段
+# 例：任务 T2.1 "模块设计文档" → phase: design
+#     任务 T4.2 "回归测试"     → phase: verification
+
+phase_options: [setup, requirements, architecture, design, implementation, verification, delivery]

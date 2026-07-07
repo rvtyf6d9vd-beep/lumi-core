@@ -125,7 +125,7 @@ Token 成本预算要算好，不能超过售价的 1/5。 需要模型调用有
 
 > **全量审计权限：** qa-audit 角色有权审计所有规则的执行情况，包括 AGENTS.md 第 7 节的通用规则和各角色专属规则。完整规则清单见 `rules/top-rules.yaml`、`rules/business-rules.yaml` 和 `rules/sub-rules/*.yaml`。
 
-> **通用规则：** 本角色同时受 AGENTS.md 第 7 节全部通用规则约束（共 15 条），此处不再重复。
+> **通用规则：** 本角色同时受 AGENTS.md 第 7 节全部通用规则约束（共 19 条），此处不再重复。
 
 ## Pre-Check 流程
 

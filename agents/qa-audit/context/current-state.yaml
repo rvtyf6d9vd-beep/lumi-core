@@ -1,8 +1,26 @@
 role: qa-audit
-last_active: null
-current_milestone: "M0-Setup"
+last_active: "2026-07-07"
+current_milestone: "M2-S1"
 
 active_tasks: []
+
+completed_tasks:
+  - id: M1-ENH-AUDIT
+    title: "M1 独立审查补强门禁审计"
+    phase: audit
+    started: "2026-07-03"
+    completed: "2026-07-03"
+    baseline: "BL-1.1"
+  - id: M2-RECT-VERIFY
+    title: "M2 整改合规性验证 (13P/2W/0F)"
+    phase: audit
+    started: "2026-07-06"
+    completed: "2026-07-06"
+  - id: M1-ADDENDUM
+    title: "M1 GATE-4 升级归档审计确认"
+    phase: audit
+    started: "2026-07-07"
+    completed: "2026-07-07"
 
 pending_decisions: []
 

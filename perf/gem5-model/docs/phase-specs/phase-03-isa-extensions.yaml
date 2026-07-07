@@ -1,0 +1,61 @@
+# Phase 3: gem5 ISA 扩展
+
+phase: 3
+title: "gem5 RISC-V ISA 扩展 (Zcb/Zcmt/Zimop/Zcmop)"
+date: "2026-06-29"
+role: hw-design
+status: COMPLETE
+
+objective: >
+  补齐 Lumi-Core Profile 扩展指令支持，在 gem5 decoder.isa 中添加
+  Zcb/Zcmt/Zimop/Zcmop 扩展指令解码逻辑。
+
+key_decisions:
+  - topic: "构建卡死根因"
+    decision: "scons pre-commit hooks input() 阻塞，非交互环境下永久阻塞"
+  - topic: "zext.isa 格式基类"
+    options: ["RiscvStaticInst", "ImmOp<int64_t>", "RiscvStaticInst + 自定义模板"]
+    decision: "RiscvStaticInst + 自定义 ZextDeclare/ZextExecute 模板"
+  - topic: "CmJalt 重复定义解决方案"
+    options: ["不同格式名", "合并为单一解码位置", "修改 ISA 解析器支持去重"]
+    decision: "合并为单一解码位置 (RC1=bits[11:7] 区分 cm.jt/cm.jalt)"
+
+problems_solved:
+  - problem: "scons build 卡死 52 分钟无进展"
+    root_cause: "site_scons/site_tools/git.py install_style_hooks() 调用 input()"
+    solution: "手动创建 .git/hooks/pre-commit 和 commit-msg 占位文件"
+  - problem: "Cm_jalt 类重复定义 (3次) 和 Mop_r_n/Cm_jt 为抽象类"
+    solution: >
+      重构 zext.isa 使用自定义 ZextDeclare/ZextExecute 模板提供
+      generateDisassembly 实现；重构 decoder.isa Zcmt 部分使用
+      RC1 位字段区分 cm.jt/cm.jalt
+
+extensions_added:
+  - name: "Zcb"
+    description: "压缩位操作指令"
+    status: "编译通过"
+  - name: "Zcmt"
+    description: "压缩跳转表指令 (cm.jt / cm.jalt)"
+    status: "编译通过"
+  - name: "Zimop"
+    description: "May-Be Operations (NOP 语义)"
+    status: "编译通过"
+  - name: "Zcmop"
+    description: "压缩 May-Be Operations (NOP 语义)"
+    status: "编译通过"
+
+verification:
+  test: "Hello world! 基础仿真"
+  simInsts: 5518
+  exit_tick: 3306500
+  result: PASS
+
+deliverables:
+  - path: "perf/gem5-model/gem5/src/arch/riscv/isa/formats/zext.isa"
+    description: "ISA 扩展格式定义 (ZextDeclare/ZextExecute 模板)"
+  - path: "perf/gem5-model/gem5/src/arch/riscv/isa/decoder.isa"
+    description: "指令解码树 (Zcmt RC1 字段区分)"
+  - path: "perf/gem5-model/gem5/src/arch/riscv/isa/formats/formats.isa"
+    description: "格式注册"
+  - path: "perf/gem5-model/gem5/build/RISCV/gem5.opt"
+    description: "增量编译产物"
