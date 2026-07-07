@@ -1,0 +1,57 @@
+# Change Notice — hw-design (v2 双审融合)
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 双审融合审查 + 执行计划实施
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 双审融合审查"
+notice_id: "CN-HD-002"
+
+changes:
+  - id: "SPEC-V1.0.3"
+    title: "platform-spec.html v1.0.2 → v1.0.3 (4 项审查约束响应)"
+    status: executed
+    description: >
+      基于双审融合审查结果, 架构说明书 v1.0.3 更新:
+      - D-009: §4.7.1 整数堆 3R/2W 端口压力分析 + 极端场景 stall 仲裁规则
+      - D-010: §4.6.2 JALR 解析延迟 = 2 cycle (D读rs1 + E1算地址)
+      - D-014: §4.3 MUL throughput=1/cycle, DIV in-flight 9 cycle 吞吐模型
+      - D-015: §4.6.3 skip-stalled 不破坏程序顺序的明确声明
+    impact: >
+      Batch-1 设计文档 (decode-issue.html, execute-alu.html, regfile.html)
+      需基于 v1.0.3 编写, 特别是端口压力分析和 skip-stalled 顺序约束。
+    action_required: >
+      所有 Batch-1~4 设计文档基于 spec v1.0.3。
+
+  - id: "RISK-011~014"
+    title: "新增 4 项风险 (Deepseek 审查)"
+    status: open
+    description: >
+      RISK-011: 旁路 mux 关键路径瓶颈 (80~100ps, 占 125ps 预算 64~80%)
+      RISK-012: 面积超标风险 (Core+TCM+Cache ~0.36mm² vs 目标 ≤0.32mm²)
+      RISK-013: 1GHz 时序紧凑 (F2/M 级占 88% 预算)
+      RISK-014: 锁步比较器双级粒度复杂度 (先 W 级基线, 预留 M 级扩展)
+    action_required: >
+      RTL 骨架中预留旁路 mux 流水化分割点; 骨架完成后进行综合预估;
+      multicore-lockstep.html 先以 W 级比较为基线。
+
+  - id: "FUSION-REPORT"
+    title: "双审融合审查报告 v2.0 完成"
+    status: completed
+    description: >
+      m2-s1-microarch-review-v2.html (LUMI-ARCH-002 v2.0) 完成。
+      22 项发现, 21 项双审一致, 1 项分歧 (D-011 锁步粒度)。
+      审查结果作为 M2-S1 设计文档约束基线。
+    action_required: >
+      16 份设计文档的"审查约束响应"列参照融合报告 §10 文档清单。
+
+  - id: "DEC-007-STATUS"
+    title: "DEC-007 三接口定义待执行 (Task 0.3)"
+    status: pending
+    description: >
+      Debug halt/resume, FPU/Vector 同步, 锁步比较器接入点定义
+      将在对应 Batch-3/4 设计文档中实现。
+    action_required: >
+      编写 debug-trace.html, fpu-vector.html, multicore-lockstep.html
+      时必须包含完整接口定义章节。
+
+reference: "docs/architecture/m2-s1-microarch-review-v2.html"

@@ -1,0 +1,65 @@
+# Change Notice — pm-infra
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 微架构详细审查
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 微架构详细审查"
+notice_id: "CN-PM-001"
+
+changes:
+  - id: "DOC-COUNT"
+    title: "模块设计文档清单从 14 份调整为 16 份"
+    status: confirmed
+    description: >
+      M2-S1 Task 0 微架构审查确认将 2 份过于庞大的文档拆分为 4 份:
+      - interrupt-clic-plic.html → clic-plic.html + exception-handling.html
+      - multicore-dft.html → multicore-lockstep.html + dft-security.html
+      文档总数从 14 份冻结为 16 份。
+    impact: >
+      M2-S1 执行计划需更新文档清单和时间线。
+      Batch-3 从 3 份文档增加到 4 份 (新增 exception-handling.html)。
+      Batch-4 从 2 份文档增加到 4 份 (新增 multicore-lockstep.html + dft-security.html)。
+    action_required: >
+      更新 M2-S1 执行计划中的文档清单和 Gantt 图。
+      更新 milestone-plan.yaml 中的 M2-S1 交付物列表。
+
+  - id: "DEC-001"
+    title: "platform-spec.html v1.0.2 已更新"
+    status: executed
+    description: >
+      架构说明书 FU 配比、旁路网络、冒险处理、误判率均已更新。
+      版本从 v1.0.1 升级到 v1.0.2。
+    impact: >
+      M2-S1 设计文档编写基于更新后的 spec v1.0.2。
+      需通知所有角色 spec 已变更。
+
+  - id: "DEC-006"
+    title: "Dhrystone 性能目标保持不变"
+    status: resolved
+    description: >
+      Dhrystone 目标 3.8 DMIPS/MHz 与 GEM5 实测 1.65 DMIPS/MHz 差距巨大 (2.3x)。
+      用户决策 (2026-07-07): 保持 3.8 DMIPS/MHz 不变。
+      后续通过 RTL 优化或编译器优化尝试接近目标。
+    impact: >
+      PRD LUMI-IPC-002 保持不变。RISK-006 保持 open 状态。
+      无需更新 PRD 或 milestone-plan.yaml。
+
+  - id: "RISK-006"
+    title: "Dhrystone 性能目标差距 (高风险)"
+    status: open
+    severity: high
+    description: >
+      RISK-006 已登记到 risk-register.yaml。
+      Dhrystone 3.8 vs 1.65 DMIPS/MHz 差距 2.3x。
+    action_required: >
+      跟踪用户决策，更新 PRD 和 risk-register。
+
+frozen_document_list:
+  total: 16
+  batches:
+    - { batch: "Batch-1 (P0)", count: 5, files: ["fetch-bpred.html", "decode-issue.html", "execute-alu.html", "writeback-csr.html", "regfile.html"] }
+    - { batch: "Batch-2 (P1)", count: 3, files: ["tcm.html", "cache.html", "pma-axi.html"] }
+    - { batch: "Batch-3 (P1)", count: 4, files: ["clic-plic.html", "exception-handling.html", "privilege-pmp.html", "debug-trace.html"] }
+    - { batch: "Batch-4 (P2)", count: 4, files: ["fpu-vector.html", "power-reset.html", "multicore-lockstep.html", "dft-security.html"] }
+
+reference: "docs/architecture/m2-s1-microarch-review.html"

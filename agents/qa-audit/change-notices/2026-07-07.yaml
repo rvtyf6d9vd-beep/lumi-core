@@ -1,0 +1,74 @@
+# Change Notice — qa-audit
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 微架构详细审查
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 微架构详细审查"
+notice_id: "CN-QA-001"
+
+changes:
+  - id: "REVIEW-COMPLETE"
+    title: "M2-S1 Task 0 微架构详细审查报告已归档"
+    status: completed
+    description: >
+      审查报告已生成并归档: docs/architecture/m2-s1-microarch-review.html
+      审查覆盖 5 个步骤: 流水线架构、模块划分、模块间接口、GEM5 交叉校验、审查输出。
+      发现 8 个问题 (D-001~D-008)，其中 3 个关键、3 个中等、2 个低。
+      生成 7 个决策项 (DEC-001~DEC-007)，其中 5 个已执行、1 个已确认待执行、1 个待用户决策。
+    action_required: >
+      无需立即行动。审查报告作为 M2-S1 设计阶段的基准文档。
+
+  - id: "DEC-001"
+    title: "platform-spec.html v1.0.2 FU 配比更新"
+    status: executed
+    description: >
+      FU 配比已对齐 GEM5: 4xALU + 1xMUL + 1xDIV + 2xLSU + 1xFPU + 1xMISC。
+      旁路网络已补充 W→D 和 FPU→D。
+      冒险处理已补充推测性 Load 延迟预测和 skip-stalled 机制。
+    audit_note: >
+      spec 版本从 v1.0.1 升级到 v1.0.2。变更已通过审查报告追溯。
+
+  - id: "DEC-006"
+    title: "Dhrystone 性能目标保持不变"
+    status: resolved
+    description: >
+      Dhrystone 目标 3.8 vs 实测 1.65 DMIPS/MHz。
+      用户决策 (2026-07-07): 保持 3.8 DMIPS/MHz 不变。
+      后续通过 RTL 优化或编译器优化尝试接近目标。
+    audit_note: >
+      PRD LUMI-IPC-002 保持不变。RISK-006 保持 open 状态。
+
+  - id: "RISK-006~010"
+    title: "5 个新风险项已登记"
+    status: open
+    description: >
+      risk-register.yaml 已追加 5 个新风险项:
+      - RISK-006 (高): Dhrystone 目标差距
+      - RISK-007 (高): Vector 流水线交互未定义
+      - RISK-008 (中): Debug halt/resume 接口缺失
+      - RISK-009 (中): 锁步比较器接入点未定义
+      - RISK-010 (低): gem5 Smepmp/Smrnmi 限制
+    audit_note: >
+      所有风险项均有明确的 mitigation 和 assigned_to。
+      RISK-007/008/009 将在 M2-S1 设计文档中解决。
+      RISK-010 已 accepted (gem5 已知限制)。
+
+  - id: "DEC-002/003"
+    title: "文档清单冻结为 16 份"
+    status: confirmed
+    description: >
+      模块设计文档从 14 份拆分为 16 份。
+      interrupt-clic-plic.html → clic-plic.html + exception-handling.html
+      multicore-dft.html → multicore-lockstep.html + dft-security.html
+    audit_note: >
+      文档清单已在审查报告中冻结。
+      M2-S1 设计阶段不应再增减文档数量。
+
+deliverables_summary:
+  review_report: "docs/architecture/m2-s1-microarch-review.html"
+  spec_updated: "docs/architecture/platform-spec.html (v1.0.2)"
+  risk_register_updated: "audit/risk-register.yaml (RISK-006~010)"
+  instruction_log: "audit/instruction-log/2026-07-07.yaml (entry 3)"
+  change_notices: "agents/*/change-notices/2026-07-07.yaml (4 files)"
+
+reference: "docs/architecture/m2-s1-microarch-review.html"

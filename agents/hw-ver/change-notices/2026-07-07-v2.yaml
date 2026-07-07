@@ -1,0 +1,44 @@
+# Change Notice — hw-ver (v2 双审融合)
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 双审融合审查 + 执行计划实施
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 双审融合审查"
+notice_id: "CN-HV-002"
+
+changes:
+  - id: "RTL-ONLY-TEST-ITEMS"
+    title: "验证计划需增加 RTL-only 测试项"
+    status: pending
+    description: >
+      双审融合审查确认 gem5 不支持 Smepmp/Smrnmi/Vector 扩展。
+      以下功能需在 RTL 验证阶段覆盖:
+      - Smepmp PMP 增强模式 (ERR-004)
+      - Smrnmi 可恢复 NMI (ERR-005)
+      - Vector 指令流水线交互 (gem5 未建模)
+      - Debug halt/resume 完整流程
+    impact: >
+      验证方案需增加 RTL-only cover group, 预估新增 4~6 个测试场景。
+    action_required: >
+      M2-S2 验证方案定版时包含 RTL-only 测试项清单。
+
+  - id: "COVERAGE-MATRIX"
+    title: "62 条需求覆盖率 100% 验证通过"
+    status: completed
+    description: >
+      Deepseek 审查验证 62 条硬件需求到 16 份设计文档覆盖率 100%。
+      hw-ver 需在验证方案中维护 cover group → 需求追溯。
+    action_required: >
+      验证方案中每个 cover group 标注对应的 REQ-ID。
+
+  - id: "FUSION-REVIEW-FINDINGS"
+    title: "融合审查对验证策略的影响"
+    status: informational
+    description: >
+      - D-020: 需求覆盖率 100% (hw-ver 维护追溯矩阵)
+      - D-021: Profile 合规 Mandatory 全合规, Smepmp/Smrnmi 待 RTL 验证
+      - MOD-016: 验证计划增加 RTL-only 测试项
+    action_required: >
+      参考融合报告 §7 (Profile 合规矩阵) 和 §11 (风险评估) 更新验证策略。
+
+reference: "docs/architecture/m2-s1-microarch-review-v2.html"

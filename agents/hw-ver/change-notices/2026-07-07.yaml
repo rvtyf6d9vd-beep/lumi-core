@@ -1,0 +1,81 @@
+# Change Notice — hw-ver
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 微架构详细审查
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 微架构详细审查"
+notice_id: "CN-HV-001"
+
+changes:
+  - id: "DEC-001"
+    title: "FU 配比更新影响验证策略"
+    status: executed
+    description: >
+      platform-spec.html v1.0.2 FU 配比已更新 (4xALU + 1xMUL + 1xDIV + 2xLSU + 1xFPU + 1xMISC)。
+      验证策略需相应调整。
+    impact: >
+      coverage-plan.yaml 需新增 FU 配比相关的 cover group:
+      - ALU 4-way 并发发射覆盖
+      - MUL 1cycle 流水线化验证
+      - DIV 9cycle 多周期 stall 验证
+      - LSU 2-way 并发 Load/Store 验证
+      - MISC FU 系统指令覆盖
+    action_required: >
+      在 coverage-plan.yaml v0.3 中新增上述 cover group。
+      参考审查报告: docs/architecture/m2-s1-microarch-review.html
+
+  - id: "DEC-004"
+    title: "旁路网络验证范围扩大"
+    status: executed
+    description: >
+      旁路路径从 3 条 (E1→D, E2→D, M→D) 扩展到 5 条 (新增 W→D, FPU→D)。
+    impact: >
+      验证策略需新增 W→D 和 FPU→D 旁路路径的功能覆盖率。
+      旁路冲突场景测试用例需增加。
+
+  - id: "DEC-005"
+    title: "推测性 Load 延迟预测验证"
+    status: executed
+    description: >
+      spec 新增推测性 Load 延迟预测 (executeLoadAssumedLatency=1) 和 skip-stalled 机制。
+    impact: >
+      需新增验证场景:
+      - Load 命中推测 (0 cycle) 正常路径
+      - Load miss 回滚路径
+      - skip-stalled 机制下非冲突指令越过 stall 指令的场景
+
+  - id: "DEC-007"
+    title: "3 个缺失接口需在验证策略中覆盖"
+    status: pending
+    description: >
+      以下 3 个关键接口将在 M2-S1 设计文档中定义，验证策略需同步覆盖:
+      1. Debug halt/resume — halt 在 W 级生效, Resume 后重新取指
+      2. FPU/Vector 多周期同步 — FPU busy 信号回传 Issue 级
+      3. 锁步比较器接入点 — W 级比较 PC+reg+data, 失败触发 NMI
+    impact: >
+      需在 verification-strategy.html 中新增 3 组接口验证场景。
+      coverage-plan.yaml 需新增对应 cover group。
+    action_required: >
+      设计文档完成后，更新验证策略和覆盖率计划。
+
+  - id: "RISK-007"
+    title: "Vector 扩展流水线交互未定义"
+    status: open
+    severity: high
+    description: >
+      Vector 指令的流水线交互完全未定义，GEM5 MinorCPU 未建模 Vector FU。
+      Vector 指令行为未知，验证策略需预留 Vector 验证场景。
+    action_required: >
+      fpu-vector.html 设计文档完成后，制定 Vector 指令验证计划。
+
+  - id: "RISK-010"
+    title: "gem5 不支持 Smepmp/Smrnmi 扩展"
+    status: accepted
+    severity: low
+    description: >
+      gem5 24.1 不支持 Smepmp (ERR-004) 和 Smrnmi (ERR-005) 扩展。
+      完整测试需 RTL 或 RTL-accurate simulator。
+    action_required: >
+      RTL 验证阶段需覆盖 Smepmp/Smrnmi CSR 访问和异常处理。
+
+reference: "docs/architecture/m2-s1-microarch-review.html"

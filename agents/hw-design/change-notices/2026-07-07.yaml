@@ -1,0 +1,88 @@
+# Change Notice — hw-design
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 微架构详细审查
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 微架构详细审查"
+notice_id: "CN-HD-001"
+
+changes:
+  - id: "DEC-001"
+    title: "FU 配比更新 (platform-spec.html v1.0.2)"
+    status: executed
+    description: >
+      架构说明书 §4.3 功能单元配比已更新，与 GEM5 MinorCPU 实际配置对齐。
+      ALU 3→4, MUL 延迟 3cycle→1cycle, MUL/DIV 从共享改为独立 FU,
+      LSU 1→2 (三发射模式), Branch FU 取消 (分支通过 ALU 执行),
+      新增 MISC FU (系统指令)。
+    impact: >
+      后续设计文档 (execute-alu.html, decode-issue.html, regfile.html) 需基于
+      更新后的 FU 配比。ALU FU 端口数从 3 改为 4，LSU 端口数从 1 改为 2。
+      寄存器堆读端口数需重新计算 (4 ALU × 2 + 2 LSU × 2 + 1 MUL × 2 + 1 FPU × 3 = 17 读端口)。
+    action_required: >
+      Batch-1 设计文档编写时基于更新后的 spec v1.0.2。
+      参考审查报告: docs/architecture/m2-s1-microarch-review.html
+
+  - id: "DEC-002"
+    title: "interrupt-clic-plic.html 拆分为 2 份"
+    status: confirmed
+    description: >
+      原 interrupt-clic-plic.html (三合一) 拆分为:
+      - clic-plic.html: CLIC + PLIC 中断控制器 (硬件 IP)
+      - exception-handling.html: 异常处理 + 陷阱委托 + mcause (流水线逻辑)
+    impact: >
+      Batch-3 文档数从 3 份增加到 4 份。需调整文档编写工作量估算。
+    action_required: >
+      拆分后的两份文档各自遵循 7 标准章节模板。
+
+  - id: "DEC-003"
+    title: "multicore-dft.html 拆分为 2 份"
+    status: confirmed
+    description: >
+      原 multicore-dft.html (三合一) 拆分为:
+      - multicore-lockstep.html: 多核互联 + 双核锁步 (架构特性)
+      - dft-security.html: DFT + 安全机制 (测试设计)
+    impact: >
+      Batch-4 文档数从 2 份增加到 4 份。
+    action_required: >
+      multicore-lockstep.html 必须定义锁步比较器接入点 (W 级, 比较 PC+reg+data)。
+
+  - id: "DEC-004"
+    title: "旁路网络补充 W→D 和 FPU→D"
+    status: executed
+    description: >
+      platform-spec.html §4.6.1 旁路路径已补充 W→D 和 FPU→D。
+    impact: >
+      decode-issue.html 设计文档需包含完整 5 条旁路路径。
+      旁路网络复杂度增加，需在面积/时序评估中考虑。
+
+  - id: "DEC-005"
+    title: "补充推测性 Load 延迟预测和 skip-stalled 机制"
+    status: executed
+    description: >
+      platform-spec.html §4.6.3 结构冒险已补充 GEM5 优化机制说明。
+    impact: >
+      execute-alu.html 和 decode-issue.html 需描述这些机制在 RTL 中的实现方式。
+
+  - id: "DEC-007"
+    title: "3 个缺失接口需在设计文档中定义"
+    status: pending
+    description: >
+      以下 3 个关键接口在 spec 中完全缺失，必须在 M2-S1 设计文档中定义:
+      1. Debug halt/resume 流水线交互 → debug-trace.html (halt 在 W 级生效)
+      2. FPU/Vector 多周期同步 → fpu-vector.html (FPU busy 信号回传 Issue 级)
+      3. 锁步比较器接入点 → multicore-lockstep.html (比较在 W 级, 比较 PC+reg+data)
+    impact: >
+      这些接口定义将影响 RTL 设计和验证策略。
+    action_required: >
+      编写上述文档时必须包含完整的接口定义章节。
+
+document_list_frozen: true
+frozen_document_count: 16
+frozen_documents:
+  - { batch: "Batch-1 (P0)", files: ["fetch-bpred.html", "decode-issue.html", "execute-alu.html", "writeback-csr.html", "regfile.html"] }
+  - { batch: "Batch-2 (P1)", files: ["tcm.html", "cache.html", "pma-axi.html"] }
+  - { batch: "Batch-3 (P1)", files: ["clic-plic.html", "exception-handling.html", "privilege-pmp.html", "debug-trace.html"] }
+  - { batch: "Batch-4 (P2)", files: ["fpu-vector.html", "power-reset.html", "multicore-lockstep.html", "dft-security.html"] }
+
+reference: "docs/architecture/m2-s1-microarch-review.html"

@@ -1,0 +1,48 @@
+# Change Notice — qa-audit (v2 双审融合)
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 双审融合审查 + 执行计划实施
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 双审融合审查"
+notice_id: "CN-QA-002"
+
+changes:
+  - id: "FUSION-REPORT-ARCHIVED"
+    title: "双审融合审查报告 v2.0 归档"
+    status: completed
+    description: >
+      m2-s1-microarch-review-v2.html (LUMI-ARCH-002 v2.0) 已归档。
+      双审一致性评估: 22 项发现中 21 项一致或互补, 1 项分歧已制定融合策略。
+      审查结果可信度高, 可作为 M2-S1 设计文档约束基线。
+    action_required: >
+      M2 门禁审计时引用融合报告作为审查基线。
+
+  - id: "AUDIT-CHECKLIST-UPDATE"
+    title: "M2 门禁检查清单更新 (10 项)"
+    status: pending
+    description: >
+      融合报告 §5 (Task 5 门禁检查清单) 定义了 10 项门禁检查:
+      1. 16 份设计文档 (7 标准章节 + 审查约束)
+      2. 接口定义完整 (D-006/007/011)
+      3. 审查约束响应 (D-009~D-015)
+      4. 验证方案 (26 cover group)
+      5. GEM5 模型 (LTAGE/PMA/中断/FPU/TCM)
+      6. RTL 骨架 (全 .sv 端口定义)
+      7. 需求追溯矩阵 (62 条)
+      8. 风险登记 (所有 open 有 mitigation)
+      9. Errata 维护 (known-issues.yaml)
+      10. 融合审查报告 (双审一致性评估)
+    action_required: >
+      Week 6/10/14 批次审计时按此清单执行。
+
+  - id: "DEC-006-STATUS"
+    title: "DEC-006 Dhrystone 目标: 用户保持 3.8 不变"
+    status: decided
+    description: >
+      用户决策: 保持 Dhrystone ≥3.8 DMIPS/MHz 目标不变。
+      RISK-006 保持 open 状态, 后续通过 RTL/编译器优化尝试接近。
+      关键决策点: Batch-1 完成后 RTL 预估 Dhrystone 若 <2.0, 建议标注 Stretch Goal。
+    action_required: >
+      监控 RISK-006 状态, Batch-1 完成后触发重评。
+
+reference: "docs/architecture/m2-s1-microarch-review-v2.html"

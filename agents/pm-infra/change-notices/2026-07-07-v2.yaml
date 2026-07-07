@@ -1,0 +1,52 @@
+# Change Notice — pm-infra (v2 双审融合)
+# 日期: 2026-07-07
+# 来源: M2-S1 Task 0 双审融合审查 + 执行计划实施
+
+date: "2026-07-07"
+source: "M2-S1 Task 0 双审融合审查"
+notice_id: "CN-PM-002"
+
+changes:
+  - id: "EXECUTION-PLAN-V2"
+    title: "M2-S1 执行计划更新为 v2.0"
+    status: executed
+    description: >
+      基于双审融合审查结果, M2-S1 详细设计执行计划全面更新:
+      - 文档从 14 份调整为 16 份 (DEC-002/DEC-003 拆分)
+      - 新增 Task 0 前置闭合 (spec 更新 + 融合报告 + DEC-007 + 风险归档)
+      - 各批次文档融入审查发现 (D-001~D-022), 新增"审查约束"列
+      - GEM5 扩展任务按审查优先级重排
+      - 门禁检查清单融入审查约束 (10 项门禁)
+    impact: >
+      milestone-plan.yaml M2 gates 需反映 16 份文档。
+      .qoder/specs 执行计划 spec 需同步更新。
+    action_required: >
+      更新 milestone-plan.yaml 和 .qoder/specs。
+
+  - id: "MILESTONE-PLAN-UPDATE"
+    title: "milestone-plan.yaml M2 gates 更新"
+    status: executed
+    description: >
+      M2 gates 从 "14 份模块设计文档完成" 更新为 "16 份模块设计文档完成"。
+    action_required: >
+      持续跟踪 M2-S1 进度, 确保 16 份文档按计划完成。
+
+  - id: "RISK-REGISTER-UPDATE"
+    title: "风险登记簿更新 (RISK-011~014)"
+    status: completed
+    description: >
+      新增 4 项风险: 旁路 mux 瓶颈, 面积超标, 时序紧凑, 锁步粒度复杂度。
+      全部 status=open, 需持续跟踪 mitigation 进展。
+    action_required: >
+      M2 门禁审计时检查 RISK-011~014 的 mitigation 状态。
+
+  - id: "TRACEABILITY-MATRIX"
+    title: "需求追溯矩阵维护 (62 条需求)"
+    status: pending
+    description: >
+      62 条硬件需求到 16 份设计文档的覆盖率已验证 100% (D-020)。
+      pm-infra 需在 M2-S1 期间持续维护追溯矩阵, 确保无遗漏。
+    action_required: >
+      每批次文档完成后更新追溯矩阵。
+
+reference: "docs/architecture/m2-s1-microarch-review-v2.html"
