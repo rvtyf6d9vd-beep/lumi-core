@@ -679,3 +679,75 @@ files_created_or_modified_m2s1_exec:
       - path: "perf/gem5-model/docs/Output/synth.ys"
         action: created
         summary: "Yosys 综合脚本 (降级版)"
+
+  # ──────────────────────────────────────────────
+  # 指令 12：M2-S2 验证定版 + 风险闭合 + 门禁审查
+  # ──────────────────────────────────────────────
+  - id: 12
+    type: execute
+    source: user
+    timestamp: "2026-07-07T23:45:00+08:00"
+    summary: "M2-S2 验证方案定版 + 风险闭合 + M2 门禁审查"
+    details:
+      背景: "M2-S2 验证框架定版 + 4 项风险闭合 + M2 四门禁合规审查"
+      plan_file: "M2-S2_验证定版与门禁_task-80e.md"
+      执行任务:
+        Task_1_验证策略定版:
+          file: docs/verification/verification-strategy.html
+          changes:
+            - "v0.1-draft → v1.0, 状态: 框架 → 定版 (M2)"
+            - "需求基线: BL-1.0(91) → BL-1.1(99)"
+            - "ch2: 新增 6 个单元验证模块 (PMA/Regfile/Power/CSR/DFT/Lockstep)"
+            - "ch3: 新增 3 个 TB Agent (Power/Fault/Performance)"
+            - "ch4: 新增 6 个功能 Cover Group"
+            - "ch7: 新增设计关联映射 (16 份文档→验证单元)"
+            - "ch8: 新增验证里程碑与收敛标准 (8 项 C1~C8)"
+        Task_2_覆盖计划定版:
+          file: docs/verification/coverage-plan.yaml
+          changes:
+            - "v0.2-draft → v1.0, status: framework → final"
+            - "新增 6 个 Cover Group (timer/dft/multicore/boot/clock/performance)"
+            - "新增 99 条需求追溯矩阵 (75 硬件 + 24 软件/交付 N/A)"
+            - "32 Cover Groups, 硬件覆盖率 100%"
+        Task_3_风险闭合:
+          file: audit/risk-register.yaml
+          changes:
+            - "RISK-007 (high → resolved): fpu-vector.html D-006a/b/c + DEC-007-2"
+            - "RISK-008 (medium → resolved): debug-trace.html DEC-007-1 + W 级 halt"
+            - "RISK-009 (medium → resolved): multicore-lockstep.html DEC-007-3 + W 级比较"
+            - "RISK-014 (low → resolved): multicore-lockstep.html D-011 + W 基线 + M 预留"
+        Task_4_合规审计:
+          files:
+            - "audit/compliance-reports/m2-20260707.yaml (新建, M2 四门禁 PASS)"
+            - "docs/project/milestone-plan.yaml (M2 compliance_report 填充)"
+            - "audit/instruction-log/2026-07-07.yaml (本指令)"
+            - "docs/index.html (验证方案状态更新)"
+      rules_checked: ["03", "08", "16", "18", "23"]
+    outcome: >
+      M2-S2 验证框架全部定版完成。
+      验证策略 v1.0 (8 章) + 覆盖计划 v1.0 (32 Cover Groups + 99 条追溯) +
+      4 项风险闭合 + M2 合规报告 (4P/0C/0F)。
+      M2 四项门禁全部 PASS, 待人类批准进入 M3。
+
+files_created_or_modified_m2s2:
+  - path: "docs/verification/verification-strategy.html"
+    action: modified
+    summary: "v0.1-draft → v1.0 定版 (ch7 设计关联 + ch8 验证里程碑)"
+  - path: "docs/verification/coverage-plan.yaml"
+    action: modified
+    summary: "v0.2-draft → v1.0 定版 + 6 新 Cover Group + 99 条追溯矩阵"
+  - path: "audit/risk-register.yaml"
+    action: modified
+    summary: "RISK-007/008/009/014 → resolved"
+  - path: "audit/compliance-reports/m2-20260707.yaml"
+    action: created
+    summary: "M2 门禁合规报告 (4P/0C/0F)"
+  - path: "docs/project/milestone-plan.yaml"
+    action: modified
+    summary: "M2 compliance_report → m2-20260707.yaml"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 12: M2-S2 验证定版"
+  - path: "docs/index.html"
+    action: modified
+    summary: "验证方案状态更新 + 合规报告索引"

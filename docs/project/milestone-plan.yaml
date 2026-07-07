@@ -40,7 +40,7 @@ milestones:
       - "验证方案定版"
       - "GEM5+ 微架构模型完成"
       - "RTL 骨架搭建完成"
-    compliance_report: null
+    compliance_report: "audit/compliance-reports/m2-20260707.yaml"
 
   - id: "M3"
     title: "RTL 冻结"

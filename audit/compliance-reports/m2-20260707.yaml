@@ -1,0 +1,283 @@
+# Lumi-Core M2 门禁合规报告
+# 规则 23: 里程碑门禁检查
+
+date: "2026-07-07"
+milestone: M2
+report_type: gate_check
+baseline: BL-1.1
+prepared_by: pm-infra
+status: PASS
+
+# ════════════════════════════════════════════════
+# M2 门禁总览
+# ════════════════════════════════════════════════
+summary:
+  total_gates: 4
+  PASS: 4
+  CONDITIONAL_PASS: 0
+  FAIL: 0
+  verdict: PASS
+
+# ════════════════════════════════════════════════
+# GATE-1: 16 份模块设计文档完成
+# ════════════════════════════════════════════════
+gate_1_design_docs:
+  status: PASS
+  description: "16 份模块设计文档 (LUMI-DESIGN-001~016) 全部完成，含双审融合审查 v2.0 + 双视角修正"
+  evidence:
+    documents:
+      - id: LUMI-DESIGN-001
+        file: docs/design/fetch-bpred.html
+        title: "F1/F2 + LTAGE + BTB/RAS"
+        status: final
+      - id: LUMI-DESIGN-002
+        file: docs/design/decode-issue.html
+        title: "D/I 级三发射 + 冒险 + skip-stalled"
+        status: final
+      - id: LUMI-DESIGN-003
+        file: docs/design/execute-alu.html
+        title: "E1/E2 ALU + MUL/DIV"
+        status: final
+      - id: LUMI-DESIGN-004
+        file: docs/design/writeback-csr.html
+        title: "W 级 + CSR + HPM"
+        status: final
+      - id: LUMI-DESIGN-005
+        file: docs/design/regfile.html
+        title: "整数/浮点/向量寄存器堆"
+        status: final
+      - id: LUMI-DESIGN-006
+        file: docs/design/tcm.html
+        title: "ITCM/DTCM + ECC + DMA"
+        status: final
+      - id: LUMI-DESIGN-007
+        file: docs/design/cache.html
+        title: "L1 I/D-Cache + ECC + RVWMO"
+        status: final
+      - id: LUMI-DESIGN-008
+        file: docs/design/pma-axi.html
+        title: "PMA + AXI 总线 + FFP"
+        status: final
+      - id: LUMI-DESIGN-009
+        file: docs/design/clic-plic.html
+        title: "CLIC + PLIC 两层中断控制器"
+        status: final
+      - id: LUMI-DESIGN-010
+        file: docs/design/exception-handling.html
+        title: "异常处理 + 陷阱委托 + NMI"
+        status: final
+      - id: LUMI-DESIGN-011
+        file: docs/design/privilege-pmp.html
+        title: "特权 + PMP + Smepmp"
+        status: final
+      - id: LUMI-DESIGN-012
+        file: docs/design/debug-trace.html
+        title: "JTAG Debug + Trace"
+        status: final
+      - id: LUMI-DESIGN-013
+        file: docs/design/fpu-vector.html
+        title: "FPU + Vector"
+        status: final
+      - id: LUMI-DESIGN-014
+        file: docs/design/power-reset.html
+        title: "低功耗 + 复位 + 时钟域"
+        status: final
+      - id: LUMI-DESIGN-015
+        file: docs/design/multicore-lockstep.html
+        title: "多核 + 锁步"
+        status: final
+      - id: LUMI-DESIGN-016
+        file: docs/design/dft-security.html
+        title: "DFT + 安全 + 物理约束"
+        status: final
+    quality_checks:
+      - "16 份均为 7 章节标准结构"
+      - "所有接口表为 4 列 (信号|方向|位宽|描述)"
+      - "每份含关联模块段落 + 审查报告引用 + 验证策略引用"
+      - "双审融合审查 v2.0 完成 (22 项发现, 全部处理)"
+      - "双视角修正完成 (P0 5项 + P1 8项 + P2 4项)"
+    review_report: "docs/architecture/m2-s1-microarch-review-v2.html"
+    index: "docs/design/index.html"
+
+# ════════════════════════════════════════════════
+# GATE-2: 验证方案定版
+# ════════════════════════════════════════════════
+gate_2_verification:
+  status: PASS
+  description: "验证策略 v1.0 定版 + 覆盖计划 v1.0 定版 + 99 条需求追溯矩阵完整"
+  evidence:
+    verification_strategy:
+      file: docs/verification/verification-strategy.html
+      version: "1.0"
+      previous_version: "0.1-draft"
+      status: "定版 (M2)"
+      chapters: 8
+      highlights:
+        - "ch2: 18 个单元验证模块 (新增 PMA/Regfile/Power/CSR/DFT/Lockstep)"
+        - "ch3: 9 个 TB Agent (新增 Interrupt/Power/Fault/Performance)"
+        - "ch4: 13 个功能 Cover Group (新增 PMA/HPM/DFT/Lockstep/Clock)"
+        - "ch7: 设计关联映射 (16 份文档→验证单元, RTL 端口→TB Agent, GEM5→参考模型)"
+        - "ch8: 验证里程碑与收敛标准 (M3-S1/S2 阶段, 8 项收敛准则 C1~C8)"
+    coverage_plan:
+      file: docs/verification/coverage-plan.yaml
+      version: "1.0"
+      previous_version: "0.2-draft"
+      status: final
+      total_cover_groups: 32
+      new_cover_groups: 6
+      traceability_matrix:
+        total_requirements: 99
+        hw_requirements_covered: 75
+        sw_delivery_na: 24
+        coverage_rate: "100% (硬件需求)"
+      new_cgs:
+        - cg_timer_mtime
+        - cg_dft_scan
+        - cg_multicore_topology
+        - cg_boot_sequence
+        - cg_clock_timing
+        - cg_performance
+    convergence_criteria:
+      - "C1: Line Coverage ≥ 95%"
+      - "C2: Branch Coverage ≥ 95%"
+      - "C3: FSM Coverage 100%"
+      - "C4: 32 Cover Groups 全达标"
+      - "C5: 0 open P1 bug"
+      - "C6: 回归通过率 100%"
+      - "C7: Toggle Coverage ≥ 90%"
+      - "C8: Condition Coverage ≥ 90%"
+
+# ════════════════════════════════════════════════
+# GATE-3: GEM5+ 微架构模型完成
+# ════════════════════════════════════════════════
+gate_3_gem5:
+  status: PASS
+  description: "GEM5+ 微架构模型全面扩展 — PMA/CLIC/FPU 7FU/Vector 8FU/Power/HPM 全部完成"
+  evidence:
+    new_modules:
+      - file: lumi-lib/lumi_pma.py
+        description: "3 区域 PMA 检查器 (TCM/DDR/MMIO)"
+        lines: 221
+      - file: lumi-lib/lumi_clic_latency.py
+        description: "CLIC 16cycle 延时统计建模"
+        lines: 108
+      - file: lumi-lib/lumi_vector.py
+        description: "8 Vector FU 创建函数"
+        lines: 122
+      - file: lumi-lib/lumi_power.py
+        description: "WFI/WRS/ICG 统计 + PowerDomain"
+        lines: 190
+      - file: lumi-lib/lumi_hpm.py
+        description: "29 HPM 事件映射 + JSON 导出"
+        lines: 174
+    modified_modules:
+      - file: lumi-core.py
+        changes: "PMA/CLIC/FPU/Vector/Power/HPM 命令行参数"
+      - file: lumi_cpu.py
+        changes: "7 FPU FU 类 + Vector FU Pool 扩展"
+      - file: lumi_tcm.py
+        changes: "itcm/dtcm latency 参数化"
+      - file: lumi_cache.py
+        changes: "size/assoc 参数化"
+    test_coverage:
+      smoke_tests: 6
+      regression_tests: 6
+    gem5_opclass_note: "FPU/Vector 全部使用 gem5 真实 opClass (DS-D1 终审验证通过)"
+
+# ════════════════════════════════════════════════
+# GATE-4: RTL 骨架搭建完成
+# ════════════════════════════════════════════════
+gate_4_rtl:
+  status: PASS
+  description: "28 个 SystemVerilog 骨架文件 + filelist + Makefile, Verilator lint 0 error"
+  evidence:
+    file_count: 28
+    total_lines: 2701
+    total_ports: 491
+    fsm_states: 24
+    lint_result:
+      tool: "Verilator 5.048"
+      errors: 0
+      warnings: 0
+    synthesis_note: "Yosys 0.64 不支持 SV unpacked array 端口, 降级为模块统计报告"
+    file_list: src/rtl/lumi_core.f
+    makefile: src/rtl/Makefile
+    modules_by_category:
+      core: 7
+      memory: 2
+      bus: 2
+      csr: 2
+      interrupt: 3
+      debug: 2
+      fpu: 2
+      power: 1
+      multicore: 2
+      dft: 1
+      top: 2
+      include: 2
+    lint_fixes:
+      - "lumi_plic.sv: priority (SV 保留字) → irq_priority packed array"
+      - "lumi_types_pkg.sv: EXC_NONE 枚举值冲突 → 移除, 用 exc_valid 信号替代"
+      - "lumi_core_top.sv: f2_insts/bypass/mem 数组尺寸对齐 + unpacked array 信号声明"
+      - "lumi_decode_issue.sv: d_instructions/d_inst_valid 宽度对齐 FETCH_WIDTH"
+      - "lumi_interfaces.sv: pipeline_if 内 import → lumi_pkg:: 全限定名"
+    area_estimate: perf/gem5-model/docs/Output/rtl-area-estimate.txt
+
+# ════════════════════════════════════════════════
+# 风险状态摘要
+# ════════════════════════════════════════════════
+risk_summary:
+  total: 17
+  resolved: 7
+  accepted: 2
+  open: 4
+  mitigated: 4
+  resolved_in_m2:
+    - id: RISK-007
+      title: "Vector 流水线交互"
+      resolution: "fpu-vector.html D-006a/b/c + DEC-007-2 完整定义"
+    - id: RISK-008
+      title: "Debug halt/resume"
+      resolution: "debug-trace.html DEC-007-1 + W 级 halt 接口"
+    - id: RISK-009
+      title: "Lockstep 接入点"
+      resolution: "multicore-lockstep.html DEC-007-3 + W 级比较"
+    - id: RISK-014
+      title: "Lockstep 双级粒度"
+      resolution: "multicore-lockstep.html D-011 + W 基线 + M 预留"
+  open_for_m3:
+    - id: RISK-006
+      title: "Dhrystone 目标差距"
+      reason: "需 M3 RTL 实现后实测验证"
+    - id: RISK-011
+      title: "Bypass 关键路径瓶颈"
+      reason: "需 M3 综合时序数据"
+    - id: RISK-012
+      title: "面积可能超标"
+      reason: "需 M3 综合面积报告"
+    - id: RISK-013
+      title: "时序紧凑"
+      reason: "需 M3 STA 分析"
+
+# ════════════════════════════════════════════════
+# 审计追踪
+# ════════════════════════════════════════════════
+audit_trail:
+  instruction_log: "audit/instruction-log/2026-07-07.yaml"
+  instruction_id: 12
+  related_reports:
+    - "docs/architecture/m2-s1-microarch-review-v2.html"
+    - "docs/verification/verification-strategy.html"
+    - "docs/verification/coverage-plan.yaml"
+    - "audit/risk-register.yaml"
+    - "docs/design/index.html"
+    - "perf/gem5-model/docs/Output/rtl-area-estimate.txt"
+
+# ════════════════════════════════════════════════
+# Sign-off 状态
+# ════════════════════════════════════════════════
+signoff:
+  auto_check: PASS
+  gate_results: "4P / 0C / 0F"
+  pending_human_approval: true
+  note: "M2 四项门禁全部 PASS, 待人类批准进入 M3 阶段"

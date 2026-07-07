@@ -137,7 +137,7 @@ risks:
   - id: "RISK-007"
     title: "Vector extension pipeline interaction undefined"
     severity: high
-    status: open
+    status: resolved
     reported_by: hw-design
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -149,13 +149,19 @@ risks:
       M2-S1 设计文档 fpu-vector.html 必须定义 Vector 指令的流水线交互机制：
       执行延迟、stall 策略、与 Issue 级的 busy 信号握手、异常处理。
       RTL 验证阶段需覆盖 Vector 指令的边界情况。
-    resolution: null
-    resolution_date: null
+    resolution: >
+      fpu-vector.html 已完整定义 Vector 流水线交互:
+      - D-006a: Vector-FU 多步执行模型 (steps = VLEN/LMUL/SEW)
+      - D-006b: Vector-LSQ 交互 (Vector Load/Store 序列化)
+      - D-006c: Vector RegFile 冲突处理
+      - DEC-007-2: FPU/Vector busy 信号握手 (Issue 级 stall 后序指令)
+      GEM5 lumi_vector.py 8FU 模型已实现 (SimdFloat* opClass)
+    resolution_date: "2026-07-07"
 
   - id: "RISK-008"
     title: "Debug halt/resume pipeline interaction undefined"
     severity: medium
-    status: open
+    status: resolved
     reported_by: hw-design
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -167,13 +173,19 @@ risks:
       M2-S1 设计文档 debug-trace.html 必须定义 halt 在 W 级生效
       (指令提交后)，Resume 后从 halt PC 重新取指。
       需定义 halt 信号传播路径和流水线 flush 策略。
-    resolution: null
-    resolution_date: null
+    resolution: >
+      debug-trace.html 已完整定义 Debug halt/resume 流水线交互:
+      - DEC-007-1: halt 在 W 级生效 (当前指令提交后)
+      - halt 延迟 0~8 cycle (halt_req 到 hart_halted)
+      - debug_halt_check() 在 W 级检查 halt_pending
+      - Resume 后从 halt PC 重新取指, 流水线 flush 后重新填充
+      - dmcontrol.haltreq/resumereq 寄存器接口已定义
+    resolution_date: "2026-07-07"
 
   - id: "RISK-009"
     title: "Lockstep comparator接入点未定义"
     severity: medium
-    status: open
+    status: resolved
     reported_by: hw-design
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -184,8 +196,13 @@ risks:
       M2-S1 设计文档 multicore-lockstep.html 必须定义比较在 W 级
       (写回前)，比较 PC + 目标寄存器号 + 写入数据。
       比较失败触发 NMI 或自定义异常。
-    resolution: null
-    resolution_date: null
+    resolution: >
+      multicore-lockstep.html 已完整定义锁步比较器:
+      - DEC-007-3: W 级比较接入点 (commit_valid 时刻)
+      - 比较信号: PC + rd (目标寄存器号) + rd_data (写入数据) + mem_write
+      - 比较失败触发 NMI (via mismatch_irq 信号)
+      - RTL 骨架 lumi_lockstep.sv 已实现 (ST_IDLE/ST_COMPARE/ST_MISMATCH/ST_RECOVER)
+    resolution_date: "2026-07-07"
 
   - id: "RISK-010"
     title: "gem5 lacks Smepmp/Smrnmi extension support (ERR-004/005)"
@@ -265,7 +282,7 @@ risks:
   - id: "RISK-014"
     title: "Lockstep comparator dual-level granularity complexity"
     severity: low
-    status: open
+    status: resolved
     reported_by: hw-design
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -277,8 +294,13 @@ risks:
       M2-S1 设计文档 multicore-lockstep.html 先以 W 级比较为基线设计,
       预留 M 级扩展接口。若 M+W 双级比较复杂度过高, 向用户提出简化方案
       (仅 W 级)。比较失败触发 NMI。
-    resolution: null
-    resolution_date: null
+    resolution: >
+      multicore-lockstep.html 已定义双级比较策略 (D-011):
+      - 基线: W 级比较 (MiniMax 方案, 实现简单)
+      - 预留: M 级扩展接口 (Deepseek 建议, 预留 compare_m 信号)
+      - 文档明确: M 级扩展需 Store Buffer 同步策略, 推迟到 M3 评估
+      - 当前仅实现 W 级, 复杂度可控
+    resolution_date: "2026-07-07"
 
   # ──────────────────────────────────────────────
   # M2-S1 Task-1 文档审查修正新增风险 (2026-07-07)
