@@ -19,10 +19,45 @@ from html import escape
 
 # ── 分类名称映射 ──
 CAT_NAMES = {
+    # PPA 类
+    'PPA-PIPE': '流水线架构需求',
+    'PPA-FREQ': '主频需求',
+    'PPA-IPC': '性能指标需求',
+    'PPA-AREA': '面积需求',
+    'PPA-PWR': '功耗需求',
+    'PPA-INT': '集成需求',
+    # RTL 类
+    'RTL-PROF': 'Profile/ISA 配置',
+    'RTL-ISA': 'ISA 指令集需求',
+    'RTL-MEM': '内存系统需求',
+    'RTL-IF': '接口需求',
+    'RTL-FEAT': '功能特性需求',
+    'RTL-OTHER': '其他 RTL 需求',
+    'RTL-DFT': 'DFT 可测试性',
+    'RTL-MCORE': '多核需求',
+    'RTL-BOOT': '启动需求',
+    'RTL-CLK': '时钟需求',
+    'RTL-TIMING': '时序需求',
+    'RTL-QUAL': '质量需求',
+    # 交付物类
+    'DEL-RTL': 'RTL 交付物',
+    'DEL-INT': '集成文档',
+    'DEL-DOC': '项目文档',
+    # 安全类
+    'SAFE': '功能安全需求',
+    'SEC': '安全需求',
+    # 软件类
+    'SW-TOOL': '工具链需求',
+    'SW-SDK': 'SDK 需求',
+    'SW-FW': '固件需求',
+    'SW-IDE': 'IDE 需求',
+    'SW-SIM': '仿真需求',
+    'SW-DBG': '调试需求',
+    'SW-PERF': '软件性能需求',
+    # 旧分类兼容
     'ISA': 'ISA 与架构需求',
     'PERF': '性能需求',
     'IF': '接口需求',
-    'SAFE': '功能安全需求',
     'CFG': '可配置性需求',
     'SW': '软件生态需求',
     'VER': '验证与交付需求',
@@ -76,14 +111,20 @@ def parse_baseline_yaml(filepath):
                 sub_section = 'statistics'
                 continue
 
-            if sub_section == 'statistics':
+            if sub_section in ('statistics', 'by_category', 'by_status', 'by_priority'):
+                # total: at indent 4 (before sub-section header check)
+                m = re.match(r'^\s{4}total:\s*(\d+)', line)
+                if m:
+                    statistics['total'] = int(m.group(1))
+                    continue
+
                 # Parse statistics sub-sections
-                m = re.match(r'^\s{4}(\w+):\s*$', stripped)
+                m = re.match(r'^\s{4}([\w_]+):\s*$', line)
                 if m:
                     sub_section = m.group(1)  # by_category, by_status, by_priority
                     continue
 
-                m = re.match(r'^\s{6}(\w[\w-]*):\s*(.+)$', stripped)
+                m = re.match(r'^\s{6}([\w-]+):\s*(.+)$', line)
                 if m and sub_section in ('by_category', 'by_status', 'by_priority'):
                     key = m.group(1)
                     val = m.group(2).strip().strip('"').strip("'")
@@ -94,7 +135,7 @@ def parse_baseline_yaml(filepath):
                     statistics[sub_section][key] = val
                 continue
 
-            m = re.match(r'^\s{2}(\w+):\s*(.+)$', stripped)
+            m = re.match(r'^\s{2}(\w+):\s*(.+)$', line)
             if m:
                 key = m.group(1)
                 val = m.group(2).strip().strip('"').strip("'")
@@ -115,7 +156,7 @@ def parse_baseline_yaml(filepath):
                 continue
 
             if current_req is not None:
-                m = re.match(r'^\s{4}(\w+):\s*(.+)$', stripped)
+                m = re.match(r'^\s{2}([\w-]+):\s*(.+)$', line)
                 if m:
                     key = m.group(1)
                     val = m.group(2).strip().strip('"').strip("'")
@@ -146,7 +187,17 @@ def generate_html(filepath, baseline, statistics, requirements):
 
     # Build category tables HTML
     cat_tables = ''
-    cat_order = ['ISA', 'PERF', 'IF', 'SAFE', 'CFG', 'SW', 'VER', 'NFR']
+    cat_order = ['PPA-PIPE', 'PPA-FREQ', 'PPA-IPC', 'PPA-AREA', 'PPA-PWR', 'PPA-INT',
+                  'RTL-PROF', 'RTL-ISA', 'RTL-MEM', 'RTL-IF', 'RTL-FEAT', 'RTL-OTHER',
+                  'RTL-DFT', 'RTL-MCORE', 'RTL-BOOT', 'RTL-CLK', 'RTL-TIMING', 'RTL-QUAL',
+                  'DEL-RTL', 'DEL-INT', 'DEL-DOC',
+                  'SAFE', 'SEC',
+                  'SW-TOOL', 'SW-SDK', 'SW-FW', 'SW-IDE', 'SW-SIM', 'SW-DBG', 'SW-PERF',
+                  'ISA', 'PERF', 'IF', 'CFG', 'SW', 'VER', 'NFR']
+    # Add any categories not in cat_order at the end
+    for cat in sorted(by_cat.keys()):
+        if cat not in cat_order:
+            cat_order.append(cat)
     for cat in cat_order:
         if cat not in by_cat:
             continue
@@ -183,6 +234,12 @@ def generate_html(filepath, baseline, statistics, requirements):
     # Statistics summary bars
     by_status = statistics.get('by_status', {})
     by_priority = statistics.get('by_priority', {})
+
+    # Auto-calculate by_status from requirements if not in YAML
+    if not by_status and requirements:
+        for req in requirements:
+            st = req.get('status', 'Draft')
+            by_status[st] = by_status.get(st, 0) + 1
 
     stat_html = '<div class="stat-grid">'
     stat_html += '<div class="stat-card"><h3>按状态分布</h3>'

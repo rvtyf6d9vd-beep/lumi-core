@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumi-Core 基线报告 — BL-EXAMPLE</title>
+    <title>Lumi-Core 基线报告 — BL-1.1</title>
     <style>
         :root {
             --bg: #ffffff; --text: #333333; --accent: #16213e;
@@ -94,109 +94,64 @@
 
 <div class="cover">
     <h1>Lumi-Core 需求基线报告</h1>
-    <div class="bl-ver">BL-EXAMPLE</div>
+    <div class="bl-ver">BL-1.1</div>
     <div class="meta">
-        <p><strong>冻结时间:</strong> 2026-06-26T14:00:00+08:00</p>
-        <p><strong>审批人:</strong> (填写)</p>
-        <p><strong>需求总数:</strong> 5 条</p>
+        <p><strong>冻结时间:</strong> 2026-07-03T16:49:42+08:00</p>
+        <p><strong>审批人:</strong> 项目负责人</p>
+        <p><strong>需求总数:</strong> 99 条</p>
     </div>
 </div>
 
 <h1>基线概要</h1>
-<blockquote><strong>说明:</strong> 示例基线文件，展示完整 schema 结构</blockquote>
+<blockquote><strong>说明:</strong> BL-1.1 里程碑需求基线 — Lumi-Core 全部已评审需求定版快照</blockquote>
 
 <h2>统计摘要</h2>
-<div class="stat-grid"><div class="stat-card"><h3>按状态分布</h3><div class="stat-row"><span class="badge badge-approved" style="min-width:90px;text-align:center;">Approved</span><div class="stat-bar-bg"><div class="stat-bar" style="width:60%"></div></div><span class="stat-num">3</span></div>
-<div class="stat-row"><span class="badge badge-proposed" style="min-width:90px;text-align:center;">Proposed</span><div class="stat-bar-bg"><div class="stat-bar" style="width:20%"></div></div><span class="stat-num">1</span></div>
-<div class="stat-row"><span class="badge badge-draft" style="min-width:90px;text-align:center;">Draft</span><div class="stat-bar-bg"><div class="stat-bar" style="width:20%"></div></div><span class="stat-num">1</span></div>
-</div><div class="stat-card"><h3>按优先级分布</h3><div class="stat-row"><span class="pri pri-must" style="min-width:70px;text-align:center;">Must</span><div class="stat-bar-bg"><div class="stat-bar stat-bar-pri" style="width:80%"></div></div><span class="stat-num">4</span></div>
-<div class="stat-row"><span class="pri pri-should" style="min-width:70px;text-align:center;">Should</span><div class="stat-bar-bg"><div class="stat-bar stat-bar-pri" style="width:20%"></div></div><span class="stat-num">1</span></div>
-</div></div>
+<div class="stat-grid"><div class="stat-card"><h3>按状态分布</h3></div><div class="stat-card"><h3>按优先级分布</h3></div></div>
 
 
 <h1>需求详情</h1>
 
-<h2>功能安全需求 (1 条)</h2>
+<h2>功能安全需求 (3 条)</h2>
 <div class="table-wrapper"><table>
 <thead><tr>
     <th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th>
     <th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th>
 </tr></thead><tbody>
 <tr>
-    <td></td>
-    <td></td>
+    <td>LUMI-SAFE-001</td>
+    <td>PMP 物理内存保护 (引用 LUMI-MEM-001)</td>
     <td><span class="pri pri-must">Must</span></td>
-    <td><span class="badge badge-draft">Draft</span></td>
-    <td></td>
-    <td></td>
-    <td>--</td>
-    <td></td>
-    <td>--</td>
-    <td>--</td>
-</tr>
-</tbody></table></div>
-
-<h2>ISA 与架构需求 (3 条)</h2>
-<div class="table-wrapper"><table>
-<thead><tr>
-    <th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th>
-    <th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th>
-</tr></thead><tbody>
-<tr>
-    <td></td>
-    <td></td>
-    <td><span class="pri pri-must">Must</span></td>
-    <td><span class="badge badge-draft">Draft</span></td>
-    <td></td>
-    <td></td>
-    <td>--</td>
-    <td></td>
-    <td>--</td>
-    <td>--</td>
+    <td><span class="badge badge-approved">Approved</span></td>
+    <td>v1.0</td>
+    <td>Lumi原始需求</td>
+    <td>LUMI-MEM-001</td>
+    <td>满足 LUMI-MEM-001 的全部要求，另外在安全模式下</td>
+    <td>2026-07-02</td>
+    <td>与硬件需求 LUMI-MEM-001 保持一致，安全视角增加 Smepmp 约束；同时引用 LUMI-SEC-004</td>
 </tr>
 <tr>
-    <td></td>
-    <td></td>
+    <td>LUMI-SAFE-002</td>
+    <td>双核异步互锁</td>
     <td><span class="pri pri-must">Must</span></td>
-    <td><span class="badge badge-draft">Draft</span></td>
-    <td></td>
-    <td></td>
-    <td>--</td>
-    <td></td>
-    <td>--</td>
-    <td>--</td>
+    <td><span class="badge badge-approved">Approved</span></td>
+    <td>v1.0</td>
+    <td>Lumi原始需求</td>
+    <td>LUMI-MCORE-002</td>
+    <td>双核异步互锁机制正确，检测到不一致时触发异常。</td>
+    <td>2026-06-29</td>
+    <td>对应硬件需求 LUMI-MCORE-002</td>
 </tr>
 <tr>
-    <td></td>
-    <td></td>
+    <td>LUMI-SAFE-003</td>
+    <td>总线 Parity 保护机制</td>
     <td><span class="pri pri-must">Must</span></td>
-    <td><span class="badge badge-draft">Draft</span></td>
+    <td><span class="badge badge-approved">Approved</span></td>
+    <td>v1.0</td>
+    <td>Lumi原始需求</td>
     <td></td>
-    <td></td>
-    <td>--</td>
-    <td></td>
-    <td>--</td>
-    <td>--</td>
-</tr>
-</tbody></table></div>
-
-<h2>性能需求 (1 条)</h2>
-<div class="table-wrapper"><table>
-<thead><tr>
-    <th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>状态</th><th>版本</th>
-    <th>来源</th><th>关联文档</th><th>验收标准</th><th>变更日期</th><th>备注</th>
-</tr></thead><tbody>
-<tr>
-    <td></td>
-    <td></td>
-    <td><span class="pri pri-must">Must</span></td>
-    <td><span class="badge badge-draft">Draft</span></td>
-    <td></td>
-    <td></td>
-    <td>--</td>
-    <td></td>
-    <td>--</td>
-    <td>--</td>
+    <td>总线 Parity 校验正确，检测到错误时触发异常</td>
+    <td>2026-06-29</td>
+    <td>信息安全视角引用见 LUMI-SEC-005</td>
 </tr>
 </tbody></table></div>
 
@@ -204,7 +159,7 @@
 <div class="footer">
     <p><a href="../../index.html" class="nav-back" style="margin-bottom:0.5rem;">&larr; 返回文档地图</a></p>
     <p>本文件由 <code>generate_baseline_html.py</code> 自动生成 &mdash; 权威来源为对应的 YAML 基线文件</p>
-    <p>生成时间: 2026-07-07 11:46:01 &nbsp;|&nbsp; Lumi-Core Product Requirements Baseline</p>
+    <p>生成时间: 2026-07-07 11:38:14 &nbsp;|&nbsp; Lumi-Core Product Requirements Baseline</p>
     <p>CONFIDENTIAL &mdash; Lumi Project Internal</p>
 </div>
 
