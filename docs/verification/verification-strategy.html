@@ -36,11 +36,11 @@
 
 <div class="cover">
     <h1>Lumi-Core 验证策略</h1>
-    <p class="subtitle">Verification Strategy Framework</p>
+    <p class="subtitle">Verification Strategy &mdash; Final</p>
     <div class="meta">
-        <p><strong>文档编号:</strong> LUMI-VER-001 &nbsp;|&nbsp; <strong>版本:</strong> 0.1-draft</p>
-        <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>状态:</strong> 框架 (M1 基线)</p>
-        <p><strong>负责人:</strong> 验证组 (hw-ver)</p>
+        <p><strong>文档编号:</strong> LUMI-VER-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0</p>
+        <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>最后更新:</strong> 2026-07-07 &nbsp;|&nbsp; <strong>状态:</strong> 定版 (M2)</p>
+        <p><strong>需求基线:</strong> BL-1.1 (99 条需求) &nbsp;|&nbsp; <strong>负责人:</strong> 验证组 (hw-ver)</p>
     </div>
     <div class="confidential">CONFIDENTIAL &mdash; Lumi Project Internal</div>
 </div>
@@ -60,7 +60,7 @@
 
 <h2>1.2 验证原则</h2>
 <ul>
-    <li><strong>需求驱动</strong>：每个 PRD 需求 (&ge; BL-1.0) 至少对应一个验证用例</li>
+    <li><strong>需求驱动</strong>：每个 PRD 需求 (&ge; BL-1.1, 99 条) 至少对应一个验证用例</li>
     <li><strong>分层收敛</strong>：单元验证 &rarr; 子系统验证 &rarr; 系统集成验证，逐层收敛</li>
     <li><strong>回归保护</strong>：所有通过用例进入回归套件，每日自动化运行</li>
     <li><strong>覆盖率量化</strong>：代码覆盖率 (Line/Toggle/Branch/Condition) + 功能覆盖率 (Cross Coverage)</li>
@@ -84,6 +84,12 @@
     <tr><td>Debug Module</td><td>JTAG 访问、Abstract Command、Halt/Resume</td><td>UVM + JTAG VIP</td></tr>
     <tr><td>Trace Encoder</td><td>指令流编码、AXI4 写出</td><td>UVM + AXI VIP</td></tr>
     <tr><td>PMP</td><td>TOR/NA4/NAPOT 匹配、权限检查、Smepmp</td><td>UVM + Formal</td></tr>
+    <tr><td>PMA Checker</td><td>3 区域属性匹配 (TCM/DDR/MMIO)、访问权限检查</td><td>UVM + Directed</td></tr>
+    <tr><td>Regfile</td><td>2R1W 读写正确性、写后读冒险、x0 硬零</td><td>UVM + Constraint-Random</td></tr>
+    <tr><td>Power Mgmt (ICG/WFI)</td><td>WFI/WRS 进入退出、ICG 门控使能、功耗状态转换</td><td>UVM + Power Agent</td></tr>
+    <tr><td>CSR Unit</td><td>M-mode CSR 读写、HPM counter 递增、非法访问 trap</td><td>UVM + Spike Reference</td></tr>
+    <tr><td>DFT Wrapper</td><td>Scan chain 移位、BIST 启动/完成、JTAG 复用</td><td>UVM + Formal</td></tr>
+    <tr><td>Lockstep Comparator</td><td>W 级 PC+Reg+Mem 比较、mismatch NMI 触发</td><td>UVM + Fault Injection</td></tr>
 </table>
 
 <h2>2.2 子系统验证 (Subsystem Level)</h2>
@@ -144,7 +150,10 @@
     <tr><td>Scoreboard</td><td>比对 DUT 执行结果与 Reference Model (Spike)</td></tr>
     <tr><td>Coverage Collector</td><td>收集代码覆盖率和功能覆盖率数据</td></tr>
     <tr><td>JTAG VIP</td><td>JTAG 协议模拟，Debug Module 访问</td></tr>
-    <tr><td>Interrupt Agent</td><td>可配置中断注入（边沿/电平、时序、优先级）</td></tr>
+    <tr><td>Interrupt Agent</td><td>可配置中断注入（边沿/电平、时序、优先级）；CLIC/PLIC 联动仲裁验证；嵌套中断深度 &le;16 级</td></tr>
+    <tr><td>Power Agent</td><td>WFI/WRS 注入、ICG 门控使能/禁用、功耗状态转换序列驱动</td></tr>
+    <tr><td>Fault Injection Agent</td><td>锁步比较器 mismatch 注入、ECC 单/双/多 bit 错误注入、总线 Parity 错误</td></tr>
+    <tr><td>Performance Monitor</td><td>HPM counter 采集 (29 事件)、gem5 stats 交叉校准</td></tr>
 </table>
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -171,6 +180,11 @@
     <tr><td>Debug Operations</td><td>Halt/Resume/Step/Breakpoint/Abstract Cmd</td><td><span class="req-tag">FEAT-001</span></td></tr>
     <tr><td>ECC Scenarios</td><td>单 bit 纠正 x 双 bit 检测 x 多 bit 错误</td><td><span class="req-tag">SAFE-001</span></td></tr>
     <tr><td>Security Scenarios</td><td>Debug Lock x PMP Lock x Boot Verify</td><td><span class="req-tag">SEC-001~005</span></td></tr>
+    <tr><td>PMA Attributes</td><td>3 区域 x 访问类型 x 权限组合</td><td><span class="req-tag">MEM-009</span></td></tr>
+    <tr><td>HPM Events</td><td>29 事件 counter 递增 + 溢出</td><td><span class="req-tag">RTL-OTHER</span></td></tr>
+    <tr><td>DFT Scan/BIST</td><td>Scan chain 移位 + BIST 通过/失败</td><td><span class="req-tag">DFT-001~003</span></td></tr>
+    <tr><td>Lockstep Error</td><td>W 级 mismatch 注入 + NMI 触发 + 恢复</td><td><span class="req-tag">MCORE-002</span></td></tr>
+    <tr><td>Clock Architecture</td><td>时钟域切换 + 频率配置</td><td><span class="req-tag">CLK-001~005</span></td></tr>
 </table>
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -200,17 +214,101 @@
 
 <table>
     <tr><th>映射维度</th><th>说明</th></tr>
-    <tr><td>REQ-ID &rarr; Testcase</td><td>每条 PRD 需求 (&ge; BL-1.0) 至少映射到一个验证用例</td></tr>
+    <tr><td>REQ-ID &rarr; Testcase</td><td>每条 PRD 需求 (&ge; BL-1.1) 至少映射到一个验证用例</td></tr>
     <tr><td>Testcase &rarr; Cover Group</td><td>每个验证用例关联功能覆盖组</td></tr>
     <tr><td>Cover Group &rarr; Target</td><td>每个覆盖组定义覆盖率目标</td></tr>
 </table>
 
-<blockquote><strong>覆盖统计:</strong> BL-1.0 基线包含 91 条 Approved 需求。其中硬件需求 57 条为验证主要覆盖对象，安全需求 5 条和功能安全需求 3 条需专项验证用例。详细覆盖率计划见 <a href="coverage-plan.yaml">coverage-plan.yaml</a>。</blockquote>
+<blockquote><strong>覆盖统计:</strong> BL-1.1 基线包含 99 条 Approved 需求 (BL-1.0 的 91 条 + M1 补强 8 条)。其中硬件需求 61 条为验证主要覆盖对象，安全需求 5 条、功能安全需求 3 条、时钟需求 5 条、DFT 需求 3 条均需专项验证用例。详细覆盖组定义见 <a href="coverage-plan.yaml">coverage-plan.yaml</a> (v1.0, 32 Cover Groups)。</blockquote>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. M2-S1 设计关联与 RTL 骨架映射</h1>
+
+<h2>7.1 设计文档 &rarr; 验证单元映射</h2>
+<p>M2-S1 阶段完成的 16 份详细设计文档与验证模块的对应关系：</p>
+<table>
+    <tr><th>设计文档</th><th>验证单元</th><th>验证层次</th><th>优先级</th></tr>
+    <tr><td><a href="../design/fetch-bpred.html">fetch-bpred.html</a></td><td>Fetch + BTB + LTAGE</td><td>Block &rarr; Subsystem</td><td>P0 (首批)</td></tr>
+    <tr><td><a href="../design/decode-issue.html">decode-issue.html</a></td><td>Decode + Issue + Bypass</td><td>Block &rarr; Subsystem</td><td>P0</td></tr>
+    <tr><td><a href="../design/execute-alu.html">execute-alu.html</a></td><td>ALU/MUL/DIV Execute</td><td>Block</td><td>P0</td></tr>
+    <tr><td><a href="../design/regfile.html">regfile.html</a></td><td>Regfile 2R1W</td><td>Block</td><td>P0</td></tr>
+    <tr><td><a href="../design/writeback-csr.html">writeback-csr.html</a></td><td>Writeback + CSR Unit</td><td>Block &rarr; Subsystem</td><td>P0</td></tr>
+    <tr><td><a href="../design/cache.html">cache.html</a></td><td>ICache / DCache</td><td>Block &rarr; Subsystem</td><td>P1</td></tr>
+    <tr><td><a href="../design/tcm.html">tcm.html</a></td><td>ITCM / DTCM</td><td>Block</td><td>P1</td></tr>
+    <tr><td><a href="../design/pma-axi.html">pma-axi.html</a></td><td>PMA Checker + AXI Bridge</td><td>Block &rarr; SoC</td><td>P1</td></tr>
+    <tr><td><a href="../design/clic-plic.html">clic-plic.html</a></td><td>CLIC + PLIC</td><td>Block &rarr; Subsystem</td><td>P1</td></tr>
+    <tr><td><a href="../design/exception-handling.html">exception-handling.html</a></td><td>Exception + Trap</td><td>Subsystem</td><td>P1</td></tr>
+    <tr><td><a href="../design/fpu-vector.html">fpu-vector.html</a></td><td>FPU + Vector</td><td>Block</td><td>P2</td></tr>
+    <tr><td><a href="../design/debug-trace.html">debug-trace.html</a></td><td>Debug Module + Trace</td><td>Block &rarr; SoC</td><td>P2</td></tr>
+    <tr><td><a href="../design/privilege-pmp.html">privilege-pmp.html</a></td><td>PMP + Privilege</td><td>Block + Formal</td><td>P2</td></tr>
+    <tr><td><a href="../design/power-reset.html">power-reset.html</a></td><td>Power Mgmt + Reset</td><td>Block &rarr; SoC</td><td>P2</td></tr>
+    <tr><td><a href="../design/multicore-lockstep.html">multicore-lockstep.html</a></td><td>Multicore + Lockstep</td><td>Subsystem + SoC</td><td>P3</td></tr>
+    <tr><td><a href="../design/dft-security.html">dft-security.html</a></td><td>DFT + Security</td><td>Block + Formal</td><td>P3</td></tr>
+</table>
+
+<h2>7.2 RTL 骨架端口 &rarr; TB Agent 接口映射</h2>
+<p>M2-S1 生成的 28 个 RTL 骨架文件 (<code>src/rtl/</code>) 定义了验证 Testbench 所需的接口信号。关键映射：</p>
+<table>
+    <tr><th>RTL 接口 (lumi_soc_top)</th><th>TB Agent</th><th>协议</th></tr>
+    <tr><td>AXI4 Master (aw/w/b/ar/r 5 通道)</td><td>AXI VIP (Slave)</td><td>AMBA AXI4</td></tr>
+    <tr><td>AXI4-Lite Slave (Debug/CSR)</td><td>AXI VIP (Master)</td><td>AMBA AXI4-Lite</td></tr>
+    <tr><td>JTAG (tck/tms/tdi/tdo/trst_n)</td><td>JTAG VIP</td><td>IEEE 1149.1</td></tr>
+    <tr><td>ext_irq_in[31:0]</td><td>Interrupt Agent</td><td>边沿/电平可配</td></tr>
+    <tr><td>clk_core / reset_n</td><td>Clock/Reset Generator</td><td>1GHz / async active-low</td></tr>
+</table>
+
+<h2>7.3 GEM5 模型参数 &rarr; 验证参考模型</h2>
+<p>GEM5+ 微架构模型 (M2-S1 Task 2A/2B/2C) 为 Scoreboard Reference Model 提供参数基线：</p>
+<table>
+    <tr><th>GEM5 参数</th><th>RTL 对应</th><th>验证用途</th></tr>
+    <tr><td>FPU 7FU (opLat=2~14)</td><td>FPU ALU/DivSqrt 流水线</td><td>FPU 指令延迟校准</td></tr>
+    <tr><td>Vector 8FU (opLat=1~12)</td><td>Vector FU 多步执行</td><td>Vector 指令吞吐校准</td></tr>
+    <tr><td>PMA 3 区域 (TCM/DDR/MMIO)</td><td>lumi_pma_checker.sv</td><td>内存属性检查比对</td></tr>
+    <tr><td>CLIC 16-cycle latency</td><td>lumi_clic.sv</td><td>中断延迟统计比对</td></tr>
+    <tr><td>HPM 29 events</td><td>CSR mhpmcounter3~31</td><td>性能计数器交叉验证</td></tr>
+    <tr><td>Cache size/assoc (参数化)</td><td>lumi_cache.sv</td><td>Cache 配置一致性检查</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 验证里程碑与收敛标准</h1>
+
+<h2>8.1 验证阶段划分</h2>
+<table>
+    <tr><th>阶段</th><th>里程碑</th><th>目标</th><th>时间</th></tr>
+    <tr><td><strong>M3-S1 单元验证</strong></td><td>P0 模块验证完成</td><td>Fetch/Decode/Execute/Memory/Writeback/CSR 6 个 P0 模块 Block Level 验证通过；Line Coverage &ge;95%, FSM 100%</td><td>2027-01 ~ 2027-03</td></tr>
+    <tr><td><strong>M3-S1 扩展验证</strong></td><td>P1/P2 模块验证完成</td><td>Cache/TCM/PMA/CLIC/FPU/Vector/Debug/PMP 等模块验证通过；Quick Regression 全 PASS</td><td>2027-02 ~ 2027-03</td></tr>
+    <tr><td><strong>M3-S2 集成验证</strong></td><td>Core Pipeline 集成</td><td>F1~W 全流水线冒险/多发射正确性；中断注入/异常处理</td><td>2027-04 ~ 2027-05</td></tr>
+    <tr><td><strong>M3-S2 系统验证</strong></td><td>SoC Level 通过</td><td>Boot Sequence / RTOS / Benchmark Suite / Security Flow / Lockstep 全场景通过</td><td>2027-05 ~ 2027-06</td></tr>
+</table>
+
+<h2>8.2 验证收敛标准</h2>
+<p>M3 RTL 冻结 (M3 Gate) 前必须满足以下全部条件：</p>
+<table>
+    <tr><th>#</th><th>收敛指标</th><th>目标值</th><th>验证方法</th></tr>
+    <tr><td>C1</td><td>代码覆盖率 Line</td><td>&ge;95%</td><td>Full Regression + Coverage Merge</td></tr>
+    <tr><td>C2</td><td>代码覆盖率 Branch</td><td>&ge;95%</td><td>Full Regression + Coverage Merge</td></tr>
+    <tr><td>C3</td><td>FSM 覆盖率</td><td>100%</td><td>全状态/全转换覆盖 (24 FSM, M2-S1 骨架定义)</td></tr>
+    <tr><td>C4</td><td>功能覆盖率</td><td>32 Cover Groups 全部达标</td><td>coverage-plan.yaml 定义的目标值</td></tr>
+    <tr><td>C5</td><td>Open P1 Bug</td><td>0</td><td>Bug Tracker 无 severity=critical 的 open 项</td></tr>
+    <tr><td>C6</td><td>回归测试通过率</td><td>100%</td><td>Quick Regression Nightly + Full Regression Weekly</td></tr>
+    <tr><td>C7</td><td>性能达标</td><td>CoreMark &ge;5.5, Dhrystone &ge;3.8*</td><td>Performance Regression (*RISK-006 追踪)</td></tr>
+    <tr><td>C8</td><td>Formal 验证</td><td>PMP 隔离 + 锁步一致性 + CDC 全 PASS</td><td>JasperGold / VC Formal</td></tr>
+</table>
+
+<h2>8.3 M2 &rarr; M3 验证交接清单</h2>
+<p>进入 M3-S1 前，验证组需确认以下交付物齐备：</p>
+<ul>
+    <li><strong>UVM Testbench 框架</strong>：Top-Level TB 骨架 (lumi_soc_tb_stub.sv 已就位)、Agent/Scoreboard/Coverage 模板</li>
+    <li><strong>Reference Model 对齐</strong>：Spike ISA 模拟器 + gem5 MinorCPU 交叉校准脚本</li>
+    <li><strong>CI 回归框架</strong>：GitHub Actions 流水线配置 (Smoke/Quick/Full/Perf 四层次)</li>
+    <li><strong>Coverage Plan</strong>：<a href="coverage-plan.yaml">coverage-plan.yaml</a> v1.0 定版 (32 Cover Groups, 99 条需求追溯)</li>
+    <li><strong>Verification Strategy</strong>：本文档 v1.0 定版</li>
+</ul>
 
 <div class="footer">
     <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
     <p>Lumi-Core Verification Strategy &mdash; CONFIDENTIAL<br>
-    文档编号: LUMI-VER-001 &nbsp;|&nbsp; 版本: 0.1-draft &nbsp;|&nbsp; 更新: 2026-07-01<br>
+    文档编号: LUMI-VER-001 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-07<br>
     承接: <a href="../project/product-requirements.html">PRD</a> &amp; <a href="../architecture/platform-spec.html">架构说明书</a></p>
 </div>
 
