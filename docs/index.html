@@ -60,7 +60,7 @@
     <div class="milestone-bar">
         <div class="milestone-chip m0" style="opacity:0.6;">M0: 项目启动 [Completed]</div>
         <div class="milestone-chip m1" style="opacity:0.8;">M1: 架构与需求冻结 [Completed]</div>
-        <div class="milestone-chip m2">M2: 详细设计完成 [Planned]</div>
+        <div class="milestone-chip m2" style="background:#e65100;">M2: 详细设计完成 [In Progress]</div>
         <div class="milestone-chip m3">M3: RTL 冻结 [Planned]</div>
         <div class="milestone-chip m4">M4: 交付就绪 [Planned]</div>
     </div>
@@ -100,7 +100,7 @@
         </div>
         <div class="card">
             <h3><a href="verification/coverage-plan.yaml">覆盖率计划 (YAML)</a></h3>
-            <p class="desc">22 个 Cover Group，覆盖 ISA/PMP/中断/AXI/内存/功耗/调试/安全/多核/复位。</p>
+            <p class="desc">26 个 Cover Group，覆盖 ISA/PMP/中断/AXI/内存/功耗/调试/安全/多核/复位。基线: BL-1.1 (99 条需求)。</p>
         </div>
     </div>
 </div>
@@ -122,7 +122,11 @@
             <span class="file-path">docs/project/notes/business-notes.md</span>
         </li>
         <li>
-            <a href="project/baselines/baseline-BL-EXAMPLE.html">基线示例</a>
+            <a href="project/baselines/baseline-BL-1.1.html">基线 BL-1.1 (当前)</a>
+            <span class="file-path">99 条需求 | 2026-07-02</span>
+        </li>
+        <li>
+            <a href="project/baselines/baseline-BL-1.0.html">基线 BL-1.0 (历史)</a>
             <span class="file-path">docs/project/baselines/</span>
         </li>
     </ul>
@@ -135,6 +139,10 @@
         <li>
             <a href="../perf/benchmarks/perf-report.yaml">性能报告 (YAML)</a>
             <span class="file-path">perf/benchmarks/perf-report.yaml</span>
+        </li>
+        <li>
+            <a href="../perf/benchmarks/perf-report-auto.yaml">性能自动报告 (YAML)</a>
+            <span class="file-path">perf/benchmarks/perf-report-auto.yaml</span>
         </li>
         <li>
             <a href="../perf/benchmarks/perf-baseline.yaml">性能基线定义</a>
@@ -154,7 +162,10 @@
         <div class="card">
             <h3>指令日志</h3>
             <p class="desc">每日操作指令记录。<br>
-                <a href="../audit/instruction-log/2026-07-02.yaml">2026-07-02</a> |
+                <a href="../audit/instruction-log/2026-07-07.yaml">2026-07-07</a> |
+                <a href="../audit/instruction-log/2026-07-06.yaml">07-06</a> |
+                <a href="../audit/instruction-log/2026-07-03.yaml">07-03</a> |
+                <a href="../audit/instruction-log/2026-07-02.yaml">07-02</a> |
                 <a href="../audit/instruction-log/2026-07-01.yaml">07-01</a> |
                 <a href="../audit/instruction-log/2026-06-29.yaml">06-29</a> |
                 <a href="../audit/instruction-log/2026-06-26.yaml">06-26</a> |
@@ -172,7 +183,17 @@
         </div>
         <div class="card">
             <h3>合规报告</h3>
-            <p class="desc">里程碑门禁检查报告。<br><a href="../audit/compliance-reports/">compliance-reports/</a></p>
+            <p class="desc">里程碑门禁检查报告。<br>
+                <strong>M1:</strong>
+                <a href="../audit/compliance-reports/m1-final-addendum-20260707.yaml">最终归档</a> |
+                <a href="../audit/compliance-reports/m1-20260702.yaml">门禁</a> |
+                <a href="../audit/compliance-reports/m1-signoff-20260703.yaml">Sign-off</a> |
+                <a href="../audit/compliance-reports/m1-closure-20260703.yaml">关闭</a> |
+                <a href="../audit/compliance-reports/m1-gate4-closure-20260706.yaml">GATE-4</a>
+                <br>
+                <strong>M0:</strong>
+                <a href="../audit/compliance-reports/setup-20260701.yaml">环境检查</a>
+            </p>
         </div>
     </div>
 </div>
@@ -211,6 +232,8 @@
     <ul class="list-group">
         <li>RV64 配置: <a href="../perf/gem5-model/configs/simple-riscv-se.py">simple-riscv-se.py</a></li>
         <li>RV32 配置: <a href="../perf/gem5-model/configs/simple-riscv-se-rv32.py">simple-riscv-se-rv32.py</a></li>
+        <li>中断 SE 配置: <a href="../perf/gem5-model/configs/gem5-overlay/configs/lumi-interrupt.py">lumi-interrupt.py</a></li>
+        <li>中断 FS 配置: <a href="../perf/gem5-model/configs/gem5-overlay/configs/lumi-interrupt-fs.py">lumi-interrupt-fs.py</a></li>
         <li>Phase Specs: <a href="../perf/gem5-model/docs/phase-specs/">phase-specs/</a></li>
     </ul>
 </div>
@@ -220,24 +243,35 @@
     <h2>性能模型输出 — RTL 设计参考</h2>
     <div class="card-grid">
         <div class="card">
-            <h3><a href="../perf/gem5-model/docs/output/lumi-core-gem5-rtl-reference.md">RTL 参考说明书 (v3.3)</a></h3>
+            <h3><a href="../perf/gem5-model/docs/Output/lumi-core-gem5-rtl-reference.md">RTL 参考说明书 (v3.3)</a></h3>
             <p class="desc">基于 gem5 MinorCPU 的流水线参数规格、FU 配置、分支预测器、缓存参数、RV32 性能基线 (CoreMark 6.97 / Dhrystone 1.65) 及 RTL 实现建议。</p>
         </div>
         <div class="card">
-            <h3><a href="../perf/gem5-model/docs/output/pipeline-optimization-assessment.md">流水线优化评估报告 (v1.0)</a></h3>
+            <h3><a href="../perf/gem5-model/docs/Output/pipeline-optimization-assessment.md">流水线优化评估报告 (v1.0)</a></h3>
             <p class="desc">14 组参数扫描实验，定量分析性能/时序/总线/PPA 四维度优化空间。含级间功能重分配可行性分析。供 RTL 时序拉平与 PPA 优化参考。</p>
         </div>
     </div>
     <ul class="list-group" style="margin-top:0.8rem;">
         <li>参数扫描原始数据: <a href="../perf/gem5-model/gem5/results/sweep-opt/sweep_results.csv">sweep_results.csv</a> <span class="file-path">perf/gem5-model/gem5/results/sweep-opt/</span></li>
         <li>扫描脚本: <a href="../perf/gem5-model/gem5/configs/sweep_pipeline_opt.py">sweep_pipeline_opt.py</a> <span class="file-path">perf/gem5-model/gem5/configs/</span></li>
-        <li>FPGA 规模估算: <a href="../perf/gem5-model/docs/output/fpga-sizing-estimate.md">fpga-sizing-estimate.md</a> <span class="file-path">perf/gem5-model/docs/output/</span></li>
+        <li>FPGA 规模估算: <a href="../perf/gem5-model/docs/Output/fpga-sizing-estimate.md">fpga-sizing-estimate.md</a> <span class="file-path">perf/gem5-model/docs/Output/</span></li>
     </ul>
+</div>
+
+<!-- ═══ Skills 复用索引 ═══ -->
+<div class="section">
+    <h2>Skills 复用索引</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="../skills/index.yaml">Skill 索引 (YAML)</a></h3>
+            <p class="desc">9 个已验证 Skill：GEM5 建模、CoreMark、Dhrystone、PRD 生成、基线生成、合规检查、角色提示词、ISA 验证、中断建模。</p>
+        </div>
+    </div>
 </div>
 
 <div class="footer">
     <p>Lumi-Core Documentation Map &mdash; Auto-maintained<br>
-    最后更新: 2026-07-02 &nbsp;|&nbsp; <a href="../AGENTS.md">AGENTS.md</a> &nbsp;|&nbsp; <a href="../rules/changelog.md">规则变更日志</a></p>
+    最后更新: 2026-07-07 &nbsp;|&nbsp; <a href="../AGENTS.md">AGENTS.md</a> &nbsp;|&nbsp; <a href="../rules/changelog.md">规则变更日志</a></p>
 </div>
 
 </body>
