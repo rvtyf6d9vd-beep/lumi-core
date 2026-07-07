@@ -618,3 +618,64 @@ files_created_or_modified_m2s1_exec:
   - path: "audit/instruction-log/2026-07-07.yaml"
     action: modified
     summary: "追加指令 10: M2-S1 GEM5+RTL 执行"
+
+  # ──────────────────────────────────────────────
+  # 指令 11：完成待办 (lint + synth + commit)
+  # ──────────────────────────────────────────────
+  - timestamp: "23:30:00"
+    role: hw-design
+    session_mode: main
+    instruction: "完成待办: verilator lint 验证 + Yosys 综合估算 + git commit 分批提交"
+    type: action
+    result: success
+    details:
+      verilator_lint:
+        tool: "Verilator 5.048"
+        result: "100% PASS (0 error, 0 warning)"
+        fixes_applied:
+          - "lumi_plic.sv: priority 保留字 → irq_priority (packed array)"
+          - "lumi_types_pkg.sv: EXC_NONE 枚举值冲突 (4'd0) → 移除, 用 exc_valid 信号替代"
+          - "lumi_core_top.sv: f2_insts 数组 [ISSUE_WIDTH-1:0] → [FETCH_WIDTH-1:0]"
+          - "lumi_core_top.sv: bypass/mem 端口 '0 → 声明 unpacked array 信号"
+          - "lumi_decode_issue.sv: d_instructions/d_inst_valid 宽度对齐 FETCH_WIDTH"
+          - "lumi_interfaces.sv: pipeline_if 内 import → lumi_pkg:: 全限定名"
+      yosys_synth:
+        tool: "Yosys 0.64"
+        result: "无法完整综合 (Yosys 不支持 SV unpacked array 端口)"
+        fallback: "shell 脚本生成模块统计报告 → rtl-area-estimate.txt"
+        stats: "28 文件, 2701 行, 491 端口, 24 FSM 状态"
+      git_commits:
+        total: 10
+        commits:
+          - "77bc556 feat(M2-S1/3A): 基础设施"
+          - "f6bcbe3 feat(M2-S1/3B): 核心流水线 7 模块"
+          - "727556f feat(M2-S1/3C): 存储+总线 4 模块"
+          - "a1c683b feat(M2-S1/3D): 辅助模块 13 模块"
+          - "d69f663 feat(M2-S1/3E): SoC 顶层+TB stub"
+          - "81adfdf feat(M2-S1/2A): GEM5 P0 PMA+CLIC+BTB"
+          - "f3f3cb6 feat(M2-S1/2B): GEM5 P1 FPU 7FU+Cache/TCM"
+          - "e4bfe22 feat(M2-S1/2C): GEM5 P2 Vector+Power+HPM"
+          - "c985b73 chore(M2-S1/4): 审计+测试+文档"
+          - "fa03616 chore(M2-S1): Makefile+变更通知"
+    files_affected:
+      - path: "src/rtl/include/lumi_types_pkg.sv"
+        action: modified
+        summary: "移除 EXC_NONE 枚举值冲突"
+      - path: "src/rtl/include/lumi_interfaces.sv"
+        action: modified
+        summary: "pipeline_if import → lumi_pkg:: 全限定名 (Yosys 兼容)"
+      - path: "src/rtl/interrupt/lumi_plic.sv"
+        action: modified
+        summary: "priority 保留字 → irq_priority packed array"
+      - path: "src/rtl/core/lumi_core_top.sv"
+        action: modified
+        summary: "修复数组尺寸不匹配 + bypass/mem 端口连接"
+      - path: "src/rtl/core/lumi_decode_issue.sv"
+        action: modified
+        summary: "d_instructions/d_inst_valid 宽度对齐 FETCH_WIDTH"
+      - path: "perf/gem5-model/docs/Output/rtl-area-estimate.txt"
+        action: created
+        summary: "模块统计报告 (28 文件/2701 行/491 端口/24 FSM)"
+      - path: "perf/gem5-model/docs/Output/synth.ys"
+        action: created
+        summary: "Yosys 综合脚本 (降级版)"
