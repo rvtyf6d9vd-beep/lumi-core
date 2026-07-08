@@ -219,7 +219,7 @@
     <tr><td>Cover Group &rarr; Target</td><td>每个覆盖组定义覆盖率目标</td></tr>
 </table>
 
-<blockquote><strong>覆盖统计:</strong> BL-1.1 基线包含 99 条 Approved 需求 (BL-1.0 的 91 条 + M1 补强 8 条)。其中 76 条需求映射到 Cover Group (硬件/ISA/系统/交付), 23 条软件/工具类需求标注 N/A。安全需求 5 条、功能安全需求 3 条、时钟需求 5 条、DFT 需求 3 条均需专项验证用例。详细覆盖组定义见 <a href="coverage-plan.yaml">coverage-plan.yaml</a> (v1.0, 32 Cover Groups)。</blockquote>
+<blockquote><strong>覆盖统计:</strong> BL-1.1 基线包含 99 条 Approved 需求 (BL-1.0 的 91 条 + M1 补强 8 条)。其中 76 条需求映射到 Cover Group (硬件/ISA/系统/交付), 23 条软件/工具类需求标注 N/A。安全需求 5 条、功能安全需求 3 条、时钟需求 5 条、DFT 需求 3 条均需专项验证用例。详细覆盖组定义见 <a href="coverage-plan.yaml">coverage-plan.yaml</a> (v1.0, 35 Cover Groups)。</blockquote>
 
 <!-- ═══════════════════════════════════════════════ -->
 <h1 id="ch7">7. M2-S1 设计关联与 RTL 骨架映射</h1>
@@ -288,7 +288,7 @@
     <tr><td>C1</td><td>代码覆盖率 Line</td><td>&ge;95%</td><td>Full Regression + Coverage Merge</td></tr>
     <tr><td>C2</td><td>代码覆盖率 Branch</td><td>&ge;95%</td><td>Full Regression + Coverage Merge</td></tr>
     <tr><td>C3</td><td>FSM 覆盖率</td><td>100%</td><td>全状态/全转换覆盖 (24 FSM, M2-S1 骨架定义)</td></tr>
-    <tr><td>C4</td><td>功能覆盖率</td><td>32 Cover Groups 全部达标</td><td>coverage-plan.yaml 定义的目标值</td></tr>
+    <tr><td>C4</td><td>功能覆盖率</td><td>35 Cover Groups 全部达标</td><td>coverage-plan.yaml 定义的目标值</td></tr>
     <tr><td>C5</td><td>Open P1 Bug</td><td>0</td><td>Bug Tracker 无 severity=critical 的 open 项</td></tr>
     <tr><td>C6</td><td>回归测试通过率</td><td>100%</td><td>Quick Regression Nightly + Full Regression Weekly</td></tr>
     <tr><td>C7</td><td>性能达标</td><td>CoreMark &ge;5.5, Dhrystone &ge;3.8*</td><td>Performance Regression (*RISK-006 追踪)</td></tr>
@@ -301,7 +301,7 @@
     <li><strong>UVM Testbench 框架</strong>：Top-Level TB 骨架 (lumi_soc_tb_stub.sv 已就位)、Agent/Scoreboard/Coverage 模板</li>
     <li><strong>Reference Model 对齐</strong>：Spike ISA 模拟器 + gem5 MinorCPU 交叉校准脚本</li>
     <li><strong>CI 回归框架</strong>：GitHub Actions 流水线配置 (Smoke/Quick/Full/Perf 四层次)</li>
-    <li><strong>Coverage Plan</strong>：<a href="coverage-plan.yaml">coverage-plan.yaml</a> v1.0 定版 (32 Cover Groups, 99 条需求追溯)</li>
+    <li><strong>Coverage Plan</strong>：<a href="coverage-plan.yaml">coverage-plan.yaml</a> v1.0 定版 (35 Cover Groups, 99 条需求追溯)</li>
     <li><strong>Verification Strategy</strong>：本文档 v1.0 定版</li>
 </ul>
 

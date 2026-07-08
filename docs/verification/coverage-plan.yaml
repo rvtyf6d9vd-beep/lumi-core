@@ -533,7 +533,7 @@ traceability_matrix:
 
 # ── 覆盖统计 (M2-S2 定版) ──
 coverage_summary:
-  total_cover_groups: 32
+  total_cover_groups: 35  # 9 ISA + 1 PMP + 2 INT + 2 AXI + 3 MEM + 1 PWR + 2 DBG + 3 SEC + 1 LCK + 1 RST + 4 M1补强 + 6 M2-S2
   total_requirements: 99
   hw_requirements_covered: 76       # 硬件/ISA/系统/交付需求, 有 Cover Group 映射 (含 DEL-011/012)
   sw_delivery_requirements: 23      # 软件/工具类, N/A (无 Cover Group)

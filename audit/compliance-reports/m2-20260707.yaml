@@ -123,8 +123,8 @@ gate_2_verification:
       version: "1.0"
       previous_version: "0.2-draft"
       status: final
-      total_cover_groups: 32
-      new_cover_groups: 6
+      total_cover_groups: 35
+      new_cover_groups: 10  # 4 M1补强 (cg_pma_attr/cg_clock_architecture/cg_power_management/cg_deliverable_prm) + 6 M2-S2
       traceability_matrix:
         total_requirements: 99
         hw_requirements_covered: 76
@@ -141,7 +141,7 @@ gate_2_verification:
       - "C1: Line Coverage ≥ 95%"
       - "C2: Branch Coverage ≥ 95%"
       - "C3: FSM Coverage 100%"
-      - "C4: 32 Cover Groups 全达标"
+      - "C4: 35 Cover Groups 全达标"
       - "C5: 0 open P1 bug"
       - "C6: 回归通过率 100%"
       - "C7: 性能达标 CoreMark ≥5.5, Dhrystone ≥3.8* (RISK-006 追踪)"
