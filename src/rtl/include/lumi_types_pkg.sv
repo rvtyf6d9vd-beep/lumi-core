@@ -13,7 +13,7 @@ package lumi_pkg;
   parameter int NUM_HARTS       = 1;      // 可配核数 (1=单核, N=多核)
   parameter int ISSUE_WIDTH     = 3;      // 发射宽度 (2 或 3)
   parameter int XLEN            = 32;     // RV32 数据宽度
-  parameter int VLEN            = 128;    // 向量寄存器位宽 (默认 128bit)
+  parameter int VLEN            = 128;    // 向量寄存器位宽 (默认 128bit, 规范声明 128/256 可配, M3 实现 256)
   parameter int FETCH_WIDTH     = 6;      // 每 cycle 取指条数 (ISSUE_WIDTH*2)
   parameter int BTB_ENTRIES     = 8192;   // BTB 条目数
   parameter int RAS_DEPTH       = 32;     // RAS 深度
@@ -132,8 +132,8 @@ package lumi_pkg;
   // ───────────────────────────────────────────────────────────
   // TCM 参数
   // ───────────────────────────────────────────────────────────
-  parameter int ITCM_SIZE       = 16 * 1024;  // 16 KiB
-  parameter int DTCM_SIZE       = 8 * 1024;   // 8 KiB per bank
+  parameter int ITCM_SIZE       = 32 * 1024;  // 32 KiB (与 design/tcm.html 基准配置对齐)
+  parameter int DTCM_SIZE       = 32 * 1024;  // 32 KiB per bank (DTCM0 + DTCM1)
   parameter int TCM_ECC_EN      = 1;          // ECC 使能
 
   // ───────────────────────────────────────────────────────────

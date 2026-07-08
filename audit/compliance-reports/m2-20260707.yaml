@@ -155,19 +155,19 @@ gate_3_gem5:
   description: "GEM5+ 微架构模型全面扩展 — PMA/CLIC/FPU 7FU/Vector 8FU/Power/HPM 全部完成"
   evidence:
     new_modules:
-      - file: lumi-lib/lumi_pma.py
+      - file: perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_pma.py
         description: "3 区域 PMA 检查器 (TCM/DDR/MMIO)"
         lines: 221
-      - file: lumi-lib/lumi_clic_latency.py
+      - file: perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_clic_latency.py
         description: "CLIC 16cycle 延时统计建模"
         lines: 108
-      - file: lumi-lib/lumi_vector.py
+      - file: perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_vector.py
         description: "8 Vector FU 创建函数"
         lines: 122
-      - file: lumi-lib/lumi_power.py
+      - file: perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_power.py
         description: "WFI/WRS/ICG 统计 + PowerDomain"
         lines: 190
-      - file: lumi-lib/lumi_hpm.py
+      - file: perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_hpm.py
         description: "29 HPM 事件映射 + JSON 导出"
         lines: 174
     modified_modules:
