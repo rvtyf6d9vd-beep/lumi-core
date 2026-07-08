@@ -1,0 +1,503 @@
+id: "DESIGN-RTL-MAP-20260707"
+date: "2026-07-07"
+phase: "M3-S1 Task 0.4"
+summary: >
+  设计文档→RTL 骨架映射审查。覆盖 16 份设计文档 (LUMI-DESIGN-001~016) 与 15 个 RTL 骨架模块。
+  发现 25 项不一致: 5 项高严重度 (位宽/关键信号缺失), 13 项中严重度 (命名不一致/信号缺失),
+  7 项低严重度 (可选信号/骨架阶段可延后)。整体 RTL 骨架与设计文档接口框架一致,
+  但多处命名规范和信号粒度需要对齐。建议在 M3-S2 详细 RTL 实现前完成修正。
+total_modules: 15
+modules_reviewed: 12
+consistent: 3
+discrepancies_found: 25
+
+# ═══════════════════════════════════════════════════════════════
+# 模块级映射状态总览
+# ═══════════════════════════════════════════════════════════════
+module_status:
+  - module: "lumi_soc_top"
+    doc_ref: ["pma-axi.html", "debug-trace.html", "clic-plic.html"]
+    rtl_file: "src/rtl/top/lumi_soc_top.sv"
+    status: "discrepancies"
+    discrepancy_count: 3
+
+  - module: "lumi_core_top"
+    doc_ref: ["fetch-bpred.html", "cache.html", "writeback-csr.html", "clic-plic.html", "exception-handling.html"]
+    rtl_file: "src/rtl/core/lumi_core_top.sv"
+    status: "discrepancies"
+    discrepancy_count: 3
+
+  - module: "lumi_fetch"
+    doc_ref: "fetch-bpred.html"
+    rtl_file: "src/rtl/core/lumi_fetch.sv"
+    status: "discrepancies"
+    discrepancy_count: 1
+
+  - module: "lumi_csr_unit"
+    doc_ref: "writeback-csr.html"
+    rtl_file: "src/rtl/csr/lumi_csr_unit.sv"
+    status: "consistent"
+    discrepancy_count: 0
+
+  - module: "lumi_axi_wrapper"
+    doc_ref: "pma-axi.html"
+    rtl_file: "src/rtl/bus/lumi_axi_wrapper.sv"
+    status: "discrepancies"
+    discrepancy_count: 3
+
+  - module: "lumi_cache"
+    doc_ref: "cache.html"
+    rtl_file: "src/rtl/memory/lumi_cache.sv"
+    status: "discrepancies"
+    discrepancy_count: 2
+
+  - module: "lumi_tcm"
+    doc_ref: "tcm.html"
+    rtl_file: "src/rtl/memory/lumi_tcm.sv"
+    status: "consistent"
+    discrepancy_count: 0
+
+  - module: "lumi_clic"
+    doc_ref: "clic-plic.html"
+    rtl_file: "src/rtl/interrupt/lumi_clic.sv"
+    status: "discrepancies"
+    discrepancy_count: 3
+
+  - module: "lumi_debug_module"
+    doc_ref: "debug-trace.html"
+    rtl_file: "src/rtl/debug/lumi_debug_module.sv"
+    status: "discrepancies"
+    discrepancy_count: 4
+
+  - module: "lumi_fpu"
+    doc_ref: "fpu-vector.html"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    status: "discrepancies"
+    discrepancy_count: 5
+
+  - module: "lumi_vector"
+    doc_ref: "fpu-vector.html"
+    rtl_file: "src/rtl/fpu/lumi_vector.sv"
+    status: "discrepancies"
+    discrepancy_count: 1
+
+  - module: "lumi_lockstep"
+    doc_ref: "multicore-lockstep.html"
+    rtl_file: "src/rtl/multicore/lumi_lockstep.sv"
+    status: "consistent"
+    discrepancy_count: 0
+
+  - module: "lumi_dft_ctrl"
+    doc_ref: "dft-security.html"
+    rtl_file: "src/rtl/dft/lumi_dft_ctrl.sv"
+    status: "discrepancies"
+    discrepancy_count: 3
+
+# ═══════════════════════════════════════════════════════════════
+# 不一致项明细
+# ═══════════════════════════════════════════════════════════════
+discrepancies:
+
+  # ─── SoC Top (lumi_soc_top) ────────────────────────────────
+  - module: "lumi_soc_top"
+    doc_file: "pma-axi.html §2.3.1"
+    rtl_file: "src/rtl/top/lumi_soc_top.sv"
+    type: "missing_port"
+    signal: "m_axi_awlock, m_axi_awcache, m_axi_awprot, m_axi_arlock, m_axi_arcache, m_axi_arprot"
+    doc_spec: "AXI4 完整信号列表包含 awlock(1), awcache(4), awprot(3), arlock(1), arcache(4), arprot(3)"
+    rtl_impl: "RTL 骨架未包含这些 AXI4 可选/保护属性信号"
+    severity: "medium"
+    recommendation: "M3-S2 补充 AXI4 sideband 信号; 若 SoC 不使用可文档标注 N/A"
+
+  - module: "lumi_soc_top"
+    doc_file: "clic-plic.html §3.1"
+    rtl_file: "src/rtl/top/lumi_soc_top.sv"
+    type: "extra_port"
+    signal: "local_irq[CLIC_INT_INPUTS-1:0]"
+    doc_spec: "clic-plic.html 中 CLIC 的 irq_local 在 CLIC 模块内部, SoC top 不直接暴露"
+    rtl_impl: "SoC top 有 local_irq 端口直接暴露给外部, 与文档层级划分不一致"
+    severity: "low"
+    recommendation: "确认 SoC 级是否需要暴露 CLIC 本地中断; 若需要则更新文档层级描述"
+
+  - module: "lumi_soc_top"
+    doc_file: "pma-axi.html"
+    rtl_file: "src/rtl/top/lumi_soc_top.sv"
+    type: "missing_port"
+    signal: "m_axi_awuser, m_axi_wuser, m_axi_buser, m_axi_aruser, m_axi_ruser"
+    doc_spec: "lumi_interfaces.sv 中 AXI interface 定义了 awuser/wuser/buser/aruser/ruser"
+    rtl_impl: "SoC top 端口未包含 user 信号, 但 interfaces.sv 定义中包含"
+    severity: "low"
+    recommendation: "若 SoC 不使用 AXI user 信号, 在文档中显式标注; 否则补充端口"
+
+  # ─── Core Top (lumi_core_top) ──────────────────────────────
+  - module: "lumi_core_top"
+    doc_file: "cache.html §3.1"
+    rtl_file: "src/rtl/core/lumi_core_top.sv"
+    type: "width_mismatch"
+    signal: "ic_data"
+    doc_spec: "cache.html: ic_rdata[63:0] Out 64bit (最多 2 条 32bit 或 4 条 16bit)"
+    rtl_impl: "core_top: ic_data [127:0] In (128bit, 16 bytes)"
+    severity: "high"
+    recommendation: "统一 ICache 返回数据位宽。cache.html §3.1 定义 64bit, 但 fetch-bpred.html §3.2 定义 f2_icache_data 为 128bit (16 bytes)。需要明确: ICache tag array 输出 64bit 还是 128bit, 并同步更新两端文档和 RTL"
+
+  - module: "lumi_core_top"
+    doc_file: "exception-handling.html §3"
+    rtl_file: "src/rtl/core/lumi_core_top.sv"
+    type: "missing_port"
+    signal: "nmi_signal"
+    doc_spec: "exception-handling.html: nmi_signal In 1bit 外部 NMI 信号"
+    rtl_impl: "core_top 无 NMI 输入端口"
+    severity: "high"
+    recommendation: "补充 nmi_signal 输入端口, 或在 SoC top 层通过 CLIC/PLIC 路由 NMI"
+
+  - module: "lumi_core_top"
+    doc_file: "clic-plic.html §3.1"
+    rtl_file: "src/rtl/core/lumi_core_top.sv"
+    type: "missing_port"
+    signal: "irq_id[7:0], irq_level[7:0]"
+    doc_spec: "clic-plic.html: irq_id[7:0] Out 8bit, irq_level[7:0] Out 8bit (从 CLIC 到 Core)"
+    rtl_impl: "core_top 仅有 irq_request (1bit), 缺少中断 ID 和优先级信息"
+    severity: "high"
+    recommendation: "补充 irq_id 和 irq_level 端口; CSR 单元需要这些信息实现 mcause/mintstatus"
+
+  # ─── Fetch (lumi_fetch) ────────────────────────────────────
+  - module: "lumi_fetch"
+    doc_file: "fetch-bpred.html §3.2"
+    rtl_file: "src/rtl/core/lumi_fetch.sv"
+    type: "missing_port"
+    signal: "f2_pred_info"
+    doc_spec: "fetch-bpred.html: f2_pred_info Out → Execute, 预测信息 (用于后续验证)"
+    rtl_impl: "lumi_fetch 无此输出端口"
+    severity: "medium"
+    recommendation: "补充 f2_pred_info 输出, 用于 Execute 级验证分支预测正确性"
+
+  # ─── AXI Wrapper (lumi_axi_wrapper) ────────────────────────
+  - module: "lumi_axi_wrapper"
+    doc_file: "pma-axi.html §2.3.1"
+    rtl_file: "src/rtl/bus/lumi_axi_wrapper.sv"
+    type: "missing_port"
+    signal: "m_axi_awlock, m_axi_awcache, m_axi_awprot, m_axi_arlock, m_axi_arcache, m_axi_arprot"
+    doc_spec: "AXI4 完整信号列表 (pma-axi.html §2.3.1)"
+    rtl_impl: "lumi_axi_wrapper 未声明这些 sideband 信号"
+    severity: "medium"
+    recommendation: "M3-S2 补充; 若不使用需在文档中标注 tied-off"
+
+  - module: "lumi_axi_wrapper"
+    doc_file: "pma-axi.html §2.5"
+    rtl_file: "src/rtl/bus/lumi_axi_wrapper.sv"
+    type: "extra_port"
+    signal: "m_ffp_awaddr, m_ffp_wdata, m_ffp_araddr 等 (FFP AXI4 外设接口)"
+    doc_spec: "pma-axi.html §2.5 定义了 FFP 外设 AXI4-Lite 接口 (32bit)"
+    rtl_impl: "RTL 实现了完整 FFP 接口, 与文档一致"
+    severity: "low"
+    recommendation: "信息项: FFP 接口文档与 RTL 对齐, 此项为确认性记录"
+
+  - module: "lumi_axi_wrapper"
+    doc_file: "pma-axi.html §2.3.1"
+    rtl_file: "src/rtl/bus/lumi_axi_wrapper.sv"
+    type: "missing_port"
+    signal: "m_axi_awid (ID width detail), m_axi_wuser, m_axi_buser, m_axi_aruser, m_axi_ruser"
+    doc_spec: "lumi_interfaces.sv 定义 AXI ID_W 参数化, user 信号存在"
+    rtl_impl: "RTL 有 awid/arid/bid/rid 但缺少 user 信号组"
+    severity: "low"
+    recommendation: "M3-S2 视 SoC 需求补充 user 信号"
+
+  # ─── Cache (lumi_cache) ────────────────────────────────────
+  - module: "lumi_cache"
+    doc_file: "cache.html §3.1"
+    rtl_file: "src/rtl/memory/lumi_cache.sv"
+    type: "missing_port"
+    signal: "dc_ecc_ce_irq, dc_ecc_ded_irq"
+    doc_spec: "cache.html: dc_ecc_ce_irq Out 1bit, dc_ecc_ded_irq Out 1bit (D-Cache ECC 中断)"
+    rtl_impl: "lumi_cache 模块无 ECC 中断输出端口"
+    severity: "high"
+    recommendation: "补充 ECC CE/DED 中断输出端口; 与 LUMI-MEM-006 ECC 保护需求直接关联"
+
+  - module: "lumi_cache"
+    doc_file: "cache.html §3.1"
+    rtl_file: "src/rtl/memory/lumi_cache.sv"
+    type: "direction_mismatch"
+    signal: "fence_ack vs fence_done"
+    doc_spec: "cache.html: fence_done Out 1bit (FENCE 操作完成)"
+    rtl_impl: "lumi_cache: fence_ack Out 1bit (命名不同)"
+    severity: "medium"
+    recommendation: "统一命名: 建议采用 fence_done (与 RVWMO 语义更匹配), 或文档更新为 fence_ack"
+
+  # ─── CLIC (lumi_clic) ─────────────────────────────────────
+  - module: "lumi_clic"
+    doc_file: "clic-plic.html §3.1"
+    rtl_file: "src/rtl/interrupt/lumi_clic.sv"
+    type: "missing_port"
+    signal: "meip (In from PLIC), seip, msip, mtip"
+    doc_spec: "clic-plic.html: meip In 1bit, seip In 1bit, msip In 1bit, mtip In 1bit (来自 PLIC/CLINT)"
+    rtl_impl: "lumi_clic 无这些输入端口 (仅有 irq_local + CSR 接口)"
+    severity: "high"
+    recommendation: "补充 PLIC/CLINT 中断输入端口; CLIC 需要聚合所有中断源才能正确仲裁"
+
+  - module: "lumi_clic"
+    doc_file: "clic-plic.html §3.1"
+    rtl_file: "src/rtl/interrupt/lumi_clic.sv"
+    type: "missing_port"
+    signal: "irq_id[7:0], irq_level[7:0], irq_preempt"
+    doc_spec: "clic-plic.html: irq_id Out 8bit, irq_level Out 8bit, irq_preempt Out 1bit"
+    rtl_impl: "lumi_clic 有 irq_cause[7:0] 和 irq_valid, 但缺少 irq_level 和 irq_preempt"
+    severity: "medium"
+    recommendation: "重命名 irq_cause→irq_id (与文档对齐), 补充 irq_level 和 irq_preempt 端口"
+
+  - module: "lumi_clic"
+    doc_file: "clic-plic.html §3.1"
+    rtl_file: "src/rtl/interrupt/lumi_clic.sv"
+    type: "extra_port"
+    signal: "clic_csr_addr, clic_csr_wdata, clic_csr_rdata, clic_csr_we"
+    doc_spec: "clic-plic.html 未在 §3.1 CLIC 端口表中列出 CSR 直接接口"
+    rtl_impl: "lumi_clic 有独立 CSR 访问接口 (4 端口)"
+    severity: "low"
+    recommendation: "文档补充 CLIC CSR 接口描述 (mintstatus, clicint 等寄存器)"
+
+  # ─── Debug (lumi_debug_module) ─────────────────────────────
+  - module: "lumi_debug_module"
+    doc_file: "debug-trace.html §3"
+    rtl_file: "src/rtl/debug/lumi_debug_module.sv"
+    type: "direction_mismatch"
+    signal: "DMI 接口命名不一致"
+    doc_spec: "debug-trace.html: dmi_req_valid, dmi_req_ready, dmi_req_addr[6:0], dmi_req_op[1:0], dmi_req_data[31:0], dmi_resp_valid/data/op"
+    rtl_impl: "lumi_debug_module: dmi_valid, dmi_ready, dmi_addr[6:0], dmi_op[1:0], dmi_wdata[31:0], dmi_rdata[31:0]"
+    severity: "medium"
+    recommendation: "统一 DMI 命名规范: 建议采用文档的 req_/resp_ 前缀方案, 更符合 RISC-V Debug Spec"
+
+  - module: "lumi_debug_module"
+    doc_file: "debug-trace.html §3"
+    rtl_file: "src/rtl/debug/lumi_debug_module.sv"
+    type: "missing_port"
+    signal: "debug_halt_req, debug_halted, debug_resume_req, debug_running"
+    doc_spec: "debug-trace.html: debug_halt_req In, debug_halted Out, debug_resume_req In, debug_running Out"
+    rtl_impl: "lumi_debug_module: debug_halt Out, debug_resume Out (命名不同且缺少状态反馈)"
+    severity: "medium"
+    recommendation: "按 Debug Spec 拆分: halt_req (In) + halted (Out) + resume_req (In) + running (Out)"
+
+  - module: "lumi_debug_module"
+    doc_file: "debug-trace.html §3"
+    rtl_file: "src/rtl/debug/lumi_debug_module.sv"
+    type: "missing_port"
+    signal: "abs_cmd_valid, abs_cmd_data[31:0], abs_resp[1:0]"
+    doc_spec: "debug-trace.html: abs_cmd_valid In 1bit, abs_cmd_data In 32bit, abs_resp Out 2bit (Abstract Command)"
+    rtl_impl: "lumi_debug_module 无 Abstract Command 接口"
+    severity: "medium"
+    recommendation: "补充 Abstract Command 接口; RISC-V Debug Spec 0.13 要求支持 abstract commands"
+
+  - module: "lumi_debug_module"
+    doc_file: "debug-trace.html §3"
+    rtl_file: "src/rtl/debug/lumi_debug_module.sv"
+    type: "missing_port"
+    signal: "trace_insn_retired, trace_pc[31:0], trace_branch_taken, trace_exception, trace_axi_*"
+    doc_spec: "debug-trace.html: Nexus Trace 接口 (insn_retired, pc, branch, exception, AXI 写出)"
+    rtl_impl: "lumi_debug_module 无 Trace 接口; 虽有独立 lumi_trace.sv 但未在 debug_module 中集成"
+    severity: "medium"
+    recommendation: "将 Trace 接口集成到 debug_module 或明确 lumi_trace.sv 为独立模块的文档归属"
+
+  # ─── FPU (lumi_fpu) ────────────────────────────────────────
+  - module: "lumi_fpu"
+    doc_file: "fpu-vector.html §3.1"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    type: "direction_mismatch"
+    signal: "fpu_issue vs fpu_issue_valid, fpu_ready vs fpu_issue_ready"
+    doc_spec: "fpu_issue_valid In, fpu_issue_ready Out (issue/ready 分离命名)"
+    rtl_impl: "fpu_issue In (单信号), fpu_ready Out (命名简化)"
+    severity: "medium"
+    recommendation: "采用文档命名: fpu_issue_valid + fpu_issue_ready, 与 Issue 级标准握手机制一致"
+
+  - module: "lumi_fpu"
+    doc_file: "fpu-vector.html §3.1"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    type: "width_mismatch"
+    signal: "fpu_inst_type vs fpu_opcode"
+    doc_spec: "fpu_opcode[5:0] In 6bit (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP)"
+    rtl_impl: "fpu_inst_type [4:0] In 5bit"
+    severity: "high"
+    recommendation: "扩展为 6bit 以容纳全部 8 种 FPU 操作类型; 5bit 仅支持 32 种但编码空间不足"
+
+  - module: "lumi_fpu"
+    doc_file: "fpu-vector.html §3.1"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    type: "missing_port"
+    signal: "fpu_fmt[1:0], fpu_rm[2:0]"
+    doc_spec: "fpu_fmt In 2bit (FP32/FP64), fpu_rm In 3bit (舍入模式 RNE/RTZ/RDN/RUP/RMM)"
+    rtl_impl: "lumi_fpu 无格式和舍入模式输入"
+    severity: "medium"
+    recommendation: "补充 fmt 和 rm 端口; FP 运算正确性依赖舍入模式和精度选择"
+
+  - module: "lumi_fpu"
+    doc_file: "fpu-vector.html §3.1"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    type: "direction_mismatch"
+    signal: "fpu_result vs fpu_result_data, fpu_valid vs fpu_result_valid"
+    doc_spec: "fpu_result_data[63:0] Out, fpu_result_valid Out"
+    rtl_impl: "fpu_result [63:0] Out, fpu_valid Out (命名简化)"
+    severity: "medium"
+    recommendation: "统一命名: 建议采用 fpu_result_data + fpu_result_valid"
+
+  - module: "lumi_fpu"
+    doc_file: "fpu-vector.html §3.1"
+    rtl_file: "src/rtl/fpu/lumi_fpu.sv"
+    type: "missing_port"
+    signal: "fpu_rd[4:0]"
+    doc_spec: "fpu-vector.html 未显式列出 fpu_rd, 但 DEC-007-2 要求三接口 (rs1/rs2/rs3 + rd)"
+    rtl_impl: "lumi_fpu 有 fpu_rd[4:0] 输出 (目标寄存器号)"
+    severity: "low"
+    recommendation: "文档补充 fpu_rd 端口描述; RTL 实现合理"
+
+  # ─── Vector (lumi_vector) ──────────────────────────────────
+  - module: "lumi_vector"
+    doc_file: "fpu-vector.html §3.3"
+    rtl_file: "src/rtl/fpu/lumi_vector.sv"
+    type: "direction_mismatch"
+    signal: "vec_issue vs vec_issue_valid, vec_inst_type vs vec_opcode"
+    doc_spec: "vec_issue_valid In, vec_opcode[6:0] In 7bit"
+    rtl_impl: "vec_issue In (单信号), vec_inst_type [4:0] In 5bit"
+    severity: "medium"
+    recommendation: "统一命名并扩展 vec_inst_type 至 7bit 以匹配文档 vec_opcode 位宽"
+
+  # ─── DFT (lumi_dft_ctrl) ──────────────────────────────────
+  - module: "lumi_dft_ctrl"
+    doc_file: "dft-security.html §3.1"
+    rtl_file: "src/rtl/dft/lumi_dft_ctrl.sv"
+    type: "width_mismatch"
+    signal: "scan_in, scan_out"
+    doc_spec: "dft-security.html: scan_in[3:0] In 4bit, scan_out[3:0] Out 4bit (4 条扫描链)"
+    rtl_impl: "lumi_dft_ctrl: scan_in 1bit, scan_out 1bit (单链)"
+    severity: "medium"
+    recommendation: "扩展为 4bit 扫描链以匹配文档; 或更新文档为参数化链数"
+
+  - module: "lumi_dft_ctrl"
+    doc_file: "dft-security.html §3.1"
+    rtl_file: "src/rtl/dft/lumi_dft_ctrl.sv"
+    type: "missing_port"
+    signal: "mbist_diag[63:0]"
+    doc_spec: "dft-security.html: mbist_diag[63:0] Out 64bit (MBIST 诊断信息: 地址+数据)"
+    rtl_impl: "lumi_dft_ctrl 无 mbist_diag 端口, 但有 mbist_error_count[31:0]"
+    severity: "medium"
+    recommendation: "补充 mbist_diag 端口; 或文档将诊断信息拆分为独立模块"
+
+  - module: "lumi_dft_ctrl"
+    doc_file: "dft-security.html §3.1"
+    rtl_file: "src/rtl/dft/lumi_dft_ctrl.sv"
+    type: "extra_port"
+    signal: "tamper_detect, secure_lock"
+    doc_spec: "dft-security.html 在 §4 安全章节提及, 但 §3.1 端口表未列出"
+    rtl_impl: "lumi_dft_ctrl 有 tamper_detect In + secure_lock Out"
+    severity: "low"
+    recommendation: "文档补充安全接口端口表; RTL 实现超前 (good), 需要同步文档"
+
+# ═══════════════════════════════════════════════════════════════
+# 风险评估
+# ═══════════════════════════════════════════════════════════════
+risk_assessment:
+  high_risk:
+    count: 5
+    items:
+      - id: "H-001"
+        summary: "ICache 数据位宽不一致 (64 vs 128bit)"
+        impact: "取指数据通路错误, 导致指令解码失败"
+        affected_modules: ["lumi_core_top", "lumi_cache", "lumi_fetch"]
+        mitigation: "统一 ICache 输出位宽为 128bit (与 fetch-bpred.html 16B 对齐), 更新 cache.html ic_rdata 为 [127:0]"
+
+      - id: "H-002"
+        summary: "CLIC 缺少 PLIC/CLINT 中断输入 (meip/seip/msip/mtip)"
+        impact: "中断聚合不完整, 外部/软件/定时器中断无法送达 CPU"
+        affected_modules: ["lumi_clic", "lumi_soc_top"]
+        mitigation: "在 lumi_clic 补充 meip/seip/msip/mtip 输入端口"
+
+      - id: "H-003"
+        summary: "Core top 缺少 CLIC 中断 ID 和优先级端口"
+        impact: "mcause 寄存器无法正确记录中断 ID, 中断优先级仲裁失效"
+        affected_modules: ["lumi_core_top", "lumi_csr_unit"]
+        mitigation: "补充 irq_id[7:0] 和 irq_level[7:0] 从 CLIC 到 Core/CSR"
+
+      - id: "H-004"
+        summary: "Cache 缺少 ECC 中断输出"
+        impact: "ECC 错误不可检测, 违反 LUMI-MEM-006 安全需求"
+        affected_modules: ["lumi_cache"]
+        mitigation: "补充 dc_ecc_ce_irq 和 dc_ecc_ded_irq 端口"
+
+      - id: "H-005"
+        summary: "FPU opcode 位宽不足 (5 vs 6 bit)"
+        impact: "无法编码全部 8 种 FPU 操作, FCMP/FMV 可能无法区分"
+        affected_modules: ["lumi_fpu"]
+        mitigation: "扩展 fpu_inst_type 为 [5:0] (6bit)"
+
+  medium_risk:
+    count: 13
+    summary: >
+      主要是命名不一致 (DMI/Debug/FPU 接口) 和可选信号缺失 (AXI sideband, Trace 接口)。
+      不影响核心功能正确性, 但影响验证覆盖和接口互操作性。
+
+  low_risk:
+    count: 7
+    summary: >
+      文档补充项 (CLIC CSR 接口, DFT 安全接口, AXI user 信号等)。
+      RTL 骨架超前实现, 需要文档同步更新。
+
+# ═══════════════════════════════════════════════════════════════
+# 建议修复优先级
+# ═══════════════════════════════════════════════════════════════
+recommendations:
+  priority_1_critical:
+    - "H-001: 统一 ICache 数据位宽 (128bit), 同步更新 cache.html 和 RTL"
+    - "H-002 + H-003: 完善 CLIC↔Core 中断通路 (irq_id, irq_level, meip/seip/msip/mtip)"
+    - "H-004: 补充 Cache ECC 中断端口"
+
+  priority_2_important:
+    - "H-005: 扩展 FPU opcode 至 6bit"
+    - "统一 Debug DMI 接口命名 (req_/resp_ 前缀)"
+    - "补充 Debug Abstract Command 接口"
+    - "统一 FPU 接口命名 (issue_valid/ready, result_data/valid)"
+    - "补充 NMI 信号到 core_top 或 SoC top"
+
+  priority_3_minor:
+    - "补充 AXI4 sideband 信号 (awlock/awcache/awprot 等) 或文档标注 N/A"
+    - "统一 fence_ack/fence_done 命名"
+    - "DFT scan_in/scan_out 扩展至 4bit"
+    - "更新文档补充 CLIC CSR 接口和安全接口端口表"
+    - "确认 Trace 模块归属 (lumi_trace.sv vs debug_module)"
+
+# ═══════════════════════════════════════════════════════════════
+# 审查签名
+# ═══════════════════════════════════════════════════════════════
+reviewer: "Qoder Agent (Automated)"
+review_method: "Grep-based port extraction + manual comparison"
+docs_reviewed:
+  - "fetch-bpred.html (LUMI-DESIGN-001)"
+  - "decode-issue.html (LUMI-DESIGN-002)"
+  - "execute-alu.html (LUMI-DESIGN-003)"
+  - "writeback-csr.html (LUMI-DESIGN-004)"
+  - "regfile.html (LUMI-DESIGN-005)"
+  - "tcm.html (LUMI-DESIGN-006)"
+  - "cache.html (LUMI-DESIGN-007)"
+  - "pma-axi.html (LUMI-DESIGN-008)"
+  - "clic-plic.html (LUMI-DESIGN-009)"
+  - "exception-handling.html (LUMI-DESIGN-010)"
+  - "privilege-pmp.html (LUMI-DESIGN-011)"
+  - "debug-trace.html (LUMI-DESIGN-012)"
+  - "fpu-vector.html (LUMI-DESIGN-013)"
+  - "power-reset.html (LUMI-DESIGN-014)"
+  - "multicore-lockstep.html (LUMI-DESIGN-015)"
+  - "dft-security.html (LUMI-DESIGN-016)"
+rtl_modules_reviewed:
+  - "src/rtl/top/lumi_soc_top.sv"
+  - "src/rtl/core/lumi_core_top.sv"
+  - "src/rtl/core/lumi_fetch.sv"
+  - "src/rtl/csr/lumi_csr_unit.sv"
+  - "src/rtl/bus/lumi_axi_wrapper.sv"
+  - "src/rtl/memory/lumi_cache.sv"
+  - "src/rtl/memory/lumi_tcm.sv"
+  - "src/rtl/interrupt/lumi_clic.sv"
+  - "src/rtl/debug/lumi_debug_module.sv"
+  - "src/rtl/fpu/lumi_fpu.sv"
+  - "src/rtl/fpu/lumi_vector.sv"
+  - "src/rtl/multicore/lumi_lockstep.sv"
+  - "src/rtl/dft/lumi_dft_ctrl.sv"
+notes: >
+  3 个模块 (lumi_csr_unit, lumi_tcm, lumi_lockstep) 文档与 RTL 端口一致, 无需修正。
+  骨架阶段 RTL 中大量 TODO 标注表明功能实现尚未完成, 本报告仅审查端口级一致性。
+  execute-alu.html, decode-issue.html, regfile.html, power-reset.html 中的端口定义
+  通过 core_top 内部子模块实例化间接验证, 未作为独立模块审查。

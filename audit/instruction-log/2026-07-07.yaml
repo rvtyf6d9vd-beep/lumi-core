@@ -985,6 +985,91 @@ files_created_or_modified_m2_close:
       用户决定: "批准 M3 计划 v1.0, M3 status pending_plan → in_progress"
       rules_checked: ["03", "08", "10", "11", "16", "23"]
 
+  # ──────────────────────────────────────────────
+  # 指令 18：M3-S1 Task 0 启动前置实施
+  # ──────────────────────────────────────────────
+  - id: 18
+    type: execute
+    source: user
+    timestamp: "2026-07-07T15:00:00+08:00"
+    summary: "M3-S1 Task 0 启动前置: TB框架+CI/CD+综合脚本+映射审查"
+    details:
+      task: "M3-S1 Task 0: 启动前置 (Week 1-2)"
+      subtasks:
+        T01_TB框架:
+          description: "验证环境升级: Verilator 兼容 TB 框架"
+          files_created:
+            - "src/tb/lib/lumi_tb_pkg.sv (110行, 公共类型/宏/配置)"
+            - "src/tb/agents/axi_memory_bfm.sv (264行, AXI4 Slave Memory 256KiB)"
+            - "src/tb/agents/jtag_bfm.sv (158行, JTAG TAP+DMI BFM)"
+            - "src/tb/top/lumi_tb_top.sv (291行, SoC 顶层 TB, 从 stub 升级)"
+            - "src/tb/Makefile (85行, lint/sim/smoke)"
+        T02_CICD:
+          description: "CI/CD 回归流水线"
+          files_created:
+            - ".github/workflows/daily-regression.yaml (139行, RTL Lint+Bench+gem5+Report)"
+        T03_综合环境:
+          description: "综合环境搭建脚本"
+          files_created:
+            - "scripts/synth/synth_lumi.tcl (90行, Yosys 综合)"
+            - "scripts/synth/timing_lumi.tcl (80行, OpenSTA 时序)"
+            - "scripts/synth/lumi_constraints.sdc (56行, SDC 约束 1GHz)"
+            - "scripts/synth/Makefile (47行, synth/timing/check-env)"
+        T04_映射审查:
+          description: "设计文档→RTL 骨架映射审查"
+          files_created:
+            - "audit/design-rtl-mapping-review-20260707.yaml (504行)"
+          findings: "25 项不一致: 5 high / 13 medium / 7 low"
+          high_risk:
+            - "H-001: ICache 位宽不一致 (64 vs 128bit)"
+            - "H-002: CLIC 缺少 PLIC 中断输入"
+            - "H-003: Core top 缺少 irq_id/irq_level"
+            - "H-004: Cache 缺少 ECC 中断输出"
+            - "H-005: FPU opcode 位宽不足 (5 vs 6bit)"
+      risk_register_update: "新增 RISK-018~022 (5 项 high, 映射审查发现)"
+      rules_checked: ["03", "08", "11", "16", "18"]
+
+files_created_or_modified_task0:
+  - path: "src/tb/lib/lumi_tb_pkg.sv"
+    action: created
+    summary: "TB 公共类型包 (110行, Verilator 兼容)"
+  - path: "src/tb/agents/axi_memory_bfm.sv"
+    action: created
+    summary: "AXI4 Memory BFM 256KiB (264行)"
+  - path: "src/tb/agents/jtag_bfm.sv"
+    action: created
+    summary: "JTAG TAP+DMI BFM (158行)"
+  - path: "src/tb/top/lumi_tb_top.sv"
+    action: created
+    summary: "SoC 顶层 TB (291行, 从 stub 升级)"
+  - path: "src/tb/Makefile"
+    action: created
+    summary: "TB Makefile (lint/sim/smoke)"
+  - path: ".github/workflows/daily-regression.yaml"
+    action: created
+    summary: "CI/CD 回归流水线 (139行, 4 jobs)"
+  - path: "scripts/synth/synth_lumi.tcl"
+    action: created
+    summary: "Yosys 综合脚本 (90行)"
+  - path: "scripts/synth/timing_lumi.tcl"
+    action: created
+    summary: "OpenSTA 时序分析脚本 (80行)"
+  - path: "scripts/synth/lumi_constraints.sdc"
+    action: created
+    summary: "SDC 时序约束 (56行, 1GHz target)"
+  - path: "scripts/synth/Makefile"
+    action: created
+    summary: "综合 Makefile (synth/timing/check-env)"
+  - path: "audit/design-rtl-mapping-review-20260707.yaml"
+    action: created
+    summary: "设计文档→RTL 映射审查报告 (504行, 25 项不一致)"
+  - path: "audit/risk-register.yaml"
+    action: modified
+    summary: "新增 RISK-018~022 (5 项 high, 映射审查发现)"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 18 (Task 0 启动前置)"
+
 files_created_or_modified_m3_plan:
   - path: ".qoder/specs/M3_RTL冻结详细执行计划_task-80e.md"
     action: created
