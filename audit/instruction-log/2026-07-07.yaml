@@ -950,3 +950,48 @@ files_created_or_modified_m2_close:
   - path: "audit/instruction-log/2026-07-07.yaml"
     action: modified
     summary: "追加指令 13/14/15/16 (双审查 + qa 审计 + sign-off + closure)"
+
+# ═══ M3 计划制定 (指令 17) ═══
+
+  - id: 17
+    type: execute
+    source: user
+    timestamp: "2026-07-07T14:30:00+08:00"
+    summary: "制定 M3 RTL 冻结详细执行计划 (v1.0) — 用户批准"
+    details:
+      任务: "M3-S1/M3-S2 详细执行计划制定"
+      上下文: >
+        基于 M2 交付物 (28 RTL 骨架 + 16 设计文档 + 验证策略 v1.0 +
+        覆盖计划 35 CG + GEM5+ 模型 + BL-1.1 99 需求) 和 4 项 open 风险
+        (RISK-006/011/012/013), 制定 M3 里程碑详细执行计划。
+      计划结构:
+        M3-S1: "RTL 实现与单元验证 (2027-01~03, 13 Week)"
+        M3-S2: "集成验证与冻结 (2027-04~06, 13 Week)"
+      任务清单:
+        - "Task 0: M3 启动前置 (W1-2, 验证环境升级+CI/CD+综合环境+映射审查)"
+        - "Task 1: RTL 全模块功能实现 (W3-12, 4 Batch x 25 模块)"
+        - "Task 2: 单元验证 (W3-12, 4 验证批次 V1~V4, 35 CG)"
+        - "Task 3: 每日集成回归 (W3-12, CI smoke+regression+nightly)"
+        - "Task 4: GEM5+ 交叉校准 (W6-12, 5 项校准)"
+        - "Task 5: 物理设计评估与风险闭合 (W8-12, 综合+STA+功耗)"
+        - "Task 6: M3-S1 门禁检查 (W13, 6 项门禁)"
+        - "Task 7: 系统集成验证 (W14-20, SoC+ISA+中断+安全)"
+        - "Task 8: 回归+Bug 用例 (W18-22, ≥50 项回归)"
+        - "Task 9: 性能达标验证 (W20-23, CoreMark+Dhrystone+面积+频率+功耗)"
+        - "Task 10: RTL 冻结 (W24-26, 质量门禁+文档更新+归档+Sign-off)"
+      门禁: "M3 五项门禁: GATE-1 RTL 完整 / GATE-2 单元验证 / GATE-3 系统集成 / GATE-4 回归 100% / GATE-5 性能达标"
+      风险追踪: "4 项 open 风险 (RISK-006/011/012/013) 闭合条件已定义"
+      角色分工: "hw-design (RTL+综合) / hw-ver (TB+验证) / pm-infra (CI+进度) / qa-audit (W5/W9/W12/W26 审计)"
+      用户决定: "批准 M3 计划 v1.0, M3 status pending_plan → in_progress"
+      rules_checked: ["03", "08", "10", "11", "16", "23"]
+
+files_created_or_modified_m3_plan:
+  - path: ".qoder/specs/M3_RTL冻结详细执行计划_task-80e.md"
+    action: created
+    summary: "M3 详细执行计划 v1.0 (334 行, 11 Task, 26 Week)"
+  - path: "docs/project/milestone-plan.yaml"
+    action: modified
+    summary: "version 1.2→1.3, M3 status pending_plan→in_progress, 追加 plan 引用"
+  - path: "audit/instruction-log/2026-07-07.yaml"
+    action: modified
+    summary: "追加指令 17 (M3 计划制定)"

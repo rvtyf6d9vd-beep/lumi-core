@@ -1,8 +1,8 @@
 # Lumi-Core 里程碑计划 (规则 23)
 # 定义项目三层结构：Milestone → Stage → Phase
 
-version: "1.2"
-last_updated: "2026-07-07 (M2 closed: status in_progress → completed, sign-off 4/4 PASS)"
+version: "1.3"
+last_updated: "2026-07-07 (M3 plan approved: pending_plan → in_progress)"
 
 # ──────────────────────────────────────────────
 # Milestone 定义 (MS)
@@ -48,8 +48,8 @@ milestones:
   - id: "M3"
     title: "RTL 冻结"
     target_date: "2027-06"
-    status: pending_plan
-    pending: "M3-S1/M3-S2 详细执行计划待制定 (用户 Q4 决定: 先制定再启动)"
+    status: in_progress
+    plan: ".qoder/specs/M3_RTL冻结详细执行计划_task-80e.md"
     gates:
       - "RTL 全模块实现完成"
       - "单元验证通过"
