@@ -1,9 +1,12 @@
 // =================================================================
 // LUMI-DESIGN-CORE | 需求: LUMI-CORE-001 | 承接: design/*.html (全部 core 文档)
-// 模块: lumi_core_top — 8 级流水线级联顶层
-// 阶段: M2-S1 RTL 骨架 (实例化子模块 + 级间连线)
-// 作者: Qoder Agent | 日期: 2026-07-07
+// 模块: lumi_core_top — 8 级流水线级联顶层 (F1→F2→D→I→E1→E2→M→W)
+// 阶段: M3-S1 Batch-1 | 日期: 2026-07-08
 // =================================================================
+// 子模块: fetch → decode_issue → bypass → execute → memory_stage → writeback
+//         + regfile (IRF/FRF/VRF)
+// 8 级流水线: F1(PC gen) → F2(ICache) → D(Decode) → I(Issue) → E1(ALU/Branch)
+//             → E2(MUL/DIV) → M(Load/Store) → W(Writeback)
 
 module lumi_core_top #(
     parameter int ISSUE_WIDTH = lumi_pkg::ISSUE_WIDTH,
@@ -28,17 +31,10 @@ module lumi_core_top #(
     input  logic                    dc_ready,
     input  logic                    dc_hit,
 
-    // ── RegFile 接口 (D/I 级读, W 级写) ──────────────────────
-    output logic [4:0]              rf_rs1_addr [ISSUE_WIDTH-1:0],
-    output logic [4:0]              rf_rs2_addr [ISSUE_WIDTH-1:0],
-    input  logic [31:0]             rf_rs1_data [ISSUE_WIDTH-1:0],
-    input  logic [31:0]             rf_rs2_data [ISSUE_WIDTH-1:0],
-    output logic [1:0]              rf_wr_en,
-    output logic [4:0]              rf_wr_addr [1:0],
-    output logic [31:0]             rf_wr_data [1:0],
-
-    // ── 中断接口 ─────────────────────────────────────────────
+    // ── 中断接口 (H-003 修复: 补充 irq_id + irq_level) ──────
     input  logic                    irq_request,
+    input  logic [7:0]              irq_id,
+    input  logic [7:0]              irq_level,
 
     // ── CSR 接口 ──────────────────────────────────────────────
     output logic [11:0]             csr_addr,
@@ -55,68 +51,116 @@ module lumi_core_top #(
     // ── 提交信号 (→ 锁步比较器 D-011) ─────────────────────────
     output logic [ISSUE_WIDTH-1:0]  commit_valid,
     output logic [31:0]             commit_pc [ISSUE_WIDTH-1:0],
-    output logic [31:0]             commit_result [ISSUE_WIDTH-1:0]
+    output logic [31:0]             commit_result [ISSUE_WIDTH-1:0],
+
+    // ── HPM 事件输出 ─────────────────────────────────────────
+    output logic                    hpm_inst_retired,
+    output logic                    hpm_branch,
+    output logic                    hpm_branch_miss,
+    output logic                    hpm_load,
+    output logic                    hpm_store,
+    output logic                    hpm_exception
 );
 
     import lumi_pkg::*;
 
-    // ─── 内部级间信号 ─────────────────────────────────────────
-    // F1→F2
-    logic [31:0]                    f1_pc;
+    localparam int FETCH_WIDTH = ISSUE_WIDTH * 2;  // 6
 
-    // F2→Decode
-    localparam int FETCH_WIDTH = ISSUE_WIDTH * 2;
-    logic [31:0]                    f2_insts [FETCH_WIDTH-1:0];
-    logic [$clog2(ISSUE_WIDTH):0]   f2_count;
-    logic                           f2_valid;
+    // ═══════════════════════════════════════════════════════════
+    // 级间信号声明
+    // ═══════════════════════════════════════════════════════════
 
-    // Decode→Issue
-    inst_pkt_t                      dec_issue [ISSUE_WIDTH-1:0];
-    logic [ISSUE_WIDTH-1:0]         dec_issue_valid;
-    logic [3:0]                     dec_fu_id [ISSUE_WIDTH-1:0];
-    logic [31:0]                    dec_rs1_data [ISSUE_WIDTH-1:0];
-    logic [31:0]                    dec_rs2_data [ISSUE_WIDTH-1:0];
+    // ── F1 级 ──
+    logic [31:0]   f1_pc;
+    logic          f1_pred_taken;
+    logic [31:0]   f1_pred_target;
 
-    // Bypass signals (arrays for issue stage)
-    logic [31:0]                    bp_e1_data [ISSUE_WIDTH-1:0];
-    logic [31:0]                    bp_m_data  [ISSUE_WIDTH-1:0];
-    logic [31:0]                    bp_w_data  [ISSUE_WIDTH-1:0];
+    // ── F2 级 ──
+    logic [31:0]   f2_insts [FETCH_WIDTH-1:0];
+    logic [$clog2(FETCH_WIDTH):0] f2_count;
+    logic          f2_valid;
+    logic [31:0]   f2_pc;
+    logic          f2_pred_taken;
+    logic [31:0]   f2_pred_target;
 
-    // Issue→Execute (E1)
-    logic [31:0]                    exe_rs1 [ISSUE_WIDTH-1:0];
-    logic [31:0]                    exe_rs2 [ISSUE_WIDTH-1:0];
+    // F2 valid mask 生成
+    logic [FETCH_WIDTH-1:0] f2_inst_valid_mask;
 
-    // Execute→Memory (M)
-    logic [31:0]                    exe_result [ISSUE_WIDTH-1:0];
-    logic [4:0]                     exe_rd [ISSUE_WIDTH-1:0];
-    logic [ISSUE_WIDTH-1:0]         exe_valid;
+    // ── D/I 级 ──
+    inst_pkt_t     i_inst [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] i_valid;
+    logic [3:0]    i_fu_id [ISSUE_WIDTH-1:0];
+    logic [31:0]   i_rs1_data [ISSUE_WIDTH-1:0];
+    logic [31:0]   i_rs2_data [ISSUE_WIDTH-1:0];
+    logic [4:0]    rf_rs1_addr [ISSUE_WIDTH-1:0];
+    logic [4:0]    rf_rs2_addr [ISSUE_WIDTH-1:0];
+    logic [31:0]   rf_rs1_data_r [ISSUE_WIDTH-1:0];
+    logic [31:0]   rf_rs2_data_r [ISSUE_WIDTH-1:0];
 
-    // Memory stage inputs from execute (array [1:0])
-    logic [31:0]                    exe_mem_addr  [1:0];
-    logic                           exe_mem_we    [1:0];
-    logic [31:0]                    exe_mem_wdata [1:0];
+    // ── Bypass ──
+    logic [ISSUE_WIDTH-1:0] bp_rs1_hit;
+    logic [ISSUE_WIDTH-1:0] bp_rs2_hit;
+    logic [31:0]   bp_rs1_data [ISSUE_WIDTH-1:0];
+    logic [31:0]   bp_rs2_data [ISSUE_WIDTH-1:0];
 
-    // Memory→Writeback (W)
-    inst_pkt_t                      mem_inst [ISSUE_WIDTH-1:0];
-    logic [ISSUE_WIDTH-1:0]         mem_valid;
-    logic [31:0]                    mem_result [ISSUE_WIDTH-1:0];
-    logic [4:0]                     mem_rd [ISSUE_WIDTH-1:0];
-    logic [31:0]                    mem_pc [ISSUE_WIDTH-1:0];
-    logic [ISSUE_WIDTH-1:0]         mem_exception;
+    // ── E1 级 ──
+    logic [31:0]   e1_result [ISSUE_WIDTH-1:0];
+    logic [4:0]    e1_rd [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] e1_valid;
+    logic          e1_br_taken;
+    logic [31:0]   e1_br_target;
+    logic          e1_mispredict;
+    logic [31:0]   e1_mem_addr [1:0];
+    logic          e1_mem_we [1:0];
+    logic [31:0]   e1_mem_wdata [1:0];
+    logic [ISSUE_WIDTH-1:0] e1_exception;
+    logic [3:0]    e1_exc_cause [ISSUE_WIDTH-1:0];
 
-    // Branch feedback
-    logic                           br_taken;
-    logic [31:0]                    br_target;
-    logic                           br_mispredict;
+    // ── E2 级 ──
+    logic [31:0]   e2_mul_result;
+    logic [31:0]   e2_mul_result_hi;
+    logic          e2_mul_valid;
+    logic [31:0]   e2_div_result;
+    logic          e2_div_valid;
+    logic          e2_div_busy;
+    logic [4:0]    e2_rd;
 
-    // Stall/flush
-    logic                           stall;
+    // ── M 级 ──
+    inst_pkt_t     m_inst_out [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] m_valid_out;
+    logic [31:0]   m_result_out [ISSUE_WIDTH-1:0];
+    logic [4:0]    m_rd_out [ISSUE_WIDTH-1:0];
+    logic [31:0]   m_pc_out [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] m_exception_out;
 
-    // ─── 子模块实例化 (骨架) ──────────────────────────────────
+    // ── W 级 ──
+    logic [1:0]    rf_wr_en;
+    logic [4:0]    rf_wr_addr [1:0];
+    logic [31:0]   rf_wr_data [1:0];
+    logic          trap_request;
+    logic [31:0]   trap_pc;
 
+    // ── Stall/Flush ──
+    logic          dec_stall;
+
+    // ═══════════════════════════════════════════════════════════
+    // F2 valid mask 生成
+    // ═══════════════════════════════════════════════════════════
+    always_comb begin
+        f2_inst_valid_mask = '0;
+        if (f2_valid) begin
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                if (i[$clog2(FETCH_WIDTH):0] < f2_count)
+                    f2_inst_valid_mask[i] = 1'b1;
+            end
+        end
+    end
+
+    // ═══════════════════════════════════════════════════════════
     // Fetch (F1/F2)
+    // ═══════════════════════════════════════════════════════════
     lumi_fetch #(
-        .FETCH_WIDTH  (ISSUE_WIDTH * 2),
+        .FETCH_WIDTH  (FETCH_WIDTH),
         .BTB_ENTRIES  (lumi_pkg::BTB_ENTRIES),
         .RAS_DEPTH    (lumi_pkg::RAS_DEPTH),
         .LTAGE_TABLES (lumi_pkg::LTAGE_TABLES)
@@ -129,83 +173,159 @@ module lumi_core_top #(
         .f2_instructions       (f2_insts),
         .f2_inst_count         (f2_count),
         .f2_valid              (f2_valid),
-        .branch_redirect_pc    (br_target),
-        .branch_redirect_valid (br_mispredict),
-        .tage_update_pc        (32'h0),      // TODO: connect
-        .tage_update_taken     (1'b0),
-        .tage_update_valid     (1'b0),
+        .f2_pc_out             (f2_pc),
+        .f2_pred_taken         (f2_pred_taken),
+        .f2_pred_target        (f2_pred_target),
+        .branch_redirect_pc    (e1_br_target),
+        .branch_redirect_valid (e1_mispredict),
+        .tage_update_pc        (e1_br_target),     // 简化: 使用分支反馈
+        .tage_update_taken     (e1_br_taken),
+        .tage_update_valid     (e1_br_taken),
         .debug_halt            (debug_halt)
     );
 
+    // ICache 接口
+    assign ic_addr      = f1_pc;
+    assign ic_req_valid = 1'b1;
+
+    // ═══════════════════════════════════════════════════════════
     // Decode + Issue (D/I)
+    // ═══════════════════════════════════════════════════════════
     lumi_decode_issue #(
-        .ISSUE_WIDTH (ISSUE_WIDTH)
+        .ISSUE_WIDTH (ISSUE_WIDTH),
+        .FETCH_WIDTH (FETCH_WIDTH)
     ) u_decode_issue (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
         .d_instructions        (f2_insts),
-        .d_inst_valid          ('0),  // TODO: connect f2_count mask
-        .d_rs1_data            (dec_rs1_data),
-        .d_rs2_data            (dec_rs2_data),
+        .d_inst_valid          (f2_inst_valid_mask),
+        .d_pc                  (f2_pc),
+        .d_valid               (f2_valid),
+        .d_rs1_data            (i_rs1_data),
+        .d_rs2_data            (i_rs2_data),
         .regfile_rs1_addr      (rf_rs1_addr),
         .regfile_rs2_addr      (rf_rs2_addr),
-        .regfile_rs1_data      (rf_rs1_data),
-        .regfile_rs2_data      (rf_rs2_data),
-        .i_issue               (dec_issue),
-        .i_issue_valid         (dec_issue_valid),
-        .i_fu_id               (dec_fu_id),
-        .bypass_e1_data        (bp_e1_data),    // bypass array
-        .bypass_m_data         (bp_m_data),
-        .bypass_w_data         (bp_w_data),
-        .bypass_fpu_data       (64'h0),
-        .fu_busy               (10'h0),
-        .stall_out             (stall),
-        .flush                 (br_mispredict)
+        .regfile_rs1_data      (rf_rs1_data_r),
+        .regfile_rs2_data      (rf_rs2_data_r),
+        .i_issue               (i_inst),
+        .i_issue_valid         (i_valid),
+        .i_fu_id               (i_fu_id),
+        .bypass_rs1_hit        (bp_rs1_hit),
+        .bypass_rs2_hit        (bp_rs2_hit),
+        .bypass_rs1_data       (bp_rs1_data),
+        .bypass_rs2_data       (bp_rs2_data),
+        .fu_busy               (10'h0),      // TODO: 连接 FU pool
+        .stall_out             (dec_stall),
+        .flush                 (e1_mispredict),
+        .div_busy              (e2_div_busy)
     );
 
+    // ═══════════════════════════════════════════════════════════
+    // Bypass Network
+    // ── W 级旁路适配 (2W → ISSUE_WIDTH) ──
+    logic [31:0] bp_w_result [ISSUE_WIDTH-1:0];
+    logic [4:0]  bp_w_rd [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] bp_w_valid;
+
+    always_comb begin
+        // 默认清零
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            bp_w_result[i] = 32'h0;
+            bp_w_rd[i]     = 5'h0;
+            bp_w_valid[i]  = 1'b0;
+        end
+        // 端口 0
+        bp_w_result[0] = rf_wr_data[0];
+        bp_w_rd[0]     = rf_wr_addr[0];
+        bp_w_valid[0]  = rf_wr_en[0];
+        // 端口 1
+        bp_w_result[1] = rf_wr_data[1];
+        bp_w_rd[1]     = rf_wr_addr[1];
+        bp_w_valid[1]  = rf_wr_en[1];
+    end
+
+    // ═══════════════════════════════════════════════════════════
+    // Bypass Network
+    // ═══════════════════════════════════════════════════════════
+    lumi_bypass #(
+        .ISSUE_WIDTH        (ISSUE_WIDTH),
+        .BYPASS_PIPE_STAGES (1)
+    ) u_bypass (
+        .clk_core            (clk_core),
+        .reset_n             (reset_n),
+        // E1 级旁路源
+        .e1_result           (e1_result),
+        .e1_rd               (e1_rd),
+        .e1_valid            (e1_valid),
+        // M 级旁路源
+        .m_result            (m_result_out),
+        .m_rd                (m_rd_out),
+        .m_valid             (m_valid_out),
+        // W 级旁路源 (从 2W 扩展)
+        .w_result            (bp_w_result),
+        .w_rd                (bp_w_rd),
+        .w_valid             (bp_w_valid),
+        // FPU 旁路
+        .fpu_result          (64'h0),      // TODO: 连接 FPU
+        .fpu_rd              (5'h0),
+        .fpu_valid           (1'b0),
+        // 查询
+        .query_rs1           (rf_rs1_addr),
+        .query_rs2           (rf_rs2_addr),
+        // 输出
+        .bypass_rs1_data     (bp_rs1_data),
+        .bypass_rs2_data     (bp_rs2_data),
+        .bypass_rs1_hit      (bp_rs1_hit),
+        .bypass_rs2_hit      (bp_rs2_hit)
+    );
+
+    // ═══════════════════════════════════════════════════════════
     // Execute (E1/E2)
+    // ═══════════════════════════════════════════════════════════
     lumi_execute #(
         .ISSUE_WIDTH (ISSUE_WIDTH)
     ) u_execute (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .e1_inst               (dec_issue),
-        .e1_valid              (dec_issue_valid),
-        .e1_rs1_data           (dec_rs1_data),
-        .e1_rs2_data           (dec_rs2_data),
-        .e1_result             (exe_result),
-        .e1_rd                 (exe_rd),
-        .e1_valid_out          (exe_valid),
-        .e1_branch_taken       (br_taken),
-        .e1_branch_target      (br_target),
-        .e1_mispredict         (br_mispredict),
-        .e1_mem_addr           (exe_mem_addr),   // array [1:0]
-        .e1_mem_we             (exe_mem_we),
-        .e1_mem_wdata          (exe_mem_wdata),
-        .e2_mul_result         (),
-        .e2_mul_result_hi      (),
-        .e2_mul_valid          (),
-        .e2_div_result         (),
-        .e2_div_valid          (),
-        .e2_div_busy           (),
-        .e2_rd                 (),
-        .e1_exception          (),
-        .e1_exc_cause          ()
+        .e1_inst               (i_inst),
+        .e1_valid              (i_valid),
+        .e1_rs1_data           (i_rs1_data),
+        .e1_rs2_data           (i_rs2_data),
+        .e1_result             (e1_result),
+        .e1_rd                 (e1_rd),
+        .e1_valid_out          (e1_valid),
+        .e1_branch_taken       (e1_br_taken),
+        .e1_branch_target      (e1_br_target),
+        .e1_mispredict         (e1_mispredict),
+        .e1_mem_addr           (e1_mem_addr),
+        .e1_mem_we             (e1_mem_we),
+        .e1_mem_wdata          (e1_mem_wdata),
+        .e2_mul_result         (e2_mul_result),
+        .e2_mul_result_hi      (e2_mul_result_hi),
+        .e2_mul_valid          (e2_mul_valid),
+        .e2_div_result         (e2_div_result),
+        .e2_div_valid          (e2_div_valid),
+        .e2_div_busy           (e2_div_busy),
+        .e2_rd                 (e2_rd),
+        .e1_exception          (e1_exception),
+        .e1_exc_cause          (e1_exc_cause)
     );
 
+    // ═══════════════════════════════════════════════════════════
     // Memory Stage (M)
+    // ═══════════════════════════════════════════════════════════
     lumi_memory_stage #(
         .ISSUE_WIDTH (ISSUE_WIDTH)
     ) u_memory (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .m_inst                (dec_issue),    // TODO: pass through from execute
-        .m_valid               (exe_valid),
-        .m_result              (exe_result),
-        .m_rd                  (exe_rd),
-        .e1_mem_addr           (exe_mem_addr),
-        .e1_mem_we             (exe_mem_we),
-        .e1_mem_wdata          (exe_mem_wdata),
+        .m_inst                (i_inst),         // 注: 应传递 E1 输出, 简化使用 I 级
+        .m_valid               (e1_valid),
+        .m_result              (e1_result),
+        .m_rd                  (e1_rd),
+        .e1_mem_addr           (e1_mem_addr),
+        .e1_mem_we             (e1_mem_we),
+        .e1_mem_wdata          (e1_mem_wdata),
         .mem_addr_out          (dc_addr),
         .mem_wdata_out         (dc_wdata),
         .mem_rdata_in          (dc_rdata),
@@ -214,48 +334,99 @@ module lumi_core_top #(
         .mem_valid_out         (dc_valid),
         .mem_ready_in          (dc_ready),
         .mem_hit_in            (dc_hit),
-        .m_inst_out            (mem_inst),
-        .m_valid_out           (mem_valid),
-        .m_result_out          (mem_result),
-        .m_rd_out              (mem_rd),
-        .m_pc_out              (mem_pc),
-        .m_exception_out       (mem_exception),
+        .m_inst_out            (m_inst_out),
+        .m_valid_out           (m_valid_out),
+        .m_result_out          (m_result_out),
+        .m_rd_out              (m_rd_out),
+        .m_pc_out              (m_pc_out),
+        .m_exception_out       (m_exception_out),
         .store_commit          (),
         .store_commit_ack      (1'b0)
     );
 
+    // ═══════════════════════════════════════════════════════════
     // Writeback (W)
+    // ═══════════════════════════════════════════════════════════
     lumi_writeback #(
         .ISSUE_WIDTH (ISSUE_WIDTH)
     ) u_writeback (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .w_inst                (mem_inst),
-        .w_valid               (mem_valid),
-        .w_result              (mem_result),
-        .w_rd                  (mem_rd),
-        .w_exception           (mem_exception),
-        .w_pc                  (mem_pc),
+        .w_inst                (m_inst_out),
+        .w_valid               (m_valid_out),
+        .w_result              (m_result_out),
+        .w_rd                  (m_rd_out),
+        .w_exception           (m_exception_out),
+        .w_pc                  (m_pc_out),
         .regfile_wr_en         (rf_wr_en),
         .regfile_wr_addr       (rf_wr_addr),
         .regfile_wr_data       (rf_wr_data),
         .commit_valid          (commit_valid),
         .commit_pc             (commit_pc),
         .commit_result         (commit_result),
-        .trap_request          (),
+        .trap_request          (trap_request),
         .irq_request           (irq_request),
-        .trap_pc             (),
+        .trap_pc              (trap_pc),
         .csr_addr              (csr_addr),
         .csr_rdata             (csr_rdata),
         .csr_wdata             (csr_wdata),
         .csr_we                (csr_we),
         .csr_op                (csr_op),
         .mstatus_out           (mstatus_out),
-        .mtvec_out             (mtvec_out)
+        .mtvec_out             (mtvec_out),
+        .e2_mul_result         (e2_mul_result),
+        .e2_mul_valid          (e2_mul_valid),
+        .e2_div_result         (e2_div_result),
+        .e2_div_valid          (e2_div_valid),
+        .e2_rd                 (e2_rd),
+        .hpm_inst_retired      (hpm_inst_retired),
+        .hpm_branch            (hpm_branch),
+        .hpm_branch_miss       (hpm_branch_miss),
+        .hpm_load              (hpm_load),
+        .hpm_store             (hpm_store),
+        .hpm_exception         (hpm_exception)
     );
 
-    // ICache 接口映射
-    assign ic_addr      = f1_pc;
-    assign ic_req_valid = 1'b1;  // TODO: 仅在取指有效时拉高
+    // ═══════════════════════════════════════════════════════════
+    // Register File (IRF/FRF/VRF)
+    // ═══════════════════════════════════════════════════════════
+    logic rf_ecc_ce, rf_ecc_ded;
+
+    lumi_regfile #(
+        .ISSUE_WIDTH (ISSUE_WIDTH),
+        .VLEN        (lumi_pkg::VLEN),
+        .ECC_EN      (lumi_pkg::TCM_ECC_EN)
+    ) u_regfile (
+        .clk_core        (clk_core),
+        .reset_n         (reset_n),
+        // IRF 读端口
+        .irf_rs1_addr    (rf_rs1_addr),
+        .irf_rs2_addr    (rf_rs2_addr),
+        .irf_rs1_data    (rf_rs1_data_r),
+        .irf_rs2_data    (rf_rs2_data_r),
+        // IRF 写端口
+        .irf_wr_en       (rf_wr_en),
+        .irf_wr_addr     (rf_wr_addr),
+        .irf_wr_data     (rf_wr_data),
+        // FRF (FPU, 暂未连接)
+        .frf_rs1_addr    (5'h0),
+        .frf_rs2_addr    (5'h0),
+        .frf_rs1_data    (),
+        .frf_rs2_data    (),
+        .frf_wr_en       (1'b0),
+        .frf_wr_addr     (5'h0),
+        .frf_wr_data     (64'h0),
+        // VRF (Vector, 暂未连接)
+        .vrf_rs1_addr    (5'h0),
+        .vrf_rs2_addr    (5'h0),
+        .vrf_rs1_data    (),
+        .vrf_rs2_data    (),
+        .vrf_wr_en       (1'b0),
+        .vrf_wr_addr     (5'h0),
+        .vrf_wr_data     ({lumi_pkg::VLEN{1'b0}}),
+        // ECC
+        .ecc_ce_irq      (rf_ecc_ce),
+        .ecc_ded_irq     (rf_ecc_ded)
+    );
 
 endmodule

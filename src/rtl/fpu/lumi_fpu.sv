@@ -5,7 +5,7 @@
 // =================================================================
 module lumi_fpu (
     input  logic clk_core, input  logic reset_n,
-    input  logic        fpu_issue,      input  logic [4:0]  fpu_inst_type,
+    input  logic        fpu_issue,      input  logic [5:0]  fpu_inst_type, // H-005: 6bit (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP)
     input  logic [63:0] fpu_rs1,        input  logic [63:0] fpu_rs2,       input  logic [63:0] fpu_rs3,
     output logic [63:0] fpu_result,     output logic [4:0]  fpu_rd,
     output logic        fpu_ready,      output logic        fpu_valid,

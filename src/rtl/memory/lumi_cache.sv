@@ -18,7 +18,7 @@ module lumi_cache #(
 
     // ── I-Cache 取指接口 (F1→F2) ─────────────────────────────
     input  logic [31:0]             ic_addr,
-    output logic [63:0]             ic_rdata,
+    output logic [127:0]            ic_rdata,      // H-001: 统一 128bit (16B, fetch-bpred §3.2)
     output logic                    ic_hit,
     input  logic                    ic_valid,
     output logic                    ic_ready,
@@ -53,7 +53,11 @@ module lumi_cache #(
     // ── FENCE 控制 ───────────────────────────────────────────
     input  logic                    fence_req,
     input  logic                    fence_i_req,
-    output logic                    fence_ack
+    output logic                    fence_ack,
+
+    // ── ECC 中断输出 (H-004: LUMI-MEM-006) ───────────────────
+    output logic                    dc_ecc_ce_irq,   // 单比特可纠正错误
+    output logic                    dc_ecc_ded_irq   // 双比特不可纠正错误
 );
 
     import lumi_pkg::*;
@@ -89,11 +93,13 @@ module lumi_cache #(
         state_next    = state_reg;
         ic_hit        = 1'b0;
         ic_ready      = 1'b0;
-        ic_rdata      = 64'h0;
+        ic_rdata      = 128'h0;
         dc_hit        = 1'b0;
         dc_ready      = 1'b0;
         dc_rdata      = 32'h0;
         fence_ack     = 1'b0;
+        dc_ecc_ce_irq = 1'b0;
+        dc_ecc_ded_irq = 1'b0;
         refill_arvalid = 1'b0;
         refill_araddr  = 32'h0;
         refill_rready  = 1'b0;
