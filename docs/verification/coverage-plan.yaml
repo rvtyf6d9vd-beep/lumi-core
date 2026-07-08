@@ -1,8 +1,8 @@
 # ═══════════════ Lumi-Core 覆盖率计划 ═══════════════
 # 文档编号: LUMI-VER-002
-# 版本: 0.1-draft
+# 版本: 1.0
 # 创建日期: 2026-07-01
-# 状态: 框架 (M1 基线)
+# 状态: 定版 (M2)
 
 meta:
   doc_id: LUMI-VER-002
@@ -295,6 +295,12 @@ traceability_matrix:
     cover_groups: [cg_power_states, cg_power_management]
   - req_id: LUMI-PWR-003
     cover_groups: [cg_power_states]
+  - req_id: LUMI-PWR-004
+    cover_groups: [cg_power_management]
+    note: "DVFS 电压域管理"
+  - req_id: LUMI-PWR-005
+    cover_groups: [cg_power_management]
+    note: "电压域配置"
 
   # ISA 需求 (11 条)
   - req_id: LUMI-ISA-001
@@ -529,7 +535,7 @@ traceability_matrix:
 coverage_summary:
   total_cover_groups: 32
   total_requirements: 99
-  hw_requirements_covered: 75       # 硬件/ISA/系统需求, 有 Cover Group 映射
-  sw_delivery_requirements: 24      # 软件/工具/交付类, N/A
-  coverage_rate: "100% (硬件需求)"
-  note: "M2-S2 定版: 全部 75 条硬件需求至少映射到一个 Cover Group; 24 条软件/交付类需求标注 N/A"
+  hw_requirements_covered: 76       # 硬件/ISA/系统/交付需求, 有 Cover Group 映射 (含 DEL-011/012)
+  sw_delivery_requirements: 23      # 软件/工具类, N/A (无 Cover Group)
+  coverage_rate: "100% (可验证需求)"
+  note: "M2-S2 定版: 76 条需求至少映射到一个 Cover Group; 23 条软件/工具类需求标注 N/A"

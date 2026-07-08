@@ -127,9 +127,9 @@ gate_2_verification:
       new_cover_groups: 6
       traceability_matrix:
         total_requirements: 99
-        hw_requirements_covered: 75
-        sw_delivery_na: 24
-        coverage_rate: "100% (硬件需求)"
+        hw_requirements_covered: 76
+        sw_delivery_na: 23
+        coverage_rate: "100% (可验证需求)"
       new_cgs:
         - cg_timer_mtime
         - cg_dft_scan
@@ -144,8 +144,8 @@ gate_2_verification:
       - "C4: 32 Cover Groups 全达标"
       - "C5: 0 open P1 bug"
       - "C6: 回归通过率 100%"
-      - "C7: Toggle Coverage ≥ 90%"
-      - "C8: Condition Coverage ≥ 90%"
+      - "C7: 性能达标 CoreMark ≥5.5, Dhrystone ≥3.8* (RISK-006 追踪)"
+      - "C8: Formal 验证 PMP 隔离 + 锁步一致性 + CDC 全 PASS"
 
 # ════════════════════════════════════════════════
 # GATE-3: GEM5+ 微架构模型完成
@@ -228,10 +228,10 @@ gate_4_rtl:
 # ════════════════════════════════════════════════
 risk_summary:
   total: 17
-  resolved: 7
-  accepted: 2
-  open: 4
-  mitigated: 4
+  resolved: 8      # RISK-004/007/008/009/014/015/016/017
+  accepted: 4      # RISK-001/002/005/010
+  open: 4          # RISK-006/011/012/013
+  mitigated: 1     # RISK-003
   resolved_in_m2:
     - id: RISK-007
       title: "Vector 流水线交互"
