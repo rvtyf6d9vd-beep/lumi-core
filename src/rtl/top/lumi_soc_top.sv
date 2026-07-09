@@ -1,7 +1,7 @@
 // =================================================================
 // LUMI-DESIGN-TOP | 需求: LUMI-TOP-001 | 承接: design/*.html (全部模块)
 // 模块: lumi_soc_top — SoC 顶层集成 (D-018 参数化 generate)
-// 阶段: M2-S1 RTL 骨架 | 作者: Qoder Agent | 日期: 2026-07-07
+// 阶段: M3 Batch-4 RTL 实现 | 作者: Qoder Agent | 日期: 2026-07-07
 // =================================================================
 
 module lumi_soc_top #(
@@ -98,6 +98,41 @@ module lumi_soc_top #(
     // Interrupt
     logic                           irq_request;
 
+    // Debug Module
+    logic        dbg_dmi_rdata_valid;
+    logic [31:0] dbg_dmi_rdata;
+    logic        dbg_halt, dbg_resume;
+    logic [31:0] dbg_trigger_addr;
+    logic        dbg_trigger_en;
+
+    // Trace
+    logic        trc_enable, trc_valid;
+    logic [63:0] trc_data_out;
+    logic [31:0] trc_axi_addr;
+    logic [127:0] trc_axi_wdata;
+    logic        trc_axi_valid, trc_axi_ready;
+
+    // FPU
+    logic        fpu_ready, fpu_valid, fpu_busy;
+    logic [63:0] fpu_result;
+    logic [4:0]  fpu_rd;
+    logic [4:0]  fpu_fflags;
+
+    // Vector
+    logic        vec_ready, vec_valid, vec_busy;
+    logic [VLEN-1:0] vec_result;
+    logic [4:0]  vec_rd;
+    logic [31:0] vec_mem_addr;
+    logic [VLEN-1:0] vec_mem_wdata;
+    logic        vec_mem_we, vec_mem_valid;
+
+    // Power
+    logic        pwr_icg_en, pwr_core_sleep;
+    logic [NUM_HARTS-1:0] pwr_hart_sleep;
+
+    // DFT
+    logic        dft_scan_mode, dft_jtag_select, dft_secure_lock;
+
     // ─── Core Top 实例化 (单核模式, D-018 generate 切换多核) ─
     generate
         if (NUM_HARTS == 1) begin : gen_single_core
@@ -135,7 +170,28 @@ module lumi_soc_top #(
                 .commit_result   (commit_result)
             );
         end else begin : gen_multi_core
-            // 骨架: TODO — 实例化 lumi_multicore_top
+            // Batch-4: 实例化 lumi_multicore_top
+            lumi_multicore_top #(
+                .NUM_HARTS   (NUM_HARTS),
+                .ISSUE_WIDTH (ISSUE_WIDTH)
+            ) u_mc (
+                .clk_core    (clk_core),
+                .reset_n     (reset_n),
+                .meip        ({NUM_HARTS{1'b0}}),
+                .msip        ({NUM_HARTS{1'b0}}),
+                .mtip        ({NUM_HARTS{1'b0}}),
+                .axi_araddr  (),
+                .axi_arvalid (),
+                .axi_arready (1'b0),
+                .axi_rdata   (128'h0),
+                .axi_rvalid  (1'b0),
+                .axi_rready  (),
+                .tck         (jtag_tck),
+                .tms         (jtag_tms),
+                .tdi         (jtag_tdi),
+                .tdo         (),
+                .debug_halt  ({NUM_HARTS{debug_halt}})
+            );
         end
     endgenerate
 
@@ -226,7 +282,7 @@ module lumi_soc_top #(
         .ic_refill_req   (1'b0),  .ic_refill_ack   (),
         .dc_refill_req   (1'b0),  .dc_refill_ack   (),
         .nc_access_req   (1'b0),  .nc_access_ack   (),
-        .trace_write_req (1'b0),  .trace_write_ack (),
+        .trace_write_req (trc_axi_valid),  .trace_write_ack (trc_axi_ready),
         .m_axi_awid      (m_axi_awid),
         .m_axi_awaddr    (m_axi_awaddr),
         .m_axi_awlen     (m_axi_awlen),
@@ -411,12 +467,12 @@ module lumi_soc_top #(
     lumi_power_mgmt u_power (
         .clk_core    (clk_core),
         .reset_n     (reset_n),
-        .wfi_req     (1'b0),
-        .wrs_req     (1'b0),
+        .wfi_req     (1'b0),   // TODO: 连接 core_top WFI 信号
+        .wrs_req     (1'b0),   // TODO: 连接 core_top WRS 信号
         .core_active (|commit_valid),
-        .icg_en      (),
-        .core_sleep  (),
-        .hart_sleep  (),
+        .icg_en      (pwr_icg_en),
+        .core_sleep  (pwr_core_sleep),
+        .hart_sleep  (pwr_hart_sleep),
         .sys_reset_n (reset_n),
         .debug_reset_n (jtag_trst_n),
         .core_reset_n (),
@@ -433,7 +489,7 @@ module lumi_soc_top #(
         .scan_enable (1'b0),
         .scan_in     (1'b0),
         .scan_out    (),
-        .scan_mode   (),
+        .scan_mode   (dft_scan_mode),
         .mbist_enable (1'b0),
         .mbist_start  (),
         .mbist_done   (),
@@ -443,9 +499,90 @@ module lumi_soc_top #(
         .tms          (jtag_tms),
         .tdi          (jtag_tdi),
         .tdo          (jtag_tdo),
-        .jtag_select  (),
+        .jtag_select  (dft_jtag_select),
         .tamper_detect (1'b0),
-        .secure_lock   ()
+        .secure_lock   (dft_secure_lock)
+    );
+
+    // ─── Debug Module 实例化 (Batch-4 新增) ─────────────────────
+    lumi_debug_module u_dbg (
+        .clk_core           (clk_core),
+        .reset_n            (reset_n),
+        .tck                (jtag_tck),
+        .tms                (jtag_tms),
+        .tdi                (jtag_tdi),
+        .tdo                (),  // tdo 由 dft_ctrl 多路选择
+        .trst_n             (jtag_trst_n),
+        .dmi_addr           (7'h0),
+        .dmi_wdata          (32'h0),
+        .dmi_rdata          (dbg_dmi_rdata),
+        .dmi_op             (2'b00),
+        .dmi_valid          (1'b0),  // DMI 请求由 JTAG TAP 驱动
+        .dmi_ready          (),
+        .debug_halt         (dbg_halt),
+        .debug_resume       (dbg_resume),
+        .commit_pc          (commit_pc[0]),
+        .commit_valid       (commit_valid[0]),
+        .trigger_match_addr (dbg_trigger_addr),
+        .trigger_match_en   (dbg_trigger_en)
+    );
+
+    // ─── Trace Encoder 实例化 (Batch-4 新增) ───────────────────
+    lumi_trace u_trace (
+        .clk_core         (clk_core),
+        .reset_n          (reset_n),
+        .commit_pc        (commit_pc[0]),
+        .commit_valid     (commit_valid[0]),
+        .commit_type      (2'b00),  // TODO: 从 core 传递分支/异常类型
+        .trace_enable     (trc_enable),
+        .trace_data_out   (trc_data_out),
+        .trace_valid      (trc_valid),
+        .trace_axi_addr   (trc_axi_addr),
+        .trace_axi_wdata  (trc_axi_wdata),
+        .trace_axi_valid  (trc_axi_valid),
+        .trace_axi_ready  (trc_axi_ready),
+        .trace_config_en  (1'b0)  // TODO: 连接 CSR trace_config_en
+    );
+
+    // ─── FPU 实例化 (Batch-4 新增) ─────────────────────────────
+    lumi_fpu u_fpu (
+        .clk_core      (clk_core),
+        .reset_n       (reset_n),
+        .fpu_issue     (1'b0),    // TODO: 连接 decode-issue FU 分配
+        .fpu_inst_type (6'h0),
+        .fpu_rs1       (64'h0),
+        .fpu_rs2       (64'h0),
+        .fpu_rs3       (64'h0),
+        .fpu_result    (fpu_result),
+        .fpu_rd        (fpu_rd),
+        .fpu_ready     (fpu_ready),
+        .fpu_valid     (fpu_valid),
+        .fpu_fflags    (fpu_fflags),
+        .fpu_busy      (fpu_busy)
+    );
+
+    // ─── Vector 实例化 (Batch-4 新增) ──────────────────────────
+    lumi_vector u_vec (
+        .clk_core       (clk_core),
+        .reset_n        (reset_n),
+        .vec_issue      (1'b0),    // TODO: 连接 decode-issue FU 分配
+        .vec_inst_type  (5'h0),
+        .vec_rs1        ('0),
+        .vec_rs2        ('0),
+        .vstart         (5'h0),
+        .vl             (5'h0),
+        .vtype          (32'h0),
+        .vec_result     (vec_result),
+        .vec_rd         (vec_rd),
+        .vec_ready      (vec_ready),
+        .vec_valid      (vec_valid),
+        .vec_busy       (vec_busy),
+        .vec_mem_addr   (vec_mem_addr),
+        .vec_mem_wdata  (vec_mem_wdata),
+        .vec_mem_rdata  ('0),      // TODO: 连接 V-LSQ / DCache
+        .vec_mem_we     (vec_mem_we),
+        .vec_mem_valid  (vec_mem_valid),
+        .vec_mem_ready  (1'b0)
     );
 
 endmodule

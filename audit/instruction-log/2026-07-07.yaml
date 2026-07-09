@@ -1198,3 +1198,59 @@ instruction_19_m3_batch1_rtl:
         - "S-mode CSR (sstatus/stvec/scause/sepc/stval) 已实现但 stvec 向量模式待验证"
         - "PLIC claim 机制简化为电平触发, 实际需边沿检测 (集成时细化)"
     rules_checked: ["03", "08", "16", "18", "22"]
+
+  # ──────────────────────────────────────────────
+  # 指令 22: M3 Batch-4 扩展子系统 RTL 功能实现
+  # ──────────────────────────────────────────────
+  - id: 22
+    type: execute
+    source: user
+    timestamp: "2026-07-07T05:00:00+08:00"
+    summary: "M3 Batch-4: Debug/Trace/FPU/Vector/Power/Multicore/Lockstep/DFT 8模块 RTL 实现"
+    details:
+      description: >
+        M3 Batch-4 扩展子系统 8 模块从 TODO 骨架升级为完整功能实现。
+        Debug Module (JTAG DMI + halt/resume FSM + Trigger Module + 3级安全) +
+        Trace (Nexus 编码 + 256 FIFO + AXI4 128-bit burst) +
+        FPU (6-bit解码 + 多周期计数器 + fflags + NaN-Boxing) +
+        Vector (VLEN参数化 + vtype解码 + 分步执行 + SIMD ALU + Reduction) +
+        Power (WFI/WRS + ICG + 复位域 + UPF 4态) +
+        Multicore (NUM_HARTS generate + RR仲裁 + JTAG链) +
+        Lockstep (W级逐slot比较 + timestamp + NMI/Reset/Log策略) +
+        DFT (IEEE 1149.1 TAP 16态 + March C- MBIST + ECC bypass + 安全锁定)。
+        soc_top.sv 集成更新: 新增 debug/trace/fpu/vector 实例化 + multicore generate。
+        Verilator lint 0 error。
+      plan_ref: "M3_Batch-4_RTL_实现_task-80e.md"
+      user_request: "执行Batch-4，先制定计划。→ Implement the plan as specified"
+      files_changed:
+        - "src/rtl/debug/lumi_debug_module.sv: 36→251 行 (+215, DMI+holt/resume+Trigger+安全)"
+        - "src/rtl/debug/lumi_trace.sv: 32→211 行 (+179, Nexus编码+FIFO+AXI4 burst)"
+        - "src/rtl/fpu/lumi_fpu.sv: 39→214 行 (+175, 6FU+多周期+fflags+NaN-Boxing)"
+        - "src/rtl/fpu/lumi_vector.sv: 44→226 行 (+182, vtype+分步+SIMD+Reduction+V-LSQ)"
+        - "src/rtl/power/lumi_power_mgmt.sv: 44→162 行 (+118, WFI/WRS+ICG+复位+UPF)"
+        - "src/rtl/multicore/lumi_multicore_top.sv: 27→133 行 (+106, generate+RR仲裁+JTAG链)"
+        - "src/rtl/multicore/lumi_lockstep.sv: 31→146 行 (+115, W级比较+timestamp+策略)"
+        - "src/rtl/dft/lumi_dft_ctrl.sv: 41→239 行 (+198, TAP 16态+March C-+安全锁定)"
+        - "src/rtl/top/lumi_soc_top.sv: 更新集成 (新增4模块实例化+multicore generate+power/dft连接)"
+      total_lines: "1582 行 (8 模块, 原 294 行骨架)"
+      line_increase: "+1288 行"
+      lint_result: "Verilator 5.048 lint-only: 0 error"
+      fixes_applied:
+        - "lumi_dft_ctrl.sv: MBIST 枚举 [2:0]→[3:0] (9 状态需 4 bit)"
+        - "lumi_soc_top.sv: 新增 debug/trace/fpu/vector 内部连线声明"
+        - "lumi_soc_top.sv: gen_multi_core 实例化 lumi_multicore_top"
+        - "lumi_soc_top.sv: power_mgmt/dft_ctrl 端口连接改进"
+        - "lumi_soc_top.sv: AXI wrapper trace_write_req 连接 trace 信号"
+      design_notes:
+        - "Debug Module: 7-bit DMI 地址空间, NUM_TRIGGERS=4, abstract_timeout=1000 cycle"
+        - "Trace: Nexus 消息类型 SYNC/BRANCH/EXCEPTION/CONTEXT/NOP, 非顺序PC才输出"
+        - "FPU: FADD=6/FMUL=6/FMA=6/FDIV=28/FSQRT=28/FCVT=6/FCMP=1 cycle"
+        - "Vector: total_steps = ceil(VL*SEW/VLEN), SIMD 32-bit 元素 ALU"
+        - "Power: wakeup_cnt ≤8 cycle, deep_sleep vcc_on=0, 4 UPF 态"
+        - "Lockstep: valid+PC+result 三比较, error_code 编码, timestamp[27:0]"
+        - "DFT: DEVICE_IDCODE=32'h10E3_1901, March C- 10N 复杂度"
+      known_issues:
+        - "soc_top.sv FPU/Vector issue_valid 连接为 1'b0 (待 core_top 内部 FU dispatch 集成)"
+        - "power_mgmt wfi_req/wrs_req 连接为 1'b0 (待 core_top WFI/WRS 信号导出)"
+        - "multicore_top meip/msip/mtip 连接为 0 (待中断路由集成)"
+    rules_checked: ["03", "08", "16", "18", "22"]
