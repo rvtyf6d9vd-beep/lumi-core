@@ -1154,3 +1154,47 @@ instruction_19_m3_batch1_rtl:
       - "AXI wrapper 新增端口 (ic_refill_addr 等) 尚未在 core_top 连接, 待集成任务"
       - "Cache evict 简化为单 beat, 实际需多 beat burst (Batch-2 集成时细化)"
       - "TCM DMA 地址解码复用 core_addr 逻辑, 需独立 DMA 地址路径 (集成时修复)"
+
+# ──────────────────────────────────────────────
+# 指令 21: M3 Batch-3 中断/特权/异常 RTL 功能实现
+# ──────────────────────────────────────────────
+  - id: 21
+    type: execute
+    source: user
+    timestamp: "2026-07-07T03:00:00+08:00"
+    summary: "M3 Batch-3: 中断/特权/异常子系统 4 模块完整功能 RTL 实现"
+    details:
+      description: >
+        M3 Batch-3 中断/特权/异常子系统 4 模块从骨架升级为完整功能实现。
+        CSR 单元 (全地址解码 + HPM 29 计数器 + trap 自动更新) +
+        异常处理 (精确异常 + 11 级优先级仲裁 + 委托 + NMI + MRET/SRET) +
+        CLIC (优先级抢占 + CSR 集成 + 嵌套中断 + MIE 门控) +
+        PLIC (32 源仲裁 + 7 级优先级 + MMIO + Claim/Complete)。
+      plan_ref: "M3_Batch-3_中断特权异常RTL_task-80e.md"
+      user_request: "执行 M3 Batch-3 中断/特权/异常 RTL 实现计划"
+      files_changed:
+        - "src/rtl/csr/lumi_csr_unit.sv: 101→421 行 (+320, CSR全量地址解码+HPM Zicntr/Zihpm+trap自动更新+CLIC代理)"
+        - "src/rtl/interrupt/lumi_exception.sv: 33→277 行 (+244, 精确异常+11级优先级+medeleg/mideleg+NMI+MRET/SRET+MNRET)"
+        - "src/rtl/interrupt/lumi_clic.sv: 148→232 行 (+84, mintstatus/mintthresh/mclick CSR+阈值过滤+抢占+嵌套)"
+        - "src/rtl/interrupt/lumi_plic.sv: 38→203 行 (+165, 32源7级优先级+pending/enable位图+MMIO+Claim/Complete)"
+        - "src/rtl/top/lumi_soc_top.sv: 更新 CSR/CLIC/PLIC/Exception 实例化 + 修复 core_top 预存端口不匹配"
+      total_lines: "1133 行 (4 模块, 原 320 行骨架)"
+      line_increase: "+813 行"
+      lint_result: "Verilator 5.048 lint-only: 0 error (46 warnings 全为预存问题)"
+      fixes_applied:
+        - "lumi_exception.sv: irq_ack input→output (ASSIGNIN error)"
+        - "lumi_soc_top.sv: CSR mideleg→mideleg_out + 新增 trap/CLIC/mie_r_out/mip_r_out 端口"
+        - "lumi_soc_top.sv: 移除 core_top 预存 rf_rs1_data/rf_rs2_data/rf_wr_* 端口连接"
+        - "lumi_soc_top.sv: 新增 CLIC/PLIC/Exception 实例化 (骨架连接)"
+        - "lumi_soc_top.sv: core_top 新增 irq_id/irq_level 连接"
+      design_notes:
+        - "CSR 改用组合逻辑地址解码 (非 FSM), 1-cycle CSR 操作"
+        - "HPM 64-bit 计数器 hi/lo 分离存储 + latch 机制 (RV32 安全读取)"
+        - "CLIC packed irq_level_packed 替代 unpacked array (Verilator 兼容)"
+        - "PLIC MMIO 简化为 12-bit 地址空间, priority/pending/enable/threshold/claim"
+        - "Exception 模块异常优先级: fetch > decode > exec > NMI > IRQ"
+      known_issues:
+        - "CLIC/PLIC/Exception 模块间信号尚未在 core_top 内部连接 (待集成任务)"
+        - "S-mode CSR (sstatus/stvec/scause/sepc/stval) 已实现但 stvec 向量模式待验证"
+        - "PLIC claim 机制简化为电平触发, 实际需边沿检测 (集成时细化)"
+    rules_checked: ["03", "08", "16", "18", "22"]

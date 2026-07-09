@@ -119,14 +119,9 @@ module lumi_soc_top #(
                 .dc_valid        (dc_valid),
                 .dc_ready        (dc_ready),
                 .dc_hit          (dc_hit),
-                .rf_rs1_addr     (rf_rs1_addr),
-                .rf_rs2_addr     (rf_rs2_addr),
-                .rf_rs1_data     (rf_rs1_data),
-                .rf_rs2_data     (rf_rs2_data),
-                .rf_wr_en        (rf_wr_en),
-                .rf_wr_addr      (rf_wr_addr),
-                .rf_wr_data      (rf_wr_data),
                 .irq_request     (irq_request),
+                .irq_id          (clic_irq_id),
+                .irq_level       (clic_irq_level_out),
                 .csr_addr        (csr_addr),
                 .csr_rdata       (csr_rdata),
                 .csr_wdata       (csr_wdata),
@@ -281,6 +276,27 @@ module lumi_soc_top #(
         .mtvec_out        (mtvec_out),
         .mepc_out         (),
         .mcause_out       (),
+        .medeleg_out      (),
+        .mideleg_out      (),
+        .priv_mode_out    (),
+        // Trap 接口 (骨架: 未连接)
+        .trap_enter       (1'b0),
+        .trap_is_irq      (1'b0),
+        .trap_pc_in     (32'h0),
+        .trap_cause_in    (32'h0),
+        .trap_tval_in     (32'h0),
+        .trap_priv_in     (2'b11),
+        .mret_exec        (1'b0),
+        .sret_exec        (1'b0),
+        .nmi_enter        (1'b0),
+        .mnret_exec       (1'b0),
+        .nmi_pc_in        (32'h0),
+        // CLIC CSR 代理 (骨架: 未连接)
+        .clic_csr_addr    (),
+        .clic_csr_wdata   (),
+        .clic_csr_rdata   (32'h0),
+        .clic_csr_we      (),
+        // HPM
         .hpm_inst_retired (|commit_valid),
         .hpm_branch       (1'b0),
         .hpm_branch_mispred (1'b0),
@@ -292,11 +308,104 @@ module lumi_soc_top #(
         .mie_meip         (),
         .mie_msip         (),
         .mie_mtip         (),
-        .mideleg          ()
+        .mie_r_out        (),
+        .mip_r_out        ()
     );
 
-    // ─── Interrupt 实例化 ─────────────────────────────────────
-    assign irq_request = 1'b0;  // 骨架: TODO — 连接 CLIC/PLIC
+    // ─── CLIC 中断控制器实例化 (骨架连接) ────────────────────
+    logic        clic_meip, clic_irq_valid, clic_irq_preempt;
+    logic [7:0]  clic_irq_id, clic_irq_level_out;
+    logic [11:0] clic_csr_addr;
+    logic [31:0] clic_csr_wdata, clic_csr_rdata;
+    logic        clic_csr_we;
+
+    lumi_clic u_clic (
+        .clk_core         (clk_core),
+        .reset_n          (reset_n),
+        .irq_local        (16'h0),
+        .irq_level_packed (128'h0),
+        .meip_in          (1'b0),
+        .seip_in          (1'b0),
+        .msip_in          (1'b0),
+        .mtip_in          (1'b0),
+        .mie_gate         (mstatus_out[3]),
+        .meip             (clic_meip),
+        .irq_id           (clic_irq_id),
+        .irq_level_out    (clic_irq_level_out),
+        .irq_valid        (clic_irq_valid),
+        .irq_preempt      (clic_irq_preempt),
+        .irq_ack          (1'b0),
+        .clic_csr_addr    (clic_csr_addr),
+        .clic_csr_wdata   (clic_csr_wdata),
+        .clic_csr_rdata   (clic_csr_rdata),
+        .clic_csr_we      (clic_csr_we)
+    );
+
+    // ─── PLIC 外部中断控制器实例化 (骨架连接) ────────────────
+    logic [0:0] plic_meip;
+    logic [4:0] plic_irq_id;
+
+    lumi_plic u_plic (
+        .clk_core    (clk_core),
+        .reset_n     (reset_n),
+        .ext_irq_in  (32'h0),
+        .meip        (plic_meip),
+        .irq_id      (plic_irq_id),
+        .irq_claim   (1'b0),
+        .plic_addr   (12'h0),
+        .plic_wdata  (32'h0),
+        .plic_rdata  (),
+        .plic_we     (1'b0)
+    );
+
+    // ─── 异常处理模块实例化 (骨架连接) ────────────────────────
+    logic        exc_trap_take, exc_trap_is_irq, exc_trap_enter;
+    logic [31:0] exc_trap_pc, exc_trap_cause, exc_trap_epc, exc_trap_tval;
+    logic        exc_mret, exc_sret, exc_nmi_enter, exc_mnret;
+    logic        exc_delegated, exc_flush, exc_irq_ack;
+
+    lumi_exception u_exc (
+        .clk_core      (clk_core),
+        .reset_n       (reset_n),
+        .exc_fetch     (2'b00),
+        .exc_decode    (4'b0000),
+        .exc_exec      (3'b000),
+        .exc_addr      (32'h0),
+        .exc_insn      (32'h0),
+        .exc_pc        (32'h0),
+        .nmi_signal    (1'b0),
+        .irq_request   (clic_irq_valid),
+        .irq_id        (clic_irq_id),
+        .irq_ack       (exc_irq_ack),
+        .mtvec_in      (mstatus_out ? mtvec_out : mtvec_out),
+        .mstatus_in    (mstatus_out),
+        .medeleg_in    (32'h0),
+        .mideleg_in    (32'h0),
+        .priv_mode_in  (2'b11),
+        .mnepc_in      (32'h0),
+        .mncause_in    (32'h0),
+        .mnstatus_in   (32'h0),
+        .stvec_in      (32'h0),
+        .is_mret       (1'b0),
+        .is_sret       (1'b0),
+        .is_mnret      (1'b0),
+        .commit_valid  (|commit_valid),
+        .trap_take     (exc_trap_take),
+        .trap_pc     (exc_trap_pc),
+        .trap_cause    (exc_trap_cause),
+        .trap_epc      (exc_trap_epc),
+        .trap_tval     (exc_trap_tval),
+        .trap_is_irq   (exc_trap_is_irq),
+        .trap_enter    (exc_trap_enter),
+        .mret_exec     (exc_mret),
+        .sret_exec     (exc_sret),
+        .nmi_enter_out (exc_nmi_enter),
+        .mnret_exec_out(exc_mnret),
+        .delegated     (exc_delegated),
+        .flush_pipe    (exc_flush)
+    );
+
+    assign irq_request = clic_irq_valid;  // CLIC → Core 中断请求
 
     // ─── Power Management 实例化 ──────────────────────────────
     lumi_power_mgmt u_power (
