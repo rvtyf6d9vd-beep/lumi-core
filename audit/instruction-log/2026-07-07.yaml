@@ -1124,3 +1124,33 @@ instruction_19_m3_batch1_rtl:
       - "UNOPTFLAT: bypass→execute→bypass 组合逻辑环路 (RISK-011, Batch-2 流水线寄存器分割解决)"
       - "LATCH: decode_issue 临时变量初始化不完整 (功能正确, 综合前修复)"
       - "SELRANGE: LTAGE 高表历史长度超过 64-bit 分支历史 (截断处理)"
+
+  # ──────────────────────────────────────────────
+  # 指令 20: M3 Batch-2 存储与总线 RTL 功能实现
+  # ──────────────────────────────────────────────
+  - timestamp: "2026-07-07T01:00:00"
+    role: hw-design
+    session_mode: main
+    instruction: "执行 M3 Batch-2: 存储与总线子系统 4 模块从 TODO 骨架升级为完整功能实现"
+    plan_ref: ".qoder/specs/M3_Batch-2_RTL_实现_task-80e.md"
+    options_considered:
+      - "方案 A: 仅 Batch-2 (4 模块, 聚焦质量)"
+      - "方案 B: Batch-2 + Batch-3 (8 模块, 体量大)"
+    final_choice: "方案 A — 仅 Batch-2, 确保 Cache 等复杂模块质量"
+    files_changed:
+      - "src/rtl/bus/lumi_pma_checker.sv: 84→192 行 (+108, 3区域PMA+对齐+PMP联合)"
+      - "src/rtl/memory/lumi_tcm.sv: 96→458 行 (+362, ITCM/DTCM双端口+ECC SECDED+DMA)"
+      - "src/rtl/memory/lumi_cache.sv: 128→536 行 (+408, L1 I/D-Cache 4/8-way SA+PLRU+FENCE)"
+      - "src/rtl/bus/lumi_axi_wrapper.sv: 173→506 行 (+333, AXI4 Master仲裁+FFP+CDC)"
+    total_lines: "1692 行 (4 文件, 原 477 行骨架)"
+    line_increase: "+1215 行"
+    lint_result: "Verilator 5.048 lint-only: 0 error (warnings suppressed: UNSIGNED/UNOPTFLAT 已知)"
+    design_notes:
+      - "PMA 区域地址对齐 design/pma-axi.html §2.1.1 (TCM 0x0000, DDR 0x8000, MMIO 0xC000)"
+      - "Cache 4/8-way 可配参数, PLRU 二叉树替换策略"
+      - "TCM ECC: 7-bit SECDED (6 Hamming + 1 parity), CE 自动回写"
+      - "AXI wrapper: 优先级 DC > IC > NC > Trace, CDC 简化为直通 (同步模式)"
+    known_issues:
+      - "AXI wrapper 新增端口 (ic_refill_addr 等) 尚未在 core_top 连接, 待集成任务"
+      - "Cache evict 简化为单 beat, 实际需多 beat burst (Batch-2 集成时细化)"
+      - "TCM DMA 地址解码复用 core_addr 逻辑, 需独立 DMA 地址路径 (集成时修复)"
