@@ -5,7 +5,7 @@
 // =================================================================
 module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
     input  logic clk_core, input  logic reset_n,
-    input  logic        vec_issue,        input  logic [4:0]  vec_inst_type,
+    input  logic        vec_issue_valid, input  logic [6:0]  vec_opcode,  // T-MS3-S2-1.4g: 重命名+7bit
     input  logic [VLEN-1:0] vec_rs1,     input  logic [VLEN-1:0] vec_rs2,
     input  logic [4:0]  vstart,          input  logic [4:0]  vl,
     input  logic [31:0] vtype,           // vlmul/vsew/vma/vta
@@ -20,16 +20,16 @@ module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
 );
     import lumi_pkg::*;
 
-    // ─── Vector 指令类型 (5-bit) ────────────────────────────────
-    typedef enum logic [4:0] {
-        INST_VARITH   = 5'd0,   // 向量算术 (加/减/逻辑/移位)
-        INST_VMUL     = 5'd1,   // 向量乘法
-        INST_VREDUCE  = 5'd2,   // 向量归约
-        INST_VLOAD    = 5'd3,   // 向量 Load
-        INST_VSTORE   = 5'd4,   // 向量 Store
-        INST_VMASK    = 5'd5,   // 掩码操作
-        INST_VPERM    = 5'd6,   // 置换 (slide/rgather)
-        INST_VCMP     = 5'd7    // 向量比较
+    // ─── Vector 指令类型 (7-bit, T-MS3-S2-1.4g) ────────────────────
+    typedef enum logic [6:0] {
+        INST_VARITH   = 7'd0,   // 向量算术 (加/减/逻辑/移位)
+        INST_VMUL     = 7'd1,   // 向量乘法
+        INST_VREDUCE  = 7'd2,   // 向量归约
+        INST_VLOAD    = 7'd3,   // 向量 Load
+        INST_VSTORE   = 7'd4,   // 向量 Store
+        INST_VMASK    = 7'd5,   // 掩码操作
+        INST_VPERM    = 7'd6,   // 置换 (slide/rgather)
+        INST_VCMP     = 7'd7    // 向量比较
     } vec_inst_e;
 
     // ─── vtype 解码 ─────────────────────────────────────────────
@@ -77,7 +77,8 @@ module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
 
     // ─── 操作数锁存 ─────────────────────────────────────────────
     logic [VLEN-1:0] rs1_lat, rs2_lat;
-    logic [4:0]      inst_lat, vl_lat, vstart_lat;
+    logic [6:0]      inst_lat;
+    logic [4:0]      vl_lat, vstart_lat;
     logic [31:0]     vtype_lat;
     logic [4:0]      rd_lat;
 
@@ -144,15 +145,15 @@ module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
         if (!reset_n) begin
             rs1_lat    <= '0;
             rs2_lat    <= '0;
-            inst_lat   <= 5'h0;
+            inst_lat   <= 7'h0;
             vl_lat     <= 5'h0;
             vstart_lat <= 5'h0;
             vtype_lat  <= 32'h0;
             rd_lat     <= 5'h0;
-        end else if (vec_issue && state_reg == ST_IDLE) begin
+        end else if (vec_issue_valid && state_reg == ST_IDLE) begin
             rs1_lat    <= vec_rs1;
             rs2_lat    <= vec_rs2;
-            inst_lat   <= vec_inst_type;
+            inst_lat   <= vec_opcode;
             vl_lat     <= vl;
             vstart_lat <= vstart;
             vtype_lat  <= vtype;
@@ -195,8 +196,8 @@ module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
             ST_IDLE: begin
                 vec_ready = 1'b1;
                 vec_busy  = 1'b0;
-                if (vec_issue) begin
-                    case (vec_inst_type)
+                if (vec_issue_valid) begin
+                    case (vec_opcode)
                         INST_VARITH, INST_VMUL, INST_VPERM, INST_VCMP:
                             state_next = ST_ARITH;
                         INST_VREDUCE: state_next = ST_REDUCE;

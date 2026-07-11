@@ -408,7 +408,7 @@ function memory_route(addr, op_type):
     <tr><td><code>reset_n</code></td><td>In</td><td>1</td><td>异步复位</td></tr>
     <tr><td colspan="4" style="background:#e3f2fd;font-weight:600;">I-Cache 取指接口 (F1→F2)</td></tr>
     <tr><td><code>ic_addr[31:0]</code></td><td>In</td><td>32</td><td>取指地址 (F1 级 PC)</td></tr>
-    <tr><td><code>ic_rdata[63:0]</code></td><td>Out</td><td>64</td><td>指令数据 (最多 2 条 32bit 或 4 条 16bit)</td></tr>
+    <tr><td><code>ic_rdata[127:0]</code></td><td>Out</td><td>128</td><td>指令数据 (128bit = 4 words, 匹配 ICache line 读出宽度; 与 fetch-bpred.html §3.2 f2_icache_data 对齐)</td></tr>
     <tr><td><code>ic_hit</code></td><td>Out</td><td>1</td><td>I-Cache 命中</td></tr>
     <tr><td><code>ic_valid</code></td><td>In</td><td>1</td><td>取指请求有效</td></tr>
     <tr><td><code>ic_ready</code></td><td>Out</td><td>1</td><td>I-Cache 就绪</td></tr>

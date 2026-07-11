@@ -357,6 +357,7 @@ function vector_regfile_access(vs1, vs2, vd, lmul):
     <tr><td><code>fpu_rs3_data[63:0]</code></td><td>In</td><td>64</td><td>源操作数 3 (FMA)</td></tr>
     <tr><td><code>fpu_result_valid</code></td><td>Out (to W)</td><td>1</td><td>结果就绪</td></tr>
     <tr><td><code>fpu_result_data[63:0]</code></td><td>Out</td><td>64</td><td>运算结果</td></tr>
+    <tr><td><code>fpu_rd[4:0]</code></td><td>Out</td><td>5</td><td>目标寄存器编号 (T-MS3-S2-1.5e: decode 传入, W 级写回)</td></tr>
     <tr><td><code>fpu_fflags[4:0]</code></td><td>Out</td><td>5</td><td>异常标志 (NV/DZ/OF/UF/NX)</td></tr>
     <tr><td><code>fpu_busy</code></td><td>Out (to Issue)</td><td>1</td><td>FPU 多周期操作进行中</td></tr>
 </table>

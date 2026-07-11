@@ -283,6 +283,9 @@
     <tr><td><code>mbist_done</code></td><td>Out</td><td>1</td><td>MBIST 完成</td></tr>
     <tr><td><code>mbist_fail</code></td><td>Out</td><td>1</td><td>MBIST 失败</td></tr>
     <tr><td><code>mbist_diag[63:0]</code></td><td>Out</td><td>64</td><td>MBIST 诊断信息 (地址+数据)</td></tr>
+    <tr><td colspan="4" style="background:#ffebee;font-weight:600;">安全接口 (T-MS3-S2-1.5d)</td></tr>
+    <tr><td><code>tamper_detect</code></td><td>In</td><td>1</td><td>篡改检测信号 (触发永久安全锁定)</td></tr>
+    <tr><td><code>secure_lock</code></td><td>Out</td><td>1</td><td>安全锁定输出 (1=锁定, 需硬件复位清除)</td></tr>
 </table>
 
 <h2>3.2 JTAG 接口 (边界扫描 + 调试复用)</h2>

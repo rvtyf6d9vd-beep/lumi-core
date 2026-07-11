@@ -52,6 +52,9 @@ module lumi_axi_wrapper #(
     output logic [7:0]              m_axi_awlen,
     output logic [2:0]              m_axi_awsize,
     output logic [1:0]              m_axi_awburst,
+    output logic                    m_axi_awlock,     // AXI4 sideband (T-MS3-S2-1.2b)
+    output logic [3:0]              m_axi_awcache,    // AXI4 sideband
+    output logic [2:0]              m_axi_awprot,     // AXI4 sideband
     output logic                    m_axi_awvalid,
     input  logic                    m_axi_awready,
     output logic [AXI_DATA_W-1:0]  m_axi_wdata,
@@ -68,6 +71,9 @@ module lumi_axi_wrapper #(
     output logic [7:0]              m_axi_arlen,
     output logic [2:0]              m_axi_arsize,
     output logic [1:0]              m_axi_arburst,
+    output logic                    m_axi_arlock,     // AXI4 sideband (T-MS3-S2-1.2b)
+    output logic [3:0]              m_axi_arcache,    // AXI4 sideband
+    output logic [2:0]              m_axi_arprot,     // AXI4 sideband
     output logic                    m_axi_arvalid,
     input  logic                    m_axi_arready,
     input  logic [AXI_ID_W-1:0]    m_axi_rid,
@@ -309,6 +315,9 @@ module lumi_axi_wrapper #(
         m_axi_awlen   = '0;
         m_axi_awsize  = '0;
         m_axi_awburst = '0;
+        m_axi_awlock  = 1'b0;       // AXI4 sideband default
+        m_axi_awcache = 4'b0;       // AXI4 sideband default
+        m_axi_awprot  = 3'b0;       // AXI4 sideband default
         m_axi_wvalid  = 1'b0;
         m_axi_wdata   = '0;
         m_axi_wstrb   = '0;
@@ -320,6 +329,9 @@ module lumi_axi_wrapper #(
         m_axi_arlen   = '0;
         m_axi_arsize  = '0;
         m_axi_arburst = '0;
+        m_axi_arlock  = 1'b0;       // AXI4 sideband default
+        m_axi_arcache = 4'b0;       // AXI4 sideband default
+        m_axi_arprot  = 3'b0;       // AXI4 sideband default
         m_axi_rready  = 1'b1;
 
         // FFP 默认

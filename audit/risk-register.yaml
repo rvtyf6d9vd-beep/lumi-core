@@ -360,7 +360,7 @@ risks:
   - id: "RISK-018"
     title: "ICache 数据位宽不一致 (cache.html 64bit vs RTL/fetch 128bit)"
     severity: high
-    status: open
+    status: resolved
     reported_by: qa-audit
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -371,12 +371,14 @@ risks:
     mitigation: >
       统一 ICache 输出位宽为 128bit (与 fetch-bpred.html 16B 对齐),
       更新 cache.html ic_rdata 为 [127:0], 同步更新 RTL。
+    resolution: "cache.html ic_rdata 更新为 [127:0] 128bit, 与 RTL 和 fetch-bpred.html 对齐 (T-MS3-S2-1.1a)"
+    resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-001"
 
   - id: "RISK-019"
     title: "CLIC 缺少 PLIC/CLINT 中断输入 (meip/seip/msip/mtip)"
     severity: high
-    status: open
+    status: resolved
     reported_by: qa-audit
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -385,12 +387,14 @@ risks:
       但 lumi_clic.sv RTL 骨架无这些端口。CLIC 无法聚合外部/软件/定时器中断。
     mitigation: >
       在 lumi_clic 补充 meip/seip/msip/mtip 输入端口。
+    resolution: "lumi_clic.sv 已有 meip_in/seip_in/msip_in/mtip_in 端口 (M3 Batch 实现), SoC top 连接完成 (T-MS3-S2-1.1b)"
+    resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-002"
 
   - id: "RISK-020"
     title: "Core top 缺少 CLIC 中断 ID 和优先级端口 (irq_id, irq_level)"
     severity: high
-    status: open
+    status: resolved
     reported_by: qa-audit
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -399,12 +403,14 @@ risks:
       但 core_top 仅有 irq_request (1bit)。CSR 单元无法正确记录 mcause/mintstatus。
     mitigation: >
       补充 irq_id 和 irq_level 端口, 更新 CSR 单元接受中断 ID 信息。
+    resolution: "lumi_core_top.sv 已有 irq_id[7:0] 和 irq_level[7:0] 端口 (M3 Batch 实现), SoC top CLIC→core_top 连接完成 (T-MS3-S2-1.1c)"
+    resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-003"
 
   - id: "RISK-021"
     title: "Cache 缺少 ECC CE/DED 中断输出端口"
     severity: high
-    status: open
+    status: resolved
     reported_by: qa-audit
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -413,12 +419,14 @@ risks:
       但 lumi_cache.sv 无 ECC 中断端口。违反 LUMI-MEM-006 ECC 保护需求。
     mitigation: >
       补充 dc_ecc_ce_irq 和 dc_ecc_ded_irq 端口到 lumi_cache 和 SoC top。
+    resolution: "lumi_cache.sv 已有 dc_ecc_ce_irq/dc_ecc_ded_irq 端口 (M3 Batch 实现), SoC top 连接完成 (T-MS3-S2-1.1d)"
+    resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-004"
 
   - id: "RISK-022"
     title: "FPU opcode 位宽不足 (RTL 5bit vs 文档 6bit)"
     severity: high
-    status: open
+    status: resolved
     reported_by: qa-audit
     reported_date: "2026-07-07"
     assigned_to: hw-design
@@ -427,6 +435,8 @@ risks:
       但 lumi_fpu.sv fpu_inst_type 为 [4:0] (5bit, 32 种编码空间不足)。
     mitigation: >
       扩展 fpu_inst_type 为 [5:0] (6bit) 以容纳全部 FPU 操作类型。
+    resolution: "lumi_fpu.sv fpu_inst_type 已扩展为 [5:0] 6bit (M3 Batch 实现), 文档已确认对齐 (T-MS3-S2-1.1e)"
+    resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-005"
 
 # 示例条目格式:

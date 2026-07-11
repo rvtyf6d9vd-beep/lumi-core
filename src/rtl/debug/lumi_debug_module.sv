@@ -7,8 +7,11 @@ module lumi_debug_module (
     input  logic clk_core, input  logic reset_n,
     input  logic tck, input  logic tms, input  logic tdi, output logic tdo, input  logic trst_n,
     input  logic [6:0]  dmi_addr, input  logic [31:0] dmi_wdata, output logic [31:0] dmi_rdata,
-    input  logic [1:0]  dmi_op, input  logic dmi_valid, output logic dmi_ready,
-    output logic        debug_halt, output logic debug_resume,
+    input  logic [1:0]  dmi_op, input  logic dmi_req_valid, output logic dmi_req_ready,
+    // Abstract Command 接口 (T-MS3-S2-1.4c: 映射 debug-trace.html §3.2)
+    output logic        abs_cmd_valid,   output logic [31:0] abs_cmd_data,
+    input  logic [1:0]  abs_resp,        // 00=ok, 01=busy, 02=not supported, 03=exception
+    output logic        debug_halt_req, output logic debug_resume_req,
     input  logic [31:0] commit_pc, input  logic commit_valid,
     output logic [31:0] trigger_match_addr, output logic trigger_match_en
 );
@@ -77,7 +80,7 @@ module lumi_debug_module (
                 tenable[i] <= 1'b0;
                 tdmode[i]  <= 1'b0;
             end
-        end else if (dmi_valid && dmi_op == 2'b10 && !debug_locked) begin
+        end else if (dmi_req_valid && dmi_op == 2'b10 && !debug_locked) begin
             // DMI WRITE
             case (dmi_addr)
                 7'h10: dmcontrol  <= dmi_wdata;
@@ -110,7 +113,7 @@ module lumi_debug_module (
             end
         endcase
     end
-    assign dmi_ready = 1'b1;  // 始终就绪 (简化 CDC)
+    assign dmi_req_ready = 1'b1;  // 始终就绪 (简化 CDC)
 
     // ─── dmstatus 更新 ──────────────────────────────────────────
     always_ff @(posedge clk_core or negedge reset_n) begin
@@ -214,8 +217,8 @@ module lumi_debug_module (
     // ─── 主 FSM (Halt/Resume/Single-step/Trigger) ───────────────
     always_comb begin
         state_next = state_reg;
-        debug_halt = 1'b0;
-        debug_resume = 1'b0;
+        debug_halt_req = 1'b0;
+        debug_resume_req = 1'b0;
 
         case (state_reg)
             ST_RUN: begin
@@ -232,7 +235,7 @@ module lumi_debug_module (
             end
 
             ST_HALTED: begin
-                debug_halt = 1'b1;
+                debug_halt_req = 1'b1;
                 if (resumereq)
                     state_next = ST_RESUME_REQ;
                 else if (step_mode && !debug_locked)
@@ -240,19 +243,19 @@ module lumi_debug_module (
             end
 
             ST_RESUME_REQ: begin
-                debug_resume = 1'b1;
+                debug_resume_req = 1'b1;
                 state_next = ST_RUN;
             end
 
             ST_SINGLE_STEP: begin
-                debug_halt = 1'b0;  // 允许执行一条指令
+                debug_halt_req = 1'b0;  // 允许执行一条指令
                 if (single_step_done)
                     state_next = ST_HALTED;  // 执行完一条后 re-halt
             end
 
             ST_TRIGGER: begin
                 // Trigger 命中: 进入 halt
-                debug_halt = 1'b1;
+                debug_halt_req = 1'b1;
                 if (resumereq)
                     state_next = ST_RESUME_REQ;
             end
@@ -260,6 +263,11 @@ module lumi_debug_module (
             default: state_next = ST_RUN;
         endcase
     end
+
+    // ─── Abstract Command 输出驱动 (T-MS3-S2-1.4c) ──────────────
+    // 当 command 寄存器被写入且 busy=1 时, 向 core 发起 abstract command
+    assign abs_cmd_valid = abstractcs[12] && (state_reg == ST_HALTED);
+    assign abs_cmd_data  = command;
 
     // ─── JTAG TAP 简化 (tdo 响应) ───────────────────────────────
     // 实际 JTAG TAP 由 dft_ctrl 管理, debug_module 仅通过 DMI 接口访问

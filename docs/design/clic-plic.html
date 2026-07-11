@@ -296,8 +296,14 @@ function clic_vector_jump(irq_id, prv):
     <tr><td><code>irq_id[7:0]</code></td><td>Out</td><td>8</td><td>待处理中断 ID</td></tr>
     <tr><td><code>irq_level[7:0]</code></td><td>Out</td><td>8</td><td>待处理中断级别</td></tr>
     <tr><td><code>irq_preempt</code></td><td>Out</td><td>1</td><td>抢占信号</td></tr>
-    <tr><td><code>csr_rw_*</code></td><td>Bidir</td><td>--</td><td>CSR 读写接口 (mintstatus/mintthresh/mclick)</td></tr>
+    <tr><td colspan="4" style="background:#e8f5e9;font-weight:600;">CLIC CSR 直接接口 (T-MS3-S2-1.5c)</td></tr>
+    <tr><td><code>clic_csr_addr[11:0]</code></td><td>Bidir</td><td>12</td><td>CLIC CSR 地址 (mintstatus/mintthresh/mclick 等)</td></tr>
+    <tr><td><code>clic_csr_wdata[31:0]</code></td><td>In</td><td>32</td><td>CLIC CSR 写数据</td></tr>
+    <tr><td><code>clic_csr_rdata[31:0]</code></td><td>Out</td><td>32</td><td>CLIC CSR 读数据</td></tr>
+    <tr><td><code>clic_csr_we</code></td><td>In</td><td>1</td><td>CLIC CSR 写使能</td></tr>
 </table>
+
+<div class="ok"><strong>T-MS3-S2-1.5a SoC 级本地中断暴露说明:</strong> SoC Top (<code>lumi_soc_top.sv</code>) 通过 <code>local_irq[lumi_pkg::CLIC_INT_INPUTS-1:0]</code> 端口将本地中断暴露给外部。该端口直连 CLIC 的 <code>irq_local</code> 输入，允许 SoC 集成时连接片上外设中断源 (如 UART/SPI/GPIO 等)。V1 内部 tie-off 为 0，外部 SoC 集成时驱动。</div>
 
 <h2>3.2 PLIC 模块端口</h2>
 <table>

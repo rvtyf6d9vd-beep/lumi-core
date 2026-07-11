@@ -235,6 +235,8 @@ function abstract_access_register(cmd):
     <tr><td>Data Trace (可选)</td><td>跟踪 Load/Store 地址和数据</td><td>高 (每次访问输出)</td></tr>
 </table>
 
+<div class="ok"><strong>T-MS3-S2-1.4d 模块归属说明:</strong> <code>lumi_trace.sv</code> (Trace Encoder) 作为<strong>独立模块</strong>实现，不集成到 <code>lumi_debug_module.sv</code>。Trace 模块在 SoC Top 级独立实例化，通过 commit 接口采集退休指令信息，通过 AXI4 写出接口将编码后的 Trace 数据写出到外部存储。Debug Module 与 Trace Encoder 之间无直接信号连接。</div>
+
 <h2>2.6 调试安全 <span class="constraint-tag">D-016</span></h2>
 <table>
     <tr><th>安全等级</th><th>能力</th><th>控制方式</th></tr>

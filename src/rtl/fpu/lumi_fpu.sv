@@ -5,10 +5,11 @@
 // =================================================================
 module lumi_fpu (
     input  logic clk_core, input  logic reset_n,
-    input  logic        fpu_issue,      input  logic [5:0]  fpu_inst_type, // H-005: 6bit (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP)
+    input  logic        fpu_issue_valid,  input  logic [5:0]  fpu_inst_type, // H-005: 6bit (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP)
+    input  logic [1:0]  fpu_fmt,          input  logic [2:0]  fpu_rm,        // T-MS3-S2-1.4f: 格式+舍入模式
     input  logic [63:0] fpu_rs1,        input  logic [63:0] fpu_rs2,       input  logic [63:0] fpu_rs3,
-    output logic [63:0] fpu_result,     output logic [4:0]  fpu_rd,
-    output logic        fpu_ready,      output logic        fpu_valid,
+    output logic [63:0] fpu_result_data, output logic [4:0]  fpu_rd,
+    output logic        fpu_issue_ready, output logic        fpu_result_valid,
     output logic [4:0]  fpu_fflags,     // NV/DZ/OF/UF/NX
     output logic        fpu_busy
 );
@@ -164,7 +165,7 @@ module lumi_fpu (
             rs3_lat  <= 64'h0;
             inst_lat <= 6'h0;
             rd_lat   <= 5'h0;
-        end else if (fpu_issue && state_reg == ST_IDLE) begin
+        end else if (fpu_issue_valid && state_reg == ST_IDLE) begin
             rs1_lat  <= fpu_rs1;
             rs2_lat  <= fpu_rs2;
             rs3_lat  <= fpu_rs3;
@@ -176,11 +177,11 @@ module lumi_fpu (
     // ─── 输出寄存器 ─────────────────────────────────────────────
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
-            fpu_result <= 64'h0;
+            fpu_result_data <= 64'h0;
             fpu_rd     <= 5'h0;
             fpu_fflags <= 5'h0;
         end else if (state_reg == ST_DONE) begin
-            fpu_result <= result_next;
+            fpu_result_data <= result_next;
             fpu_rd     <= rd_lat;
             fpu_fflags <= fflags_next;
         end
@@ -189,15 +190,15 @@ module lumi_fpu (
     // ─── 主 FSM ─────────────────────────────────────────────────
     always_comb begin
         state_next = state_reg;
-        fpu_ready  = 1'b0;
-        fpu_valid  = 1'b0;
+        fpu_issue_ready  = 1'b0;
+        fpu_result_valid = 1'b0;
         fpu_busy   = 1'b1;
 
         case (state_reg)
             ST_IDLE: begin
-                fpu_ready = 1'b1;
+                fpu_issue_ready = 1'b1;
                 fpu_busy  = 1'b0;
-                if (fpu_issue) begin
+                if (fpu_issue_valid) begin
                     case (fpu_inst_type)
                         INST_FADD:  state_next = ST_FADD;
                         INST_FMUL:  state_next = ST_FMUL;
@@ -224,7 +225,7 @@ module lumi_fpu (
             ST_FCMP:  if (cnt_done) state_next = ST_DONE;
 
             ST_DONE: begin
-                fpu_valid = 1'b1;
+                fpu_result_valid = 1'b1;
                 fpu_busy  = 1'b0;
                 state_next = ST_IDLE;
             end

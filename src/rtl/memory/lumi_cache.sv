@@ -71,7 +71,7 @@ module lumi_cache #(
     // ── FENCE 控制 ───────────────────────────────────────────
     input  logic                    fence_req,
     input  logic                    fence_i_req,
-    output logic                    fence_ack,
+    output logic                    fence_done,
 
     // ── ECC 中断输出 ─────────────────────────────────────────
     output logic                    dc_ecc_ce_irq,
@@ -303,6 +303,13 @@ module lumi_cache #(
         end else begin
             state_reg <= state_next;
 
+            // V1 Debug: cache FSM 状态变化
+            if (state_reg != state_next) begin
+                $display("[CACHE-DBG] t=%0t state: %0d -> %0d ic_v=%b ic_rdy=%b ic_hit=%b addr=0x%08h ar_v=%b ar_rdy=%b",
+                         $time, state_reg, state_next, ic_valid, ic_ready, ic_hit, ic_addr,
+                         refill_arvalid, refill_arready);
+            end
+
             // beat 计数器
             if (state_reg == ST_IC_REFILL_R || state_reg == ST_DC_REFILL_R) begin
                 if (refill_rvalid) begin
@@ -390,7 +397,7 @@ module lumi_cache #(
         ic_ready       = 1'b0;
         dc_hit         = 1'b0;
         dc_ready       = 1'b0;
-        fence_ack      = 1'b0;
+        fence_done      = 1'b0;
         dc_ecc_ce_irq  = 1'b0;
         dc_ecc_ded_irq = 1'b0;
 
@@ -520,12 +527,12 @@ module lumi_cache #(
 
             // ── FENCE 路径 ────────────────────────────────
             ST_FENCE: begin
-                fence_ack = 1'b1;
+                fence_done = 1'b1;
                 state_next = ST_IDLE;
             end
 
             ST_FENCE_I: begin
-                fence_ack = 1'b1;
+                fence_done = 1'b1;
                 state_next = ST_IDLE;
             end
 

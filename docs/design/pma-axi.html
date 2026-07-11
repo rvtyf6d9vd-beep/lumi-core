@@ -261,6 +261,9 @@ function route_with_pma(addr, access_type):
     <tr><td><code>m_axi_awlen</code></td><td>Out</td><td>8</td><td>Burst 长度 (0~255)</td></tr>
     <tr><td><code>m_axi_awsize</code></td><td>Out</td><td>3</td><td>Burst 大小 (0~7, 表示 2^n byte)</td></tr>
     <tr><td><code>m_axi_awburst</code></td><td>Out</td><td>2</td><td>Burst 类型 (FIXED/INCR/WRAP)</td></tr>
+    <tr><td rowspan="3">AW (sideband, T-MS3-S2-1.2b)</td><td><code>m_axi_awlock</code></td><td>Out</td><td>1</td><td>Exclusive access (V1 tied-off 0)</td></tr>
+    <tr><td><code>m_axi_awcache[3:0]</code></td><td>Out</td><td>4</td><td>Cache 属性 (V1: 4'b0000 non-cacheable)</td></tr>
+    <tr><td><code>m_axi_awprot[2:0]</code></td><td>Out</td><td>3</td><td>保护属性 (V1: 3'b000 unprivileged/non-secure/data)</td></tr>
     <tr><td rowspan="2">AW (握手)</td><td><code>m_axi_awvalid</code></td><td>Out</td><td>1</td><td>写地址有效</td></tr>
     <tr><td><code>m_axi_awready</code></td><td>In</td><td>1</td><td>写地址就绪</td></tr>
     <tr><td rowspan="3">W (写数据)</td><td><code>m_axi_wdata</code></td><td>Out</td><td>128</td><td>写数据</td></tr>
@@ -271,11 +274,17 @@ function route_with_pma(addr, access_type):
     <tr><td rowspan="4">AR (读地址)</td><td><code>m_axi_araddr</code></td><td>Out</td><td>32</td><td>读地址</td></tr>
     <tr><td><code>m_axi_arlen</code></td><td>Out</td><td>8</td><td>Burst 长度</td></tr>
     <tr><td><code>m_axi_arsize</code></td><td>Out</td><td>3</td><td>Burst 大小</td></tr>
+    <tr><td><code>m_axi_arburst</code></td><td>Out</td><td>2</td><td>Burst 类型</td></tr>
+    <tr><td rowspan="3">AR (sideband, T-MS3-S2-1.2b)</td><td><code>m_axi_arlock</code></td><td>Out</td><td>1</td><td>Exclusive access (V1 tied-off 0)</td></tr>
+    <tr><td><code>m_axi_arcache[3:0]</code></td><td>Out</td><td>4</td><td>Cache 属性 (V1: 4'b0000)</td></tr>
+    <tr><td><code>m_axi_arprot[2:0]</code></td><td>Out</td><td>3</td><td>保护属性 (V1: 3'b000)</td></tr>
     <tr><td><code>m_axi_arvalid/arready</code></td><td>Out/In</td><td>1/1</td><td>读地址握手</td></tr>
     <tr><td rowspan="3">R (读数据)</td><td><code>m_axi_rdata</code></td><td>In</td><td>128</td><td>读数据</td></tr>
     <tr><td><code>m_axi_rresp</code></td><td>In</td><td>2</td><td>读响应</td></tr>
     <tr><td><code>m_axi_rlast</code></td><td>In</td><td>1</td><td>Burst 最后一个 beat</td></tr>
 </table>
+
+<div class="ok"><strong>T-MS3-S2-1.5b AXI User 信号说明:</strong> V1 不使用 AXI user 信号 (<code>awuser/aruser/wuser/buser/ruser</code>)。这些信号在 RTL 中不暴露，由 AXI interconnect 侧 tie-off 为 0。V2 如需 QoS 标记或安全域标识，可扩展 user 信号。</div>
 
 <h3>2.3.2 AXI Burst 策略</h3>
 <table>

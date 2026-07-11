@@ -48,6 +48,9 @@ module lumi_core_top #(
     // ── Debug ─────────────────────────────────────────────────
     input  logic                    debug_halt,
 
+    // ── NMI ───────────────────────────────────────────────────
+    input  logic                    nmi_signal,   // 外部 NMI 信号 (H-003 mapping: exception-handling.html)
+
     // ── 提交信号 (→ 锁步比较器 D-011) ─────────────────────────
     output logic [ISSUE_WIDTH-1:0]  commit_valid,
     output logic [31:0]             commit_pc [ISSUE_WIDTH-1:0],
@@ -59,7 +62,13 @@ module lumi_core_top #(
     output logic                    hpm_branch_miss,
     output logic                    hpm_load,
     output logic                    hpm_store,
-    output logic                    hpm_exception
+    output logic                    hpm_exception,
+
+    // ── V1 验证探针 (Verification Probe, all slots) ───────────────
+    output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
+    output logic [4:0]              mon_rd   [ISSUE_WIDTH-1:0],
+    output logic [31:0]             mon_rd_data [ISSUE_WIDTH-1:0],
+    output logic                    mon_irq
 );
 
     import lumi_pkg::*;
@@ -103,6 +112,12 @@ module lumi_core_top #(
     logic [31:0]   bp_rs1_data [ISSUE_WIDTH-1:0];
     logic [31:0]   bp_rs2_data [ISSUE_WIDTH-1:0];
 
+    // ── E1 级输入流水线寄存器 (I→E1) ──
+    inst_pkt_t     e1_inst_r [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] e1_valid_r;
+    logic [31:0]   e1_rs1_data_r [ISSUE_WIDTH-1:0];
+    logic [31:0]   e1_rs2_data_r [ISSUE_WIDTH-1:0];
+
     // ── E1 级 ──
     logic [31:0]   e1_result [ISSUE_WIDTH-1:0];
     logic [4:0]    e1_rd [ISSUE_WIDTH-1:0];
@@ -115,6 +130,13 @@ module lumi_core_top #(
     logic [31:0]   e1_mem_wdata [1:0];
     logic [ISSUE_WIDTH-1:0] e1_exception;
     logic [3:0]    e1_exc_cause [ISSUE_WIDTH-1:0];
+
+    // ── M 级输入流水线寄存器 (E1→M) ──
+    inst_pkt_t     m_inst_r [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] m_valid_r;
+    logic [31:0]   m_result_r [ISSUE_WIDTH-1:0];
+    logic [4:0]    m_rd_r [ISSUE_WIDTH-1:0];
+    logic [ISSUE_WIDTH-1:0] m_exception_r;
 
     // ── E2 级 ──
     logic [31:0]   e2_mul_result;
@@ -181,6 +203,7 @@ module lumi_core_top #(
         .tage_update_pc        (e1_br_target),     // 简化: 使用分支反馈
         .tage_update_taken     (e1_br_taken),
         .tage_update_valid     (e1_br_taken),
+        .dec_stall             (dec_stall),
         .debug_halt            (debug_halt)
     );
 
@@ -280,17 +303,38 @@ module lumi_core_top #(
     );
 
     // ═══════════════════════════════════════════════════════════
-    // Execute (E1/E2)
+    // I→E1 流水线寄存器 (正确对齐: D/I 组合输出 → E1 级寄存器)
+    // ═══════════════════════════════════════════════════════════
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            e1_valid_r <= '0;
+            for (int i = 0; i < ISSUE_WIDTH; i++) begin
+                e1_inst_r[i]    <= '0;
+                e1_rs1_data_r[i] <= 32'h0;
+                e1_rs2_data_r[i] <= 32'h0;
+            end
+        end else begin
+            e1_valid_r <= i_valid;
+            for (int i = 0; i < ISSUE_WIDTH; i++) begin
+                e1_inst_r[i]    <= i_inst[i];
+                e1_rs1_data_r[i] <= i_rs1_data[i];
+                e1_rs2_data_r[i] <= i_rs2_data[i];
+            end
+        end
+    end
+
+    // ═══════════════════════════════════════════════════════════
+    // Execute (E1/E2) — 输入来自 E1 级流水线寄存器
     // ═══════════════════════════════════════════════════════════
     lumi_execute #(
         .ISSUE_WIDTH (ISSUE_WIDTH)
     ) u_execute (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .e1_inst               (i_inst),
-        .e1_valid              (i_valid),
-        .e1_rs1_data           (i_rs1_data),
-        .e1_rs2_data           (i_rs2_data),
+        .e1_inst               (e1_inst_r),       // 来自 E1 输入寄存器
+        .e1_valid              (e1_valid_r),
+        .e1_rs1_data           (e1_rs1_data_r),
+        .e1_rs2_data           (e1_rs2_data_r),
         .e1_result             (e1_result),
         .e1_rd                 (e1_rd),
         .e1_valid_out          (e1_valid),
@@ -312,17 +356,49 @@ module lumi_core_top #(
     );
 
     // ═══════════════════════════════════════════════════════════
-    // Memory Stage (M)
+    // E1→M 流水线寄存器 (正确对齐: E1 组合输出 → M 级寄存器)
+    // E2 MUL/DIV 结果旁路: 替换 M 级的 result
+    // ═══════════════════════════════════════════════════════════
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            m_valid_r <= '0;
+            m_exception_r <= '0;
+            for (int i = 0; i < ISSUE_WIDTH; i++) begin
+                m_inst_r[i]    <= '0;
+                m_result_r[i]  <= 32'h0;
+                m_rd_r[i]      <= 5'h0;
+            end
+        end else begin
+            m_valid_r     <= e1_valid;
+            m_exception_r <= e1_exception;
+            for (int i = 0; i < ISSUE_WIDTH; i++) begin
+                m_inst_r[i]    <= e1_inst_r[i];  // 与 E1 输出对齐
+                m_rd_r[i]      <= e1_rd[i];
+
+                // E2 MUL/DIV 结果旁路: 如果 E2 有结果, 替换 E1 result
+                if (e1_inst_r[i].fu_type == FU_MUL && e1_valid[i]) begin
+                    m_result_r[i] <= e2_mul_valid ? e2_mul_result : e1_result[i];
+                end else if (e1_inst_r[i].fu_type == FU_DIV && e1_valid[i]) begin
+                    m_result_r[i] <= e2_div_valid ? e2_div_result : e1_result[i];
+                end else begin
+                    m_result_r[i] <= e1_result[i];
+                end
+            end
+        end
+    end
+
+    // ═══════════════════════════════════════════════════════════
+    // Memory Stage (M) — 输入来自 E1→M 流水线寄存器
     // ═══════════════════════════════════════════════════════════
     lumi_memory_stage #(
         .ISSUE_WIDTH (ISSUE_WIDTH)
     ) u_memory (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .m_inst                (i_inst),         // 注: 应传递 E1 输出, 简化使用 I 级
-        .m_valid               (e1_valid),
-        .m_result              (e1_result),
-        .m_rd                  (e1_rd),
+        .m_inst                (m_inst_r),        // 来自 E1→M 寄存器 (正确对齐)
+        .m_valid               (m_valid_r),       // 来自 E1→M 寄存器
+        .m_result              (m_result_r),      // 来自 E1→M 寄存器
+        .m_rd                  (m_rd_r),          // 来自 E1→M 寄存器
         .e1_mem_addr           (e1_mem_addr),
         .e1_mem_we             (e1_mem_we),
         .e1_mem_wdata          (e1_mem_wdata),
@@ -382,9 +458,14 @@ module lumi_core_top #(
         .hpm_inst_retired      (hpm_inst_retired),
         .hpm_branch            (hpm_branch),
         .hpm_branch_miss       (hpm_branch_miss),
-        .hpm_load              (hpm_load),
-        .hpm_store             (hpm_store),
-        .hpm_exception         (hpm_exception)
+        .hpm_load            (hpm_load),
+        .hpm_store           (hpm_store),
+        .hpm_exception       (hpm_exception),
+        // V1 验证探针
+        .mon_inst            (mon_inst),
+        .mon_rd              (mon_rd),
+        .mon_rd_data         (mon_rd_data),
+        .mon_irq             (mon_irq)
     );
 
     // ═══════════════════════════════════════════════════════════

@@ -501,3 +501,57 @@ notes: >
   骨架阶段 RTL 中大量 TODO 标注表明功能实现尚未完成, 本报告仅审查端口级一致性。
   execute-alu.html, decode-issue.html, regfile.html, power-reset.html 中的端口定义
   通过 core_top 内部子模块实例化间接验证, 未作为独立模块审查。
+
+# ═══════════════════════════════════════════════════════════════
+# T-MS3-S2-1 修复决议 (2026-07-11)
+# ═══════════════════════════════════════════════════════════════
+resolution_summary:
+  task_id: "T-MS3-S2-1"
+  resolved_date: "2026-07-11"
+  total_discrepancies: 25
+  resolved: 25
+  remaining: 0
+
+  high_items_resolved:
+    - id: "H-001"
+      resolution: "cache.html ic_rdata 更新为 [127:0] 128bit; RTL 已正确实现"
+      risk: "RISK-018 → resolved"
+    - id: "H-002"
+      resolution: "lumi_clic.sv 已有 meip_in/seip_in/msip_in/mtip_in; SoC top 连接完成"
+      risk: "RISK-019 → resolved"
+    - id: "H-003"
+      resolution: "lumi_core_top.sv 已有 irq_id[7:0] 和 irq_level[7:0]; SoC top 连接完成"
+      risk: "RISK-020 → resolved"
+    - id: "H-004"
+      resolution: "lumi_cache.sv 已有 dc_ecc_ce_irq/dc_ecc_ded_irq; SoC top 连接完成"
+      risk: "RISK-021 → resolved"
+    - id: "H-005"
+      resolution: "lumi_fpu.sv fpu_inst_type 已扩展为 [5:0] 6bit; 文档对齐"
+      risk: "RISK-022 → resolved"
+
+  medium_items_resolved:
+    - "SoC AXI sideband: awlock/awcache/awprot/arlock/arcache/arprot 补充到 SoC top + AXI wrapper + pma-axi.html"
+    - "fetch pred_info: 文档标注 V2 实现"
+    - "Cache fence_ack → fence_done: RTL 重命名完成"
+    - "CLIC irq_cause → irq_id: 确认 RTL 已使用 irq_id"
+    - "CLIC irq_level/irq_preempt: 确认 RTL 已有 irq_level_out 和 irq_preempt"
+    - "Debug DMI: dmi_valid/ready → dmi_req_valid/dmi_req_ready 重命名完成"
+    - "Debug halt/resume: debug_halt→debug_halt_req, debug_resume→debug_resume_req 重命名完成"
+    - "Debug Abstract Cmd: abs_cmd_valid/abs_cmd_data/abs_resp 端口补充完成"
+    - "Debug Trace: 文档说明 lumi_trace.sv 为独立模块"
+    - "FPU 接口: fpu_issue→fpu_issue_valid, fpu_result→fpu_result_data 等重命名完成"
+    - "FPU fmt/rm: fpu_fmt[1:0] + fpu_rm[2:0] 端口补充完成"
+    - "Vector: vec_issue→vec_issue_valid, vec_inst_type[4:0]→vec_opcode[6:0] 完成"
+    - "DFT scan: scan_in/scan_out 1bit→4bit 扩展完成"
+
+  low_items_resolved:
+    - "SoC local_irq: clic-plic.html 补充 SoC 级暴露说明"
+    - "AXI user: pma-axi.html 标注 V1 N/A"
+    - "CLIC CSR: clic-plic.html 补充具体 CSR 接口信号"
+    - "DFT 安全: dft-security.html 补充 tamper_detect/secure_lock 端口表"
+    - "FPU rd: fpu-vector.html 补充 fpu_rd[4:0] 端口描述"
+    - "DFT mbist_diag: mbist_diag[63:0] 输出端口补充完成"
+
+  verification:
+    verilator_lint: "0 error, 65 warnings (全部预存, 非本次修改引入)"
+    soc_cascade: "所有端口重命名在 SoC top 实例化中正确连接"

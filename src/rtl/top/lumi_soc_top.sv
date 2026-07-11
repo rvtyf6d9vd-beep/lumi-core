@@ -18,6 +18,9 @@ module lumi_soc_top #(
     output logic [7:0]              m_axi_awlen,
     output logic [2:0]              m_axi_awsize,
     output logic [1:0]              m_axi_awburst,
+    output logic                    m_axi_awlock,     // AXI4 sideband (T-MS3-S2-1.2b)
+    output logic [3:0]              m_axi_awcache,    // AXI4 sideband
+    output logic [2:0]              m_axi_awprot,     // AXI4 sideband
     output logic                    m_axi_awvalid,
     input  logic                    m_axi_awready,
     output logic [127:0]            m_axi_wdata,
@@ -34,6 +37,9 @@ module lumi_soc_top #(
     output logic [7:0]              m_axi_arlen,
     output logic [2:0]              m_axi_arsize,
     output logic [1:0]              m_axi_arburst,
+    output logic                    m_axi_arlock,     // AXI4 sideband (T-MS3-S2-1.2b)
+    output logic [3:0]              m_axi_arcache,    // AXI4 sideband
+    output logic [2:0]              m_axi_arprot,     // AXI4 sideband
     output logic                    m_axi_arvalid,
     input  logic                    m_axi_arready,
     input  logic [3:0]              m_axi_rid,
@@ -136,6 +142,12 @@ module lumi_soc_top #(
     // ─── Core Top 实例化 (单核模式, D-018 generate 切换多核) ─
     generate
         if (NUM_HARTS == 1) begin : gen_single_core
+            // V1 Monitor Probe wires (all slots)
+            logic [31:0] mon_inst [ISSUE_WIDTH-1:0];
+            logic [4:0]  mon_rd   [ISSUE_WIDTH-1:0];
+            logic [31:0] mon_rd_data [ISSUE_WIDTH-1:0];
+            logic        mon_irq;
+
             lumi_core_top #(
                 .ISSUE_WIDTH (ISSUE_WIDTH),
                 .HART_ID     (0)
@@ -164,10 +176,15 @@ module lumi_soc_top #(
                 .csr_op          (csr_op),
                 .mstatus_out     (mstatus_out),
                 .mtvec_out       (mtvec_out),
-                .debug_halt      (debug_halt),
+                .debug_halt      (dbg_halt),   // T-MS3-S2-1.4a: 由 debug module 驱动
+                .nmi_signal      (1'b0),   // TODO: 连接 SoC 级 NMI 源
                 .commit_valid    (commit_valid),
                 .commit_pc       (commit_pc),
-                .commit_result   (commit_result)
+                .commit_result   (commit_result),
+                .mon_inst        (mon_inst),
+                .mon_rd          (mon_rd),
+                .mon_rd_data     (mon_rd_data),
+                .mon_irq         (mon_irq)
             );
         end else begin : gen_multi_core
             // Batch-4: 实例化 lumi_multicore_top
@@ -219,42 +236,40 @@ module lumi_soc_top #(
         .ecc_ded_irq     ()
     );
 
-    // ─── Cache 实例化 ─────────────────────────────────────────
-    lumi_cache u_cache (
-        .clk_core        (clk_core),
-        .reset_n         (reset_n),
-        .ic_addr         (ic_addr),
-        .ic_rdata        (),      // TODO: connect ic_data
-        .ic_hit          (ic_valid),
-        .ic_valid        (ic_req_valid),
-        .ic_ready        (),
-        .ic_flush        (1'b0),
-        .dc_addr         (dc_addr),
-        .dc_wdata        (dc_wdata),
-        .dc_rdata        (dc_rdata),
-        .dc_we           (dc_we),
-        .dc_be           (dc_be),
-        .dc_hit          (dc_hit),
-        .dc_valid        (dc_valid),
-        .dc_ready        (dc_ready),
-        .refill_araddr   (),
-        .refill_arvalid  (),
-        .refill_arready  (1'b0),
-        .refill_rdata    (128'h0),
-        .refill_rvalid   (1'b0),
-        .refill_rlast    (1'b0),
-        .refill_rready   (),
-        .evict_awaddr    (),
-        .evict_awvalid   (),
-        .evict_awready   (1'b0),
-        .evict_wdata     (),
-        .evict_wvalid    (),
-        .evict_wlast     (),
-        .evict_wready    (1'b0),
-        .fence_req       (1'b0),
-        .fence_i_req     (1'b0),
-        .fence_ack       ()
-    );
+    // ─── V1 统一 SRAM 旁路 ──────────────────────────────────────
+    // 替代 cache: 256KiB 统一 SRAM, 同时服务 IC (指令) 和 DC (数据)
+    // TB 通过 $readmemh 加载, 绕过整个 cache 子系统
+    parameter int V1_SRAM_WORDS = 65536;  // 256KiB / 4 bytes = 65536 words
+    logic [31:0] v1_sram [0:V1_SRAM_WORDS-1];
+
+    // ── IC 路径: 128-bit cache line (4 × 32-bit) ──
+    logic [127:0] v1_ic_line;
+    logic         v1_ic_hit;
+
+    always_comb begin
+        automatic int ic_word_idx = ic_addr[17:4] << 2;  // 16B 对齐 → word 索引
+        v1_ic_line = {v1_sram[ic_word_idx+3], v1_sram[ic_word_idx+2],
+                      v1_sram[ic_word_idx+1], v1_sram[ic_word_idx]};
+        v1_ic_hit = reset_n;
+    end
+
+    assign ic_data  = v1_ic_line;
+    assign ic_valid = v1_ic_hit;
+
+    // ── DC 路径: 32-bit word, 组合读 + 同步写 ──────────────────
+    assign dc_rdata = v1_sram[dc_addr[17:2]];
+    assign dc_ready = reset_n;
+    assign dc_hit   = reset_n;
+
+    // Store: 同步写入 V1 SRAM (byte-enable)
+    always_ff @(posedge clk_core) begin
+        if (dc_valid && dc_we && reset_n) begin
+            for (int b = 0; b < 4; b++) begin
+                if (dc_be[b])
+                    v1_sram[dc_addr[17:2]][b*8 +: 8] <= dc_wdata[b*8 +: 8];
+            end
+        end
+    end
 
     // ─── PMA Checker 实例化 ───────────────────────────────────
     lumi_pma_checker u_pma (
@@ -275,6 +290,7 @@ module lumi_soc_top #(
     );
 
     // ─── AXI Wrapper 实例化 ───────────────────────────────────
+    // V1: Cache 已移除, wrapper AR/R 直连 m_axi 总线
     lumi_axi_wrapper u_axi (
         .clk_core        (clk_core),
         .clk_bus         (clk_bus),
@@ -288,6 +304,9 @@ module lumi_soc_top #(
         .m_axi_awlen     (m_axi_awlen),
         .m_axi_awsize    (m_axi_awsize),
         .m_axi_awburst   (m_axi_awburst),
+        .m_axi_awlock    (m_axi_awlock),     // AXI4 sideband
+        .m_axi_awcache   (m_axi_awcache),    // AXI4 sideband
+        .m_axi_awprot    (m_axi_awprot),     // AXI4 sideband
         .m_axi_awvalid   (m_axi_awvalid),
         .m_axi_awready   (m_axi_awready),
         .m_axi_wdata     (m_axi_wdata),
@@ -304,6 +323,9 @@ module lumi_soc_top #(
         .m_axi_arlen     (m_axi_arlen),
         .m_axi_arsize    (m_axi_arsize),
         .m_axi_arburst   (m_axi_arburst),
+        .m_axi_arlock    (m_axi_arlock),     // AXI4 sideband
+        .m_axi_arcache   (m_axi_arcache),    // AXI4 sideband
+        .m_axi_arprot    (m_axi_arprot),     // AXI4 sideband
         .m_axi_arvalid   (m_axi_arvalid),
         .m_axi_arready   (m_axi_arready),
         .m_axi_rid       (m_axi_rid),
@@ -487,7 +509,7 @@ module lumi_soc_top #(
         .clk_core    (clk_core),
         .reset_n     (reset_n),
         .scan_enable (1'b0),
-        .scan_in     (1'b0),
+        .scan_in     (4'b0),     // T-MS3-S2-1.4h: 4-bit scan chain
         .scan_out    (),
         .scan_mode   (dft_scan_mode),
         .mbist_enable (1'b0),
@@ -495,6 +517,7 @@ module lumi_soc_top #(
         .mbist_done   (),
         .mbist_fail   (),
         .mbist_error_count (),
+        .mbist_diag  (),        // T-MS3-S2-1.4i: MBIST 诊断
         .tck          (jtag_tck),
         .tms          (jtag_tms),
         .tdi          (jtag_tdi),
@@ -517,10 +540,13 @@ module lumi_soc_top #(
         .dmi_wdata          (32'h0),
         .dmi_rdata          (dbg_dmi_rdata),
         .dmi_op             (2'b00),
-        .dmi_valid          (1'b0),  // DMI 请求由 JTAG TAP 驱动
-        .dmi_ready          (),
-        .debug_halt         (dbg_halt),
-        .debug_resume       (dbg_resume),
+        .dmi_req_valid      (1'b0),  // DMI 请求由 JTAG TAP 驱动
+        .dmi_req_ready      (),
+        .abs_cmd_valid      (),  // T-MS3-S2-1.4c: Abstract Command (V2 连接)
+        .abs_cmd_data       (),
+        .abs_resp           (2'b00),  // 00=ok
+        .debug_halt_req     (dbg_halt),
+        .debug_resume_req   (dbg_resume),
         .commit_pc          (commit_pc[0]),
         .commit_valid       (commit_valid[0]),
         .trigger_match_addr (dbg_trigger_addr),
@@ -548,15 +574,17 @@ module lumi_soc_top #(
     lumi_fpu u_fpu (
         .clk_core      (clk_core),
         .reset_n       (reset_n),
-        .fpu_issue     (1'b0),    // TODO: 连接 decode-issue FU 分配
+        .fpu_issue_valid (1'b0),    // T-MS3-S2-1.4e: 重命名, TODO: 连接 decode-issue FU 分配
         .fpu_inst_type (6'h0),
+        .fpu_fmt       (2'b00),     // T-MS3-S2-1.4f: 格式
+        .fpu_rm        (3'b000),    // T-MS3-S2-1.4f: 舍入模式
         .fpu_rs1       (64'h0),
         .fpu_rs2       (64'h0),
         .fpu_rs3       (64'h0),
-        .fpu_result    (fpu_result),
+        .fpu_result_data (fpu_result),  // T-MS3-S2-1.4e: 重命名
         .fpu_rd        (fpu_rd),
-        .fpu_ready     (fpu_ready),
-        .fpu_valid     (fpu_valid),
+        .fpu_issue_ready (fpu_ready),   // T-MS3-S2-1.4e: 重命名
+        .fpu_result_valid (fpu_valid),  // T-MS3-S2-1.4e: 重命名
         .fpu_fflags    (fpu_fflags),
         .fpu_busy      (fpu_busy)
     );
@@ -565,8 +593,8 @@ module lumi_soc_top #(
     lumi_vector u_vec (
         .clk_core       (clk_core),
         .reset_n        (reset_n),
-        .vec_issue      (1'b0),    // TODO: 连接 decode-issue FU 分配
-        .vec_inst_type  (5'h0),
+        .vec_issue_valid (1'b0),    // T-MS3-S2-1.4g: 重命名, TODO: 连接 decode-issue
+        .vec_opcode     (7'h0),     // T-MS3-S2-1.4g: 重命名+7bit
         .vec_rs1        ('0),
         .vec_rs2        ('0),
         .vstart         (5'h0),

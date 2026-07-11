@@ -5,12 +5,13 @@
 // =================================================================
 module lumi_dft_ctrl (
     input  logic clk_core, input  logic reset_n,
-    // Scan 链接口
-    input  logic scan_enable, input  logic scan_in, output logic scan_out,
+    // Scan 链接口 (T-MS3-S2-1.4h: 4-bit scan chain)
+    input  logic scan_enable, input  logic [3:0] scan_in, output logic [3:0] scan_out,
     output logic scan_mode,
     // MBIST 控制器接口
     input  logic mbist_enable, output logic mbist_start, output logic mbist_done,
     output logic mbist_fail, output logic [31:0] mbist_error_count,
+    output logic [63:0] mbist_diag,  // T-MS3-S2-1.4i: MBIST 诊断输出
     // JTAG TAP 复用
     input  logic tck, input  logic tms, input  logic tdi, output logic tdo,
     output logic jtag_select,  // 1=JTAG mode, 0=normal
@@ -204,11 +205,12 @@ module lumi_dft_ctrl (
     always_comb begin
         state_next  = state_reg;
         scan_mode   = 1'b0;
-        scan_out    = scan_in;  // 默认 pass-through
+        scan_out    = scan_in;  // 默认 pass-through (4-bit)
         mbist_start = 1'b0;
         mbist_done  = 1'b0;
         mbist_fail  = 1'b0;
         mbist_error_count = mb_err_cnt;
+        mbist_diag  = {32'h0, mb_err_cnt};  // T-MS3-S2-1.4i: 诊断信息
         jtag_select = 1'b0;
 
         // TDO 多路选择
@@ -262,7 +264,7 @@ module lumi_dft_ctrl (
 
     // ─── TDO 最终输出多路选择 ───────────────────────────────────
     assign tdo = (state_reg == ST_JTAG) ? jtag_tdo_int :
-                 (state_reg == ST_SCAN) ? scan_out :
+                 (state_reg == ST_SCAN) ? scan_out[0] :  // T-MS3-S2-1.4h: 4-bit scan, TDO 取 bit[0]
                  1'b0;
 
 endmodule
