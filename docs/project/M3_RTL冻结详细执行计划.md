@@ -51,7 +51,11 @@
 |------|------|------|----------|
 | T-MS3-S1-0 | M3 启动前置 (TB/CI/综合/映射审查) | ✓ COMPLETE | 2026-07-07 |
 | T-MS3-S1-1 | RTL 全模块功能实现 (28 模块, 9120 行) | ✓ COMPLETE | 2026-07-07 |
-| T-MS3-S1-2.1 | V1 验证 (RV32I 100% + RV32M 100%) | ✓ COMPLETE | 2026-07-07 |
+| T-MS3-S1-2.1 | V1 验证 (RV32I 40/40=100%, M-ext 5/8=62.5%) | ✓ COMPLETE | 2026-07-07 |
+| T-MS3-S1-2.2 | V2 验证 (8/9 PASS, csr_basic 超时 ERR-017) | ✓ VERIFIED | 2026-07-11 |
+| T-MS3-S1-2.3 | V3 验证 (6/7 PASS, rv32c_smoke FAIL ERR-018) | ✓ VERIFIED | 2026-07-11 |
+| T-MS3-S1-2.4 | V4 验证 (13/13 PASS) | ✓ VERIFIED | 2026-07-11 |
+| T-MS3-S1-3 | 回归编译 (nightly 35/35 PASS) | ✓ VERIFIED | 2026-07-11 |
 | T-MS3-S2-1 | 设计-RTL 映射修复 (25 项不一致, RISK-018~022) | ✓ COMPLETE | 2026-07-11 |
 
 ---

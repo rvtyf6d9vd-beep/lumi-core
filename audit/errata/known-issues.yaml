@@ -223,7 +223,10 @@ errata:
     affected_versions: ["v1"]
     severity: major
     status: open
-    workaround: "编译参数使用 -march=rv32i -mabi=ilp32 (无 C 扩展)"
+    workaround: >
+      编译参数使用 -march=rv32i -mabi=ilp32 (无 C 扩展)。
+      T-MS3-S1-2.3 已实现 c_ext_expand() 175行压缩指令展开函数,
+      但 rv32c_smoke 仿真 FAIL, 展开逻辑存在 bug 待调试。
     resolved_date: null
     resolved_by: null
     resolution: null
@@ -241,12 +244,16 @@ errata:
     affected_modules: ["src/rtl/core/lumi_decode_issue.sv", "src/rtl/core/lumi_execute.sv"]
     affected_versions: ["v1"]
     severity: major
-    status: open
-    workaround: "B 扩展测试推迟到 V2, 当前仅支持 I+M 扩展"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
-    regression_test: null
+    status: resolved
+    workaround: "已在 T-MS3-S1-2.3 (Phase B) 实现 Zba/Zbb RTL + c_ext_expand"
+    resolved_date: "2026-07-11"
+    resolved_by: hw-design
+    resolution: >
+      T-MS3-S1-2.3 实现 Zba (SH1ADD/SH2ADD/SH3ADD) + Zbb (CLZ/CTZ/CPOP/MIN/MAX/
+      ANDN/ORN/XNOR/ROL/ROR/RORI/REV8/ORC.B) decode+execute。
+      V3 验证: rv32b_smoke PASS, rv32b_zba PASS, rv32b_zbb PASS (3/3)。
+      Verilator lint 0 error。覆盖率 CG3 采样逻辑待验证 (仿真通过但 CG 未命中)。
+    regression_test: "tests/directed/rv32b_smoke.S"
 
   - id: "ERR-012"
     title: "V1 E2 MUL/DIV 结果未正确传播到 commit 级"
@@ -366,6 +373,48 @@ errata:
       soc_top.sv ICache 保持 128-bit (V1 SRAM 4-word 读取)。
       修复后覆盖率从 80% 提升到 100% (配合测试程序 v6)。
     regression_test: "tests/directed/rv32i_full.S"
+
+  - id: "ERR-017"
+    title: "V2 csr_basic 仿真超时 (50us) — carry-over 机制残留 bug"
+    description: >
+      csr_basic.S 在 Verilator 仿真中超过 50us 未完成。PC 跳转到 0x01312060
+      (未初始化内存区域), 根因是 carry-over 机制在特定指令排列下丢失指令,
+      与 ERR-014 同类但触发条件不同。V2 测试中 CSR 指令密度较高,
+      carry 位置指令被 mask 重置丢弃后导致控制流偏移。
+    discovered_date: "2026-07-11"
+    discovered_by: hw-ver
+    affected_modules: ["src/rtl/core/lumi_decode_issue.sv", "src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v1"]
+    severity: major
+    status: open
+    workaround: >
+      csr_basic 标记为已知失败项。其他 V2 测试 (8/9) 均 PASS。
+      需要 RTL 级修复: carry-over mask 逻辑需在所有指令排列下保证不丢失。
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/csr_basic.S"
+
+  - id: "ERR-018"
+    title: "V3 rv32c_smoke 仿真 FAIL — c_ext_expand() 压缩指令展开 bug"
+    description: >
+      rv32c_smoke.S 编译通过但 Verilator 仿真 FAIL。c_ext_expand() 函数
+      (175行, T-MS3-S1-2.3 新增) 将 16-bit 压缩指令展开为 32-bit 等效指令,
+      但展开结果不正确, 导致执行异常。RV32C 是全新实现, 从未在仿真中验证过。
+      可能原因: 立即数符号扩展错误、寄存器映射错误、或 funct 字段解码不完整。
+    discovered_date: "2026-07-11"
+    discovered_by: hw-ver
+    affected_modules: ["src/rtl/core/lumi_decode_issue.sv"]
+    affected_versions: ["v1"]
+    severity: major
+    status: open
+    workaround: >
+      rv32c_smoke 标记为已知失败项。其他 V3 测试 (6/7) 均 PASS。
+      需要调试 c_ext_expand() 函数, 逐条验证压缩指令展开正确性。
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/rv32c_smoke.S"
 
 # 示例条目格式:
 # - id: "ERR-001"

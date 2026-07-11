@@ -308,3 +308,30 @@ operations:
     files_modified:
       - "perf/benchmarks/coremark/Makefile"
       - "perf/benchmarks/dhrystone/Makefile"
+
+  - id: "Verification Audit (验证状态审计与修复)"
+    title: "全层级验证补全 — V1~V4 编译+仿真+回归"
+    status: COMPLETE
+    details:
+      - "审计发现: V2/V3/V4 共 29 个测试仅有源码, 从未编译/仿真"
+      - "V1 基线重跑: RV32I 40/40 (100%), M-ext 5/8 (62.5%)"
+      - "V2 验证: 8/9 PASS (csr_basic 超时 — carry-over bug, ERR-017)"
+      - "V3 验证: 6/7 PASS (rv32c_smoke FAIL — c_ext_expand bug, ERR-018)"
+      - "V4 验证: 13/13 PASS (lockstep/multicore/power/dft/boot 全部通过)"
+      - "回归编译: nightly 35/35 PASS (0 FAIL)"
+      - "修复: 31 个测试 hex 格式 (GAS 不兼容下划线), 5 个测试语法修复"
+      - "修复: run_regression.sh 添加 march 自动选择 (B/C/FPU/Vector)"
+      - "新增 Errata: ERR-017 (csr_basic), ERR-018 (rv32c_smoke)"
+      - "ERR-011 resolved: B-ext Zba/Zbb 仿真验证通过"
+      - "Git: 3 commits (249e1c4, 5df9ec1, dcd948f)"
+    git_commits:
+      - "249e1c4: fix(M3-S2-1): 设计-RTL 映射修复 25项 (16 files)"
+      - "5df9ec1: feat(M3-S1): Phase A/B/C/D 验证用例+回归框架+基础设施 (78 files)"
+      - "dcd948f: fix(tests): 验证修复 — hex格式/指令语法/回归脚本march选择 (34 files)"
+    files_modified:
+      - "tests/directed/*.S (31 files)"
+      - "tests/scripts/run_regression.sh"
+      - "tests/results/v1-coverage.dat"
+      - "audit/errata/known-issues.yaml"
+      - "docs/project/milestone-plan.yaml"
+      - ".gitignore"

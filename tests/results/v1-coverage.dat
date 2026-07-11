@@ -1,3 +1,31 @@
+# V1 覆盖率数据 — 实测 2026-07-11
+# 运行环境: Verilator 5.048, riscv64-unknown-elf-gcc 16.1.0
+# 测试: rv32i_smoke.S + rv32i_full.S + rv32m_basic.S
+
+cover_group: cg_isa_rv32i
+covered: 40 / 40
+hit_mask: 1111111111111111111111111111111111111111
+note: "RV32I 100% — ERR-008/013/014/015/016 修复后完整覆盖"
+
+cover_group: cg_isa_m_ext
+covered: 5 / 8
+hit_mask: 11101011
+note: "M-ext 62.5% — MUL/MULH/MULHSU/DIV/DIVU 覆盖, MULHU/REM/REMU 未触发 (carry-over 丢失)"
+
+cover_group: cg_isa_b_ext
+covered: 0 / 16
+hit_mask: 0000000000000000
+note: "B-ext 0% — V3 rv32b 测试仿真通过但覆盖率模块未采集 B-ext 指令 (CG3 采样逻辑待验证)"
+
+cover_group: cg_isa_c_ext
+covered: 0 / 12
+hit_mask: 000000000000
+note: "C-ext 0% — rv32c_smoke 仿真 FAIL (c_ext_expand 未正确工作), 覆盖率未采集"
+
+cover_group: cg_isa_zce
+covered: 0 / 4
+hit_mask: 0000
+note: "Zce 0% — 未实现"
 cover_group: cg_isa_rv32i
 covered: 4 / 40
 hit_mask: 0010000000000000000000001000011000000000

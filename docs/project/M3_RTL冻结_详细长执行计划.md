@@ -4,7 +4,7 @@
 **版本:** 1.0
 **批准日期:** 2026-07-11
 **基线文档:** `docs/project/M3_RTL冻结详细执行计划.md` (PLN-0004 v2.0)
-**当前进度:** T-MS3-S1-0~S1-5 已完成 (Phase A/B/C/D ✓), T-MS3-S2-1 已完成
+**当前进度:** T-MS3-S1-0~S1-5 已完成 (Phase A/B/C/D ✓), T-MS3-S2-1 已完成 | 验证审计 2026-07-11: V2 8/9, V3 6/7, V4 13/13, 回归编译 35/35
 **目标:** M3 RTL 冻结 (2027-06)
 
 ---
@@ -16,10 +16,10 @@
 | M3-S1 | T-MS3-S1-0 | M3 启动前置 | ✓ COMPLETE |
 | M3-S1 | T-MS3-S1-1 | RTL 全模块功能实现 (28模块) | ✓ COMPLETE |
 | M3-S1 | T-MS3-S1-2.1 | V1 验证 (RV32I/M 100%) | ✓ COMPLETE |
-| M3-S1 | T-MS3-S1-2.2 | V2 存储/总线 + 中断/特权验证 | ✓ COMPLETE [Phase-A] |
-| M3-S1 | T-MS3-S1-2.3 | V3 扩展验证 + RV32B/C 实现 | ✓ COMPLETE [Phase-B] |
-| M3-S1 | T-MS3-S1-2.4 | V4 多核/功耗/DFT 验证 | ✓ COMPLETE [Phase-C] |
-| M3-S1 | T-MS3-S1-3 | 每日集成回归 | ✓ COMPLETE [Phase-D] |
+| M3-S1 | T-MS3-S1-2.2 | V2 存储/总线 + 中断/特权验证 | ✓ VERIFIED (8/9 PASS, ERR-017) |
+| M3-S1 | T-MS3-S1-2.3 | V3 扩展验证 + RV32B/C 实现 | ✓ VERIFIED (6/7 PASS, ERR-018) |
+| M3-S1 | T-MS3-S1-2.4 | V4 多核/功耗/DFT 验证 | ✓ VERIFIED (13/13 PASS) |
+| M3-S1 | T-MS3-S1-3 | 每日集成回归 | ✓ VERIFIED (编译35/35) |
 | M3-S1 | T-MS3-S1-4 | GEM5+ 交叉校准 | ✓ COMPLETE [Phase-D] |
 | M3-S1 | T-MS3-S1-5 | 物理设计评估 | ✓ COMPLETE [Phase-D] |
 | M3-S1 | T-MS3-S1-6 | M3-S1 门禁检查 | PENDING |

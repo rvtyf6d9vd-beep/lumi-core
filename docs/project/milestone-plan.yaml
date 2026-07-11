@@ -125,8 +125,8 @@ stages:
     tasks:
       - "T-MS3-S1-0: M3 启动前置 ✓ [2026-07-07]"
       - "T-MS3-S1-1: RTL 全模块功能实现 (28模块) ✓ [2026-07-07]"
-      - "T-MS3-S1-2: 单元验证 (V1✓ + V2✓ Phase-A✓ + V3✓ Phase-B✓ + V4✓ Phase-C✓)"
-      - "T-MS3-S1-3: 每日集成回归 ✓ [Phase-D]"
+      - "T-MS3-S1-2: 单元验证 (V1✓ RV32I 40/40 | V2 8/9 csr_basic超时 | V3 6/7 rv32c_smoke FAIL | V4 13/13)"
+      - "T-MS3-S1-3: 每日集成回归 (编译35/35 PASS, 仿真待补全) [Phase-D]"
       - "T-MS3-S1-4: GEM5+ 交叉校准 ✓ [Phase-D]"
       - "T-MS3-S1-5: 物理设计评估 ✓ [Phase-D] (脚本+模板就绪, 待实际运行)"
       - "T-MS3-S1-6: M3-S1 门禁检查"
