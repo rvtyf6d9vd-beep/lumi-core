@@ -335,3 +335,39 @@ operations:
       - "audit/errata/known-issues.yaml"
       - "docs/project/milestone-plan.yaml"
       - ".gitignore"
+
+  - id: "T-MS3-S2-2 (ERR-017/018 RTL 修复)"
+    title: "ERR-017 CSR 读回 + ECALL 提交 + ERR-018 RV32C inst 字段展开"
+    status: COMPLETE
+    date: "2026-07-11"
+    planner: "MiniMax"
+    details:
+      - "根因重新分析: 原计划假设 carry-over 机制残留 bug, 实际根因为 3 个独立 RTL bug"
+      - "ERR-017 Bug 1: writeback.sv CSR 指令写回使用 rs1 pass-through, 应使用 csr_rdata (CSR 旧值)"
+      - "ERR-017 Bug 2: writeback.sv ECALL 提交被 trap_taken 抑制, 移除 !trap_taken 条件"
+      - "ERR-017 Bug 3: trap 重定向 (core_top.sv) 暂不修复, V1 仅支持 commit-based ECALL 检测"
+      - "ERR-018 Bug 4: decode_issue.sv i_issue.inst 保留 16-bit 原始指令, 应使用 c_ext_expand 展开"
+      - "ERR-018 Bug 5: fetch.sv 无 16-bit 边界处理, V1 使用 .balign 4 workaround"
+      - "rv32c_smoke.S: 重写测试用例, 使用标准伪指令 (addi/mv/add/li/slli/lw/sw/j/beqz/bnez)"
+      - "修复原版手敲 .2byte 中的多处编码错误 (c.li a0,42 的 0x4D15 实际编码 c.li x26,5 等)"
+      - "binutils 2.46 不支持 c.* 显式伪指令 (c.li/c.add/c.mv), 需用标准伪指令触发自动压缩"
+    verification:
+      - "csr_basic:    PASS (exit_code=0)"
+      - "rv32c_smoke:  PASS (exit_code=0)"
+      - "rv32c_full:   PASS (exit_code=0)"
+      - "exception_precise: PASS (exit_code=0)"
+    files_modified:
+      - "src/rtl/core/lumi_writeback.sv"
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "tests/directed/rv32c_smoke.S"
+      - "tests/regression-config.yaml"
+      - "tests/results/v1-coverage.dat"
+      - "audit/errata/known-issues.yaml"
+    risks_closed: ["ERR-017", "ERR-018"]
+    known_limitations:
+      - "c_ext coverage 仍为 0/12 (mon_inst 显示展开后 32-bit 指令, is_compressed 检测失效)"
+      - "后续需添加 inst_raw 旁路信号以同时支持监控原始 16-bit 指令"
+      - "Trap 重定向 (Bug 3) 留到后续 milestone"
+      - "完整 16-bit fetch 支持 (fetch.sv 边界处理) 留到后续 milestone"
+    git_commits:
+      - "4cb9b61: fix(rtl): ERR-017 CSR readback + ECALL commit + ERR-018 RV32C inst field"

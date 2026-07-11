@@ -125,7 +125,7 @@ stages:
     tasks:
       - "T-MS3-S1-0: M3 启动前置 ✓ [2026-07-07]"
       - "T-MS3-S1-1: RTL 全模块功能实现 (28模块) ✓ [2026-07-07]"
-      - "T-MS3-S1-2: 单元验证 (V1✓ RV32I 40/40 | V2 8/9 csr_basic超时 | V3 6/7 rv32c_smoke FAIL | V4 13/13)"
+      - "T-MS3-S1-2: 单元验证 (V1✓ RV32I 40/40 | V2 9/9 csr_basic PASS [ERR-017 fix] | V3 7/7 rv32c_smoke PASS [ERR-018 fix] | V4 13/13) ✓ [2026-07-11]"
       - "T-MS3-S1-3: 每日集成回归 (编译35/35 PASS, 仿真待补全) [Phase-D]"
       - "T-MS3-S1-4: GEM5+ 交叉校准 ✓ [Phase-D]"
       - "T-MS3-S1-5: 物理设计评估 ✓ [Phase-D] (脚本+模板就绪, 待实际运行)"
@@ -137,6 +137,7 @@ stages:
     milestone: "M3"
     tasks:
       - "T-MS3-S2-1: 设计-RTL 映射修复 ✓ [2026-07-11]"
+      - "T-MS3-S2-2: ERR-017/018 RTL 修复 (CSR 读回 + ECALL 提交 + RV32C inst 展开) ✓ [2026-07-11]"
       - "T-MS3-S2-7: 系统集成验证"
       - "T-MS3-S2-8: 回归 + Bug 用例"
       - "T-MS3-S2-9: 性能达标验证 (RISK-006)"
