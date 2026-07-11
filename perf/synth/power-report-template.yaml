@@ -1,0 +1,119 @@
+# =================================================================
+# Lumi-Core 功耗估算报告模板
+# T-MS3-S1-5.3 | Phase D | LUMI-PWR-001/002
+# =================================================================
+# 填充时机: Yosys 综合 + Verilator VCD 采集完成后
+# 方法: RTL toggle rate → 功耗模型 (TSMC 28HPC)
+# 运行: make synth → make timing → 导出 VCD → 填写本报告
+# =================================================================
+
+report_id: "power-report-YYYYMMDD"
+date: "YYYY-MM-DD"
+milestone: "M3 RTL 冻结"
+task: "T-MS3-S1-5.3"
+
+# ─── 工艺参数 (TSMC 28HPC) ─────────────────────────────────
+process:
+  node: "TSMC 28nm HPC+"
+  voltage_nominal: 0.9     # V (nominal)
+  voltage_max: 1.1         # V (fast corner)
+  voltage_min: 0.81        # V (slow corner)
+  temperature_typical: 25  # °C
+  temperature_max: 125     # °C (worst-case)
+  leakage_density: 0.15    # mW/mm² (typical, 28HPC)
+
+# ─── 面积数据 (来自 synth_area.rpt) ────────────────────────
+area:
+  total_mm2: null           # 来自 Yosys: 填充 synth_area.rpt 值
+  target_mm2: 0.32          # RISK-012 目标
+  breakdown:
+    core_pipeline: null      # F+D+I+E+M+W
+    branch_predictor: null   # LTAGE 12 表
+    register_file: null      # 32x32 + bypass
+    cache_sram: null         # ICache 16KB + DCache 16KB
+    tcm_sram: null           # ITCM 32KB + DTCM0/1 32KB
+    interrupt_ctrl: null     # CLIC + PLIC
+    fpu_vector: null         # FPU + Vector
+    debug_dft: null          # Debug + DFT
+    power_mgmt: null         # Power/Clock gating
+    multicore: null          # Multicore top + Lockstep
+    bus_interconnect: null   # AXI wrapper + PMA
+
+# ─── Toggle Rate 数据 (来自 VCD) ───────────────────────────
+toggle_rate:
+  source: "build/sim/waveform.vcd"
+  workload: "CoreMark"       # 典型负载
+  duration_cycles: null      # VCD 采集周期数
+  module_toggle:
+    core_pipeline: null      # 平均 toggle rate
+    branch_predictor: null
+    register_file: null
+    cache_controller: null
+    tcm_controller: null
+    interrupt_ctrl: null
+    fpu: null
+    vector: null
+
+# ─── 功耗估算结果 ──────────────────────────────────────────
+power:
+  # 动态功耗: P = α × C × V² × f
+  dynamic:
+    total_mW: null           # 总动态功耗
+    target_mW_per_GHz: 100   # LUMI-PWR-001
+    breakdown:
+      core_pipeline: null
+      branch_predictor: null
+      register_file: null
+      cache_sram: null
+      tcm_sram: null
+      interrupt_ctrl: null
+      fpu_vector: null
+      bus_interconnect: null
+
+  # 漏电功耗: P_leak = leakage_density × area
+  leakage:
+    total_mW: null           # 总漏电功耗
+    target_mW: 50            # LUMI-PWR-002
+    formula: "leakage_density × total_area_mm2"
+
+  # 总功耗
+  total:
+    mW: null                 # 动态 + 漏电
+    mW_per_GHz: null         # 归一化到 1GHz
+
+# ─── 功耗优化措施 ──────────────────────────────────────────
+optimization:
+  icg_clock_gating:
+    enabled: true
+    modules: ["fpu", "vector", "tcm"]
+    description: "ICG 细粒度时钟门控 (icg_fpu_en/icg_vec_en/icg_tcm_en)"
+    estimated_saving_pct: 15
+
+  power_domain:
+    enabled: true
+    domains: ["core", "fpu", "tcm"]
+    description: "UPF 多域电源管理 (ST_RUN/IDLE/SLEEP/DEEP_SLEEP)"
+    estimated_saving_pct: 30
+
+# ─── 需求验证 ──────────────────────────────────────────────
+verification:
+  LUMI-PWR-001:
+    description: "动态功耗 ≤ 100mW/GHz"
+    status: null              # PASS | FAIL | PENDING
+    actual: null
+
+  LUMI-PWR-002:
+    description: "漏电功耗 ≤ 50mW"
+    status: null
+    actual: null
+
+  LUMI-PWR-003:
+    description: "WFI 进入 Sleep 模式, 唤醒 ≤ 8 cycle"
+    status: null
+    actual: null
+
+# ─── 风险关联 ──────────────────────────────────────────────
+risks:
+  - id: "RISK-012"
+    description: "面积超标 → 功耗超标"
+    resolution_if_fail: "缩减 LTAGE 12→8 表, Cache 16KB→8KB"

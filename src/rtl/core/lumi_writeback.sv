@@ -60,7 +60,13 @@ module lumi_writeback #(
     output logic                    hpm_branch_miss,
     output logic                    hpm_load,
     output logic                    hpm_store,
-    output logic                    hpm_exception
+    output logic                    hpm_exception,
+
+    // ── V1 验证探针 (Verification Probe, all slots) ───────────
+    output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
+    output logic [4:0]              mon_rd   [ISSUE_WIDTH-1:0],
+    output logic [31:0]             mon_rd_data [ISSUE_WIDTH-1:0],
+    output logic                    mon_irq        // IRQ accepted
 );
 
     import lumi_pkg::*;
@@ -232,6 +238,17 @@ module lumi_writeback #(
             end
         end
     end
+
+    // ── V1 验证探针赋值 (all slots) ─────────────────────────
+    always_comb begin
+        for (int s = 0; s < ISSUE_WIDTH; s++) begin
+            mon_inst[s]    = w_inst[s].inst;
+            mon_rd[s]      = w_rd[s];
+            mon_rd_data[s] = w_result[s];
+        end
+    end
+    // mon_irq: IRQ 被接受 (trap_taken 且非异常)
+    assign mon_irq       = trap_taken && !trap_cause[3] && irq_request;
 
     // ═══════════════════════════════════════════════════════════
     // FSM (简化: W 级主要是组合逻辑, FSM 用于 trap 处理)

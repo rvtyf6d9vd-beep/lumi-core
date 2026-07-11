@@ -1,0 +1,160 @@
+# =================================================================
+# Lumi-Core GEM5+ 交叉校准配置
+# T-MS3-S1-4 | Phase D | 规则 [06] 性能评估模型
+# =================================================================
+# 目的: RTL 仿真结果与 GEM5 MinorCPU 模型交叉校准
+# 校准指标:
+#   1. CoreMark IPC (误差 ≤10%)
+#   2. 分支误预测率 (≤2%)
+#   3. Cache 缺失率 (误差 ≤5%)
+#   4. 中断延时 (≤16 cycle)
+#   5. 功耗估算 (≤100mW/GHz)
+# =================================================================
+
+version: "1.0"
+last_updated: "2026-07-11"
+
+# ─── RTL 仿真配置 ──────────────────────────────────────────
+rtl_simulation:
+  tool: "verilator"
+  top_module: "lumi_soc_tb_stub"
+  vcd_output: "build/sim/waveform.vcd"
+  stats_output: "build/sim/stats.yaml"
+  compile_flags:
+    - "--trace"
+    - "--trace-structs"
+    - "-Wno-LATCH"
+    - "-Wno-UNSIGNED"
+    - "-Wno-WIDTH"
+  source_filelist: "src/rtl/lumi_core.f"
+
+# ─── GEM5 模型配置 ──────────────────────────────────────────
+gem5_model:
+  binary: "perf/gem5-model/gem5/build/RISCV/gem5.opt"
+  cpu_type: "MinorCPU"
+  isa: "RV32"
+  config_script: "perf/gem5-model/configs/example/lumi_se.py"
+  output_dir: "perf/gem5-model/m5out"
+
+  # MinorCPU 流水线参数 (对齐 Lumi 8 级流水线)
+  minor_cpu_params:
+    fetch_width: 4            # 对齐 128-bit ICache = 4 words
+    decode_width: 3           # ISSUE_WIDTH = 3
+    execute_width: 3          # 三发射
+    writeback_width: 3
+    retire_width: 3
+
+  # 内存系统参数
+  memory_params:
+    icache_size: "16kB"
+    icache_assoc: 4
+    icache_line_size: 32      # bytes (与 ITCM SRAM 行宽一致)
+    dcache_size: "16kB"
+    dcache_assoc: 4
+    dcache_line_size: 32
+    l2_size: "0"              # Lumi 无 L2
+
+  # 分支预测器参数
+  bpred_params:
+    type: "LTAGE"
+    ltage_n: 12               # LTAGE 表数
+    ltage_min_hist: 4
+    ltage_max_hist: 32
+
+# ─── 校准基准测试 ──────────────────────────────────────────
+calibration_benchmarks:
+
+  # 1. CoreMark IPC 校准
+  coremark_ipc:
+    binary: "perf/benchmarks/coremark/coremark.riscv"
+    rtl_args: ""
+    gem5_args: "--cmd=../benchmarks/coremark/coremark.riscv"
+    metrics:
+      - name: "ipc"
+        rtl_source: "build/sim/stats.yaml → total_instructions / total_cycles"
+        gem5_source: "m5out/stats.txt → sim_insts / sim_ticks"
+        tolerance_pct: 10
+        target_range: [1.5, 2.5]  # 预期 IPC 范围 (3-issue, 8-stage)
+      - name: "coremark_score"
+        rtl_source: "UART 输出解析"
+        gem5_source: "stdout 解析"
+        tolerance_pct: 15
+
+  # 2. 分支误预测率校准
+  branch_mispredict:
+    binary: "perf/benchmarks/coremark/coremark.riscv"
+    metrics:
+      - name: "mispredict_rate"
+        rtl_source: "build/sim/stats.yaml → branch_mispredicts / branch_total"
+        gem5_source: "m5out/stats.txt → system.cpu.branchPred.condIncorrect / system.cpu.branchPred.condPredicted"
+        tolerance_pct: 2
+        target_max: 2.0  # 误预测率 ≤ 2%
+
+  # 3. Cache 缺失率校准
+  cache_miss_rate:
+    binary: "perf/benchmarks/coremark/coremark.riscv"
+    metrics:
+      - name: "icache_miss_rate"
+        rtl_source: "stats.yaml → ic_miss / ic_access"
+        gem5_source: "stats.txt → system.cpu.icache.overall_misses::total / system.cpu.icache.overall_accesses::total"
+        tolerance_pct: 5
+      - name: "dcache_miss_rate"
+        rtl_source: "stats.yaml → dc_miss / dc_access"
+        gem5_source: "stats.txt → system.cpu.dcache.overall_misses::total / system.cpu.dcache.overall_accesses::total"
+        tolerance_pct: 5
+
+  # 4. 中断延时校准
+  irq_latency:
+    binary: "perf/benchmarks/irq-latency/irq_latency.riscv"
+    metrics:
+      - name: "irq_response_cycles"
+        rtl_source: "stats.yaml → irq_request_to_handler_cycles"
+        gem5_source: "FS mode tick 计数"
+        tolerance_pct: 20
+        target_max: 16  # ≤ 16 cycle (LUMI-SYS-003)
+
+  # 5. 功耗估算
+  power_estimation:
+    method: "toggle_rate_based"
+    rtl_toggle_source: "build/sim/waveform.vcd"
+    metrics:
+      - name: "dynamic_power_mW"
+        formula: "P = α × C × V² × f (α=toggle_rate, C=capacitance)"
+        target_max: 100  # mW/GHz (LUMI-PWR-001)
+      - name: "leakage_power_mW"
+        formula: "TSMC 28HPC typical leakage × area"
+        target_max: 50   # mW (LUMI-PWR-002)
+
+# ─── 校准结果记录 ──────────────────────────────────────────
+calibration_results:
+  # 运行后填入, 格式:
+  # - benchmark: "coremark_ipc"
+  #   rtl_value: 2.1
+  #   gem5_value: 2.0
+  #   error_pct: 5.0
+  #   status: "PASS"  # PASS | FAIL | SKIP
+  #   date: "2026-07-11"
+  []
+
+# ─── 校准执行脚本 ──────────────────────────────────────────
+execution:
+  # RTL 仿真运行
+  rtl_run: |
+    cd src/tb && make sim TEST=coremark_basic VCD=1
+    python3 ../../scripts/extract_stats.py build/sim/stats.yaml
+
+  # GEM5 运行
+  gem5_run: |
+    cd perf/gem5-model
+    ./gem5/build/RISCV/gem5.opt configs/example/lumi_se.py \
+      --cmd=../benchmarks/coremark/coremark.riscv \
+      --max-ticks=100000000
+    python3 ../scripts/extract_gem5_stats.py m5out/stats.txt
+
+  # 校准比较
+  compare: |
+    python3 scripts/calibration_compare.py \
+      --rtl=build/sim/stats.yaml \
+      --gem5=perf/gem5-model/m5out/stats.txt \
+      --config=tests/gem5-calibration-config.yaml \
+      --output=perf/calibration-report-$(date +%Y%m%d).yaml

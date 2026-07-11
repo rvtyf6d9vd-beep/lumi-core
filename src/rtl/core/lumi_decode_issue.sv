@@ -66,6 +66,7 @@ module lumi_decode_issue #(
     localparam logic [6:0] OP_IMM    = 7'b0010011;  // I-type ALU
     localparam logic [6:0] OP_REG    = 7'b0110011;  // R-type ALU/MUL/DIV
     localparam logic [6:0] OP_MISC   = 7'b1110011;  // SYSTEM: CSR/ECALL/EBREAK
+    localparam logic [6:0] OP_FENCE  = 7'b0001111;  // FENCE (ERR-013)
     localparam logic [6:0] OP_AMO    = 7'b0101111;  // Atomic
     localparam logic [6:0] OP_FLOAD  = 7'b0000111;  // FP Load
     localparam logic [6:0] OP_FSTORE = 7'b0100111;  // FP Store
@@ -92,11 +93,185 @@ module lumi_decode_issue #(
     decode_t dec [FETCH_WIDTH-1:0];
 
     // ═══════════════════════════════════════════════════════════
+    // RV32C 压缩指令展开器 (decode-issue.html §3.1.1)
+    // 将 16 位压缩指令转换为等价的 32 位指令
+    // ═══════════════════════════════════════════════════════════
+    function automatic logic [31:0] c_ext_expand(logic [15:0] ci);
+        logic [15:0] inst;
+        logic [4:0]  rd_rs2, rs1p, rs2p, rd_rs1;
+        logic [31:0] imm;
+
+        inst    = ci;
+        // 压缩指令寄存器编码: rs1' = inst[9:7]+8, rs2' = inst[4:2]+8
+        rs1p    = {2'b01, inst[9:7]};    // x8-x15
+        rs2p    = {2'b01, inst[4:2]};    // x8-x15
+        rd_rs2  = inst[11:7];            // full 5-bit rd/rs2
+        rd_rs1  = inst[11:7];            // full 5-bit rd/rs1
+
+        case (inst[1:0])
+            // ── Quadrant 0 (C0): opcode = 00 ──
+            2'b00: begin
+                case (inst[15:13])
+                    3'b000: begin
+                        // C.ADDI4SPN: addi rd', x2, nzuimm
+                        // nzuimm = inst[5]*4 + inst[12:11]*8 + inst[10:7]*16 ... complex
+                        imm = {22'h0, inst[10:7], inst[12:11], inst[5], inst[6], 2'b00};
+                        return {imm[11:0], 5'd2, 3'b000, rs2p, 7'b0010011}; // ADDI
+                    end
+                    3'b010: begin
+                        // C.LW: lw rd', offset(rs1')
+                        imm = {25'h0, inst[5], inst[12:10], inst[6], 2'b00};
+                        return {imm[11:0], rs1p, 3'b010, rs2p, 7'b0000011}; // LW
+                    end
+                    3'b110: begin
+                        // C.SW: sw rs2', offset(rs1')
+                        imm = {25'h0, inst[5], inst[12:10], inst[6], 2'b00};
+                        return {imm[11:5], rs2p, rs1p, 3'b010, imm[4:0], 7'b0100011}; // SW
+                    end
+                    default: return 32'h0000_0000; // Reserved / illegal
+                endcase
+            end
+
+            // ── Quadrant 1 (C1): opcode = 01 ──
+            2'b01: begin
+                case (inst[15:13])
+                    3'b000: begin
+                        // C.NOP (rd=0) / C.ADDI: addi rd, rd, nzimm
+                        imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                        return {imm[11:0], rd_rs1, 3'b000, rd_rs1, 7'b0010011}; // ADDI
+                    end
+                    3'b001: begin
+                        // C.JAL: jal x1, offset (RV32 only)
+                        imm = {{21{inst[12]}}, inst[12], inst[8], inst[10:9], inst[6],
+                               inst[7], inst[2], inst[11], inst[5:3], 1'b0};
+                        return {imm[20], imm[10:1], imm[11], imm[19:12], 5'd1, 7'b1101111}; // JAL x1
+                    end
+                    3'b010: begin
+                        // C.LI: addi rd, x0, imm
+                        imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                        return {imm[11:0], 5'd0, 3'b000, rd_rs1, 7'b0010011}; // ADDI rd, x0, imm
+                    end
+                    3'b011: begin
+                        if (rd_rs1 == 5'd2) begin
+                            // C.ADDI16SP: addi x2, x2, nzimm
+                            imm = {{22{inst[12]}}, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0000};
+                            return {imm[11:0], 5'd2, 3'b000, 5'd2, 7'b0010011}; // ADDI x2, x2, imm
+                        end else begin
+                            // C.LUI: lui rd, nzimm
+                            imm = {{14{inst[12]}}, inst[12], inst[6:2], 12'h0};
+                            return {imm[31:12], rd_rs1, 7'b0110111}; // LUI
+                        end
+                    end
+                    3'b100: begin
+                        case (inst[11:10])
+                            2'b00: begin
+                                // C.SRLI: srli rd', rd', shamt
+                                return {7'b0000000, inst[6:2], rs1p, 3'b101, rs1p, 7'b0010011}; // SRLI
+                            end
+                            2'b01: begin
+                                // C.SRAI: srai rd', rd', shamt
+                                return {7'b0100000, inst[6:2], rs1p, 3'b101, rs1p, 7'b0010011}; // SRAI
+                            end
+                            2'b10: begin
+                                // C.ANDI: andi rd', rd', imm
+                                imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                                return {imm[11:0], rs1p, 3'b111, rs1p, 7'b0010011}; // ANDI
+                            end
+                            2'b11: begin
+                                case ({inst[12], inst[6:5]})
+                                    3'b000: // C.SUB
+                                        return {7'b0100000, rs2p, rs1p, 3'b000, rs1p, 7'b0110011};
+                                    3'b001: // C.XOR
+                                        return {7'b0000000, rs2p, rs1p, 3'b100, rs1p, 7'b0110011};
+                                    3'b010: // C.OR
+                                        return {7'b0000000, rs2p, rs1p, 3'b110, rs1p, 7'b0110011};
+                                    3'b011: // C.AND
+                                        return {7'b0000000, rs2p, rs1p, 3'b111, rs1p, 7'b0110011};
+                                    default: return 32'h0000_0000;
+                                endcase
+                            end
+                        endcase
+                    end
+                    3'b101: begin
+                        // C.J: jal x0, offset
+                        imm = {{21{inst[12]}}, inst[12], inst[8], inst[10:9], inst[6],
+                               inst[7], inst[2], inst[11], inst[5:3], 1'b0};
+                        return {imm[20], imm[10:1], imm[11], imm[19:12], 5'd0, 7'b1101111}; // JAL x0
+                    end
+                    3'b110: begin
+                        // C.BEQZ: beq rs1', x0, offset
+                        imm = {{23{inst[12]}}, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+                        return {imm[12], imm[10:5], 5'd0, rs1p, 3'b000, imm[4:1], imm[11], 7'b1100011};
+                    end
+                    3'b111: begin
+                        // C.BNEZ: bne rs1', x0, offset
+                        imm = {{23{inst[12]}}, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+                        return {imm[12], imm[10:5], 5'd0, rs1p, 3'b001, imm[4:1], imm[11], 7'b1100011};
+                    end
+                    default: return 32'h0000_0000;
+                endcase
+            end
+
+            // ── Quadrant 2 (C2): opcode = 10 ──
+            2'b10: begin
+                case (inst[15:13])
+                    3'b000: begin
+                        // C.SLLI: slli rd, rd, shamt
+                        return {7'b0000000, inst[6:2], rd_rs1, 3'b001, rd_rs1, 7'b0010011}; // SLLI
+                    end
+                    3'b010: begin
+                        // C.LWSP: lw rd, offset(x2)
+                        imm = {24'h0, inst[3:2], inst[12], inst[6:4], 2'b00};
+                        return {imm[11:0], 5'd2, 3'b010, rd_rs1, 7'b0000011}; // LW rd, imm(x2)
+                    end
+                    3'b100: begin
+                        if (inst[12] == 1'b0) begin
+                            if (inst[6:2] == 5'd0) begin
+                                // C.JR: jalr x0, rs1, 0
+                                return {12'h0, rd_rs1, 3'b000, 5'd0, 7'b1100111}; // JALR x0, rs1, 0
+                            end else begin
+                                // C.MV: add rd, x0, rs2
+                                return {7'b0000000, inst[6:2], 5'd0, 3'b000, rd_rs1, 7'b0110011}; // ADD
+                            end
+                        end else begin
+                            if (inst[6:2] == 5'd0) begin
+                                if (rd_rs1 == 5'd0)
+                                    return 32'h0000_0073; // C.EBREAK → EBREAK
+                                else
+                                    // C.JALR: jalr x1, rs1, 0
+                                    return {12'h0, rd_rs1, 3'b000, 5'd1, 7'b1100111}; // JALR x1, rs1
+                            end else begin
+                                // C.ADD: add rd, rd, rs2
+                                return {7'b0000000, inst[6:2], rd_rs1, 3'b000, rd_rs1, 7'b0110011}; // ADD
+                            end
+                        end
+                    end
+                    3'b110: begin
+                        // C.SWSP: sw rs2, offset(x2)
+                        imm = {24'h0, inst[8:7], inst[12:9], 2'b00};
+                        return {imm[11:5], inst[6:2], 5'd2, 3'b010, imm[4:0], 7'b0100011}; // SW rs2, imm(x2)
+                    end
+                    default: return 32'h0000_0000;
+                endcase
+            end
+
+            default: return ci[15:0]; // Not compressed (32-bit), pass lower 16 bits
+        endcase
+        return 32'h0000_0000;
+    endfunction
+
+    // ═══════════════════════════════════════════════════════════
     // D 级: 指令解码 + 立即数生成 (decode-issue.html §3.1)
     // ═══════════════════════════════════════════════════════════
     always_comb begin
         for (int i = 0; i < FETCH_WIDTH; i++) begin
-            tmp_inst = d_instructions[i];
+            // RV32C: 压缩指令展开
+            if (d_inst_valid[i] && d_instructions[i][1:0] != 2'b11) begin
+                // 16-bit compressed → expand to 32-bit
+                tmp_inst = c_ext_expand(d_instructions[i][15:0]);
+            end else begin
+                tmp_inst = d_instructions[i];
+            end
             dec[i].valid   = d_inst_valid[i] && d_valid;
             dec[i].opcode  = tmp_inst[6:0];
             dec[i].rd      = tmp_inst[11:7];
@@ -216,6 +391,14 @@ module lumi_decode_issue #(
                     dec[i].fu_type = FU_FP;
                 end
 
+                // ── FENCE: NOP-like (ERR-013 修复) ──
+                OP_FENCE: begin
+                    dec[i].fu_type = FU_MISC;
+                    dec[i].has_rs1 = 1'b0;
+                    dec[i].has_rs2 = 1'b0;
+                    dec[i].has_rd  = 1'b0;  // FENCE 不写寄存器 (避免 false RAW)
+                end
+
                 // ── SYSTEM: CSR/ECALL/EBREAK ──
                 OP_MISC: begin
                     dec[i].imm     = {20'h0, tmp_inst[31:20]};
@@ -240,11 +423,16 @@ module lumi_decode_issue #(
     logic       issue_ready [ISSUE_WIDTH-1:0]; // 是否可发射
     logic [$clog2(FETCH_WIDTH):0] issue_count; // 实际发射数
 
+    // ── issued_mask: 跟踪已发射指令 (ERR-014 修复) ────
+    logic [FETCH_WIDTH-1:0] issued_mask_r, issued_mask_next;
+    logic [31:0] batch_pc_r, batch_pc_next;
+
     // 临时变量 (避免 automatic inside always_comb, Verilator 兼容)
     logic       tmp_already_selected;
     logic       tmp_fu_available;
     logic       tmp_batch_raw;
     logic       tmp_selected;
+
     decode_t    tmp_prev;
     logic [31:0] tmp_inst;
     decode_t    tmp_dec_d;
@@ -272,19 +460,19 @@ module lumi_decode_issue #(
 
         // skip-stalled 扫描: 从解码队列中选择可发射的指令
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
-            for (int d = 0; d < FETCH_WIDTH; d++) begin
-                if (dec[d].valid && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
+            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
+                if (dec[qi].valid && !issued_mask_r[qi] && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
                     // 检查该解码槽是否已被选中
                     tmp_already_selected = 1'b0;
                     for (int p = 0; p < s; p++) begin
-                        if (issue_sel[p] == d[2:0] && issue_ready[p])
+                        if (issue_sel[p] == qi[2:0] && issue_ready[p])
                             tmp_already_selected = 1'b1;
                     end
 
                     if (!tmp_already_selected) begin
                         // 检查 FU 可用性 (decode-issue.html §3.2)
-                        tmp_fu_available = !fu_busy[dec[d].fu_type];
-                        if (dec[d].fu_type == FU_DIV)
+                        tmp_fu_available = !fu_busy[dec[qi].fu_type];
+                        if (dec[qi].fu_type == FU_DIV)
                             tmp_fu_available = tmp_fu_available && !div_busy;
 
                         // 检查批次内 RAW 冒险
@@ -294,16 +482,16 @@ module lumi_decode_issue #(
                                 tmp_prev = dec[issue_sel[p]];
                                 // 当前指令的 rs1/rs2 依赖前一条的 rd
                                 if (tmp_prev.has_rd && tmp_prev.rd != 5'h0) begin
-                                    if ((dec[d].has_rs1 && dec[d].rs1 == tmp_prev.rd) ||
-                                        (dec[d].has_rs2 && dec[d].rs2 == tmp_prev.rd)) begin
+                                    if ((dec[qi].has_rs1 && dec[qi].rs1 == tmp_prev.rd) ||
+                                        (dec[qi].has_rs2 && dec[qi].rs2 == tmp_prev.rd)) begin
                                         tmp_batch_raw = 1'b1;
                                     end
                                 end
                             end
                         end
 
-                        if (tmp_fu_available && !tmp_batch_raw) begin
-                            issue_sel[s]   = d[2:0];
+                        if (tmp_fu_available && !tmp_batch_raw && !issue_ready[s]) begin
+                            issue_sel[s]   = qi[2:0];
                             issue_ready[s] = 1'b1;
                             issue_count    = issue_count + 1'b1;
                         end
@@ -314,12 +502,12 @@ module lumi_decode_issue #(
         end
 
         // 如果队列中有有效指令但无法全部发射, stall
-        if (d_valid && issue_count < FETCH_WIDTH[$clog2(FETCH_WIDTH):0]) begin
-            for (int d = 0; d < FETCH_WIDTH; d++) begin
-                if (dec[d].valid) begin
+        if (d_valid) begin
+            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
+                if (dec[qi].valid && !issued_mask_r[qi]) begin
                     tmp_selected = 1'b0;
                     for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                        if (issue_ready[s] && issue_sel[s] == d[2:0])
+                        if (issue_ready[s] && issue_sel[s] == qi[2:0])
                             tmp_selected = 1'b1;
                     end
                     if (!tmp_selected) stall_out = 1'b1;
@@ -456,6 +644,40 @@ module lumi_decode_issue #(
             end
             ST_FLUSH:  state_next = ST_DECODE;
         endcase
+    end
+
+    // ═══════════════════════════════════════════════════════════
+    // issued_mask 寄存器: 跨周期跟踪已发射指令 (ERR-014 修复)
+    // ═══════════════════════════════════════════════════════════
+    always_comb begin
+        issued_mask_next = issued_mask_r;
+        batch_pc_next    = batch_pc_r;
+
+        if (flush) begin
+            issued_mask_next = '0;
+            batch_pc_next    = d_pc;
+        end else if (d_valid && d_pc != batch_pc_r) begin
+            // 新批次到达 (PC 变化): 清除 mask
+            issued_mask_next = '0;
+            batch_pc_next    = d_pc;
+        end else if (d_valid) begin
+            // always-record: 每周期都记录已发射指令
+            // 确保 carry-over 指令不被丢失
+            for (int s = 0; s < ISSUE_WIDTH; s++) begin
+                if (issue_ready[s])
+                    issued_mask_next[issue_sel[s]] = 1'b1;
+            end
+        end
+    end
+
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            issued_mask_r <= '0;
+            batch_pc_r    <= 32'h0;
+        end else begin
+            issued_mask_r <= issued_mask_next;
+            batch_pc_r    <= batch_pc_next;
+        end
     end
 
 endmodule

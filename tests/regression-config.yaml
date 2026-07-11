@@ -1,0 +1,205 @@
+# =================================================================
+# Lumi-Core 回归测试套件配置
+# 规则 [11] 每日集成回归 | 规则 [21] Bug 回归测试用例
+# =================================================================
+# 三层套件:
+#   smoke     — 6 项核心冒烟 (< 5min), PR merge 触发
+#   regression — 12 项功能回归 (< 30min), PR merge 触发
+#   nightly   — 全量 35 项 directed 测试, 每日 02:00 UTC
+# =================================================================
+
+version: "1.0"
+last_updated: "2026-07-11"
+
+# ─── 编译配置 ──────────────────────────────────────────────
+build:
+  compiler: "riscv32-unknown-elf-gcc"
+  march: "rv32imac_zicsr"
+  mabi: "ilp32"
+  linker_script: "tests/linker/lumi_arch_test.ld"
+  cflags: "-nostdlib -ffreestanding -O2"
+  output_dir: "build/tests"
+
+# ─── Smoke 套件 (6 项, < 5min) ─────────────────────────────
+# PR merge 必跑, 快速验证核心功能无回归
+smoke:
+  timeout_per_test: 60    # 秒
+  total_timeout: 300      # 5 分钟
+  tests:
+    - name: "rv32i_smoke"
+      file: "tests/directed/rv32i_smoke.S"
+      description: "RV32I 基础指令冒烟 (26 指令)"
+      errata_ref: ["ERR-008", "ERR-009"]
+    - name: "rv32m_basic"
+      file: "tests/directed/rv32m_basic.S"
+      description: "RV32M MUL/DIV 基础"
+      errata_ref: ["ERR-012"]
+    - name: "tcm_basic_rw"
+      file: "tests/directed/tcm_basic_rw.S"
+      description: "TCM ITCM/DTCM 读写"
+      errata_ref: []
+    - name: "cache_basic"
+      file: "tests/directed/cache_basic.S"
+      description: "Cache 命中/缺失/写回"
+      errata_ref: []
+    - name: "csr_basic"
+      file: "tests/directed/csr_basic.S"
+      description: "CSR 读写/权限/HPM"
+      errata_ref: ["ERR-013"]
+    - name: "clic_priority"
+      file: "tests/directed/clic_priority.S"
+      description: "CLIC 优先级仲裁 + VECTORED"
+      errata_ref: []
+
+# ─── Regression 套件 (12 项, < 30min) ─────────────────────
+# PR merge 跑, 覆盖所有扩展和功能模块
+regression:
+  timeout_per_test: 180   # 3 分钟
+  total_timeout: 1800     # 30 分钟
+  tests:
+    - name: "rv32i_full"
+      file: "tests/directed/rv32i_full.S"
+      description: "RV32I 全覆盖 (40/40 指令)"
+      errata_ref: ["ERR-013", "ERR-014", "ERR-015", "ERR-016"]
+    - name: "rv32b_smoke"
+      file: "tests/directed/rv32b_smoke.S"
+      description: "RV32B Zba/Zbb 冒烟"
+      errata_ref: ["ERR-011"]
+    - name: "rv32b_zba"
+      file: "tests/directed/rv32b_zba.S"
+      description: "Zba SH1ADD/SH2ADD/SH3ADD"
+      errata_ref: []
+    - name: "rv32b_zbb"
+      file: "tests/directed/rv32b_zbb.S"
+      description: "Zbb CLZ/CTZ/CPOP/MIN/MAX/ROL/ROR"
+      errata_ref: []
+    - name: "rv32c_full"
+      file: "tests/directed/rv32c_full.S"
+      description: "RV32C 压缩指令全覆盖"
+      errata_ref: ["ERR-010"]
+    - name: "exception_precise"
+      file: "tests/directed/exception_precise.S"
+      description: "ECALL/EBREAK/illegal trap"
+      errata_ref: []
+    - name: "pmp_regions"
+      file: "tests/directed/pmp_regions.S"
+      description: "PMP CSR 配置"
+      errata_ref: []
+    - name: "plic_dispatch"
+      file: "tests/directed/plic_dispatch.S"
+      description: "PLIC 中断分发"
+      errata_ref: []
+    - name: "mtime_timer"
+      file: "tests/directed/mtime_timer.S"
+      description: "MTIME/mcycle/minstret"
+      errata_ref: []
+    - name: "fpu_basic"
+      file: "tests/directed/fpu_basic.S"
+      description: "FPU FADD/FSUB/FMUL/FDIV"
+      errata_ref: []
+    - name: "vector_basic"
+      file: "tests/directed/vector_basic.S"
+      description: "Vector vsetvli/VLE/VSE/VADD"
+      errata_ref: []
+    - name: "debug_halt"
+      file: "tests/directed/debug_halt.S"
+      description: "Debug halt/resume + single-step"
+      errata_ref: []
+
+# ─── Nightly 套件 (全量 35 项, 无时限) ─────────────────────
+# 每日 02:00 UTC 运行, 包含所有 directed 测试
+nightly:
+  timeout_per_test: 600   # 10 分钟
+  total_timeout: 7200     # 2 小时
+  includes:
+    - suite: "smoke"       # 包含 smoke 全部
+    - suite: "regression"  # 包含 regression 全部
+  additional_tests:
+    - name: "pma_axi_access"
+      file: "tests/directed/pma_axi_access.S"
+      description: "PMA 属性 + AXI burst-like"
+    - name: "rv32c_smoke"
+      file: "tests/directed/rv32c_smoke.S"
+      description: "RV32C 冒烟"
+    - name: "rv32c_bpred"
+      file: "tests/directed/rv32c_bpred.S"
+      description: "RV32C 分支预测"
+    - name: "rv32c_basic"
+      file: "tests/directed/rv32c_basic.S"
+      description: "RV32C 基础"
+    - name: "lockstep_compare"
+      file: "tests/directed/lockstep_compare.S"
+      description: "Lockstep 双核同步"
+    - name: "lockstep_error"
+      file: "tests/directed/lockstep_error.S"
+      description: "Lockstep 确定性指令流"
+    - name: "lockstep_fsm"
+      file: "tests/directed/lockstep_fsm.S"
+      description: "Lockstep FSM 状态转换"
+    - name: "multicore_topo"
+      file: "tests/directed/multicore_topo.S"
+      description: "Hart ID + 核间通信"
+    - name: "multicore_arb"
+      file: "tests/directed/multicore_arb.S"
+      description: "AXI Round-Robin 仲裁"
+    - name: "power_states"
+      file: "tests/directed/power_states.S"
+      description: "WFI NOP/Sleep + 中断唤醒"
+    - name: "reset_seq"
+      file: "tests/directed/reset_seq.S"
+      description: "冷复位 CSR + Boot 地址"
+    - name: "power_icg"
+      file: "tests/directed/power_icg.S"
+      description: "ICG 时钟门控"
+    - name: "dft_scan"
+      file: "tests/directed/dft_scan.S"
+      description: "4-bit scan chain"
+    - name: "dft_mbist"
+      file: "tests/directed/dft_mbist.S"
+      description: "March C- MBIST"
+    - name: "dft_jtag"
+      file: "tests/directed/dft_jtag.S"
+      description: "JTAG TAP + IDCODE"
+    - name: "dft_secure_lock"
+      file: "tests/directed/dft_secure_lock.S"
+      description: "安全锁定不可逆"
+    - name: "boot_sequence"
+      file: "tests/directed/boot_sequence.S"
+      description: "Boot 地址 + 签名验证"
+
+# ─── ERR 回归映射 (规则 21) ────────────────────────────────
+# 每个 resolved errata 必须有对应的回归测试
+errata_regression:
+  - errata_id: "ERR-001"
+    status: resolved
+    regression_test: "perf/gem5-model/tests/interrupt/"
+  - errata_id: "ERR-002"
+    status: resolved
+    regression_test: "perf/gem5-model/tests/interrupt/"
+  - errata_id: "ERR-003"
+    status: resolved
+    regression_test: "rules/scripts/check_compliance.py"
+  - errata_id: "ERR-006"
+    status: resolved
+    regression_test: "perf/gem5-model/configs/quick-se-test.py"
+  - errata_id: "ERR-008"
+    status: resolved
+    regression_test: "tests/directed/rv32i_smoke.S"
+  - errata_id: "ERR-009"
+    status: resolved
+    regression_test: "tests/directed/rv32i_smoke.S"
+  - errata_id: "ERR-012"
+    status: resolved
+    regression_test: "tests/directed/rv32m_basic.S"
+  - errata_id: "ERR-013"
+    status: resolved
+    regression_test: "tests/directed/rv32i_full.S"
+  - errata_id: "ERR-014"
+    status: resolved
+    regression_test: "tests/directed/rv32i_full.S"
+  - errata_id: "ERR-015"
+    status: resolved
+    regression_test: "tests/directed/rv32i_full.S"
+  - errata_id: "ERR-016"
+    status: resolved
+    regression_test: "tests/directed/rv32i_full.S"

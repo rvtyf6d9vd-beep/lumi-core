@@ -27,6 +27,13 @@ perf/gem5-model/gem5/
 *.riscv
 *.elf
 
+# ── Verilator / 仿真产物 ──
+obj_dir/
+build/
+*.vcd
+*.hex
+coverage.dat
+
 # ── IDE / 编辑器 ──
 .qoder/
 .vscode/

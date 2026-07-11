@@ -9,8 +9,8 @@
 CROSS   ?= riscv64-unknown-elf-
 CC       = $(CROSS)gcc
 
-ARCH    ?= rv64im
-ABI     ?= lp64
+ARCH    ?= rv32imac
+ABI     ?= ilp32
 
 # Optimization: -O2 -funroll-loops (Phase 8: loop unrolling exposes more ILP for in-order)
 OPT      = -O2 -funroll-loops
@@ -43,8 +43,12 @@ CFLAGS = $(OPT) -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-builtin \
          -DMEM_METHOD=MEM_STATIC \
          -DMULTITHREAD=1
 
+# libm5.a is RV64 only; skip for RV32 builds
+IS_RV64 = $(findstring rv64,$(ARCH))
+M5_LIB  = $(if $(IS_RV64),$(GEM5_DIR)/libm5.a,)
+
 LDFLAGS = -nostdlib -T $(LIBC_DIR)/$(if $(findstring ilp32,$(ABI)),lumi-se-rv32.ld,lumi-se.ld)
-LDLIBS  = $(LIBC_DIR)/libmini.a $(GEM5_DIR)/libm5.a
+LDLIBS  = $(LIBC_DIR)/libmini.a $(M5_LIB)
 
 # Source files
 CORE_SRCS = core_main.c core_list_join.c core_matrix.c core_state.c core_util.c
@@ -60,18 +64,15 @@ TARGET = coremark.riscv
 
 all: $(TARGET)
 
-$(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a $(GEM5_DIR)/libm5.a
+$(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS) -lgcc
 
 %.o: %.c coremark.h core_portme.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Ensure mini_libc and libm5 are built
+# Ensure mini_libc is built
 $(LIBC_DIR)/libmini.a:
 	$(MAKE) -C $(LIBC_DIR) all
-
-$(GEM5_DIR)/libm5.a:
-	$(MAKE) -C $(LIBC_DIR) m5
 
 clean:
 	rm -f $(OBJS) $(TARGET) coremark.riscv.*

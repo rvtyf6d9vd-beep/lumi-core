@@ -91,13 +91,13 @@ module jtag_bfm #(
 
   // ─── 写 IR 寄存器 ─────────────────────────────────────────
   task automatic write_ir(input logic [7:0] ir_value);
+    logic [255:0] dummy;
     // TLR → RTI → Select-DR → Select-IR → Capture-IR → Shift-IR
     tms = 1'b0; @(posedge tck); // RTI
     tms = 1'b1; @(posedge tck); // Select-DR
     tms = 1'b1; @(posedge tck); // Select-IR
     tms = 1'b0; @(posedge tck); // Capture-IR
     tms = 1'b0; @(posedge tck); // Shift-IR
-    logic [255:0] dummy;
     shift_bits(8, {248'b0, ir_value}, dummy);
     // Exit1-IR → Update-IR → RTI
     tms = 1'b1; @(posedge tck); // Update-IR

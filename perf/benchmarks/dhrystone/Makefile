@@ -8,8 +8,8 @@
 CROSS   ?= riscv64-unknown-elf-
 CC       = $(CROSS)gcc
 
-ARCH    ?= rv64im
-ABI     ?= lp64
+ARCH    ?= rv32imac
+ABI     ?= ilp32
 
 # Optimization: -O2 -funroll-loops (Phase 8: loop unrolling exposes more ILP)
 OPT      = -O2 -funroll-loops
@@ -51,12 +51,9 @@ $(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a
 %.o: %.c dhrystone.h lumi_dhry_port.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Ensure mini_libc and libm5 are built
+# Ensure mini_libc is built
 $(LIBC_DIR)/libmini.a:
 	$(MAKE) -C $(LIBC_DIR) all
-
-$(GEM5_DIR)/libm5.a:
-	$(MAKE) -C $(LIBC_DIR) m5
 
 clean:
 	rm -f $(OBJS) $(TARGET) dhrystone.riscv.*

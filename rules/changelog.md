@@ -8,11 +8,14 @@
 - Lumi_Deployment_Plan.html 升级至 v3.1（规则总数 26→30，评分模型更新）
 - product-requirements.html 重新生成
 
-## 2026-06-24 — v3.1 新增 Errata & Bug 回归 & Skill 复用 & 里程碑层级规则
-- 新增规则 20: Errata/Known Issue 维护 — 记录所有已知问题直到解决
-- 新增规则 21: Bug 回归测试用例 — RTL Freeze 后每个 Bug 增加回归测试用例
-- 新增规则 22: Skill 优先复用 — 建立 skills/ 目录，任务优先查找复用现有 Skill
-- 新增规则 23: Milestone/Stage/Phase 层级定义 — 三层进度管理结构
+## 2026-06-24 — v3.1 新增 Errata & Bug 回归 & Skill 复用 & 里程碑 & 门禁权限 & 交叉审查规则
+- 新增规则 20: Errata/Known Issue 维护
+- 新增规则 21: Bug 回归测试用例
+- 新增规则 22: Skill 优先复用
+- 新增规则 23: Milestone/Stage/Phase 层级定义
+- 新增规则 24: 门禁不可自解释或降低
+- 新增规则 25: 复杂计划交叉审查建议 — 高风险计划须建议多模型交叉验证
+- 新增规则 26: 计划统一编码 — PLN-xxxx 全局编码体系，禁止局部重复起始编号
 - 创建 audit/errata/known-issues.yaml 模板
 - 创建 docs/project/milestone-plan.yaml 里程碑计划定义文件
 - role-mapping.yaml 更新: 为相关角色添加新规则引用和文件权限

@@ -344,42 +344,196 @@ module lumi_execute #(
             if (e1_valid[i]) begin
                 case (e1_inst[i].fu_type)
                     // ── ALU: 1-cycle (execute-alu.html §3.1) ──
+                    // Phase B: 增加 Zba/Zbb B-extension 运算路径
                     FU_ALU: begin
-                        e1_result[i] = alu_compute(
-                            e1_inst[i].funct3,
-                            e1_inst[i].funct7[5],
-                            e1_rs1_data[i],
-                            e1_rs2_data[i]
-                        );
+                        case (e1_inst[i].funct7)
+                            // ── Zba: Shift-and-Add ──────────────────────
+                            7'b0010000: begin
+                                case (e1_inst[i].funct3)
+                                    3'b010:  e1_result[i] = (e1_rs1_data[i] << 1) + e1_rs2_data[i]; // SH1ADD
+                                    3'b100:  e1_result[i] = (e1_rs1_data[i] << 2) + e1_rs2_data[i]; // SH2ADD
+                                    3'b110:  e1_result[i] = (e1_rs1_data[i] << 3) + e1_rs2_data[i]; // SH3ADD
+                                    default: e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                endcase
+                            end
+                            // ── Zbb: Bit-logic (ANDN/ORN/XNOR) ──────────
+                            7'b0100000: begin
+                                case (e1_inst[i].funct3)
+                                    3'b111:  e1_result[i] = e1_rs1_data[i] & ~e1_rs2_data[i]; // ANDN
+                                    3'b110:  e1_result[i] = e1_rs1_data[i] | ~e1_rs2_data[i]; // ORN
+                                    3'b100:  e1_result[i] = ~(e1_rs1_data[i] ^ e1_rs2_data[i]); // XNOR
+                                    default: e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                endcase
+                            end
+                            // ── Zbb: MIN/MAX + CLZ/CTZ/CPOP + ROL/ROR + REV8 ──
+                            7'b0000101: begin
+                                case (e1_inst[i].funct3)
+                                    3'b100:  e1_result[i] = ($signed(e1_rs1_data[i]) < $signed(e1_rs2_data[i])) ? e1_rs1_data[i] : e1_rs2_data[i]; // MIN
+                                    3'b101:  e1_result[i] = (e1_rs1_data[i] < e1_rs2_data[i]) ? e1_rs1_data[i] : e1_rs2_data[i]; // MINU
+                                    3'b110:  e1_result[i] = ($signed(e1_rs1_data[i]) > $signed(e1_rs2_data[i])) ? e1_rs1_data[i] : e1_rs2_data[i]; // MAX
+                                    3'b111:  e1_result[i] = (e1_rs1_data[i] > e1_rs2_data[i]) ? e1_rs1_data[i] : e1_rs2_data[i]; // MAXU
+                                    default: e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                endcase
+                            end
+                            7'b0110000: begin
+                                // R-type: ROL/ROR + CLZ/CTZ/CPOP (R-type rs2 encodes)
+                                // I-type: RORI (funct3=101, imm[5:0]=shamt)
+                                if (e1_inst[i].inst[6:0] == 7'b0010011) begin
+                                    // I-type B-ext: CLZ/CTZ/CPOP/RORI
+                                    case (e1_inst[i].funct3)
+                                        3'b001: begin
+                                            // CLZ/CTZ/CPOP determined by rs2 field (bits [24:20])
+                                            case (e1_inst[i].rs2)
+                                                5'b00000: begin // CLZ
+                                                    logic [31:0] clz_val;
+                                                    clz_val = e1_rs1_data[i];
+                                                    if (clz_val == 32'h0) e1_result[i] = 32'd32;
+                                                    else begin
+                                                        e1_result[i] = 32'd0;
+                                                        for (int b = 31; b >= 0; b--) begin
+                                                            if (clz_val[b] && e1_result[i] == 32'd0)
+                                                                e1_result[i] = 32'd31 - b[4:0];
+                                                        end
+                                                    end
+                                                end
+                                                5'b00001: begin // CTZ
+                                                    logic [31:0] ctz_val;
+                                                    ctz_val = e1_rs1_data[i];
+                                                    if (ctz_val == 32'h0) e1_result[i] = 32'd32;
+                                                    else begin
+                                                        e1_result[i] = 32'd0;
+                                                        for (int b = 0; b < 32; b++) begin
+                                                            if (ctz_val[b] && e1_result[i] == 32'd0)
+                                                                e1_result[i] = b[4:0];
+                                                        end
+                                                    end
+                                                end
+                                                5'b00010: begin // CPOP
+                                                    e1_result[i] = 32'd0;
+                                                    for (int b = 0; b < 32; b++)
+                                                        e1_result[i] = e1_result[i] + {31'h0, e1_rs1_data[i][b]};
+                                                end
+                                                default: e1_result[i] = 32'h0;
+                                            endcase
+                                        end
+                                        3'b101: begin // RORI
+                                            logic [4:0] rori_shamt;
+                                            rori_shamt = e1_inst[i].rs2; // imm[4:0] = shamt for I-type
+                                            e1_result[i] = (e1_rs1_data[i] >> rori_shamt) | (e1_rs1_data[i] << (32'd32 - {27'h0, rori_shamt}));
+                                        end
+                                        default: e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                    endcase
+                                end else begin
+                                    // R-type: ROL/ROR + CLZ/CTZ/CPOP
+                                    case (e1_inst[i].funct3)
+                                        3'b001: begin
+                                            // CLZ/CTZ/CPOP (R-type: rs2 field selects)
+                                            case (e1_inst[i].rs2)
+                                                5'b00000: begin // CLZ
+                                                    logic [31:0] clz_val;
+                                                    clz_val = e1_rs1_data[i];
+                                                    if (clz_val == 32'h0) e1_result[i] = 32'd32;
+                                                    else begin
+                                                        e1_result[i] = 32'd0;
+                                                        for (int b = 31; b >= 0; b--) begin
+                                                            if (clz_val[b] && e1_result[i] == 32'd0)
+                                                                e1_result[i] = 32'd31 - b[4:0];
+                                                        end
+                                                    end
+                                                end
+                                                5'b00001: begin // CTZ
+                                                    logic [31:0] ctz_val;
+                                                    ctz_val = e1_rs1_data[i];
+                                                    if (ctz_val == 32'h0) e1_result[i] = 32'd32;
+                                                    else begin
+                                                        e1_result[i] = 32'd0;
+                                                        for (int b = 0; b < 32; b++) begin
+                                                            if (ctz_val[b] && e1_result[i] == 32'd0)
+                                                                e1_result[i] = b[4:0];
+                                                        end
+                                                    end
+                                                end
+                                                5'b00010: begin // CPOP
+                                                    e1_result[i] = 32'd0;
+                                                    for (int b = 0; b < 32; b++)
+                                                        e1_result[i] = e1_result[i] + {31'h0, e1_rs1_data[i][b]};
+                                                end
+                                                default: begin // ROL (rs2[0]=1)
+                                                    logic [4:0] rol_shamt;
+                                                    rol_shamt = e1_rs2_data[i][4:0];
+                                                    e1_result[i] = (e1_rs1_data[i] << rol_shamt) | (e1_rs1_data[i] >> (32'd32 - {27'h0, rol_shamt}));
+                                                end
+                                            endcase
+                                        end
+                                        3'b101: begin // ROR (R-type: shamt = rs2[4:0])
+                                            logic [4:0] ror_shamt;
+                                            ror_shamt = e1_rs2_data[i][4:0];
+                                            e1_result[i] = (e1_rs1_data[i] >> ror_shamt) | (e1_rs1_data[i] << (32'd32 - {27'h0, ror_shamt}));
+                                        end
+                                        default: e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                    endcase
+                                end
+                            end
+                            // ── Zbb: REV8 ───────────────────────────────
+                            7'b0110100: begin
+                                if (e1_inst[i].funct3 == 3'b101) begin // REV8
+                                    e1_result[i] = {e1_rs1_data[i][7:0],   e1_rs1_data[i][15:8],
+                                                    e1_rs1_data[i][23:16], e1_rs1_data[i][31:24]};
+                                end else begin
+                                    e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                end
+                            end
+                            // ── Zbb: ORC.B ──────────────────────────────
+                            7'b0010100: begin
+                                if (e1_inst[i].funct3 == 3'b101) begin // ORC.B
+                                    e1_result[i] = {
+                                        (|e1_rs1_data[i][31:24]) ? 8'hFF : 8'h00,
+                                        (|e1_rs1_data[i][23:16]) ? 8'hFF : 8'h00,
+                                        (|e1_rs1_data[i][15:8])  ? 8'hFF : 8'h00,
+                                        (|e1_rs1_data[i][7:0])   ? 8'hFF : 8'h00
+                                    };
+                                end else begin
+                                    e1_result[i] = alu_compute(e1_inst[i].funct3, e1_inst[i].funct7[5], e1_rs1_data[i], e1_rs2_data[i]);
+                                end
+                            end
+                            // ── Standard RV32I ALU ──────────────────────
+                            default: begin
+                                e1_result[i] = alu_compute(
+                                    e1_inst[i].funct3,
+                                    e1_inst[i].funct7[5],
+                                    e1_rs1_data[i],
+                                    e1_rs2_data[i]
+                                );
+                            end
+                        endcase
                     end
 
                     // ── BRANCH: 条件分支判定 (execute-alu.html §3.2) ──
                     FU_BRANCH: begin
-                        branch_taken[i] = branch_evaluate(
-                            e1_inst[i].funct3,
-                            e1_rs1_data[i],
-                            e1_rs2_data[i]
-                        );
                         is_branch[i] = 1'b1;
 
-                        // JAL: 无条件跳转, target = PC + imm
-                        if (e1_inst[i].funct7[6]) begin
-                            // 编码: funct7[6]=1 表示 JAL
+                        // JAL: opcode=1101111 (无条件跳转)
+                        if (e1_inst[i].inst[6:0] == 7'b1101111) begin
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             e1_result[i]     = e1_inst[i].pc + 32'd4; // rd = PC+4
                         end
-                        // JALR: target = (rs1 + imm) & ~1
-                        else if (e1_inst[i].funct7[5]) begin
+                        // JALR: opcode=1100111 (间接跳转)
+                        else if (e1_inst[i].inst[6:0] == 7'b1100111) begin
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = (e1_rs1_data[i] + e1_inst[i].imm) & ~32'h1;
                             e1_result[i]     = e1_inst[i].pc + 32'd4;
                         end
-                        // 条件分支
+                        // 条件分支: opcode=1100011
                         else begin
+                            branch_taken[i] = branch_evaluate(
+                                e1_inst[i].funct3,
+                                e1_rs1_data[i],
+                                e1_rs2_data[i]
+                            );
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             if (branch_taken[i])
-                                e1_result[i] = branch_target[i]; // 不需要, 但占位
+                                e1_result[i] = branch_target[i]; // 占位
                         end
 
                         // 误预测检测: 比较预测与实际
@@ -398,15 +552,20 @@ module lumi_execute #(
 
                     // ── MUL: 1-cycle (execute-alu.html §3.1) ──
                     FU_MUL: begin
-                        // 结果在 E2 级输出, E1 级不输出
-                        e1_valid_out[i] = 1'b0;  // MUL 不经过 E1 旁路
+                        // E2 输出结果, 但 valid 信号正常传播到 M 级
+                        // E1 结果占位 (实际结果由 E2→M 旁路替换)
+                        e1_result[i] = 32'h0;
+                        e1_valid_out[i] = e1_valid[i]; // valid 正常传播
                     end
 
                     // ── DIV: 多 cycle, 阻塞 (execute-alu.html §3.2) ──
                     FU_DIV: begin
-                        e1_valid_out[i] = 1'b0;  // DIV 不经过 E1 旁路
                         if (div_busy_r) begin
                             e1_valid_out[i] = 1'b0; // DIV 忙, 需要 stall
+                        end else begin
+                            // DIV 完成, valid 正常传播
+                            e1_result[i] = div_result_r;
+                            e1_valid_out[i] = e1_valid[i];
                         end
                     end
 
@@ -415,19 +574,24 @@ module lumi_execute #(
                         e1_result[i] = e1_rs1_data[i] + e1_inst[i].imm; // 有效地址
                     end
 
-                    // ── MISC: CSR, ECALL, EBREAK 等 ──
+                    // ── MISC: CSR, ECALL, EBREAK, FENCE 等 ──
                     FU_MISC: begin
                         e1_result[i] = e1_rs1_data[i]; // pass-through
-                        // ECALL
-                        if (e1_inst[i].inst[31:20] == 12'h000 && e1_inst[i].funct3 == 3'b000) begin
+                        // ECALL: opcode=SYSTEM(1110011), funct12=0, funct3=0
+                        if (e1_inst[i].inst[6:0] == 7'b1110011 &&
+                            e1_inst[i].inst[31:20] == 12'h000 &&
+                            e1_inst[i].funct3 == 3'b000) begin
                             e1_exception[i] = 1'b1;
-                            e1_exc_cause[i] = EXC_ECALL_M[3:0]; // 简化
+                            e1_exc_cause[i] = EXC_ECALL_M[3:0];
                         end
-                        // EBREAK
-                        if (e1_inst[i].inst[31:20] == 12'h001 && e1_inst[i].funct3 == 3'b000) begin
+                        // EBREAK: opcode=SYSTEM(1110011), funct12=1, funct3=0
+                        if (e1_inst[i].inst[6:0] == 7'b1110011 &&
+                            e1_inst[i].inst[31:20] == 12'h001 &&
+                            e1_inst[i].funct3 == 3'b000) begin
                             e1_exception[i] = 1'b1;
                             e1_exc_cause[i] = EXC_BREAKPOINT[3:0];
                         end
+                        // FENCE (opcode=0001111): NOP, 无异常, 无操作
                     end
 
                     default: begin

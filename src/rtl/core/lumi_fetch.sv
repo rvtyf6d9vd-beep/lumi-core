@@ -21,7 +21,7 @@ module lumi_fetch #(
     output logic [31:0]             f1_pc_out,
 
     // ── F2 级输入 (← ICache) ──────────────────────────────────
-    input  logic [127:0]            f2_icache_data,        // 16 bytes (fetch-bpred.html §3.2)
+    input  logic [127:0]            f2_icache_data, // 128-bit ICache line (4 instructions)
     input  logic                    f2_icache_valid,
 
     // ── F2 级输出 (→ Decode) ──────────────────────────────────
@@ -38,6 +38,9 @@ module lumi_fetch #(
     input  logic [31:0]             tage_update_pc,          // LTAGE 更新 (fetch-bpred.html §3.3)
     input  logic                    tage_update_taken,
     input  logic                    tage_update_valid,
+
+    // ── Decode back-pressure (← Decode/Issue) ──────────────────
+    input  logic                    dec_stall,             // decode 阻塞: 保持 PC 不前进
 
     // ── Debug ─────────────────────────────────────────────────
     input  logic                    debug_halt
@@ -152,7 +155,7 @@ module lumi_fetch #(
     logic [31:0]               f1_pred_target_r;
     logic                      f1_btb_hit_r;
 
-    logic [127:0]              f2_data_r;
+    logic [127:0]                f2_data_r;
     logic                      f2_valid_r;
     logic [31:0]               f2_pc_r;
     logic                      f2_pred_taken_r;
@@ -319,10 +322,12 @@ module lumi_fetch #(
             end
 
             // ── F2 级: ICache 数据到达 ──────────────────────
+            // 修复: V1 SRAM 旁路 ICache 为组合逻辑, 数据对应当前 pc_reg.
+            // 因此 f2_pc_r 必须捕获当前 pc_reg, 而非上一周期的 f1_pc_r.
             if (state_reg == ST_FETCH && f2_icache_valid) begin
                 f2_data_r        <= f2_icache_data;
                 f2_valid_r       <= 1'b1;
-                f2_pc_r          <= f1_pc_r;
+                f2_pc_r          <= pc_reg;  // 当前 PC (与 ICache 数据匹配)
                 f2_pred_taken_r  <= f1_pred_taken_r;
                 f2_pred_target_r <= f1_pred_target_r;
             end else begin
@@ -414,21 +419,23 @@ module lumi_fetch #(
     // ═══════════════════════════════════════════════════════════
     // F2 级: 指令拆分与有效计数
     // ═══════════════════════════════════════════════════════════
+    localparam int ICACHE_WORDS = 128 / 32;  // 4 words per 128-bit cache line
+
     always_comb begin
-        // 从 128-bit ICache 行拆分出 FETCH_WIDTH(6) 条 32-bit 指令
+        // 从 128-bit ICache 行拆分出最多 FETCH_WIDTH(6) 条 32-bit 指令
         for (int i = 0; i < FETCH_WIDTH; i++) begin
             f2_raw_inst[i] = f2_data_r[i*32 +: 32];
         end
 
-        // 计算有效指令数
+        // 计算有效指令数: 128-bit ICache = 4 words
         f2_count_comb = {$clog2(FETCH_WIDTH)+1{1'b0}};
         if (f2_valid_r) begin
             // 如果预测分支 taken, 只有一条 (分支指令本身)
             if (f2_pred_taken_r) begin
                 f2_count_comb = {{$clog2(FETCH_WIDTH){1'b0}}, 1'b1};
             end else begin
-                // 全部有效
-                f2_count_comb = FETCH_WIDTH[$clog2(FETCH_WIDTH):0];
+                // 128-bit ICache 提供 4 条有效指令
+                f2_count_comb = ICACHE_WORDS[$clog2(FETCH_WIDTH):0];
             end
         end
     end
@@ -467,12 +474,16 @@ module lumi_fetch #(
                     state_next = ST_FLUSH;
                     flush_cnt_next  = 2'd2;
                     pc_next    = branch_redirect_pc;
+                end else if (dec_stall) begin
+                    // decode back-pressure: 保持 PC, 不发新请求
+                    pc_next = pc_reg;
+                    state_next = ST_FETCH;
                 end else if (f2_icache_valid) begin
                     // ICache 响应有效: PC 前进
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
                     end else begin
-                        pc_next = pc_reg + 32'd24; // FETCH_WIDTH * 4 = 24 bytes
+                        pc_next = pc_reg + 32'd16; // 128-bit ICache = 4 words = 16 bytes
                     end
                     state_next = ST_FETCH;  // 保持取指
                 end else begin
@@ -489,12 +500,16 @@ module lumi_fetch #(
                     state_next = ST_FLUSH;
                     flush_cnt_next  = 2'd2;
                     pc_next    = branch_redirect_pc;
+                end else if (dec_stall) begin
+                    // decode back-pressure: 保持 PC, 不前进
+                    pc_next = pc_reg;
+                    state_next = ST_STALL;
                 end else if (f2_icache_valid) begin
                     // ICache 就绪, 恢复取指
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
                     end else begin
-                        pc_next = pc_reg + 32'd24; // FETCH_WIDTH * 4
+                        pc_next = pc_reg + 32'd16; // 128-bit ICache = 4 words = 16 bytes
                     end
                     state_next = ST_FETCH;
                 end

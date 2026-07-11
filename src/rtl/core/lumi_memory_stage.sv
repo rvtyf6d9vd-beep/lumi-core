@@ -244,6 +244,7 @@ module lumi_memory_stage #(
     logic [31:0]            m_pipe_result [ISSUE_WIDTH-1:0];
     logic [4:0]             m_pipe_rd [ISSUE_WIDTH-1:0];
     logic [31:0]            m_pipe_pc [ISSUE_WIDTH-1:0];
+    logic [31:0]            m_pipe_inst [ISSUE_WIDTH-1:0]; // 显式捕获指令字
     logic [ISSUE_WIDTH-1:0] m_pipe_exception;
 
     // ── 时序逻辑 ──
@@ -266,6 +267,7 @@ module lumi_memory_stage #(
                 m_pipe_valid[i] <= m_valid[i];
                 m_pipe_rd[i]    <= m_rd[i];
                 m_pipe_pc[i]    <= m_inst[i].pc;
+                m_pipe_inst[i]  <= m_inst[i].inst; // 显式捕获指令字
 
                 if (m_valid[i]) begin
                     case (m_inst[i].fu_type)
@@ -407,6 +409,7 @@ module lumi_memory_stage #(
     always_comb begin
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             m_inst_out[i]      = m_pipe[i];
+            m_inst_out[i].inst = m_pipe_inst[i]; // 使用显式捕获的指令字
             m_result_out[i]    = m_pipe_result[i];
             m_rd_out[i]        = m_pipe_rd[i];
             m_pc_out[i]        = m_pipe_pc[i];

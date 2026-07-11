@@ -1,0 +1,41 @@
+# ═══════════════ 计划注册表：全球唯一计划编码索引 ═══════════════
+# 所有项目计划文档在此注册全局编码（PLN-xxxx），序号递增永不重置。
+# 规则 26 要求每个计划必须先注册后使用。
+
+plan_registry:
+  # ---- 已有计划（追溯注册） ----
+  - plan_id: "PLN-0001"
+    title: "M2-S1 详细设计执行计划"
+    file: "docs/design/m2-s1-execution-plan.yaml"
+    status: completed
+    created: "2026-06-10"
+    updated: "2026-06-15"
+
+  - plan_id: "PLN-0002"
+    title: "里程碑计划定义"
+    file: "docs/project/milestone-plan.yaml"
+    status: active
+    created: "2026-06-24"
+    updated: "2026-06-24"
+
+  - plan_id: "PLN-0003"
+    title: "覆盖率计划"
+    file: "docs/verification/coverage-plan.yaml"
+    status: active
+    created: "2026-07-01"
+    updated: "2026-07-01"
+
+  # ---- 新增计划在此追加 ----
+  - plan_id: "PLN-0004"
+    title: "M3 RTL 冻结详细执行计划 (v2.0)"
+    file: "docs/project/M3_RTL冻结详细执行计划.md"
+    status: active
+    created: "2026-07-07"
+    updated: "2026-07-11"
+
+  - plan_id: "PLN-0005"
+    title: "M3 RTL 冻结 — 详细长执行计划"
+    file: "docs/project/M3_RTL冻结_详细长执行计划.md"
+    status: active
+    created: "2026-07-11"
+    updated: "2026-07-11"

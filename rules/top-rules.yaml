@@ -1,4 +1,4 @@
-# Lumi 通用项目规则（19 条）
+# Lumi 通用项目规则（26 条）
 # 源自 Top Rules_Optimized.md 第三章
 
 rules:
@@ -319,4 +319,67 @@ rules:
       - "每个任务有明确的 Phase 标记"
       - "Milestone 门禁报告引用 MS 编号（规则 10）"
       - "role-mapping.yaml 中 applicable_phases 与 schema.yaml 一致"
+    audit_role: true
+
+  # ── 3.10 门禁权限 ──
+  - id: "24"
+    title: "门禁不可自解释或降低"
+    category: general
+    severity: critical
+    applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
+    applicable_phases: [architecture, design, implementation, verification, delivery]
+    description: >
+      门禁检查过程中，AI Agent 不得自行解释门禁标准、自行降低门禁要求
+      或自行标注门禁通过。任何门禁标准的调整或豁免必须由人类项目负责人
+      介入并签署确认后方可生效。门禁报告中的每一项 PASS 状态必须有明确的
+      人类确认记录（如 sign-off 签名、审批评论或会议纪要），不得由 AI 独立
+      判定。门禁标准本身（检查项、通过条件）的调整也需要正式变更记录和
+      人类 Sign-off。
+    check_type: automated
+    check_criteria:
+      - "门禁报告中每项 PASS 有对应人类确认记录（签名/审批/纪要）"
+      - "无 AI 自行标注 PASS 而无人类确认的情况"
+      - "门禁标准调整有正式变更记录和人类 Sign-off"
+    audit_role: true
+
+  # ── 3.11 计划审核与风险 ──
+  - id: "25"
+    title: "复杂计划交叉审查建议"
+    category: general
+    severity: medium
+    applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      当智能体（AI Agent）制定计划，并判断该计划因其复杂度可能引入风险时
+      （如涉及重大架构变更、多模块耦合、技术不确定性高、或跨角色协调等），
+      必须在计划文档的醒目位置（如标题下方或风险章节开头）显式建议
+      计划审核者使用多个不同的模型或系统进行交叉审查与验证，
+      以降低单一模型视角可能带来的盲区。
+    check_type: automated
+    check_criteria:
+      - "高风险/高复杂度计划文档中包含交叉审查建议"
+      - "交叉审查建议位于计划文档醒目位置（标题下方/风险章节开头）"
+      - "建议内容明确提及'多模型交叉审查'或'交叉验证'"
+    audit_role: true
+
+  # ── 3.12 计划编码 ──
+  - id: "26"
+    title: "计划统一编码"
+    category: general
+    severity: high
+    applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      所有项目计划文档必须使用统一的全局编码体系，不得在每个计划内
+      从 Task 1 / Batch 1 等局部编号重新开始。计划编码格式为
+      PLN-{4位全局序号}（如 PLN-0001、PLN-0002），序号全局递增、
+      永不重置。每个计划文档必须在标题下方标注 plan_id，文件名
+      建议包含 plan_id 以方便检索。计划编码需在 docs/project/plan-registry.yaml
+      中注册，确保无重复、无遗漏，便于事后整理和复盘。
+    check_type: automated
+    check_criteria:
+      - "docs/project/plan-registry.yaml 存在且所有计划已注册"
+      - "每个计划文档在标题醒目位置标注 plan_id（PLN-xxxx）"
+      - "计划文档内部不再使用局部 Task 1 / Batch 1 等重复起始编号"
+      - "全局序号无跳号、无重复"
     audit_role: true

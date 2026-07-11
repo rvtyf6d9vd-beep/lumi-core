@@ -1,0 +1,19 @@
+cover_group: cg_isa_rv32i
+covered: 4 / 40
+hit_mask: 0010000000000000000000001000011000000000
+
+cover_group: cg_isa_m_ext
+covered: 0 / 8
+hit_mask: 00000000
+
+cover_group: cg_isa_b_ext
+covered: 0 / 16
+hit_mask: 0000000000000000
+
+cover_group: cg_isa_c_ext
+covered: 0 / 12
+hit_mask: 000000000000
+
+cover_group: cg_isa_zce
+covered: 0 / 4
+hit_mask: 0000

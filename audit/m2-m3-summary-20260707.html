@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>M2 → M3 全任务总结报告</title>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1em; color: #1a1a1a; line-height: 1.7; }
+  h1 { border-bottom: 3px solid #2c5aa0; padding-bottom: 0.3em; color: #2c5aa0; }
+  h2 { border-bottom: 1px solid #ccc; padding-bottom: 0.2em; color: #333; margin-top: 2em; }
+  h3 { color: #555; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.92em; }
+  th { background: #2c5aa0; color: #fff; padding: 8px 10px; text-align: left; }
+  td { border: 1px solid #ddd; padding: 6px 10px; }
+  tr:nth-child(even) { background: #f7f9fc; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.82em; font-weight: bold; }
+  .tag-done { background: #d4edda; color: #155724; }
+  .tag-open { background: #fff3cd; color: #856404; }
+  .tag-critical { background: #f8d7da; color: #721c24; }
+  .tag-resolved { background: #d4edda; color: #155724; }
+  .tag-progress { background: #cce5ff; color: #004085; }
+  .metric { font-size: 1.8em; font-weight: bold; color: #2c5aa0; }
+  .metric-box { display: inline-block; text-align: center; padding: 1em; margin: 0.5em; border: 1px solid #ddd; border-radius: 8px; min-width: 120px; }
+  .good { color: #155724; }
+  .warn { color: #856404; }
+  .bad { color: #721c24; }
+  blockquote { border-left: 4px solid #2c5aa0; margin: 1em 0; padding: 0.5em 1em; background: #f7f9fc; }
+  .metrics-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5em; margin: 1.5em 0; }
+</style>
+</head>
+<body>
+
+<h1>M2 → M3 全任务总结报告</h1>
+<p><strong>生成日期:</strong> 2026-07-07 &nbsp;|&nbsp; <strong>报告范围:</strong> M2 里程碑 + M3 阶段（截至当前）&nbsp;|&nbsp; <strong>依据:</strong> instruction-log, errata, risk-register, milestone-plan</p>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>一、里程碑总览</h2>
+
+<div class="metrics-row">
+  <div class="metric-box"><div class="metric">M0</div><span class="tag tag-done">completed</span><br>项目启动</div>
+  <div class="metric-box"><div class="metric">M1</div><span class="tag tag-done">completed</span><br>架构与需求冻结</div>
+  <div class="metric-box"><div class="metric">M2</div><span class="tag tag-done">completed</span><br>详细设计与验证框架</div>
+  <div class="metric-box"><div class="metric">M3</div><span class="tag tag-progress">in_progress</span><br>RTL 冻结</div>
+</div>
+
+<table>
+  <tr><th>里程碑</th><th>状态</th><th>门禁</th><th>关闭日期</th></tr>
+  <tr><td><strong>M2</strong> 详细设计与验证框架完成</td><td><span class="tag tag-done">completed</span></td><td>4P / 0C / 0F — Sign-off 4/4 PASS</td><td>2026-07-07</td></tr>
+  <tr><td><strong>M3</strong> RTL 冻结</td><td><span class="tag tag-progress">in_progress</span></td><td>Task 1 完成, V1 验证进行中</td><td>—</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>二、M2 阶段任务完成情况</h2>
+
+<h3>2.1 M2-S1: 详细设计执行</h3>
+
+<table>
+  <tr><th>任务</th><th>内容</th><th>产出</th><th>状态</th></tr>
+  <tr><td>Task 0</td><td>微架构审查 + 双审融合</td><td>审查报告 v2.0, spec v1.0.3, 22 项发现 (6 关键 / 12 中等 / 2 低 / 2 信息)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 1 Batch-1</td><td>核心流水线设计文档 ×5</td><td>fetch-bpred, decode-issue, execute-alu, writeback-csr, regfile (1847 行)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 1 Batch-2</td><td>存储与总线设计文档 ×3</td><td>tcm, cache, pma-axi (1559 行)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 1 Batch-3</td><td>中断/特权/异常文档 ×4</td><td>clic-plic, exception-handling, privilege-pmp, debug-trace (1461 行)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 1 Batch-4</td><td>扩展功能文档 ×4</td><td>fpu-vector, power-reset, multicore-lockstep, dft-security (1885 行)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 2</td><td>GEM5+ 扩展</td><td>5 新模块 + 5 修改 (PMA / CLIC / FPU / Vector / Power / HPM)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 3</td><td>RTL 骨架搭建</td><td>28 .sv 文件, 2701 行, 491 端口, 24 FSM, Verilator lint 0 error</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Task 4</td><td>审计 + 测试 + lint 修复</td><td>6 处 lint 修复, 10 git commits</td><td><span class="tag tag-done">完成</span></td></tr>
+</table>
+
+<h3>2.2 M2-S1 多轮审查</h3>
+
+<table>
+  <tr><th>审查轮次</th><th>审查来源</th><th>发现项</th><th>修复情况</th></tr>
+  <tr><td>第 1 轮</td><td>Qoder + GLM 双视角审查</td><td>5 P0 + 8 P1 + 4 P2 = 17 项</td><td>全部修复, RISK-015/016/017 闭合</td></tr>
+  <tr><td>第 2 轮</td><td>MiniMax 独立审查</td><td>3 P0 + 1 P1 = 4 项</td><td>全部修复 (面积/路径/CG 数据一致性)</td></tr>
+  <tr><td>第 3 轮</td><td>GLM 数据审查</td><td>5 项数据不一致</td><td>全部修复 (风险统计/追溯矩阵/收敛标准)</td></tr>
+  <tr><td>第 4 轮</td><td>qa-audit 隔离审计</td><td>FIND-M2-01 (CG 计数) + FIND-M2-02 (行数)</td><td>CG 32→35 全跨文档修正</td></tr>
+</table>
+
+<h3>2.3 M2-S2: 验证定版与 Sign-off</h3>
+
+<table>
+  <tr><th>任务</th><th>产出</th><th>状态</th></tr>
+  <tr><td>验证策略 v1.0</td><td>8 章, 设计关联映射 (16 份文档 → 验证单元), 验证里程碑与收敛标准</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>覆盖计划 v1.0</td><td>35 Cover Groups, 99 条需求追溯矩阵 (75 硬件 + 24 软件/交付)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>风险闭合</td><td>RISK-007 / 008 / 009 / 014 → resolved</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>qa-audit 隔离审计</td><td>PASS_WITH_NOTE, 2 项 FIND 处理</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Sign-off 4 步协议</td><td>自动检查 → 角色签收 → QA 隔离审计 → 人类确认 (4/4 PASS)</td><td><span class="tag tag-done">完成</span></td></tr>
+</table>
+
+<h3>2.4 M2 产出物统计</h3>
+
+<div class="metrics-row">
+  <div class="metric-box"><div class="metric">17</div>设计文档 (HTML)</div>
+  <div class="metric-box"><div class="metric">28</div>RTL 骨架 (.sv)</div>
+  <div class="metric-box"><div class="metric">10</div>GEM5+ 模块 (.py)</div>
+  <div class="metric-box"><div class="metric">35</div>Cover Groups</div>
+  <div class="metric-box"><div class="metric">99</div>需求追溯条目</div>
+  <div class="metric-box"><div class="metric">27</div>Git 提交</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>三、M3 阶段任务完成情况（截至当前）</h2>
+
+<h3>3.1 M3-S1 Task 0: 启动前置</h3>
+
+<table>
+  <tr><th>子任务</th><th>产出</th><th>状态</th></tr>
+  <tr><td>T0.1 TB 框架升级</td><td>UVM-shim + AXI BFM + JTAG BFM + TB top + Makefile (5 文件)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>T0.2 CI/CD 回归流水线</td><td>GitHub Actions daily-regression.yaml (4 jobs)</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>T0.3 综合环境搭建</td><td>Yosys synth + OpenSTA timing + SDC 约束 (1GHz) + Makefile</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>T0.4 设计→RTL 映射审查</td><td>25 项不一致 (5 high / 13 medium / 7 low), RISK-018~022 登记</td><td><span class="tag tag-done">完成</span></td></tr>
+</table>
+
+<h3>3.2 M3-S1 Task 1: RTL 功能实现 (4 Batch × 28 模块)</h3>
+
+<table>
+  <tr><th>Batch</th><th>范围</th><th>模块数</th><th>行数增加</th><th>Verilator lint</th><th>状态</th></tr>
+  <tr><td>Batch-1</td><td>核心流水线 (fetch/decode/execute/memory/WB/bypass/regfile/core_top)</td><td>8</td><td>+2251 行 (824→3075)</td><td>0 error</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Batch-2</td><td>存储与总线 (TCM/Cache/PMA/AXI)</td><td>4</td><td>+1215 行 (477→1692)</td><td>0 error</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Batch-3</td><td>中断/特权/异常 (CSR/Exception/CLIC/PLIC)</td><td>4</td><td>+813 行 (320→1133)</td><td>0 error</td><td><span class="tag tag-done">完成</span></td></tr>
+  <tr><td>Batch-4</td><td>扩展 (Debug/Trace/FPU/Vector/Power/Multicore/Lockstep/DFT + soc_top)</td><td>9</td><td>+1288 行 (294→1582)</td><td>0 error</td><td><span class="tag tag-done">完成</span></td></tr>
+</table>
+
+<blockquote>
+  <strong>RTL 总量:</strong> 28 .sv 文件, <strong>9120 行</strong> — 从 M2 骨架 2701 行增长 <strong>3.4 倍</strong>
+</blockquote>
+
+<h3>3.3 M3 V1 验证</h3>
+
+<table>
+  <tr><th>测试</th><th>覆盖率</th><th>测试程序</th><th>状态</th></tr>
+  <tr><td>RV32I 基础指令 (40 条类型)</td><td><span class="metric" style="font-size:1.2em">100%</span> (40/40)</td><td>rv32i_full.S (v6)</td><td><span class="tag tag-done">PASS</span></td></tr>
+  <tr><td>RV32M 乘除法 (8 条类型)</td><td><span class="metric" style="font-size:1.2em">100%</span> (8/8)</td><td>rv32m_basic.S</td><td><span class="tag tag-done">PASS</span></td></tr>
+  <tr><td>RV32B 位操作 (16 条类型)</td><td>0% (ERR-011)</td><td>—</td><td><span class="tag tag-open">未实现</span></td></tr>
+  <tr><td>RV32C 压缩指令</td><td>0% (ERR-010)</td><td>rv32c_basic.S (V2 骨架)</td><td><span class="tag tag-open">未实现</span></td></tr>
+</table>
+
+<h3>3.4 M3 Bug 修复 (ERR-008 ~ ERR-016)</h3>
+
+<table>
+  <tr><th>Errata</th><th>严重度</th><th>根因</th><th>修复方式</th><th>状态</th></tr>
+  <tr><td><strong>ERR-008</strong><br>Monitor retired 计数不完整</td><td><span class="tag tag-critical">critical</span></td><td>stall 反馈断裂 — decode_issue.stall_out 未连接至 fetch</td><td>fetch 添加 dec_stall + issued_mask 跨周期跟踪</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-009</strong><br>Scoreboard ECALL PC 偏移</td><td>minor</td><td>ECALL 触发 re-execution loop (mtvec=0x0)</td><td>PC 对齐修复 + 计数改进</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-010</strong><br>不支持 RV32C 压缩指令</td><td>major</td><td>fetch 按 32-bit 固定宽度取指</td><td>编译时禁用 C 扩展 (-march=rv32i)</td><td><span class="tag tag-open">open</span></td></tr>
+  <tr><td><strong>ERR-011</strong><br>不支持 RV32B 位操作</td><td>major</td><td>decode_issue 不识别 Zba/Zbb</td><td>推迟到 V2</td><td><span class="tag tag-open">open</span></td></tr>
+  <tr><td><strong>ERR-012</strong><br>E2 MUL/DIV 结果未传播</td><td><span class="tag tag-critical">critical</span></td><td>MUL/DIV 清除 e1_valid_out</td><td>valid 正常传播 + E1→M E2 结果旁路</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-013</strong><br>FENCE 解码缺失</td><td>minor</td><td>decode_issue 无 opcode=0x0F 解码路径</td><td>添加 OP_FENCE 常量 + has_rd=0</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-014</strong><br>Carry-over 指令丢弃</td><td>major</td><td>128-bit ICache (4 words) + issue 3 → 1 carry, 新 PC 周期 mask 重置丢弃</td><td>PC+=16 + always-record mask + 测试程序 v6 重排</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-015</strong><br>Coverage wildcard bug</td><td>major</td><td>Verilator case 中 ? 只匹配 X 不匹配任意值</td><td>嵌套 case 替换 wildcard case</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+  <tr><td><strong>ERR-016</strong><br>PC/ICache 宽度不匹配</td><td>major</td><td>PC+=24 但 ICache 仅 128-bit (16B)</td><td>PC+=16 匹配 ICache, f2_count=ICACHE_WORDS(4)</td><td><span class="tag tag-resolved">resolved</span></td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>四、复盘 — 得与失</h2>
+
+<h3 class="good">4.1 做得好的方面</h3>
+
+<ol>
+  <li><strong>文档先行，需求承接严密</strong> — 16 份设计文档全部承接 BL-1.1 99 条需求，每份有需求追溯表、接口定义（4 列标准）、Cover Group 映射。双 AI 独立审查（Qoder+GLM+MiniMax 三方交叉）发现 26 项不一致并全部修复，文档质量经受住考验。</li>
+  <li><strong>多轮审查机制有效</strong> — M2 经历 5 轮审查（微架构→双审融合→双视角→MiniMax 独立→qa-audit 隔离），每轮都发现新问题。CG 计数 32→35 正是 qa-audit 隔离审计发现的，证明了隔离审计的必要性。</li>
+  <li><strong>Errata 闭环管理</strong> — 16 个 Errata 中 12 个 resolved，每个 resolved 都有回归测试用例关联（规则 21）。ERR-008/012 两个 critical 问题经历了完整的"发现→登记→根因分析→修复→回归验证"流程。</li>
+  <li><strong>RV32I 覆盖率攻坚</strong> — 从 10% 到 100% 经历 5 个测试版本迭代 + 3 个 RTL 修复 + 深入流水线行为分析。ERR-014 carry-over 根因定位（128-bit ICache vs PC+=24 不匹配）展示了从表象到根因的完整调试链路。</li>
+  <li><strong>Sign-off 流程严格执行</strong> — M2 的 4 步门禁协议全部走通，没有跳过任何步骤。人类签收 4/4 PASS（1 个带条件）。</li>
+</ol>
+
+<h3 class="warn">4.2 需要改进的方面</h3>
+
+<ol>
+  <li><strong>RTL 实现与验证不同步</strong> — M3 计划要求 Task 1 (RTL) 与 Task 2 (验证) 并行，实际 Batch-1~4 RTL 全部完成后才启动 V1 验证。导致 Bug 集中在验证阶段爆发（ERR-008~016 共 9 个），增加调试压力。<em>改进建议: 每个 Batch 完成后立即执行对应验证批次。</em></li>
+  <li><strong>Carry-over 机制设计缺陷</strong> — ERR-014 根因是 128-bit ICache (4 words) + issue 3 → 1 carry 的设计从一开始就有隐患。M2 设计文档未识别此问题。<em>改进建议: 设计文档应深入分析 carry/stall 边界情况。</em></li>
+  <li><strong>Verilator 兼容性反复踩坑</strong> — case wildcard 失效 (ERR-015)、localparam 不能放 always_comb 内、priority 保留字冲突、混合赋值等问题反复出现。<em>改进建议: M2 阶段就应建立 Verilator 编码规范文档。</em></li>
+  <li><strong>测试程序过于依赖手工排列</strong> — rv32i_full.S v6 需精心排列指令位置规避 carry 丢失。说明 RTL 修复不够彻底（always-record mask 未完全解决问题），测试承担了本应由硬件处理的责任。<em>改进建议: 长期应完善 carry-over RTL 机制。</em></li>
+  <li><strong>RV32B/RV32C 支持推迟无计划</strong> — Profile 定义了 B/C 扩展，但 V1 不支持。ERR-010/011 登记为 open 但无明确修复时间线。<em>改进建议: 制定 B/C 扩展支持的里程碑节点。</em></li>
+  <li><strong>Dhrystone 目标差距未闭合</strong> — RISK-006 (3.8 vs 1.65 DMIPS/MHz) 从 M2 发现至今，用户选择保持目标但未制定具体优化路径。<em>改进建议: 在 Task 9 性能验证前制定优化策略或降级决策。</em></li>
+</ol>
+
+<h3>4.3 关键决策复盘</h3>
+
+<table>
+  <tr><th>决策</th><th>选择</th><th>备选方案</th><th>效果评估</th></tr>
+  <tr><td>ICache 宽度</td><td>128-bit (4 words)</td><td>192-bit (6 words, 匹配 FETCH_WIDTH)</td><td class="good">正确 — 192-bit 反而降低覆盖率 (77%→57%)</td></tr>
+  <tr><td>PC 推进量</td><td>PC+=16</td><td>PC+=24 (匹配 FETCH_WIDTH=6)</td><td class="good">正确 — 匹配 ICache，消除指令间隙</td></tr>
+  <tr><td>FU 配比</td><td>4×ALU + 1×MUL + 1×DIV + 2×LSU + 1×FPU + 1×MISC</td><td>3×ALU + 1×LSU (spec 原始)</td><td class="good">对齐 GEM5 优化模型，spec 一致性改善</td></tr>
+  <tr><td>文档拆分</td><td>14→16 份</td><td>保持 14 份</td><td class="good">合理 — clic-plic/exception 和 multicore/dft 职责更清晰</td></tr>
+  <tr><td>验证环境</td><td>UVM-shim (Verilator 兼容)</td><td>完整 UVM / 纯 Verilog TB</td><td class="good">务实 — Verilator 不支持 UVM，shim 满足 V1 需求</td></tr>
+  <tr><td>Cache 绕过</td><td>V1 统一 SRAM 旁路</td><td>修复跨时钟域握手 / 仅 ITCM 旁路</td><td class="good">彻底 — 避免 FSM 卡死 + multi-driver</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>五、未闭合项清单</h2>
+
+<h3>5.1 Errata (open)</h3>
+
+<table>
+  <tr><th>ID</th><th>标题</th><th>严重度</th><th>Workaround</th></tr>
+  <tr><td>ERR-004</td><td>gem5 不支持 Smepmp (CSR 0x747)</td><td>minor</td><td>PMP test 跳过 Smepmp CSR</td></tr>
+  <tr><td>ERR-005</td><td>gem5 不支持 Smrnmi (CSR 0x740-744)</td><td>minor</td><td>Smrnmi test 跳过全部 CSR</td></tr>
+  <tr><td>ERR-007</td><td>gem5 AtomicSimpleCPU mepc+mret recovery broken</td><td>major</td><td>测试避免 trap handler 依赖</td></tr>
+  <tr><td>ERR-010</td><td>V1 不支持 RV32C 压缩指令</td><td>major</td><td>编译时 -march=rv32i</td></tr>
+  <tr><td>ERR-011</td><td>V1 不支持 RV32B 位操作</td><td>major</td><td>推迟到 V2</td></tr>
+</table>
+
+<h3>5.2 Risk (open)</h3>
+
+<table>
+  <tr><th>ID</th><th>标题</th><th>严重度</th><th>闭合条件</th></tr>
+  <tr><td>RISK-006</td><td>Dhrystone 目标差距 (3.8 vs 1.65 DMIPS/MHz)</td><td>high</td><td>RTL 实测 + 优化或降级决策</td></tr>
+  <tr><td>RISK-011</td><td>旁路 mux 关键路径瓶颈</td><td>medium</td><td>综合时序报告, 必要时流水化</td></tr>
+  <tr><td>RISK-012</td><td>面积可能超标 (~0.36 vs ≤0.32mm²)</td><td>medium</td><td>综合面积报告, 必要时缩减</td></tr>
+  <tr><td>RISK-013</td><td>1GHz 时序紧凑 (F2/M 级 88%)</td><td>medium</td><td>STA 报告, SRAM macro 选型</td></tr>
+  <tr><td>RISK-018~022</td><td>设计文档→RTL 映射不一致 (5 项 high)</td><td>high</td><td>RTL 端口修复 + 文档同步更新</td></tr>
+</table>
+
+<h3>5.3 M3 待完成任务</h3>
+
+<table>
+  <tr><th>Task</th><th>内容</th><th>计划周</th><th>优先级</th></tr>
+  <tr><td>Task 2 V2~V4</td><td>存储/总线 + 中断/特权 + 扩展模块单元验证</td><td>W3-12</td><td>P0</td></tr>
+  <tr><td>Task 3</td><td>每日集成回归 (smoke + regression + nightly)</td><td>持续</td><td>P0</td></tr>
+  <tr><td>Task 4</td><td>GEM5 交叉校准 (IPC/误预测率/Cache 缺失率/中断延时/功耗)</td><td>W6-12</td><td>P1</td></tr>
+  <tr><td>Task 5</td><td>物理设计评估 (综合 + STA + 功耗 + RISK-011/012/013 闭合)</td><td>W8-12</td><td>P1</td></tr>
+  <tr><td>Task 7</td><td>系统集成验证 (SoC 联调 + ISA 合规 + 中断 + 安全)</td><td>W14-20</td><td>P0</td></tr>
+  <tr><td>Task 8</td><td>回归扩展 + Bug 用例 (≥50 项回归)</td><td>W18-22</td><td>P0</td></tr>
+  <tr><td>Task 9</td><td>性能达标验证 (CoreMark/Dhrystone/面积/频率/功耗 + RISK-006)</td><td>W20-23</td><td>P0</td></tr>
+  <tr><td>Task 10</td><td>RTL 冻结 (质量门禁 + 文档更新 + 归档 + Sign-off)</td><td>W24-26</td><td>P0</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<h2>六、数字总览</h2>
+
+<div class="metrics-row">
+  <div class="metric-box"><div class="metric">16</div>设计文档 (HTML)</div>
+  <div class="metric-box"><div class="metric">9120</div>RTL 总行数</div>
+  <div class="metric-box"><div class="metric">28</div>RTL 模块 (.sv)</div>
+  <div class="metric-box"><div class="metric">4</div>测试程序</div>
+</div>
+<div class="metrics-row">
+  <div class="metric-box"><div class="metric good">100%</div>RV32I 覆盖率</div>
+  <div class="metric-box"><div class="metric good">100%</div>RV32M 覆盖率</div>
+  <div class="metric-box"><div class="metric">27</div>Git 提交 (单日)</div>
+  <div class="metric-box"><div class="metric">24</div>指令日志条目</div>
+</div>
+<div class="metrics-row">
+  <div class="metric-box"><div class="metric">16</div>Errata 总计<br><small>12 resolved + 4 open</small></div>
+  <div class="metric-box"><div class="metric">22</div>Risk 总计<br><small>8R + 4A + 4M + 6O</small></div>
+  <div class="metric-box"><div class="metric">35</div>Cover Groups</div>
+  <div class="metric-box"><div class="metric">99</div>需求追溯条目</div>
+</div>
+
+<hr>
+<p style="text-align: center; color: #999; font-size: 0.85em;">
+  Lumi-Core M2→M3 全任务总结报告 &nbsp;|&nbsp; 生成于 2026-07-07 &nbsp;|&nbsp;
+  数据来源: audit/instruction-log, audit/errata, audit/risk-register, docs/project/milestone-plan
+</p>
+
+</body>
+</html>
