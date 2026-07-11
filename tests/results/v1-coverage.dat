@@ -1,6 +1,6 @@
 # V1 覆盖率数据 — 实测 2026-07-11
 # 运行环境: Verilator 5.048, riscv64-unknown-elf-gcc 16.1.0
-# 测试: rv32i_smoke.S + rv32i_full.S + rv32m_basic.S
+# 测试: rv32i_smoke.S + rv32i_full.S + rv32m_basic.S + csr_basic.S + rv32c_smoke.S
 
 cover_group: cg_isa_rv32i
 covered: 40 / 40
@@ -20,7 +20,7 @@ note: "B-ext 0% — V3 rv32b 测试仿真通过但覆盖率模块未采集 B-ext
 cover_group: cg_isa_c_ext
 covered: 0 / 12
 hit_mask: 000000000000
-note: "C-ext 0% — rv32c_smoke 仿真 FAIL (c_ext_expand 未正确工作), 覆盖率未采集"
+note: "C-ext 0% — ERR-018 修复后 rv32c_smoke/rv32c_full 仿真通过, 但 coverage 模块的 is_compressed 检测 (commit_inst[1:0] != 2'b11) 在 inst 字段展开为 32-bit 等效指令后不再触发, 需新增 inst_raw 旁路信号修复"
 
 cover_group: cg_isa_zce
 covered: 0 / 4
@@ -45,3 +45,17 @@ hit_mask: 000000000000
 cover_group: cg_isa_zce
 covered: 0 / 4
 hit_mask: 0000
+
+# ── 2026-07-11 ERR-017/018 修复后回归测试结果 ──
+# ERR-017 (CSR 读回 + ECALL 提交):
+#   csr_basic.S:     PASS (exit_code=0)
+# ERR-018 (RV32C 16-bit inst 字段展开):
+#   rv32c_smoke.S:   PASS (exit_code=0)
+#   rv32c_full.S:    PASS (exit_code=0)
+# 综合:
+#   V1 Total: 8 / 80
+#   V2 Total: 2 / 36 (csr_basic 修复后通过)
+#   V3 Total: 8 / 24
+#   Combined: 18 / 140
+# 已知限制: c_ext coverage 因 mon_inst 展示展开后的 32-bit 指令而失效,
+#   需添加 inst_raw 旁路信号 (后续 milestone)

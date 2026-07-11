@@ -543,7 +543,12 @@ module lumi_decode_issue #(
                 tmp_dec_d = dec[issue_sel[s]];
 
                 i_issue[s].pc       = d_pc + 32'd4 * {29'h0, issue_sel[s]};
-                i_issue[s].inst     = d_instructions[issue_sel[s]];
+                // ERR-018 修复: 压缩指令使用展开后的 32-bit 等效指令
+                // 原代码: i_issue[s].inst = d_instructions[issue_sel[s]];
+                if (d_instructions[issue_sel[s]][1:0] != 2'b11)
+                    i_issue[s].inst = c_ext_expand(d_instructions[issue_sel[s]][15:0]);
+                else
+                    i_issue[s].inst = d_instructions[issue_sel[s]];
                 i_issue[s].rd       = tmp_dec_d.has_rd ? tmp_dec_d.rd : 5'h0;
                 i_issue[s].rs1      = tmp_dec_d.rs1;
                 i_issue[s].rs2      = tmp_dec_d.rs2;

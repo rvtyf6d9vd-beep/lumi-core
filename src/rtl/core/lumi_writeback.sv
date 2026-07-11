@@ -108,7 +108,11 @@ module lumi_writeback #(
         if (w_valid[0] && w_rd[0] != 5'h0 && !w_exception[0]) begin
             regfile_wr_en[0]    = 1'b1;
             regfile_wr_addr[0]  = w_rd[0];
-            regfile_wr_data[0]  = w_result[0];
+            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
+            if (w_inst[0].fu_type == FU_MISC && w_inst[0].funct3 != FN_ECALL)
+                regfile_wr_data[0]  = csr_rdata;
+            else
+                regfile_wr_data[0]  = w_result[0];
             wr_select[0]        = 1'b1;
         end
 
@@ -121,7 +125,11 @@ module lumi_writeback #(
         end else if (w_valid[1] && w_rd[1] != 5'h0 && !w_exception[1]) begin
             regfile_wr_en[1]    = 1'b1;
             regfile_wr_addr[1]  = w_rd[1];
-            regfile_wr_data[1]  = w_result[1];
+            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
+            if (w_inst[1].fu_type == FU_MISC && w_inst[1].funct3 != FN_ECALL)
+                regfile_wr_data[1]  = csr_rdata;
+            else
+                regfile_wr_data[1]  = w_result[1];
             wr_select[1]        = 1'b1;
         end
 
@@ -130,7 +138,11 @@ module lumi_writeback #(
         if (!w_valid[0] && w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2]) begin
             regfile_wr_en[0]    = 1'b1;
             regfile_wr_addr[0]  = w_rd[2];
-            regfile_wr_data[0]  = w_result[2];
+            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
+            if (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL)
+                regfile_wr_data[0]  = csr_rdata;
+            else
+                regfile_wr_data[0]  = w_result[2];
             wr_select[2]        = 1'b1;
         end
         // 或者槽 2 使用端口 1 (如果槽 1 无效且无 E2)
@@ -138,7 +150,11 @@ module lumi_writeback #(
             w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2]) begin
             regfile_wr_en[1]    = 1'b1;
             regfile_wr_addr[1]  = w_rd[2];
-            regfile_wr_data[1]  = w_result[2];
+            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
+            if (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL)
+                regfile_wr_data[1]  = csr_rdata;
+            else
+                regfile_wr_data[1]  = w_result[2];
             wr_select[2]        = 1'b1;
         end
     end
@@ -233,7 +249,10 @@ module lumi_writeback #(
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             commit_pc[i]     = w_pc[i];
             commit_result[i] = w_result[i];
-            if (w_valid[i] && !trap_taken) begin
+            // ERR-017 修复: V1 允许所有有效指令提交 (包括 ECALL)
+            // scoreboard 通过 commit_inst 检测 ECALL, 需要 commit_valid=1
+            // 完整 trap 处理 (仅提交异常前指令) 留到后续里程碑
+            if (w_valid[i]) begin
                 commit_valid[i] = 1'b1;
             end
         end

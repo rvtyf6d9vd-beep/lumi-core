@@ -45,7 +45,7 @@ smoke:
     - name: "csr_basic"
       file: "tests/directed/csr_basic.S"
       description: "CSR 读写/权限/HPM"
-      errata_ref: ["ERR-013"]
+      errata_ref: ["ERR-013", "ERR-017"]
     - name: "clic_priority"
       file: "tests/directed/clic_priority.S"
       description: "CLIC 优先级仲裁 + VECTORED"
@@ -121,6 +121,7 @@ nightly:
     - name: "rv32c_smoke"
       file: "tests/directed/rv32c_smoke.S"
       description: "RV32C 冒烟"
+      errata_ref: ["ERR-018"]
     - name: "rv32c_bpred"
       file: "tests/directed/rv32c_bpred.S"
       description: "RV32C 分支预测"
