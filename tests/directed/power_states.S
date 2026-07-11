@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: WFI 作为 NOP (有待处理中断) ══════════
     # 当 mip & mie != 0 时, WFI 应立即返回 (作为 NOP)
@@ -47,7 +47,7 @@ _start:
     csrw    0x304, zero            # mie = 0
 
     # 写入 DTCM 标记, 用于验证 WFI 前的状态
-    li      t0, 0x0001_4000
+    li      t0, 0x00014000
     li      t1, 1
     sw      t1, 0(t0)              # pre_wfi_flag = 1
     fence
@@ -69,7 +69,7 @@ _start:
     # 这里我们通过 testbench 注入 timer 中断来唤醒
 
     # 写 post_wfi_marker (WFI 后会执行这条)
-    li      t0, 0x0001_4000
+    li      t0, 0x00014000
     li      t1, 2
     sw      t1, 4(t0)              # post_wfi_marker = 2 (set before WFI)
 
@@ -79,7 +79,7 @@ _start:
     wfi
 
     # WFI 返回后验证
-    li      t0, 0x0001_4000
+    li      t0, 0x00014000
     lw      t1, 4(t0)              # post_wfi_marker should still be 2
     li      t2, 2
     bne     t1, t2, fail
@@ -89,7 +89,7 @@ _start:
     # 无法直接读取 FSM 状态, 通过行为验证
 
     # 确认 core 仍在正常运行
-    li      t0, 0x0001_4000
+    li      t0, 0x00014000
     li      t1, 3
     sw      t1, 8(t0)              # post_wakeup_flag = 3
     fence

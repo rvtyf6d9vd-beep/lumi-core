@@ -13,7 +13,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: JTAG IDCODE 验证 ══════════════════════
     # DEVICE_IDCODE = 32'h10E3_1901 (定义在 dft_ctrl)
@@ -37,7 +37,7 @@ _start:
     # Try to read dscratch0
     csrr    t0, 0x7B2              # dscratch0 (may trap)
     # If we get here, it's accessible
-    li      t1, 0xABCD_1234
+    li      t1, 0xABCD1234
     csrw    0x7B2, t1
     csrr    t2, 0x7B2
     bne     t1, t2, fail
@@ -53,8 +53,8 @@ _start:
     bne     t2, s0, fail
 
     # ══ 测试 4: 正常内存访问不受 JTAG 影响 ════════════
-    li      t0, 0x0001_4000
-    li      t1, 0xFACE_1234
+    li      t0, 0x00014000
+    li      t1, 0xFACE1234
     sw      t1, 0(t0)
     fence
     lw      t2, 0(t0)

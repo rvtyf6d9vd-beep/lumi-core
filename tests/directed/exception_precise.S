@@ -15,7 +15,7 @@ _start:
     csrw    0x305, t0               # mtvec = trap_handler (MODE=0, Direct)
 
     # ══ 设置栈指针 ═══════════════════════════════════
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 初始化全局状态 ═════════════════════════════════
     li      s0, 0                   # trap_count = 0
@@ -31,7 +31,7 @@ _start:
     addi    s0, s0, 1               # trap_count++
 
     # ══ 非法指令异常测试 ══════════════════════════════
-    .word   0x0000_0000             # Illegal instruction (all zeros)
+    .word   0x00000000             # Illegal instruction (all zeros)
     addi    s0, s0, 1               # trap_count++
 
     # ══ 验证 trap 计数 ═════════════════════════════════

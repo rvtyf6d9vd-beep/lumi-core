@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumi-Core 回归测试报告 — nightly (20260711-145235)</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #0f172a; }
+    h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; }
+    .meta { display: flex; gap: 2rem; flex-wrap: wrap; margin: 1rem 0; font-size: 0.9rem; color: #64748b; }
+    .meta span { background: #f1f5f9; padding: 0.3rem 0.8rem; border-radius: 4px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .card { background: white; border-radius: 8px; padding: 1rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card .num { font-size: 2rem; font-weight: bold; }
+    .card .label { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; }
+    .bar { height: 24px; border-radius: 12px; overflow: hidden; display: flex; margin: 1rem 0; background: #e2e8f0; }
+    .bar .pass { background: #22c55e; }
+    .bar .fail { background: #ef4444; }
+    .bar .skip { background: #f59e0b; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.9rem; }
+    th { background: #f1f5f9; padding: 0.6rem 0.8rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f1f5f9; }
+    tr:hover { background: #f8fafc !important; }
+    code { background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.85em; }
+    .footer { margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; text-align: center; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem; font-weight: bold; color: white; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Lumi-Core 回归测试报告</h1>
+    <div class="meta">
+        <span>Suite: <b>nightly</b></span>
+        <span>日期: 20260711</span>
+        <span>工具链: <code>riscv64-unknown-elf-gcc</code></span>
+        <span>架构: <code>rv32imac_zicsr</code></span>
+    </div>
+
+    <h2>概览</h2>
+    <div class="cards">
+        <div class="card"><div class="num" style="color:#0f172a">35</div><div class="label">总计</div></div>
+        <div class="card"><div class="num" style="color:#22c55e">28</div><div class="label">PASS</div></div>
+        <div class="card"><div class="num" style="color:#ef4444">7</div><div class="label">FAIL</div></div>
+        <div class="card"><div class="num" style="color:#f59e0b">0</div><div class="label">SKIP</div></div>
+        <div class="card"><div class="num" style="color:#3b82f6">80.0%</div><div class="label">通过率</div></div>
+    </div>
+
+    <div class="bar">
+        <div class="pass" style="width:80.0%"></div>
+        <div class="fail" style="width:20.0%"></div>
+        <div class="skip" style="width:0.0%"></div>
+    </div>
+
+    <h2>测试详情</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>测试名称</th><th>状态</th><th>ELF 大小</th><th>入口地址</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+            
+        <tr style="background:#dcfce7">
+            <td>1</td>
+            <td><code>rv32i_smoke</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4936</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>2</td>
+            <td><code>rv32m_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4888</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>3</td>
+            <td><code>tcm_basic_rw</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4980</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>4</td>
+            <td><code>cache_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4976</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>5</td>
+            <td><code>csr_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4980</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>6</td>
+            <td><code>clic_priority</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5456</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>7</td>
+            <td><code>rv32i_full</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5040</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>8</td>
+            <td><code>rv32b_smoke</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_smoke.S:112: Error: unrecognized opcode `rol t2,t0,t1', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_smoke.S:119: Error: unrecognized opcode `ror t2,t0,t1', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_smoke.S:125: Error: unrecognized opcode `rori t2,t0,4', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_smoke.S:131: Error: unrecognized opcode `rev8 t2,t0', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_smoke.S:137: Error: unrecognized opcode `orc.b t2,t0', extension `zbb' required<br></td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>9</td>
+            <td><code>rv32b_zba</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zba.S:71: Error: unrecognized opcode `sh3add t2,t0,t1', extension `zba' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zba.S:77: Error: unrecognized opcode `sh3add t2,t0,zero', extension `zba' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zba.S:86: Error: unrecognized opcode `sh1add t0,s1,s1', extension `zba' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zba.S:92: Error: unrecognized opcode `sh2add t0,s1,s1', extension `zba' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zba.S:98: Error: unrecognized opcode `sh3add t0,s1,s1', extension `zba' required<br></td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>10</td>
+            <td><code>rv32b_zbb</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zbb.S:171: Error: unrecognized opcode `rev8 t2,t0', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zbb.S:175: Error: unrecognized opcode `rev8 t2,t0', extension `zbb' or `zbkb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zbb.S:181: Error: unrecognized opcode `orc.b t2,t0', extension `zbb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zbb.S:185: Error: unrecognized opcode `orc.b t2,t0', extension `zbb' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/rv32b_zbb.S:190: Error: unrecognized opcode `orc.b t2,t0', extension `zbb' required<br></td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>11</td>
+            <td><code>rv32c_full</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5348</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>12</td>
+            <td><code>exception_precise</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4924</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>13</td>
+            <td><code>pmp_regions</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4920</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>14</td>
+            <td><code>plic_dispatch</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5012</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>15</td>
+            <td><code>mtime_timer</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4948</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>16</td>
+            <td><code>fpu_basic</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/fpu_basic.S:83: Error: unrecognized opcode `fcvt.w.s t2,f3,rne', extension `f' or `zfinx' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/fpu_basic.S:89: Error: unrecognized opcode `fcvt.s.w f6,t1,rne', extension `f' or `zfinx' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/fpu_basic.S:91: Error: unrecognized opcode `fmv.x.w t2,f6', extension `f' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/fpu_basic.S:102: Error: unrecognized opcode `flw f7,20(t0)', extension `f' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/fpu_basic.S:103: Error: unrecognized opcode `fcvt.w.s t2,f7,rtz', extension `f' or `zfinx' required<br></td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>17</td>
+            <td><code>vector_basic</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/vector_basic.S:86: Error: unrecognized opcode `vse32.v v3,(t0)', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/vector_basic.S:99: Error: unrecognized opcode `vadd.vx v4,v0,t1', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/vector_basic.S:101: Error: unrecognized opcode `vse32.v v4,(t0)', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/vector_basic.S:114: Error: unrecognized opcode `vmv.v.x v5,t1', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/vector_basic.S:116: Error: unrecognized opcode `vse32.v v5,(t0)', extension `v' or `zve64x' or `zve32x' required<br></td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>18</td>
+            <td><code>debug_halt</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4940</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>19</td>
+            <td><code>pma_axi_access</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /var/folders/80/q296h8ms3yz594ppfb6fpmp40000gp/T//ccAq7Tpb.s: Assembler messages:<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/pma_axi_access.S:78: Error: unrecognized opcode `fence.i', extension `zifencei' required<br></td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>20</td>
+            <td><code>rv32c_smoke</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5232</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>21</td>
+            <td><code>rv32c_bpred</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5308</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>22</td>
+            <td><code>rv32c_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4732</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>23</td>
+            <td><code>lockstep_compare</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5080</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>24</td>
+            <td><code>lockstep_error</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4920</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>25</td>
+            <td><code>lockstep_fsm</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5352</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>26</td>
+            <td><code>multicore_topo</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5108</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>27</td>
+            <td><code>multicore_arb</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5352</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>28</td>
+            <td><code>power_states</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5032</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>29</td>
+            <td><code>reset_seq</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4972</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#fef2f2">
+            <td>30</td>
+            <td><code>power_icg</code></td>
+            <td><span style="color:#ef4444;font-weight:bold">FAIL</span></td>
+            <td>-</td>
+            <td><code>-</code></td>
+            <td style="font-size:0.85em;color:#666">compile error /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/power_icg.S:35: Error: unrecognized opcode `feq.s t2,f2,f3', extension `f' or `zfinx' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/power_icg.S:43: Error: unrecognized opcode `vsetvli t1,t0,e32,m1', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/power_icg.S:55: Error: unrecognized opcode `vle32.v v0,(t0)', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/power_icg.S:56: Error: unrecognized opcode `vadd.vv v1,v0,v0', extension `v' or `zve64x' or `zve32x' required<br>/Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/tests/directed/power_icg.S:59: Error: unrecognized opcode `vse32.v v1,(t0)', extension `v' or `zve64x' or `zve32x' required<br></td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>31</td>
+            <td><code>dft_scan</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4952</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>32</td>
+            <td><code>dft_mbist</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5304</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>33</td>
+            <td><code>dft_jtag</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4940</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>34</td>
+            <td><code>dft_secure_lock</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5256</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>35</td>
+            <td><code>boot_sequence</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5036</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>基准测试 (Dhrystone / CoreMark)</h2>
+    <div style="background:white;border-radius:8px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-top:0.5rem">
+        <p style="color:#64748b;font-size:0.9rem">
+            基准测试通过 <code>make -C perf/benchmarks/coremark</code> 和
+            <code>make -C perf/benchmarks/dhrystone</code> 独立编译运行。
+            完整性能数据见 <a href="../../perf/benchmarks/perf-report.yaml">perf-report.yaml</a>。
+        </p>
+        <table style="margin-top:0.5rem;box-shadow:none">
+            <tr><th>基准测试</th><th>架构</th><th>优化</th><th>目标</th><th>状态</th></tr>
+            <tr><td>CoreMark</td><td><code>rv32imac</code></td><td>-O2 -funroll-loops</td><td>≥ 5.0 CM/MHz</td><td><span style="color:#f59e0b">PENDING (待运行)</span></td></tr>
+            <tr><td>Dhrystone</td><td><code>rv32imac</code></td><td>-O2 -funroll-loops</td><td>≥ 1.5 DMIPS/MHz</td><td><span style="color:#f59e0b">PENDING (待运行)</span></td></tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Lumi-Core Regression Report — Generated 2026-07-11 14:52 UTC</p>
+        <p>规则 [11] 每日集成回归 | 规则 [14] HTML 文档格式与索引</p>
+    </div>
+</div>
+</body>
+</html>

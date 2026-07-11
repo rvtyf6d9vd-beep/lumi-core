@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: 冷复位后 CSR 初始状态 ════════════════
     # 冷复位后, 所有 CSR 应为默认值
@@ -33,14 +33,14 @@ _start:
     bne     t0, t1, fail
 
     # ══ 测试 3: mscratch 读写 ════════════════════════
-    li      t0, 0x1234_5678
+    li      t0, 0x12345678
     csrw    0x340, t0              # mscratch
     csrr    t1, 0x340
     bne     t0, t1, fail
 
     # ══ 测试 4: mcause 读写 ══════════════════════════
     # mcause[31] = interrupt, mcause[30:0] = cause code
-    li      t0, 0x8000_0007        # Machine timer interrupt
+    li      t0, 0x80000007        # Machine timer interrupt
     csrw    0x342, t0              # mcause
     csrr    t1, 0x342
     bne     t0, t1, fail
@@ -67,7 +67,7 @@ _start:
     bnez    s3, fail
 
     # ══ 测试 7: 复位后 PC 从 boot 地址开始 ═══════════
-    # boot 地址由 ITCM 基址决定 (0x0000_0000)
+    # boot 地址由 ITCM 基址决定 (0x00000000)
     # 通过验证当前 PC > 0 证明已在正确地址执行
     # (无法直接读取 PC, 间接通过 auipc)
     auipc   t0, 0                  # t0 = current PC

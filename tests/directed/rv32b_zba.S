@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ SH1ADD 边界值 ═══════════════════════════════
     # 0 + 0
@@ -32,10 +32,10 @@ _start:
     bne     t2, s0, fail
 
     # 0x7FFFFFFF << 1 + 1 = 0xFFFFFFFE + 1 = 0xFFFFFFFF
-    li      t0, 0x7FFF_FFFF
+    li      t0, 0x7FFFFFFF
     li      t1, 1
     sh1add  t2, t0, t1
-    li      s0, 0xFFFF_FFFF
+    li      s0, 0xFFFFFFFF
     bne     t2, s0, fail
 
     # ══ SH2ADD 边界值 ═══════════════════════════════

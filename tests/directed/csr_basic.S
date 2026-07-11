@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 标准 CSR 读写 ══════════════════════════════════
     # 读 mcycle (CSR 0xB00) — 应递增
@@ -43,13 +43,13 @@ minstret_ok:
     bne     t4, zero, fail          # MIE should be cleared
 
     # ══ mtvec 读写 (CSR 0x305) ═══════════════════════
-    li      t0, 0x0000_0100         # Test vector address
+    li      t0, 0x00000100         # Test vector address
     csrw    0x305, t0               # Write mtvec
     csrr    t1, 0x305               # Read back
     bne     t1, t0, fail
 
     # ══ mscratch 读写 (CSR 0x340) ════════════════════
-    li      t0, 0xDEAD_BEEF
+    li      t0, 0xDEADBEEF
     csrw    0x340, t0               # Write mscratch
     csrr    t1, 0x340               # Read back
     bne     t1, t0, fail

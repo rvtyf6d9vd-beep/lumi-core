@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ Zba: Shift-and-Add ════════════════════════════
     # SH1ADD: rd = (rs1 << 1) + rs2
@@ -36,22 +36,22 @@ _start:
 
     # ══ Zbb: Bit-logic ════════════════════════════════
     # ANDN: rd = rs1 & ~rs2
-    li      t0, 0xFF00_FF00
-    li      t1, 0x0F0F_0F0F
-    andn    t2, t0, t1              # 0xFF00_FF00 & ~0x0F0F_0F0F = 0xF000_F000
-    li      s0, 0xF000_F000
+    li      t0, 0xFF00FF00
+    li      t1, 0x0F0F0F0F
+    andn    t2, t0, t1              # 0xFF00FF00 & ~0x0F0F0F0F = 0xF000F000
+    li      s0, 0xF000F000
     bne     t2, s0, fail
 
     # ORN: rd = rs1 | ~rs2
-    li      t0, 0x00FF_00FF
-    li      t1, 0xF0F0_F0F0
-    orn     t2, t0, t1              # 0x00FF_00FF | ~0xF0F0_F0F0 = 0x0FFF_0FFF
-    li      s0, 0x0FFF_0FFF
+    li      t0, 0x00FF00FF
+    li      t1, 0xF0F0F0F0
+    orn     t2, t0, t1              # 0x00FF00FF | ~0xF0F0F0F0 = 0x0FFF0FFF
+    li      s0, 0x0FFF0FFF
     bne     t2, s0, fail
 
     # XNOR: rd = ~(rs1 ^ rs2)
-    li      t0, 0xAAAA_AAAA
-    li      t1, 0x5555_5555
+    li      t0, 0xAAAAAAAA
+    li      t1, 0x55555555
     xnor    t2, t0, t1              # ~(0xAAAA ^ 0x5555) = 0
     bne     t2, zero, fail
 
@@ -78,7 +78,7 @@ _start:
 
     # ══ Zbb: CLZ/CTZ/CPOP ═══════════════════════════
     # CLZ: count leading zeros
-    li      t0, 0x0080_0000         # bit 23 set → 8 leading zeros
+    li      t0, 0x00800000         # bit 23 set → 8 leading zeros
     clz     t2, t0
     li      s0, 8
     bne     t2, s0, fail
@@ -89,53 +89,53 @@ _start:
     bne     t2, s0, fail
 
     # CTZ: count trailing zeros
-    li      t0, 0x0000_0100         # bit 8 set → 8 trailing zeros
+    li      t0, 0x00000100         # bit 8 set → 8 trailing zeros
     ctz     t2, t0
     li      s0, 8
     bne     t2, s0, fail
 
     # CPOP: population count
-    li      t0, 0xFFFF_FFFF
+    li      t0, 0xFFFFFFFF
     cpop    t2, t0                  # 32 bits set
     li      s0, 32
     bne     t2, s0, fail
 
-    li      t0, 0x0000_000F
+    li      t0, 0x0000000F
     cpop    t2, t0                  # 4 bits set
     li      s0, 4
     bne     t2, s0, fail
 
     # ══ Zbb: ROL/ROR/RORI ═══════════════════════════
     # ROL: rotate left
-    li      t0, 0x8000_0001
+    li      t0, 0x80000001
     li      t1, 4
     rol     t2, t0, t1              # rotate left by 4
-    li      s0, 0x0000_0018
+    li      s0, 0x00000018
     bne     t2, s0, fail
 
     # ROR: rotate right
-    li      t0, 0x8000_0001
+    li      t0, 0x80000001
     li      t1, 4
     ror     t2, t0, t1              # rotate right by 4
-    li      s0, 0x1800_0000
+    li      s0, 0x18000000
     bne     t2, s0, fail
 
     # RORI: rotate right immediate
-    li      t0, 0x8000_0001
+    li      t0, 0x80000001
     rori    t2, t0, 4               # rotate right by 4
-    li      s0, 0x1800_0000
+    li      s0, 0x18000000
     bne     t2, s0, fail
 
     # ══ Zbb: REV8 ════════════════════════════════════
-    li      t0, 0x0102_0304
+    li      t0, 0x01020304
     rev8    t2, t0                  # byte-reverse: 0x04030201
-    li      s0, 0x0403_0201
+    li      s0, 0x04030201
     bne     t2, s0, fail
 
     # ══ Zbb: ORC.B ══════════════════════════════════
-    li      t0, 0x0001_0200
+    li      t0, 0x00010200
     orc.b   t2, t0                  # byte 3=0→00, byte 2=01→FF, byte 1=02→FF, byte 0=00→00
-    li      s0, 0x00FF_FF00
+    li      s0, 0x00FFFF00
     bne     t2, s0, fail
 
     # ══ PASS ════════════════════════════════════════════

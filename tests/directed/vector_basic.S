@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ Vector 配置 ══════════════════════════════════
     # vsetvli: SEW=32, LMUL=1 (m1), AVL=4
@@ -28,7 +28,7 @@ _start:
 
     # ══ Vector Load ══════════════════════════════════
     # Store test data to DTCM
-    li      t0, 0x0001_4000         # DTCM0 base
+    li      t0, 0x00014000         # DTCM0 base
     li      t1, 1
     sw      t1, 0(t0)               # elem[0] = 1
     li      t1, 2
@@ -43,7 +43,7 @@ _start:
 
     # ══ Vector Add ═══════════════════════════════════
     # Store second vector: {10, 20, 30, 40}
-    li      t0, 0x0001_4100
+    li      t0, 0x00014100
     li      t1, 10
     sw      t1, 0(t0)
     li      t1, 20
@@ -59,11 +59,11 @@ _start:
     vadd.vv v2, v0, v1              # v2 = {11, 22, 33, 44}
 
     # Store result and verify
-    li      t0, 0x0001_4200
+    li      t0, 0x00014200
     vse32.v v2, (t0)                # Store v2 to memory
 
     # Verify each element
-    li      t0, 0x0001_4200
+    li      t0, 0x00014200
     lw      t1, 0(t0)
     li      s0, 11
     bne     t1, s0, fail
@@ -82,10 +82,10 @@ _start:
 
     # ══ Vector Sub ═══════════════════════════════════
     vsub.vv v3, v1, v0              # v3 = {9, 18, 27, 36}
-    li      t0, 0x0001_4300
+    li      t0, 0x00014300
     vse32.v v3, (t0)
 
-    li      t0, 0x0001_4300
+    li      t0, 0x00014300
     lw      t1, 0(t0)
     li      s0, 9
     bne     t1, s0, fail
@@ -97,10 +97,10 @@ _start:
     # ══ Vector Scalar Add (vadd.vx) ═════════════════
     li      t1, 100
     vadd.vx v4, v0, t1              # v4 = {101, 102, 103, 104}
-    li      t0, 0x0001_4400
+    li      t0, 0x00014400
     vse32.v v4, (t0)
 
-    li      t0, 0x0001_4400
+    li      t0, 0x00014400
     lw      t1, 0(t0)
     li      s0, 101
     bne     t1, s0, fail
@@ -112,10 +112,10 @@ _start:
     # ══ Vector Splat (vmv.v.x) ═════════════════════
     li      t1, 42
     vmv.v.x v5, t1                  # v5 = {42, 42, 42, 42}
-    li      t0, 0x0001_4500
+    li      t0, 0x00014500
     vse32.v v5, (t0)
 
-    li      t0, 0x0001_4500
+    li      t0, 0x00014500
     lw      t1, 0(t0)
     li      s0, 42
     bne     t1, s0, fail

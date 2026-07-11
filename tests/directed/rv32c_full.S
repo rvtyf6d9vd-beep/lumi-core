@@ -12,7 +12,7 @@
 _start:
     # ══ C.ADDI4SPN: addi rd', x2, nzuimm ════════════════
     # Set SP first using 32-bit instruction
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # C.ADDI4SPN: addi s0, sp, 16  (nzuimm=16)
     # Encoding: c.addi4spn rd', sp, nzuimm
@@ -29,18 +29,18 @@ _start:
 
     # ══ C.LW / C.SW: 堆栈操作 ═════════════════════════
     # Store value to DTCM, then load with C.LW
-    li      t0, 0x0001_4000
-    li      t1, 0xDEAD_BEEF
+    li      t0, 0x00014000
+    li      t1, 0xDEADBEEF
     sw      t1, 0(t0)
 
     # C.LW rd', offset(rs1')
     # Load from t0+0 into s0 (rd'=s0=x8, rs1'=t0=x5... but x5 is not in x8-x15 range!)
     # Use register in x8-x15 range: s0=x8 as base
-    mv      s0, t0                  # s0 = 0x0001_4000
+    mv      s0, t0                  # s0 = 0x00014000
     # C.LW s1, 0(s0): rd'=s1=x9, rs1'=s0=x8, offset=0
     .2byte  0x4080                  # c.lw s1, 0(s0) — approximate
     # Verify loaded value
-    li      s2, 0xDEAD_BEEF
+    li      s2, 0xDEADBEEF
     bne     s1, s2, fail
 
     # C.SW rs2', offset(rs1')
@@ -72,7 +72,7 @@ _start:
 
     # ══ C.LUI: lui rd, nzimm ══════════════════════════
     lui     a2, 0x12345             # C.LUI a2, 0x12345
-    li      t0, 0x1234_5000
+    li      t0, 0x12345000
     bne     a2, t0, fail
 
     # ══ C.ADDI16SP: addi x2, x2, nzimm ════════════════
@@ -85,21 +85,21 @@ _start:
 
     # ══ C.SRLI / C.SRAI / C.ANDI ═════════════════════
     # C.SRLI: srli rd', rd', shamt
-    li      s0, 0x8000_0000
+    li      s0, 0x80000000
     srli    s0, s0, 4               # C.SRLI s0, 4
-    li      t0, 0x0800_0000
+    li      t0, 0x08000000
     bne     s0, t0, fail
 
     # C.SRAI: srai rd', rd', shamt
-    li      s0, 0x8000_0000         # negative number
+    li      s0, 0x80000000         # negative number
     srai    s0, s0, 4               # C.SRAI s0, 4
-    li      t0, 0xF800_0000
+    li      t0, 0xF8000000
     bne     s0, t0, fail
 
     # C.ANDI: andi rd', rd', imm
-    li      s0, 0xFF00_FF00
+    li      s0, 0xFF00FF00
     andi    s0, s0, 0x0F            # C.ANDI s0, 0x0F
-    li      t0, 0x0000_0000
+    li      t0, 0x00000000
     bne     s0, t0, fail
 
     # ══ C.SUB / C.XOR / C.OR / C.AND ══════════════════
@@ -155,22 +155,22 @@ c_bnez_pass:
     # ══ C.SLLI ══════════════════════════════════════════
     li      s0, 1
     slli    s0, s0, 16              # C.SLLI s0, 16
-    li      t0, 0x0001_0000
+    li      t0, 0x00010000
     bne     s0, t0, fail
 
     # ══ C.LWSP / C.SWSP ════════════════════════════════
     # C.SWSP: sw rs2, offset(sp)
-    li      t1, 0xCAFE_BABE
+    li      t1, 0xCAFEBABE
     sw      t1, 0(sp)               # C.SWSP t1, 0(sp)
 
     # C.LWSP: lw rd, offset(sp)
     lw      t2, 0(sp)               # C.LWSP t2, 0(sp)
-    li      t0, 0xCAFE_BABE
+    li      t0, 0xCAFEBABE
     bne     t2, t0, fail
 
     # ══ C.MV / C.ADD ═══════════════════════════════════
     # C.MV: add rd, x0, rs2
-    li      t1, 0x1234_5678
+    li      t1, 0x12345678
     mv      t2, t1                  # C.MV t2, t1
     bne     t2, t1, fail
 

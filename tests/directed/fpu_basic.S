@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ FPU 状态初始化 ═════════════════════════════
     # 清除 fflags (CSR 0x001)
@@ -23,22 +23,22 @@ _start:
     # 使用内存加载浮点常量 (通过整数寄存器间接)
 
     # 存储浮点常量到 DTCM
-    li      t0, 0x0001_4000         # DTCM0 base
+    li      t0, 0x00014000         # DTCM0 base
 
     # 1.0f = 0x3F800000
-    li      t1, 0x3F80_0000
+    li      t1, 0x3F800000
     sw      t1, 0(t0)               # mem[0] = 1.0f
 
     # 2.0f = 0x40000000
-    li      t1, 0x4000_0000
+    li      t1, 0x40000000
     sw      t1, 4(t0)               # mem[4] = 2.0f
 
     # 3.0f = 0x40400000
-    li      t1, 0x4040_0000
+    li      t1, 0x40400000
     sw      t1, 8(t0)               # mem[8] = 3.0f
 
     # 0.5f = 0x3F000000
-    li      t1, 0x3F00_0000
+    li      t1, 0x3F000000
     sw      t1, 12(t0)              # mem[12] = 0.5f
 
     # ── FADD.S: 1.0 + 2.0 = 3.0 ──
@@ -62,7 +62,7 @@ _start:
 
     # ── FDIV.S: 3.0 / 2.0 = 1.5 ──
     # 1.5f = 0x3FC00000
-    li      t1, 0x3FC0_0000
+    li      t1, 0x3FC00000
     sw      t1, 16(t0)
     fdiv.s  f2, f3, f1              # f2 = 3.0 / 2.0 = 1.5
     flw     f5, 16(t0)              # f5 = 1.5f
@@ -80,16 +80,16 @@ _start:
 
     # ══ 浮点-整数转换 ═══════════════════════════════
     # FCVT.W.S: float → int (3.0 → 3)
-    fcvt.w.s t2, f3, 0              # RNE mode
+    fcvt.w.s t2, f3, rne              # RNE mode
     li      s0, 3
     bne     t2, s0, fail
 
     # FCVT.S.W: int → float (5 → 5.0f)
     li      t1, 5
-    fcvt.s.w f6, t1, 0              # RNE mode
+    fcvt.s.w f6, t1, rne              # RNE mode
     # 5.0f = 0x40A00000
     fmv.x.w t2, f6                  # move float bits to int reg
-    li      s0, 0x40A0_0000
+    li      s0, 0x40A00000
     bne     t2, s0, fail
 
     # ══ 舍入模式切换 ═════════════════════════════════
@@ -97,10 +97,10 @@ _start:
     csrw    0x002, 1                # frm = RTZ
     # fcvt.w.s of 2.7f should give 2 (truncate)
     # 2.7f = 0x402CCCCD
-    li      t1, 0x402C_CCCD
+    li      t1, 0x402CCCCD
     sw      t1, 20(t0)
     flw     f7, 20(t0)              # f7 = 2.7f
-    fcvt.w.s t2, f7, 1              # RTZ mode
+    fcvt.w.s t2, f7, rtz              # RTZ mode
     li      s0, 2
     bne     t2, s0, fail
 

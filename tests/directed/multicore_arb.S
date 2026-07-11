@@ -25,7 +25,7 @@ _start:
     j       hart1_main
 
 # ══════════════════════════════════════════════════════════════
-# 共享内存布局 (DTCM0 共享区: 0x0001_5000)
+# 共享内存布局 (DTCM0 共享区: 0x00015000)
 #   [0x00] barrier     — 启动同步屏障
 #   [0x04] counter     — 共享递增计数器
 #   [0x08] hart0_done  — Hart 0 完成标志
@@ -37,8 +37,8 @@ _start:
 # Hart 0: 主控制器 + 并发竞争者 A
 # ══════════════════════════════════════════════════════════════
 hart0_main:
-    li      sp, 0x0001_7F00
-    li      s0, 0x0001_5000         # 共享内存基址
+    li      sp, 0x00017F00
+    li      s0, 0x00015000         # 共享内存基址
 
     # ─── 初始化共享内存 ─────────────────────────────────────────
     sw      zero, 0(s0)             # barrier = 0
@@ -50,13 +50,13 @@ hart0_main:
 
     # ─── 测试 1: 交替访问模式 (Ping-Pong) ─────────────────────
     # Hart 0 写偶数, Hart 1 写奇数, 验证交错访问正确性
-    li      t0, 0x0001_6000         # 交替数据区
+    li      t0, 0x00016000         # 交替数据区
     li      t1, 5                   # 每核写 5 个值
 
 ping_pong_loop:
     # Hart 0 写入 (偶数索引: 0, 2, 4, 6, 8)
     slli    t2, t1, 2               # offset = i * 4
-    sub     t2, t2, 4               # offset = (i-1) * 4  (reverse for t1 counting down)
+    addi    t2, t2, -4              # offset = (i-1) * 4  (reverse for t1 counting down)
     li      t3, 0
     sub     t3, zero, t1            # index = 5 - t1
     slli    t3, t3, 1               # even index = (5-t1)*2
@@ -70,7 +70,7 @@ ping_pong_loop:
 
     # ─── 测试 2: 突发密集访问 (Burst Contention) ──────────────
     # 快速连续发起多个 store，给仲裁器施加压力
-    li      t0, 0x0001_6100         # burst 数据区
+    li      t0, 0x00016100         # burst 数据区
     li      t1, 16                  # 16 次突发写入
 
 burst_loop:
@@ -85,7 +85,7 @@ burst_loop:
     # ─── 测试 3: 共享计数器原子递增 ────────────────────────────
     # 每个 Hart 递增共享计数器 N 次
     # 最终 counter 应等于 2*N (无丢失更新)
-    li      t0, 0x0001_5000
+    li      t0, 0x00015000
     li      t1, 20                  # 每核递增 20 次
     li      t2, 4                   # counter offset
 
@@ -111,7 +111,7 @@ wait_hart1:
 
     # ─── 测试 4: 读回验证 ──────────────────────────────────────
     # 验证突发写入数据完整性
-    li      t0, 0x0001_6100
+    li      t0, 0x00016100
     lw      t1, 0(t0)              # 最后一次 burst 的值应为 1
     li      s0, 1
     bne     t1, s0, fail
@@ -132,22 +132,22 @@ wait_hart1:
 # Hart 1: 并发竞争者 B
 # ══════════════════════════════════════════════════════════════
 hart1_main:
-    li      sp, 0x0002_7F00
+    li      sp, 0x00027F00
 
     # 等待 Hart 0 完成初始化
-    li      s0, 0x0001_5000
+    li      s0, 0x00015000
 wait_barrier:
     lw      t0, 8(s0)              # 等待 hart0_done
     beq     t0, zero, wait_barrier
 
     # ─── 测试 1: Ping-Pong 响应 ─────────────────────────────────
-    li      t0, 0x0001_6000
+    li      t0, 0x00016000
     li      t1, 0xB0                # Hart 1 写入标记
     sw      t1, 12(t0)             # 写入不同地址 (避免覆盖)
     fence
 
     # ─── 测试 2: Burst 响应 (Hart 1 也发起突发访问) ───────────
-    li      t0, 0x0001_6200         # Hart 1 burst 区 (独立地址)
+    li      t0, 0x00016200         # Hart 1 burst 区 (独立地址)
     li      t1, 16
 burst_h1:
     mv      t2, t1
@@ -159,7 +159,7 @@ burst_h1:
     bnez    t1, burst_h1
 
     # ─── 测试 3: 共享计数器递增 ─────────────────────────────────
-    li      t0, 0x0001_5000
+    li      t0, 0x00015000
     li      t1, 20
 atomic_inc_h1:
     lw      t3, 4(t0)

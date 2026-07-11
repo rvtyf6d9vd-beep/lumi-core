@@ -29,13 +29,13 @@ _start:
 # Hart 0: 确定性指令流 + 异常恢复验证
 # ══════════════════════════════════════════════════════════════
 hart0_main:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ─── 测试 1: 确定性 ALU 序列 ─────────────────────────────
     # 双核执行相同指令流，lockstep 比较器应无 mismatch
     li      t0, 0
-    li      t1, 0x1234_5678
-    li      t2, 0x9ABC_DEF0
+    li      t1, 0x12345678
+    li      t2, 0x9ABCDEF0
 
     # 序列 A: 算术运算链 (确定性)
     add     t3, t1, t2              # t3 = 0x12345678 + 0x9ABCDEF0 = 0xACF13568
@@ -44,31 +44,31 @@ hart0_main:
     and     t6, t1, t2              # t6 = 0x12345678 & 0x9ABCDEF0 = 0x12345670
 
     # 验证结果 (确保指令执行正确)
-    li      s0, 0xACF1_3568
+    li      s0, 0xACF13568
     bne     t3, s0, fail
-    li      s0, 0x9ABC_DEF0
+    li      s0, 0x9ABCDEF0
     bne     t4, s0, fail
-    li      s0, 0x8888_8888
+    li      s0, 0x88888888
     bne     t5, s0, fail
-    li      s0, 0x1234_5670
+    li      s0, 0x12345670
     bne     t6, s0, fail
 
     # ─── 测试 2: 确定性内存访问序列 ───────────────────────────
     # 双核访问各自 DTCM，相同地址/数据 → lockstep 匹配
-    li      t0, 0x0001_4000         # DTCM0 base (Hart 0 local)
+    li      t0, 0x00014000         # DTCM0 base (Hart 0 local)
 
-    li      t1, 0xAAAA_5555
+    li      t1, 0xAAAA5555
     sw      t1, 0(t0)
-    li      t1, 0x5555_AAAA
+    li      t1, 0x5555AAAA
     sw      t1, 4(t0)
     fence
 
     lw      t2, 0(t0)
-    li      s0, 0xAAAA_5555
+    li      s0, 0xAAAA5555
     bne     t2, s0, fail
 
     lw      t2, 4(t0)
-    li      s0, 0x5555_AAAA
+    li      s0, 0x5555AAAA
     bne     t2, s0, fail
 
     # ─── 测试 3: 异常处理恢复路径 ─────────────────────────────
@@ -94,18 +94,19 @@ trap_handler:
     # ─── 测试 4: CSR 确定性读写 ────────────────────────────────
 test4_csr:
     # CSR 操作序列 — lockstep 比较器需匹配 CSR 结果
-    li      t0, 0x0000_1888         # mstatus.MIE=1, MPIE=1
+    li      t0, 0x00001888         # mstatus.MIE=1, MPIE=1
     csrw    0x300, t0               # mstatus
     csrr    t1, 0x300               # read back
-    andi    t1, t1, 0x1888          # mask relevant bits
-    li      s0, 0x0000_1888
+    li      t2, 0x1888              # mask = MIE+MPIE
+    and     t1, t1, t2              # mask relevant bits
+    li      s0, 0x00001888
     bne     t1, s0, fail
 
     # mscratch 读写
-    li      t0, 0xDEAD_C0DE
+    li      t0, 0xDEADC0DE
     csrw    0x340, t0               # mscratch
     csrr    t1, 0x340
-    li      s0, 0xDEAD_C0DE
+    li      s0, 0xDEADC0DE
     bne     t1, s0, fail
 
     # ─── 测试 5: 分支确定性 ────────────────────────────────────
@@ -121,8 +122,8 @@ branch_loop:
     bne     t1, s0, fail            # 循环计数必须精确
 
     # ─── 通知 Hart 1 完成 ──────────────────────────────────────
-    li      t0, 0x0001_4100
-    li      t1, 0xA5A5_A5A5
+    li      t0, 0x00014100
+    li      t1, 0xA5A5A5A5
     sw      t1, 0(t0)              # done flag
     fence
 
@@ -134,29 +135,29 @@ branch_loop:
 # Hart 1: 执行相同确定性序列 (lockstep 对比端)
 # ══════════════════════════════════════════════════════════════
 hart1_main:
-    li      sp, 0x0002_7F00
+    li      sp, 0x00027F00
 
     # 相同 ALU 序列
-    li      t1, 0x1234_5678
-    li      t2, 0x9ABC_DEF0
+    li      t1, 0x12345678
+    li      t2, 0x9ABCDEF0
     add     t3, t1, t2
     sub     t4, t3, t1
     xor     t5, t1, t2
     and     t6, t1, t2
 
     # 相同内存访问 (Hart 1 DTCM1)
-    li      t0, 0x0002_4000         # DTCM1 base
-    li      t1, 0xAAAA_5555
+    li      t0, 0x00024000         # DTCM1 base
+    li      t1, 0xAAAA5555
     sw      t1, 0(t0)
-    li      t1, 0x5555_AAAA
+    li      t1, 0x5555AAAA
     sw      t1, 4(t0)
     fence
 
     # 等待 Hart 0 完成
-    li      t0, 0x0001_4100
+    li      t0, 0x00014100
 wait_done:
     lw      t1, 0(t0)
-    li      s0, 0xA5A5_A5A5
+    li      s0, 0xA5A5A5A5
     bne     t1, s0, wait_done
 
     # Hart 1 进入低功耗等待

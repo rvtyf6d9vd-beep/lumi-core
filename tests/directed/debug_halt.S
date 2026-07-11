@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ Debug halt 验证 (间接: EBREAK 触发) ════════
     # 在没有 JTAG 接口的裸机测试中, 我们验证:

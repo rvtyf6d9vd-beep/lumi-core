@@ -136,9 +136,17 @@ EOF
         continue
     fi
 
-    # 编译
+    # 编译 (根据测试类型选择 march)
     COMPILE_LOG="$OUT_DIR/compile.log"
-    if "$CC" $CFLAGS -o "$OUT_DIR/${test}.elf" "$SRC" > "$COMPILE_LOG" 2>&1; then
+    case "$test" in
+        rv32b_*)       TEST_MARCH="rv32im_zba_zbb_zicsr_zifencei" ;;
+        rv32c_*)       TEST_MARCH="rv32imac_zicsr_zifencei" ;;
+        fpu_*|power_icg) TEST_MARCH="rv32imafv_zicsr_zifencei" ;;
+        vector_*)      TEST_MARCH="rv32imv_zicsr_zifencei" ;;
+        *)             TEST_MARCH="rv32imac_zicsr_zifencei" ;;
+    esac
+    TEST_CFLAGS="-march=$TEST_MARCH -mabi=$MABI -nostdlib -ffreestanding -O2 -static -T $LINKER"
+    if "$CC" $TEST_CFLAGS -o "$OUT_DIR/${test}.elf" "$SRC" > "$COMPILE_LOG" 2>&1; then
         # 编译成功
         COMPILE_STATUS="PASS"
 

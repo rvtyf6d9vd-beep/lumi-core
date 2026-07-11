@@ -11,7 +11,7 @@
 
 _start:
     # sp 初始化 (使用标准 32-bit 指令)
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ C.NOP (0x0001) ══════════════════════════════
     .2byte  0x0001                  # c.nop
@@ -57,7 +57,7 @@ _start:
     # nzimm=1, nzimm[17]=0, nzimm[16:12]=00001, rd=a2=12
     # 011_0_01100_00001_01 = 0x6605
     .2byte  0x6605
-    li      s0, 0x0000_1000
+    li      s0, 0x00001000
     bne     a2, s0, fail
 
     # ══ C.SLLI: rd = rd << shamt (Quadrant 10, funct3=000) ═
@@ -66,13 +66,13 @@ _start:
     # shamt=4, shamt[5]=0, shamt[4:0]=00100, rd=12
     # 000_0_01100_00100_10 = 0x0612
     .2byte  0x0612
-    li      s0, 0x0001_0000
+    li      s0, 0x00010000
     bne     a2, s0, fail
 
     # ══ C.LW: rd = M[rs1+offset] (Quadrant 00, funct3=010) ═
     # Store a known value to memory first (use 32-bit SW)
-    li      t0, 0x0001_4000         # DTCM0 address
-    li      t1, 0xDEAD_BEEF
+    li      t0, 0x00014000         # DTCM0 address
+    li      t1, 0xDEADBEEF
     sw      t1, 0(t0)
 
     # C.LW a3, 0(t0) → lw a3, 0(t0)
@@ -82,15 +82,15 @@ _start:
     # Actually C.LW format: 010 | uimm[5:3] | rs1'(3bit) | uimm[2|6] | rd'(3bit) | 00
     # rs1' and rd' use 3-bit compressed register encoding (x8-x15)
     # t0=x5 is NOT in the compressed range. Let me use s0=x8 instead.
-    li      s0, 0x0001_4000         # s0 = x8 (in compressed range)
-    li      t1, 0xCAFE_BABE
+    li      s0, 0x00014000         # s0 = x8 (in compressed range)
+    li      t1, 0xCAFEBABE
     sw      t1, 0(s0)
 
     # C.LW a0, 0(s0): rs1'=s0(x8)=000, rd'=a0(x10)=010, uimm=0
     # 010 | 000 | 000 | 00 | 010 | 00 = 0x4010 → 010_000_000_00_010_00
     # = 0100_0000_0000_1000 = 0x4008
     .2byte  0x4008
-    li      s1, 0xCAFE_BABE
+    li      s1, 0xCAFEBABE
     bne     a0, s1, fail
 
     # ══ C.SW: M[rs1+offset] = rs2 (Quadrant 00, funct3=110) ═
@@ -100,7 +100,7 @@ _start:
     # 110_001_000_00_010_00 = 1100_0100_0000_1000 = 0xC408
     .2byte  0xC408
     lw      t2, 4(s0)
-    li      s1, 0xCAFE_BABE
+    li      s1, 0xCAFEBABE
     bne     t2, s1, fail
 
     # ══ C.J (Quadrant 01, funct3=101) — 基本跳转 ═══
@@ -112,14 +112,14 @@ _start:
 skip:
 
     # ══ C.BEQZ (Quadrant 01, funct3=110) ══════════
-    li      t0, 0
-    c.beqz  t0, beqz_ok             # t0==0, should branch
+    li      s0, 0
+    c.beqz  s0, beqz_ok             # s0==0, should branch
     j       fail
 beqz_ok:
 
     # ══ C.BNEZ (Quadrant 01, funct3=111) ══════════
-    li      t0, 1
-    c.bnez  t0, bnez_ok             # t0!=0, should branch
+    li      s0, 1
+    c.bnez  s0, bnez_ok             # s0!=0, should branch
     j       fail
 bnez_ok:
 

@@ -26,7 +26,7 @@ _start:
     csrr    t0, 0xF14               # mhartid
     bnez    t0, hart_halt           # 仅 Hart 0 执行
 
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ─── 测试 1: 上电安全初始状态验证 ──────────────────────────
     # 冷复位后 DFT 模块应处于 ST_NORMAL, secure_lock=0
@@ -71,8 +71,8 @@ _start:
     csrw    0x3A0, t0               # pmpcfg0
 
     # pmpaddr0 = ITCM 基址 >> 2 (NAPOT 编码)
-    # ITCM: 0x0000_0000, 32KB → NAPOT addr = (base >> 2) | ((size/8)-1)
-    li      t0, 0x0000_0FFF         # 32KB NAPOT 编码
+    # ITCM: 0x00000000, 32KB → NAPOT addr = (base >> 2) | ((size/8)-1)
+    li      t0, 0x00000FFF         # 32KB NAPOT 编码
     csrw    0x3B0, t0               # pmpaddr0
 
     # 验证写回
@@ -82,13 +82,13 @@ _start:
     bne     t1, s0, fail
 
     csrr    t1, 0x3B0
-    li      s0, 0x0000_0FFF
+    li      s0, 0x00000FFF
     bne     t1, s0, fail
 
     # ─── 测试 4: PMP Lock 位 (L=1 不可逆) ─────────────────────
     # 配置 PMP 区域 1: DTCM0 R/W, Lock=1
     # pmpcfg0[15:8] = 0b10000011 = 0x83 (L=1, A=TOR, R=1, W=1)
-    li      t0, 0x0000_8300
+    li      t0, 0x00008300
     li      t1, 0x18
     or      t0, t0, t1              # 保留 byte 0, 设置 byte 1
     csrw    0x3A0, t0               # pmpcfg0 (byte0=0x18, byte1=0x83)
@@ -101,14 +101,14 @@ _start:
 
     # ─── 测试 5: 敏感 CSR 完整性验证 ────────────────────────────
     # 验证 mscratch/mstatus/mtvec 写入后读出一致 (防篡改)
-    li      t0, 0x5EC0_BE01
+    li      t0, 0x5EC0BE01
     csrw    0x340, t0               # mscratch
     csrr    t1, 0x340
-    li      s0, 0x5EC0_BE01
+    li      s0, 0x5EC0BE01
     bne     t1, s0, fail
 
     # mstatus.MIE + MPIE
-    li      t0, 0x0000_1888
+    li      t0, 0x00001888
     csrw    0x300, t0               # mstatus
     csrr    t1, 0x300
     li      s0, 0x1888
@@ -116,7 +116,7 @@ _start:
     bne     t1, s0, fail
 
     # mtvec direct mode (低 2 位 = 00)
-    li      t0, 0x0000_0100         # 256-byte aligned, direct mode
+    li      t0, 0x00000100         # 256-byte aligned, direct mode
     csrw    0x305, t0               # mtvec
     csrr    t1, 0x305
     andi    t1, t1, 0x3             # 检查 mode bits
@@ -124,8 +124,8 @@ _start:
 
     # ─── 测试 6: DEVICE_IDCODE 验证 (memory-mapped 模拟) ───────
     # 将 IDCODE 值写入内存并验证 (模拟 JTAG DR 读取路径)
-    li      t0, 0x0001_4200         # DTCM0 scratch area
-    li      t1, 0x10E3_1901         # DEVICE_IDCODE (lumi_dft_ctrl.sv)
+    li      t0, 0x00014200         # DTCM0 scratch area
+    li      t1, 0x10E31901         # DEVICE_IDCODE (lumi_dft_ctrl.sv)
     sw      t1, 0(t0)
     fence
     lw      t2, 0(t0)
@@ -147,10 +147,10 @@ _start:
     # ─── 测试 7: 安全锁定行为模拟 ──────────────────────────────
     # 模拟 secure_lock 效果: 锁定后 DFT 功能全部禁用
     # 验证: 锁定标志位设置后，无法通过软件清除
-    li      t0, 0x0001_4300         # 安全状态存储区
+    li      t0, 0x00014300         # 安全状态存储区
 
     # 模拟: 写入锁定标志 (代表 secure_lock = 1)
-    li      t1, 0xDEAD_DEAD         # lock pattern
+    li      t1, 0xDEADDEAD         # lock pattern
     sw      t1, 0(t0)              # secure_lock_flag
     fence
 
@@ -168,7 +168,7 @@ _start:
 test7_check_done:
     # ─── 测试 8: JTAG TAP 指令寄存器值验证 ─────────────────────
     # 验证 JTAG IR 指令编码正确性 (写入内存对照表)
-    li      t0, 0x0001_4400         # JTAG IR table area
+    li      t0, 0x00014400         # JTAG IR table area
 
     li      t1, 0x1F                # IR_BYPASS  = 5'b11111
     sb      t1, 0(t0)

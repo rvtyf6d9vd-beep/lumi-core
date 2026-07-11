@@ -10,14 +10,14 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: Boot 地址验证 ══════════════════════════
-    # Boot 地址 = ITCM 基址 (0x0000_0000)
+    # Boot 地址 = ITCM 基址 (0x00000000)
     # 验证当前执行在 ITCM 范围内
     auipc   t0, 0                  # t0 = current PC
-    # PC should be in ITCM range: 0x0000_0000 ~ 0x0000_7FFF
-    li      t1, 0x0000_8000
+    # PC should be in ITCM range: 0x00000000 ~ 0x00007FFF
+    li      t1, 0x00008000
     bgeu    t0, t1, fail           # PC < 0x8000 → in ITCM
 
     # ══ 测试 2: mhartid 可读 (Hart 身份确认) ══════════
@@ -46,10 +46,10 @@ _start:
     # 安全启动需要验证固件签名 (RSA/ECDSA)
     # 本测试模拟签名验证的数据流
 
-    li      t0, 0x0001_4000         # DTCM0: signature data area
+    li      t0, 0x00014000         # DTCM0: signature data area
 
     # 模拟 256-bit 签名 (8 words)
-    li      t1, 0xA5A5_A5A5
+    li      t1, 0xA5A5A5A5
     sw      t1, 0(t0)
     sw      t1, 4(t0)
     sw      t1, 8(t0)
@@ -71,8 +71,8 @@ sig_verify:
     li      t4, 8
     bne     t2, t4, sig_verify
 
-    # Expected checksum: 8 * 0xA5A5A5A5 = 0x3_2D2D_2D28 (lower 32 bits)
-    li      t0, 0x2D2D_2D28
+    # Expected checksum: 8 * 0xA5A5A5A5 = 0x32D2D2D28 (lower 32 bits)
+    li      t0, 0x2D2D2D28
     bne     s0, t0, fail
 
     # ══ 测试 6: Boot 模式标志验证 ════════════════════
@@ -86,8 +86,8 @@ sig_verify:
     # Boot 从 ITCM 执行, 但数据在 DTCM
     # 验证跨域访问正常
 
-    li      t0, 0x0001_0000         # DTCM0 base
-    li      t1, 0xB007_C0DE
+    li      t0, 0x00010000         # DTCM0 base
+    li      t1, 0xB007C0DE
     sw      t1, 0(t0)
     fence
     lw      t2, 0(t0)

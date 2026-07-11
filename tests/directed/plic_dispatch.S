@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ PLIC CSR 路径验证 ═════════════════════════════
     # In CLIC+PLIC architecture, PLIC operates via:

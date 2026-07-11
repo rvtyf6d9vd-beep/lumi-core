@@ -14,7 +14,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: 正常运行模式验证 ══════════════════════
     # DFT 模块初始状态: ST_NORMAL (scan_enable=0)
@@ -27,8 +27,8 @@ _start:
     bne     t2, s0, fail
 
     # ══ 测试 2: 内存读写不受 DFT 影响 ════════════════
-    li      t0, 0x0001_4000         # DTCM0
-    li      t1, 0x5CA1_AB1E
+    li      t0, 0x00014000         # DTCM0
+    li      t1, 0x5CA1AB1E
     sw      t1, 0(t0)
     fence
     lw      t2, 0(t0)
@@ -39,16 +39,16 @@ _start:
     # 验证: 在无 scan_enable 时, 所有寄存器操作正常
 
     # CSR 读写正常
-    li      t0, 0xABCD_1234
+    li      t0, 0xABCD1234
     csrw    0x340, t0              # mscratch
     csrr    t1, 0x340
     bne     t0, t1, fail
 
     # 寄存器文件读写正常
-    li      s0, 0x1111_1111
-    li      s1, 0x2222_2222
+    li      s0, 0x11111111
+    li      s1, 0x22222222
     add     s2, s0, s1
-    li      t0, 0x3333_3333
+    li      t0, 0x33333333
     bne     s2, t0, fail
 
     # ══ 测试 4: 安全锁定验证 (tamper_detect) ══════════
@@ -67,7 +67,7 @@ _start:
     # 软件无法直接驱动 scan pin, 需要 testbench 验证
 
     # 通过 DTCM 模拟 scan data pattern
-    li      t0, 0x0001_4100
+    li      t0, 0x00014100
     li      t1, 0x0               # scan_data[0] = 0
     sw      t1, 0(t0)
     li      t1, 0xF               # scan_data[1] = 0xF

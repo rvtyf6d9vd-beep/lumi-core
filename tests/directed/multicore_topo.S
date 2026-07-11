@@ -17,11 +17,11 @@ _start:
     j       hart_worker
 
 hart0_main:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ Hart 0: 拓扑验证 ══════════════════════════════
     # 共享内存 (DTCM0) 用于核间通信
-    li      s0, 0x0001_4000         # shared_mem base
+    li      s0, 0x00014000         # shared_mem base
 
     # 清除共享内存
     li      t0, 0
@@ -35,7 +35,7 @@ hart0_main:
     bnez    t0, fail                # Hart 0 must have ID=0
 
     # ── 测试 2: 写任务描述到共享内存 ──
-    li      t0, 0x0001_4100         # task descriptor
+    li      t0, 0x00014100         # task descriptor
     li      t1, 42                  # task value
     sw      t1, 0(t0)               # task_data = 42
     li      t1, 1
@@ -59,7 +59,7 @@ wait_worker:
 
     # ── 测试 3: Round-Robin 仲裁验证 ──
     # 连续发起多个内存请求, 验证仲裁公平性
-    li      t0, 0x0001_4200
+    li      t0, 0x00014200
     li      t1, 0xAA
     sw      t1, 0(t0)               # req 1
     sw      t1, 4(t0)               # req 2
@@ -79,14 +79,14 @@ wait_worker:
 
 hart_worker:
     # Hart 1+ worker
-    li      sp, 0x0002_7F00
+    li      sp, 0x00027F00
 
     # 读取自己的 hart_id
     csrr    t0, 0xF14
     mv      s1, t0                  # save hart_id
 
     # 等待任务
-    li      t0, 0x0001_4100         # task descriptor
+    li      t0, 0x00014100         # task descriptor
 wait_task:
     lw      t1, 4(t0)              # task_ready
     beqz    t1, wait_task
@@ -98,7 +98,7 @@ wait_task:
     slli    t3, t2, 1              # result = task_data * 2
 
     # 写回结果
-    li      t0, 0x0001_4000         # shared_mem
+    li      t0, 0x00014000         # shared_mem
     fence
     sw      s1, 4(t0)              # report hart_id
     sw      t3, 8(t0)              # report result

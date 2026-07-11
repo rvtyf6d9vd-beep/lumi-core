@@ -14,7 +14,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 测试 1: DTCM 内存完整性 (March C- 概念) ══════
     # March C- 步骤:
@@ -25,7 +25,7 @@ _start:
     # M4: ↓(r1,w0) — 降序读 1, 写 0
     # M5: ↑(r0) — 升序读 0
 
-    li      s0, 0x0001_4000         # DTCM0 base
+    li      s0, 0x00014000         # DTCM0 base
     li      s1, 16                  # test 16 words
 
     # M0: 升序写 0
@@ -38,7 +38,7 @@ m0_loop:
     bne     t0, s1, m0_loop
 
     # Reset base pointer
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
 
     # M1: 升序读 0, 写 1
     li      t0, 0
@@ -52,7 +52,7 @@ m1_loop:
     addi    t0, t0, 1
     bne     t0, s1, m1_loop
 
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
 
     # M2: 升序读 1, 写 0
     li      t0, 0
@@ -64,7 +64,7 @@ m2_loop:
     addi    t0, t0, 1
     bne     t0, s1, m2_loop
 
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
 
     # M3: 降序读 0, 写 1 (从最后一个开始)
     addi    s0, s0, 60             # point to last word (15*4)
@@ -78,7 +78,7 @@ m3_loop:
     addi    t0, t0, -1
     bgez    t0, m3_loop
 
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
 
     # M4: 降序读 1, 写 0
     addi    s0, s0, 60
@@ -91,7 +91,7 @@ m4_loop:
     addi    t0, t0, -1
     bgez    t0, m4_loop
 
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
 
     # M5: 升序读 0 (最终验证)
     li      t0, 0
@@ -104,11 +104,11 @@ m5_loop:
     bne     t0, s1, m5_loop
 
     # ══ 测试 2: Checkerboard 模式 (额外覆盖) ══════════
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
     li      s1, 16
     li      t0, 0
-    li      t1, 0xAAAA_AAAA         # checkerboard pattern
-    li      t2, 0x5555_5555         # inverse checkerboard
+    li      t1, 0xAAAAAAAA         # checkerboard pattern
+    li      t2, 0x55555555         # inverse checkerboard
 cb_write:
     # Even words: 0xAAAA, Odd words: 0x5555
     andi    t3, t0, 1
@@ -123,7 +123,7 @@ cb_next:
     bne     t0, s1, cb_write
 
     # Read back and verify
-    li      s0, 0x0001_4000
+    li      s0, 0x00014000
     li      t0, 0
 cb_read:
     lw      t3, 0(s0)

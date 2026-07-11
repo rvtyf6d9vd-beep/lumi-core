@@ -14,7 +14,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ 验证 mhartid CSR 可读 ═══════════════════════
     csrr    t0, 0xF14               # mhartid
@@ -29,25 +29,25 @@ _start:
     # 3. 验证 commit 输出一致
 
     # ── 测试 1: 确定性 ALU 序列 ──
-    li      t0, 0x1234_5678
-    li      t1, 0x9ABC_DEF0
+    li      t0, 0x12345678
+    li      t1, 0x9ABCDEF0
     add     t2, t0, t1              # 确定性加法
-    li      s0, 0xACF1_3468
+    li      s0, 0xACF13468
     bne     t2, s0, fail
 
     # ── 测试 2: 确定性移位序列 ──
-    li      t0, 0x8000_0001
+    li      t0, 0x80000001
     slli    t1, t0, 4               # 左移 4
-    li      s0, 0x0000_0010
+    li      s0, 0x00000010
     bne     t1, s0, fail
 
     srli    t1, t0, 16              # 右移 16
-    li      s0, 0x0000_8000
+    li      s0, 0x00008000
     bne     t1, s0, fail
 
     # ── 测试 3: 确定性内存序列 ──
-    li      t0, 0x0001_4000         # DTCM0
-    li      t1, 0xA5A5_A5A5
+    li      t0, 0x00014000         # DTCM0
+    li      t1, 0xA5A5A5A5
     sw      t1, 0(t0)
     fence
     lw      t2, 0(t0)
@@ -65,7 +65,7 @@ loop:
 
     # ── 测试 5: CSR 读写确定性 ──
     # 写入 mscratch (CSR 0x340)
-    li      t0, 0xDEAD_BEEF
+    li      t0, 0xDEADBEEF
     csrw    0x340, t0              # mscratch = 0xDEADBEEF
     csrr    t1, 0x340              # read back
     bne     t0, t1, fail

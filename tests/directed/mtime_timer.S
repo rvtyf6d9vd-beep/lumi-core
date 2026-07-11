@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ MTIME CSR 读写验证 ════════════════════════════
     # time (CSR 0xC01) — read-only, monotonic counter

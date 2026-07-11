@@ -10,7 +10,7 @@
 .align 2
 
 _start:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # ══ CLIC CSR 读写验证 ═════════════════════════════
     # cliccfg (CSR 0x300 + 偏移, or custom address)

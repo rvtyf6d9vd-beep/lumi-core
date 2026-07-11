@@ -24,16 +24,16 @@ _start:
     j       hart1_consumer
 
 hart0_producer:
-    li      sp, 0x0001_7F00
+    li      sp, 0x00017F00
 
     # 共享内存基址 (DTCM0)
-    li      t0, 0x0001_4000         # shared_mem base
+    li      t0, 0x00014000         # shared_mem base
 
     # 写入测试数据到共享内存
-    li      t1, 0xDEAD_BEEF
+    li      t1, 0xDEADBEEF
     sw      t1, 0(t0)               # shared[0] = 0xDEADBEEF
 
-    li      t1, 0x1234_5678
+    li      t1, 0x12345678
     sw      t1, 4(t0)               # shared[1] = 0x12345678
 
     li      t1, 0xCAFEBABE
@@ -51,7 +51,7 @@ wait_hart1:
 
     # 验证 Hart 1 写回的数据
     lw      t1, 20(t0)             # shared[5] = Hart1 result
-    li      t2, 0xDEAD_BEEF
+    li      t2, 0xDEADBEEF
     bne     t1, t2, fail
 
     # ══ PASS ════════════════════════════════════════════
@@ -59,9 +59,9 @@ wait_hart1:
     ecall
 
 hart1_consumer:
-    li      sp, 0x0002_7F00        # Hart 1 使用 DTCM1 栈
+    li      sp, 0x00027F00        # Hart 1 使用 DTCM1 栈
 
-    li      t0, 0x0001_4000         # shared_mem base
+    li      t0, 0x00014000         # shared_mem base
 
     # 等待 Hart 0 的 ready 标志
 wait_ready:
@@ -70,11 +70,11 @@ wait_ready:
 
     # 读取并验证共享数据
     lw      t1, 0(t0)              # shared[0]
-    li      t2, 0xDEAD_BEEF
+    li      t2, 0xDEADBEEF
     bne     t1, t2, fail
 
     lw      t1, 4(t0)              # shared[1]
-    li      t2, 0x1234_5678
+    li      t2, 0x12345678
     bne     t1, t2, fail
 
     lw      t1, 8(t0)              # shared[2]
