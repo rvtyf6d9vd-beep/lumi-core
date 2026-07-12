@@ -66,6 +66,7 @@ module lumi_core_top #(
 
     // ── V1 验证探针 (Verification Probe, all slots) ───────────────
     output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
+    output logic [15:0]             mon_inst_raw [ISSUE_WIDTH-1:0],
     output logic [4:0]              mon_rd   [ISSUE_WIDTH-1:0],
     output logic [31:0]             mon_rd_data [ISSUE_WIDTH-1:0],
     output logic                    mon_irq
@@ -200,6 +201,8 @@ module lumi_core_top #(
         .f2_pred_target        (f2_pred_target),
         .branch_redirect_pc    (e1_br_target),
         .branch_redirect_valid (e1_mispredict),
+        .trap_redirect_pc      (trap_pc),
+        .trap_redirect_valid   (trap_request),
         .tage_update_pc        (e1_br_target),     // 简化: 使用分支反馈
         .tage_update_taken     (e1_br_taken),
         .tage_update_valid     (e1_br_taken),
@@ -239,7 +242,7 @@ module lumi_core_top #(
         .bypass_rs2_data       (bp_rs2_data),
         .fu_busy               (10'h0),      // TODO: 连接 FU pool
         .stall_out             (dec_stall),
-        .flush                 (e1_mispredict),
+        .flush                 (e1_mispredict || trap_request),
         .div_busy              (e2_div_busy)
     );
 
@@ -463,6 +466,7 @@ module lumi_core_top #(
         .hpm_exception       (hpm_exception),
         // V1 验证探针
         .mon_inst            (mon_inst),
+        .mon_inst_raw        (mon_inst_raw),
         .mon_rd              (mon_rd),
         .mon_rd_data         (mon_rd_data),
         .mon_irq             (mon_irq)

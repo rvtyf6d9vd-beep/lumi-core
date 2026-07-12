@@ -16,7 +16,8 @@ module lumi_coverage #(
     input logic                            clk_core,
     input logic                            reset_n,
     input logic [ISSUE_WIDTH-1:0]          commit_valid,
-    input logic [ISSUE_WIDTH-1:0][31:0]    commit_inst
+    input logic [ISSUE_WIDTH-1:0][31:0]    commit_inst,
+    input logic [ISSUE_WIDTH-1:0][15:0]    commit_inst_raw
 );
 
   // ─── 指令字段提取辅助 ──────────────────────────────────────
@@ -28,8 +29,12 @@ module lumi_coverage #(
 
   always_comb begin
     for (int s = 0; s < ISSUE_WIDTH; s++) begin
-      is_compressed[s] = (commit_inst[s][1:0] != 2'b11);
-      opcode[s] = is_compressed[s] ? {5'b0, commit_inst[s][1:0]} : commit_inst[s][6:0];
+      // ERR-018 修复: 使用 inst_raw 检测压缩指令
+      is_compressed[s] = (commit_inst_raw[s][1:0] != 2'b11);
+      // 对于 32-bit 指令, 使用 commit_inst 提取字段;
+      // 对于 16-bit 指令, commit_inst 已经是展开后的 32-bit 等效指令,
+      // 所以 cg_isa_rv32i 等使用 commit_inst, cg_isa_c_ext 使用 commit_inst_raw
+      opcode[s] = commit_inst[s][6:0];
       rd[s]     = commit_inst[s][11:7];
       funct3[s] = commit_inst[s][14:12];
       funct7[s] = commit_inst[s][31:25];
@@ -243,6 +248,7 @@ module lumi_coverage #(
   end
 
   // ─── Cover Group 4: cg_isa_c_ext (C 压缩指令) ─────────────
+  // 使用 commit_inst_raw 提取原始 16-bit 压缩指令的 quadrant 和 funct3
   logic [11:0] c_ext_hit;
 
   always_ff @(posedge clk_core) begin
@@ -251,9 +257,9 @@ module lumi_coverage #(
     end else begin
       for (int s = 0; s < ISSUE_WIDTH; s++) begin
         if (commit_valid[s] && is_compressed[s]) begin
-          case (commit_inst[s][1:0])
+          case (commit_inst_raw[s][1:0])
             2'b00: begin
-              case (commit_inst[s][15:13])
+              case (commit_inst_raw[s][15:13])
                 3'b000: c_ext_hit[0]  <= 1; // C.ADDI4SPN
                 3'b010: c_ext_hit[0]  <= 1; // C.LW
                 3'b110: c_ext_hit[1]  <= 1; // C.SW
@@ -261,7 +267,7 @@ module lumi_coverage #(
               endcase
             end
             2'b01: begin
-              case (commit_inst[s][15:13])
+              case (commit_inst_raw[s][15:13])
                 3'b000: c_ext_hit[2]  <= 1; // C.ADDI/C.NOP
                 3'b001: c_ext_hit[3]  <= 1; // C.JAL
                 3'b010: c_ext_hit[4]  <= 1; // C.LI
@@ -273,7 +279,7 @@ module lumi_coverage #(
               endcase
             end
             2'b10: begin
-              case (commit_inst[s][15:13])
+              case (commit_inst_raw[s][15:13])
                 3'b000: c_ext_hit[9]  <= 1; // C.SLLI
                 3'b010: c_ext_hit[9]  <= 1; // C.LWSP (reuse SLLI slot)
                 3'b100: c_ext_hit[10] <= 1; // C.MV/C.ADD/C.JR/C.JALR

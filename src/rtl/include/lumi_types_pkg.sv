@@ -72,6 +72,8 @@ package lumi_pkg;
     // 异常标志
     logic        exc_valid;
     logic [3:0]  exc_cause;
+    // 原始指令 (16-bit 压缩指令保留, 32-bit 指令存低 16-bit)
+    logic [15:0] inst_raw;
   } inst_pkt_t;
 
   // ───────────────────────────────────────────────────────────

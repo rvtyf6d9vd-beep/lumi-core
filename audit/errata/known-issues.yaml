@@ -441,6 +441,32 @@ errata:
       coverage 模块的 is_compressed 检测 (commit_inst[1:0] != 2'b11) 不再触发。
       后续需添加 inst_raw 旁路信号以同时支持监控原始 16-bit 指令。
     regression_test: "tests/directed/rv32c_smoke.S"
+    supplemental_fixes:
+      - date: "2026-07-11"
+        fix_id: "inst_raw-bypass"
+        description: >
+          inst_pkt_t 添加 inst_raw[15:0] 字段, decode_issue 赋值原始低 16-bit,
+          writeback 输出 mon_inst_raw, coverage 改用 commit_inst_raw 检测压缩指令。
+          c_ext coverage 从 0/12 提升到 7/12 (58%)。
+        files_modified:
+          - "src/rtl/include/lumi_types_pkg.sv"
+          - "src/rtl/core/lumi_decode_issue.sv"
+          - "src/rtl/core/lumi_writeback.sv"
+          - "src/rtl/core/lumi_core_top.sv"
+          - "src/rtl/top/lumi_soc_top.sv"
+          - "src/tb/top/lumi_v1_tb_top.sv"
+          - "src/tb/env/lumi_coverage.sv"
+      - date: "2026-07-11"
+        fix_id: "trap-redirect-minimal"
+        description: >
+          fetch.sv FSM 添加 trap_redirect 输入 (优先级 > branch_redirect),
+          core_top.sv 连接 trap_pc/trap_request 到 fetch, flush 信号 OR trap_request。
+          ECALL/EBREAK 触发 trap → mtvec → pipeline flush → 从 mtvec 地址重新取指。
+          rv32i_smoke 不再超时 (22 cycles PASS), 6 项 smoke 全部 PASS。
+          rv32c_smoke 仍超时 (16-bit fetch 对齐问题, ERR-010, 留到 M3)。
+        files_modified:
+          - "src/rtl/core/lumi_fetch.sv"
+          - "src/rtl/core/lumi_core_top.sv"
 
 # 示例条目格式:
 # - id: "ERR-001"

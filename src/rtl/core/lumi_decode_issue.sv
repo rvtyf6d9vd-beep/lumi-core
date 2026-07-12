@@ -549,6 +549,8 @@ module lumi_decode_issue #(
                     i_issue[s].inst = c_ext_expand(d_instructions[issue_sel[s]][15:0]);
                 else
                     i_issue[s].inst = d_instructions[issue_sel[s]];
+                // inst_raw: 保留原始低 16-bit 指令, 用于 coverage 检测
+                i_issue[s].inst_raw = d_instructions[issue_sel[s]][15:0];
                 i_issue[s].rd       = tmp_dec_d.has_rd ? tmp_dec_d.rd : 5'h0;
                 i_issue[s].rs1      = tmp_dec_d.rs1;
                 i_issue[s].rs2      = tmp_dec_d.rs2;

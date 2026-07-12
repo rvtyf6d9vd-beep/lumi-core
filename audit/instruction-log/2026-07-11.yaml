@@ -371,3 +371,44 @@ operations:
       - "完整 16-bit fetch 支持 (fetch.sv 边界处理) 留到后续 milestone"
     git_commits:
       - "4cb9b61: fix(rtl): ERR-017 CSR readback + ECALL commit + ERR-018 RV32C inst field"
+
+  - id: "T-MS3-S2-2-SUPP1 (inst_raw + trap redirect)"
+    title: "inst_raw coverage 旁路 + trap redirect 最小化实现"
+    status: COMPLETE
+    date: "2026-07-11"
+    details:
+      - "inst_raw: inst_pkt_t 添加 inst_raw[15:0] 字段 (原始低 16-bit 指令)"
+      - "inst_raw: decode_issue 赋值 d_instructions[issue_sel[s]][15:0]"
+      - "inst_raw: writeback 添加 mon_inst_raw[15:0] 输出端口"
+      - "inst_raw: core_top/soc_top/v1_tb_top 逐层传递 mon_inst_raw"
+      - "inst_raw: coverage 改用 commit_inst_raw 检测压缩指令 (is_compressed + CG4)"
+      - "inst_raw 验证: c_ext coverage 从 0/12 提升到 7/12 (58%)"
+      - "trap: fetch.sv 添加 trap_redirect_pc/trap_redirect_valid 输入端口"
+      - "trap: fetch FSM ST_FETCH/ST_STALL 状态添加 trap_redirect 检查 (优先级 > branch_redirect)"
+      - "trap: core_top.sv 连接 trap_pc→fetch.trap_redirect_pc, trap_request→fetch.trap_redirect_valid"
+      - "trap: core_top.sv flush 信号改为 e1_mispredict || trap_request"
+      - "trap 验证: rv32i_smoke PASS (22 cycles), 6 项 smoke 全部 PASS"
+      - "rv32c_smoke 仍超时 (16-bit fetch 对齐 ERR-010, 留到 M3)"
+    choices:
+      option: "最小化 trap redirect (仅 ECALL→mtvec 跳转 + flush, 不含 MRET)"
+      alternatives:
+        - "完整 trap 处理 (含 MRET/saved PC/interrupt disable, 工作量大)"
+        - "最小化 trap redirect (选中, ~50 行, 低风险)"
+        - "继续留到后续 milestone"
+    files_modified:
+      - "src/rtl/include/lumi_types_pkg.sv"
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "src/rtl/core/lumi_writeback.sv"
+      - "src/rtl/core/lumi_core_top.sv"
+      - "src/rtl/core/lumi_fetch.sv"
+      - "src/rtl/top/lumi_soc_top.sv"
+      - "src/tb/top/lumi_v1_tb_top.sv"
+      - "src/tb/env/lumi_coverage.sv"
+    verification:
+      - "rv32i_smoke:   PASS (22 cycles, exit_code=0)"
+      - "rv32m_basic:   PASS (99 cycles)"
+      - "tcm_basic_rw:  PASS (54 cycles)"
+      - "cache_basic:   PASS (51 cycles)"
+      - "csr_basic:     PASS (38 cycles)"
+      - "clic_priority: PASS (18 cycles)"
+      - "rv32c_smoke:   TIMEOUT (ERR-010, 16-bit fetch, M3)"

@@ -35,6 +35,10 @@ module lumi_fetch #(
     // ── 分支反馈 (← Execute E1) ───────────────────────────────
     input  logic [31:0]             branch_redirect_pc,     // fetch-bpred.html §3.1
     input  logic                    branch_redirect_valid,   // 误预测纠正
+
+    // ── Trap 重定向 (← Writeback) ──────────────────────────────
+    input  logic [31:0]             trap_redirect_pc,        // mtvec 地址
+    input  logic                    trap_redirect_valid,     // trap 发生
     input  logic [31:0]             tage_update_pc,          // LTAGE 更新 (fetch-bpred.html §3.3)
     input  logic                    tage_update_taken,
     input  logic                    tage_update_valid,
@@ -469,6 +473,11 @@ module lumi_fetch #(
 
                 if (debug_halt) begin
                     state_next = ST_HALT;
+                end else if (trap_redirect_valid) begin
+                    // Trap 重定向: 优先级最高 (ECALL/EBREAK/异常 → mtvec)
+                    state_next = ST_FLUSH;
+                    flush_cnt_next  = 2'd2;
+                    pc_next    = trap_redirect_pc;
                 end else if (branch_redirect_valid) begin
                     // 误预测 flush: 跳转至正确 PC (2 cycle 延迟)
                     state_next = ST_FLUSH;
@@ -496,6 +505,11 @@ module lumi_fetch #(
                 f1_pc_out = pc_reg;
                 if (debug_halt) begin
                     state_next = ST_HALT;
+                end else if (trap_redirect_valid) begin
+                    // Trap 重定向: 优先级最高
+                    state_next = ST_FLUSH;
+                    flush_cnt_next  = 2'd2;
+                    pc_next    = trap_redirect_pc;
                 end else if (branch_redirect_valid) begin
                     state_next = ST_FLUSH;
                     flush_cnt_next  = 2'd2;

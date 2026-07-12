@@ -64,6 +64,7 @@ module lumi_writeback #(
 
     // ── V1 验证探针 (Verification Probe, all slots) ───────────
     output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
+    output logic [15:0]             mon_inst_raw [ISSUE_WIDTH-1:0],
     output logic [4:0]              mon_rd   [ISSUE_WIDTH-1:0],
     output logic [31:0]             mon_rd_data [ISSUE_WIDTH-1:0],
     output logic                    mon_irq        // IRQ accepted
@@ -261,7 +262,8 @@ module lumi_writeback #(
     // ── V1 验证探针赋值 (all slots) ─────────────────────────
     always_comb begin
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
-            mon_inst[s]    = w_inst[s].inst;
+            mon_inst[s]     = w_inst[s].inst;
+            mon_inst_raw[s] = w_inst[s].inst_raw;
             mon_rd[s]      = w_rd[s];
             mon_rd_data[s] = w_result[s];
         end

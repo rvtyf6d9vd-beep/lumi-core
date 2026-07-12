@@ -144,6 +144,7 @@ module lumi_soc_top #(
         if (NUM_HARTS == 1) begin : gen_single_core
             // V1 Monitor Probe wires (all slots)
             logic [31:0] mon_inst [ISSUE_WIDTH-1:0];
+            logic [15:0] mon_inst_raw [ISSUE_WIDTH-1:0];
             logic [4:0]  mon_rd   [ISSUE_WIDTH-1:0];
             logic [31:0] mon_rd_data [ISSUE_WIDTH-1:0];
             logic        mon_irq;
@@ -182,6 +183,7 @@ module lumi_soc_top #(
                 .commit_pc       (commit_pc),
                 .commit_result   (commit_result),
                 .mon_inst        (mon_inst),
+                .mon_inst_raw    (mon_inst_raw),
                 .mon_rd          (mon_rd),
                 .mon_rd_data     (mon_rd_data),
                 .mon_irq         (mon_irq)

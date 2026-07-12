@@ -159,6 +159,11 @@ module lumi_v1_tb_top;
   wire [31:0]      commit_inst_2 = u_dut.gen_single_core.mon_inst[2];
   wire [2:0][31:0] commit_inst_packed = {commit_inst_2, commit_inst_1, commit_inst_0};
 
+  wire [15:0]      commit_inst_raw_0 = u_dut.gen_single_core.mon_inst_raw[0];
+  wire [15:0]      commit_inst_raw_1 = u_dut.gen_single_core.mon_inst_raw[1];
+  wire [15:0]      commit_inst_raw_2 = u_dut.gen_single_core.mon_inst_raw[2];
+  wire [2:0][15:0] commit_inst_raw_packed = {commit_inst_raw_2, commit_inst_raw_1, commit_inst_raw_0};
+
   wire [4:0]       commit_rd_0 = u_dut.gen_single_core.mon_rd[0];
   wire [4:0]       commit_rd_1 = u_dut.gen_single_core.mon_rd[1];
   wire [4:0]       commit_rd_2 = u_dut.gen_single_core.mon_rd[2];
@@ -213,10 +218,11 @@ module lumi_v1_tb_top;
   lumi_coverage #(
     .ISSUE_WIDTH (3)
   ) u_cov (
-    .clk_core       (clk_core),
-    .reset_n        (reset_n),
-    .commit_valid   (commit_valid_all),
-    .commit_inst    (commit_inst_packed)
+    .clk_core         (clk_core),
+    .reset_n          (reset_n),
+    .commit_valid     (commit_valid_all),
+    .commit_inst      (commit_inst_packed),
+    .commit_inst_raw  (commit_inst_raw_packed)
   );
 
   // ─── Scoreboard (多槽) ────────────────────────────────────
