@@ -23,10 +23,11 @@
 | M3-S1 | T-MS3-S1-4 | GEM5+ 交叉校准 | ✓ COMPLETE [Phase-D] |
 | M3-S1 | T-MS3-S1-5 | 物理设计评估 | ✓ COMPLETE [Phase-D] |
 | M3-S1 | T-MS3-S1-6 | M3-S1 门禁检查 | PENDING |
+| M3-S1 | T-MS3-S1-7 | CoreMark/Dhrystone V1 RTL 仿真 | PENDING [Phase-H, 从 S2 提前] |
 | M3-S2 | T-MS3-S2-1 | 设计-RTL 映射修复 | ✓ COMPLETE |
 | M3-S2 | T-MS3-S2-7 | 系统集成验证 | PENDING |
 | M3-S2 | T-MS3-S2-8 | 回归 + Bug 用例 | PENDING |
-| M3-S2 | T-MS3-S2-9 | 性能达标验证 | PENDING |
+| M3-S2 | T-MS3-S2-9 | 性能达标验证 (Crypto/IRQ/面积功耗, CM/Dhry→S1-7) | PENDING |
 | M3-S2 | T-MS3-S2-10 | RTL 冻结 + Sign-off | PENDING |
 
 ---
@@ -660,6 +661,60 @@
 
 ---
 
+# Phase E': M3-S1 CoreMark/Dhrystone V1 RTL 仿真
+
+## T-MS3-S1-7: CoreMark/Dhrystone V1 RTL 仿真 (从 T-MS3-S2-9 提前)
+
+> **目的:** 在 M3-S1 阶段采集 CoreMark/Dhrystone 性能基线，为后续瓶颈分析和优化提供数据支撑。
+> **对应需求:** RISK-006 (Dhrystone 性能风险)
+
+**子步骤:**
+1. **V1 专用 Port 搭建**
+   - 新建 `perf/benchmarks/coremark-v1/` 和 `perf/benchmarks/dhrystone-v1/` 目录
+   - V1 专用 crt0.S（仅保留一次 ECALL 退出，无 I/O ECALL）
+   - V1 专用链接脚本 `lumi-v1-bench.ld`（起始地址 0x0，TCM 256KB）
+   - V1 专用 v1_lib.c（`ee_printf`/`printf` → no-op，结果写入内存 0x3FFE0）
+   - 编译选项: `-march=rv32ima -O2 -funroll-loops`（避开 ERR-010 C 扩展问题）
+
+2. **CoreMark V1 编译与运行**
+   - `ITERATIONS=50`，`EE_TICKS_PER_SEC` 保持 1GHz 标称（仿真按周期比例换算）
+   - 编译生成 `coremark-v1.hex`
+   - Verilator V1 运行: `+itcm_file=coremark-v1.hex`
+   - Scoreboard 检测 ECALL → test_done，exit_code = a0
+   - 从内存 0x3FFE0 提取结果: iterations, total_ticks, CM/MHz
+
+3. **Dhrystone V1 编译与运行**
+   - `NUMBER_OF_RUNS=500`
+   - 编译生成 `dhrystone-v1.hex`
+   - Verilator V1 运行
+   - 从内存 0x3FFE0 提取结果: iterations, total_ticks, DMIPS/MHz
+
+4. **结果验证与记录**
+   - 校验 magic word (0xDEADBEEF) 确认结果有效
+   - 记录 cycle count、IPC（通过 V1 TB cycle_count）
+   - 更新 `perf/benchmarks/perf-report-auto.yaml`
+   - 更新 `audit/instruction-log/` 当日记录
+   - 结果写入 `milestone-plan.yaml` T-MS3-S1-7 状态
+
+5. **回归测试集成**
+   - 添加 `tests/directed/bench_coremark.sv` 和 `tests/directed/bench_dhrystone.sv` 测试用例
+   - 纳入回归测试套件，确保后续修改不破坏可运行性
+
+6. **性能基线报告**
+   - 初步性能数据: CM/MHz、DMIPS/MHz
+   - 若 Dhrystone 低于预期 → 记录 RISK-006 数据，待 T-MS3-S2-9 决策
+
+**新增文件清单 (预计):**
+- `perf/benchmarks/coremark-v1/` — core_main.c, core_portme.c/h, Makefile (V1 专用)
+- `perf/benchmarks/dhrystone-v1/` — dhrystone.c, lumi_dhry_port.h, Makefile (V1 专用)
+- `perf/benchmarks/libc/crt0_v1.S` — V1 专用启动代码
+- `perf/benchmarks/libc/v1_lib.c` — V1 专用 I/O 库 (无 ECALL)
+- `perf/benchmarks/libc/lumi-v1-bench.ld` — V1 链接脚本 (0x0 起始)
+- `tests/directed/bench_coremark.sv` — CoreMark V1 测试用例
+- `tests/directed/bench_dhrystone.sv` — Dhrystone V1 测试用例
+
+---
+
 # Phase F: M3-S2 系统集成验证
 
 ## T-MS3-S2-7: 系统集成验证 (Week 14-20)
@@ -733,18 +788,11 @@
 
 ## T-MS3-S2-9: 性能达标验证 (Week 20-23)
 
+> **注意:** CoreMark/Dhrystone V1 RTL 仿真已提前至 M3-S1 (T-MS3-S1-7)，本阶段聚焦剩余性能项。
+
 **子步骤:**
-1. **CoreMark 性能测试**
-   - RTL 仿真运行 coremark.riscv
-   - 目标: ≥5.5 CM/MHz
-   - IPC 统计 + 瓶颈分析
-2. **Dhrystone 性能测试 + 瓶颈分析 (RISK-006)**
-   - RTL 仿真运行 dhrystone.riscv
-   - 实测 DMIPS/MHz 值
-   - 瓶颈分析: 哪些指令/模式拉低性能
-   - 优化路径评估: RTL 优化 vs 编译器优化
-   - 若仍距目标较远 → 提供数据支撑的降级建议
-   - **用户决策点:** 接受降级 (如 ≥2.0) 或继续优化
+1. ~~**CoreMark 性能测试**~~ → 已移至 T-MS3-S1-7
+2. ~~**Dhrystone 性能测试**~~ → 已移至 T-MS3-S1-7
 3. **Crypto 基准测试**
    - AES/SHA/CRC32 可运行
    - IPC 统计
@@ -758,6 +806,7 @@
    - RISK-012/013 最终状态
 6. **性能报告**
    - `perf/benchmarks/perf-report.yaml` 更新
+   - 引用 T-MS3-S1-7 CoreMark/Dhrystone 结果
    - CG 覆盖: cg_performance 100%
 
 ---
@@ -814,9 +863,10 @@
 | C | T-MS3-S1-2.4 V4 验证 | 3 组 × ~5 步 = 15 | hw-ver |
 | D | T-MS3-S1-3/4/5 持续任务 | 3 项 × ~5 步 = 15 | hw-ver + hw-design + pm-infra |
 | E | T-MS3-S1-6 门禁 | 9 步 | pm-infra + qa-audit |
+| E' | T-MS3-S1-7 CoreMark/Dhrystone V1 仿真 | ~6 步 | hw-ver + hw-design |
 | F | T-MS3-S2-7 系统集成 | 4 组 × ~5 步 = 20 | hw-ver |
 | G | T-MS3-S2-8 回归 | 4 步 | hw-ver + pm-infra |
-| H | T-MS3-S2-9 性能 | 6 步 | hw-ver + hw-design |
+| H | T-MS3-S2-9 性能 (CM/Dhry→S1-7, 剩余4步) | 4 步 | hw-ver + hw-design |
 | I | T-MS3-S2-10 冻结 | 4 组 × ~5 步 = 20 | 全角色 |
 | **合计** | | **~160 细步** | |
 
@@ -824,7 +874,7 @@
 
 | 风险 | 闭合任务 | 条件 |
 |------|---------|------|
-| RISK-006 (Dhrystone) | T-MS3-S2-9 | 实测数据 + 用户决策 |
+| RISK-006 (Dhrystone) | T-MS3-S1-7 + T-MS3-S2-9 | 实测数据 + 用户决策 |
 | RISK-010 (gem5 Smepmp/Smrnmi) | T-MS3-S2-7.4 | RTL 验证覆盖 |
 | RISK-011 (Bypass 关键路径) | T-MS3-S1-5.2 | STA 报告 + 优化 |
 | RISK-012 (面积超标) | T-MS3-S1-5.1 | 综合报告 + 用户评审 |

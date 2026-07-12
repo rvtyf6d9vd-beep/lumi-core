@@ -2,7 +2,7 @@
 # 定义项目三层结构：Milestone → Stage → Phase
 
 version: "2.0"
-last_updated: "2026-07-11 (M3 计划整合 v2.0: 统一编码 + 复盘教训 + 映射修复完成)"
+last_updated: "2026-07-11 (M3 计划整合 v2.1: T-MS3-S1-7 CoreMark/Dhrystone 从 S2 提前至 S1)"
 
 # ──────────────────────────────────────────────
 # Milestone 定义 (MS)
@@ -130,6 +130,7 @@ stages:
       - "T-MS3-S1-4: GEM5+ 交叉校准 ✓ [Phase-D]"
       - "T-MS3-S1-5: 物理设计评估 ✓ [Phase-D] (脚本+模板就绪, 待实际运行)"
       - "T-MS3-S1-6: M3-S1 门禁检查"
+      - "T-MS3-S1-7: CoreMark/Dhrystone V1 RTL 仿真 (性能基线采集, 从 T-MS3-S2-9 提前) [Phase-H]"
     duration: "2027-01 ~ 2027-03"
 
   - id: "M3-S2"
@@ -140,7 +141,7 @@ stages:
       - "T-MS3-S2-2: ERR-017/018 RTL 修复 (CSR 读回 + ECALL 提交 + RV32C inst 展开) ✓ [2026-07-11]"
       - "T-MS3-S2-7: 系统集成验证"
       - "T-MS3-S2-8: 回归 + Bug 用例"
-      - "T-MS3-S2-9: 性能达标验证 (RISK-006)"
+      - "T-MS3-S2-9: 性能达标验证 (RISK-006) [CoreMark/Dhrystone 已提前至 T-MS3-S1-7, 剩余: Crypto/IRQ/面积功耗汇总]"
       - "T-MS3-S2-10: RTL 冻结 + Sign-off"
     duration: "2027-04 ~ 2027-06"
 
