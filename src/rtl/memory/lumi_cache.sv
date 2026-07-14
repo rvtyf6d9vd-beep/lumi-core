@@ -63,6 +63,7 @@ module lumi_cache #(
     output logic [31:0]             evict_awaddr,
     output logic                    evict_awvalid,
     input  logic                    evict_awready,
+    output logic [7:0]              evict_awlen,
     output logic [127:0]            evict_wdata,
     output logic                    evict_wvalid,
     output logic                    evict_wlast,
@@ -174,6 +175,7 @@ module lumi_cache #(
     logic [31:0] evict_addr_reg;
     logic [DCACHE_LINE*8-1:0] evict_buf;
     logic        evict_dirty;
+    logic [BEAT_CNT_W-1:0] evict_beat_cnt;
 
     // PLRU functions
     // ─── I-Cache PLRU: victim 选择 (二叉树) ──────────────────
@@ -300,15 +302,16 @@ module lumi_cache #(
             dc_we_reg      <= 1'b0;
             evict_addr_reg <= 32'h0;
             evict_dirty    <= 1'b0;
+            evict_beat_cnt <= '0;
         end else begin
             state_reg <= state_next;
 
-            // V1 Debug: cache FSM 状态变化
-            if (state_reg != state_next) begin
-                $display("[CACHE-DBG] t=%0t state: %0d -> %0d ic_v=%b ic_rdy=%b ic_hit=%b addr=0x%08h ar_v=%b ar_rdy=%b",
-                         $time, state_reg, state_next, ic_valid, ic_ready, ic_hit, ic_addr,
-                         refill_arvalid, refill_arready);
-            end
+            // V1 Debug: cache FSM 状态变化 (ERR-019 调试, 注释保留)
+            // if (state_reg != state_next) begin
+            //     $display("[CACHE-DBG] t=%0t state: %0d -> %0d ic_v=%b ic_rdy=%b ic_hit=%b addr=0x%08h ar_v=%b ar_rdy=%b",
+            //              $time, state_reg, state_next, ic_valid, ic_ready, ic_hit, ic_addr,
+            //              refill_arvalid, refill_arready);
+            // end
 
             // beat 计数器
             if (state_reg == ST_IC_REFILL_R || state_reg == ST_DC_REFILL_R) begin
@@ -318,6 +321,13 @@ module lumi_cache #(
                 end
             end else if (state_next == ST_IC_REFILL_R || state_next == ST_DC_REFILL_R) begin
                 beat_cnt <= '0;
+            end
+
+            // evict beat 计数器
+            if (state_next == ST_DC_EVICT_AW) begin
+                evict_beat_cnt <= '0;
+            end else if (state_reg == ST_DC_EVICT_W && evict_wvalid && evict_wready) begin
+                evict_beat_cnt <= evict_beat_cnt + 1'b1;
             end
 
             // 地址锁存
@@ -406,6 +416,7 @@ module lumi_cache #(
         refill_rready  = 1'b0;
         evict_awvalid  = 1'b0;
         evict_awaddr   = 32'h0;
+        evict_awlen    = 8'h0;
         evict_wvalid   = 1'b0;
         evict_wdata    = 128'h0;
         evict_wlast    = 1'b0;
@@ -487,18 +498,22 @@ module lumi_cache #(
             ST_DC_EVICT_AW: begin
                 evict_awvalid = 1'b1;
                 evict_awaddr  = evict_addr_reg;
+                evict_awlen   = 8'd3;
                 if (evict_awready)
                     state_next = ST_DC_EVICT_W;
             end
 
             ST_DC_EVICT_W: begin
                 evict_wvalid = 1'b1;
-                evict_wdata  = evict_buf[127:0];  // 第一 beat
-                evict_wlast  = (REFILL_BEATS == 1);
-                // 简化: 单 beat evict (实际需多 beat)
+                evict_wdata  = evict_buf[(evict_beat_cnt*128) +: 128];
+                evict_wlast  = (evict_beat_cnt == BEAT_CNT_W'(REFILL_BEATS - 1));
                 if (evict_wready) begin
-                    // 清除 dirty, invalidate victim
-                    state_next = ST_DC_REFILL_AR;
+                    if (evict_wlast) begin
+                        // 4 beats 完成，进入 refill
+                        state_next = ST_DC_REFILL_AR;
+                    end else begin
+                        state_next = ST_DC_EVICT_W;
+                    end
                 end
             end
 
