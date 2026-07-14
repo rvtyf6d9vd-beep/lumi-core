@@ -168,3 +168,308 @@ stages:
 #     任务 T4.2 "回归测试"     → phase: verification
 
 phase_options: [setup, requirements, architecture, design, implementation, verification, delivery]
+
+# ──────────────────────────────────────────────
+# active_tasks: RTL 静态扫描 Bug 修正计划 (T-MS3-S3-BF)
+# 由 2026-07-14 全局静态代码扫描触发，计划 ID: Lumi_RTL_Bug_修正计划_task-d94
+# ──────────────────────────────────────────────
+active_tasks:
+  - task_id: "T-MS3-S3-BF.0.1"
+    title: "批量登记 finding 到 errata"
+    status: completed
+    owner: rtl-static-scan
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-15"
+    depends_on: []
+
+  - task_id: "T-MS3-S3-BF.0.2"
+    title: "更新 milestone-plan.yaml active_tasks"
+    status: in_progress
+    owner: rtl-static-scan
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-15"
+    depends_on: ["T-MS3-S3-BF.0.1"]
+
+  - task_id: "T-MS3-S3-BF.1.1"
+    title: "SoC 集成层断路修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-15"
+    depends_on: ["T-MS3-S3-BF.0.2"]
+
+  - task_id: "T-MS3-S3-BF.1.2"
+    title: "Cache Evict 丢数据修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-16"
+    depends_on: ["T-MS3-S3-BF.0.2"]
+
+  - task_id: "T-MS3-S3-BF.1.3"
+    title: "CSR 写与 HPM 竞争修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-15"
+    depends_on: ["T-MS3-S3-BF.0.2"]
+
+  - task_id: "T-MS3-S3-BF.1.4"
+    title: "CDC 同步器实现"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-17"
+    depends_on: ["T-MS3-S3-BF.0.2"]
+
+  - task_id: "T-MS3-S3-BF.1.5"
+    title: "E1→M MUL/DIV 旁路时序修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-15"
+    target_date: "2026-07-15"
+    depends_on: ["T-MS3-S3-BF.0.2"]
+
+  - task_id: "T-MS3-S3-BF.1.6"
+    title: "Phase 1 集成回归"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P0
+    start_date: "2026-07-17"
+    target_date: "2026-07-17"
+    depends_on: ["T-MS3-S3-BF.1.1", "T-MS3-S3-BF.1.2", "T-MS3-S3-BF.1.3", "T-MS3-S3-BF.1.4", "T-MS3-S3-BF.1.5"]
+
+  - task_id: "T-MS3-S3-BF.2.1"
+    title: "Regfile 双写端口冲突修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-18"
+    depends_on: ["T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.2"
+    title: "Debug module CDC 修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-19"
+    depends_on: ["T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.3"
+    title: "MISA_VAL 修正"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-18"
+    depends_on: ["T-MS3-S3-BF.1.3", "T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.4"
+    title: "PLIC 多核路由"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-19"
+    depends_on: ["T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.5"
+    title: "TCM DMA 地址解码"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-18"
+    depends_on: ["T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.6"
+    title: "Filelist 不存在文件修复"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-18"
+    target_date: "2026-07-18"
+    depends_on: ["T-MS3-S3-BF.1.6"]
+
+  - task_id: "T-MS3-S3-BF.2.7"
+    title: "Phase 2 集成回归"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P1
+    start_date: "2026-07-19"
+    target_date: "2026-07-19"
+    depends_on: ["T-MS3-S3-BF.2.1", "T-MS3-S3-BF.2.2", "T-MS3-S3-BF.2.3", "T-MS3-S3-BF.2.4", "T-MS3-S3-BF.2.5", "T-MS3-S3-BF.2.6"]
+
+  - task_id: "T-MS3-S3-BF.3.1"
+    title: "8 个 Mandatory ISA 扩展解码"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-22"
+    depends_on: ["T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.2"
+    title: "FPU/Vector NOP 占位"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-23"
+    target_date: "2026-07-23"
+    depends_on: ["T-MS3-S3-BF.2.3", "T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.3"
+    title: "FSM default 分支补齐"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-20"
+    depends_on: ["T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.4"
+    title: "FENCE drain store buffer"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-20"
+    depends_on: ["T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.5"
+    title: "Power mgmt ST_SLEEP 实现"
+    status: pending
+    owner: hw-design
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-20"
+    depends_on: ["T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.6"
+    title: "Scoreboard Reference Model 集成"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-24"
+    depends_on: ["T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.7"
+    title: "19 个 Cover Group 测试补充"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-20"
+    target_date: "2026-07-27"
+    depends_on: ["T-MS3-S3-BF.1.2", "T-MS3-S3-BF.2.7"]
+
+  - task_id: "T-MS3-S3-BF.3.8"
+    title: "Phase 3 集成回归"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-27"
+    target_date: "2026-07-27"
+    depends_on: ["T-MS3-S3-BF.3.1", "T-MS3-S3-BF.3.2", "T-MS3-S3-BF.3.3", "T-MS3-S3-BF.3.4", "T-MS3-S3-BF.3.5", "T-MS3-S3-BF.3.6", "T-MS3-S3-BF.3.7"]
+
+  - task_id: "T-MS3-S3-BF.4.1"
+    title: "全量回归测试"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.3.8"]
+
+  - task_id: "T-MS3-S3-BF.4.2"
+    title: "覆盖率报告生成"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.3.8"]
+
+  - task_id: "T-MS3-S3-BF.4.3"
+    title: "关闭 18 个已修复 errata 条目"
+    status: pending
+    owner: hw-ver
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.4.1"]
+
+  - task_id: "T-MS3-S3-BF.4.4"
+    title: "更新 risk-register"
+    status: pending
+    owner: pm-infra
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.4.1"]
+
+  - task_id: "T-MS3-S3-BF.4.5"
+    title: "更新 milestone-plan.yaml 任务状态"
+    status: pending
+    owner: pm-infra
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.4.1"]
+
+  - task_id: "T-MS3-S3-BF.4.6"
+    title: "运行 check_compliance.py"
+    status: pending
+    owner: pm-infra
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.4.5"]
+
+  - task_id: "T-MS3-S3-BF.4.7"
+    title: "指令记录 + 计划关闭"
+    status: pending
+    owner: pm-infra
+    phase: "MS3-S3"
+    priority: P2
+    start_date: "2026-07-28"
+    target_date: "2026-07-28"
+    depends_on: ["T-MS3-S3-BF.4.6"]
