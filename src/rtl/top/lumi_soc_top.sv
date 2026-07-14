@@ -60,8 +60,16 @@ module lumi_soc_top #(
     input  logic [31:0]             ext_irq,
     input  logic [lumi_pkg::CLIC_INT_INPUTS-1:0] local_irq,
 
+    // ── NMI ───────────────────────────────────────────────────
+    input  logic                    nmi_signal,
+
     // ── Debug ─────────────────────────────────────────────────
-    input  logic                    debug_halt
+    input  logic                    debug_halt,
+
+    // ── Trap 输出 ─────────────────────────────────────────────
+    output logic                    trap_valid,
+    output logic [31:0]             trap_cause,
+    output logic [31:0]             trap_pc
 );
 
     import lumi_pkg::*;
@@ -178,7 +186,7 @@ module lumi_soc_top #(
                 .mstatus_out     (mstatus_out),
                 .mtvec_out       (mtvec_out),
                 .debug_halt      (dbg_halt),   // T-MS3-S2-1.4a: 由 debug module 驱动
-                .nmi_signal      (1'b0),   // TODO: 连接 SoC 级 NMI 源
+                .nmi_signal      (nmi_signal),
                 .commit_valid    (commit_valid),
                 .commit_pc       (commit_pc),
                 .commit_result   (commit_result),
@@ -249,7 +257,11 @@ module lumi_soc_top #(
     logic         v1_ic_hit;
 
     always_comb begin
-        automatic int ic_word_idx = ic_addr[17:4] << 2;  // 16B 对齐 → word 索引
+        // ERR-019 修复: IC SRAM 索引必须使用字节地址 bits [17:2],
+        // 而非 bits [17:4]<<2 (过度对齐, 导致 128-bit cache line 对齐到
+        // 16 字节边界而非 4 字节边界, PC=0x14 时错误返回 PC=0x10 的数据).
+        // DC 路径 dc_addr[17:2] 已正确使用字节地址.
+        automatic int ic_word_idx = ic_addr[17:2];  // 字节地址 → 32-bit word 索引
         v1_ic_line = {v1_sram[ic_word_idx+3], v1_sram[ic_word_idx+2],
                       v1_sram[ic_word_idx+1], v1_sram[ic_word_idx]};
         v1_ic_hit = reset_n;
@@ -264,12 +276,20 @@ module lumi_soc_top #(
     assign dc_hit   = reset_n;
 
     // Store: 同步写入 V1 SRAM (byte-enable)
+    logic [31:0] last_sram_we_addr;
+    logic [31:0] last_sram_we_wdata;
+    logic [3:0]  last_sram_we_be;
+    int unsigned sram_we_count;
     always_ff @(posedge clk_core) begin
         if (dc_valid && dc_we && reset_n) begin
             for (int b = 0; b < 4; b++) begin
                 if (dc_be[b])
                     v1_sram[dc_addr[17:2]][b*8 +: 8] <= dc_wdata[b*8 +: 8];
             end
+            last_sram_we_addr  <= dc_addr;
+            last_sram_we_wdata <= dc_wdata;
+            last_sram_we_be    <= dc_be;
+            sram_we_count      <= sram_we_count + 1;
         end
     end
 
@@ -359,23 +379,23 @@ module lumi_soc_top #(
         .medeleg_out      (),
         .mideleg_out      (),
         .priv_mode_out    (),
-        // Trap 接口 (骨架: 未连接)
-        .trap_enter       (1'b0),
-        .trap_is_irq      (1'b0),
-        .trap_pc_in     (32'h0),
-        .trap_cause_in    (32'h0),
-        .trap_tval_in     (32'h0),
+        // Trap 接口 (T-MS3-S3-BF.1.1: 连接 exception 模块)
+        .trap_enter       (exc_trap_enter),
+        .trap_is_irq      (exc_trap_is_irq),
+        .trap_pc_in       (exc_trap_pc),
+        .trap_cause_in    (exc_trap_cause),
+        .trap_tval_in     (exc_trap_tval),
         .trap_priv_in     (2'b11),
-        .mret_exec        (1'b0),
-        .sret_exec        (1'b0),
-        .nmi_enter        (1'b0),
-        .mnret_exec       (1'b0),
-        .nmi_pc_in        (32'h0),
-        // CLIC CSR 代理 (骨架: 未连接)
-        .clic_csr_addr    (),
-        .clic_csr_wdata   (),
-        .clic_csr_rdata   (32'h0),
-        .clic_csr_we      (),
+        .mret_exec        (exc_mret),
+        .sret_exec        (exc_sret),
+        .nmi_enter        (exc_nmi_enter),
+        .mnret_exec       (exc_mnret),
+        .nmi_pc_in        (exc_trap_epc),
+        // CLIC CSR 代理 (T-MS3-S3-BF.1.1: 连接 CLIC 模块)
+        .clic_csr_addr    (clic_csr_addr),
+        .clic_csr_wdata   (clic_csr_wdata),
+        .clic_csr_rdata   (clic_csr_rdata),
+        .clic_csr_we      (clic_csr_we),
         // HPM
         .hpm_inst_retired (|commit_valid),
         .hpm_branch       (1'b0),
@@ -453,7 +473,7 @@ module lumi_soc_top #(
         .exc_addr      (32'h0),
         .exc_insn      (32'h0),
         .exc_pc        (32'h0),
-        .nmi_signal    (1'b0),
+        .nmi_signal    (nmi_signal),
         .irq_request   (clic_irq_valid),
         .irq_id        (clic_irq_id),
         .irq_ack       (exc_irq_ack),
@@ -486,6 +506,11 @@ module lumi_soc_top #(
     );
 
     assign irq_request = clic_irq_valid;  // CLIC → Core 中断请求
+
+    // T-MS3-S3-BF.1.1: Trap 输出到 SoC 顶层
+    assign trap_valid  = exc_trap_enter;
+    assign trap_cause  = exc_trap_cause;
+    assign trap_pc     = exc_trap_pc;
 
     // ─── Power Management 实例化 ──────────────────────────────
     lumi_power_mgmt u_power (
