@@ -51,6 +51,84 @@ module lumi_debug_module (
     logic [31:0] abstract_timeout_cnt;
     logic        abstract_busy;
 
+    // ─── DMI 跨时钟域同步 (TCK → clk_core) ─────────────────────
+    // 2-FF 同步器: 单 bit 控制信号 dmi_req_valid
+    logic        dmi_req_valid_sync0, dmi_req_valid_sync1;
+    logic        dmi_req_valid_sync_d;
+    logic        dmi_req_posedge_core;
+    logic [6:0]  dmi_addr_cdc;
+    logic [31:0] dmi_wdata_cdc;
+    logic [1:0]  dmi_op_cdc;
+
+    // 捕获 JTAG 侧请求 payload 到 clk_core 域
+    // JTAG 必须在 dmi_req_valid 有效期间保持 addr/data/op 稳定
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            dmi_req_valid_sync0 <= 1'b0;
+            dmi_req_valid_sync1 <= 1'b0;
+            dmi_req_valid_sync_d <= 1'b0;
+        end else begin
+            dmi_req_valid_sync0 <= dmi_req_valid;
+            dmi_req_valid_sync1 <= dmi_req_valid_sync0;
+            dmi_req_valid_sync_d <= dmi_req_valid_sync1;
+        end
+    end
+
+    assign dmi_req_posedge_core = dmi_req_valid_sync1 && !dmi_req_valid_sync_d;
+
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            dmi_addr_cdc  <= 7'h0;
+            dmi_wdata_cdc <= 32'h0;
+            dmi_op_cdc    <= 2'h0;
+        end else if (dmi_req_posedge_core) begin
+            dmi_addr_cdc  <= dmi_addr;
+            dmi_wdata_cdc <= dmi_wdata;
+            dmi_op_cdc    <= dmi_op;
+        end
+    end
+
+    // ─── DMUI 握手状态机 (clk_core 域) ──────────────────────────
+    typedef enum logic [1:0] {DMUI_IDLE, DMUI_PROC, DMUI_DONE} dmui_state_e;
+    dmui_state_e dmui_state;
+    logic        dmi_req_ready_core;
+
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            dmui_state         <= DMUI_IDLE;
+            dmi_req_ready_core <= 1'b0;
+        end else begin
+            case (dmui_state)
+                DMUI_IDLE: begin
+                    dmi_req_ready_core <= 1'b0;
+                    if (dmi_req_posedge_core)
+                        dmui_state <= DMUI_PROC;
+                end
+                DMUI_PROC: begin
+                    dmui_state <= DMUI_DONE;
+                end
+                DMUI_DONE: begin
+                    dmi_req_ready_core <= 1'b1;
+                    if (!dmi_req_valid_sync1)
+                        dmui_state <= DMUI_IDLE;
+                end
+            endcase
+        end
+    end
+
+    // ─── CDC: clk_core → TCK (dmi_req_ready) ───────────────────
+    logic dmi_req_ready_sync0, dmi_req_ready_sync1;
+    always_ff @(posedge tck or negedge trst_n) begin
+        if (!trst_n) begin
+            dmi_req_ready_sync0 <= 1'b0;
+            dmi_req_ready_sync1 <= 1'b0;
+        end else begin
+            dmi_req_ready_sync0 <= dmi_req_ready_core;
+            dmi_req_ready_sync1 <= dmi_req_ready_sync0;
+        end
+    end
+    assign dmi_req_ready = dmi_req_ready_sync1;
+
     // ─── DMI 控制信号解码 ───────────────────────────────────────
     assign haltreq   = dmcontrol[31];
     assign resumereq = dmcontrol[30];
@@ -80,19 +158,19 @@ module lumi_debug_module (
                 tenable[i] <= 1'b0;
                 tdmode[i]  <= 1'b0;
             end
-        end else if (dmi_req_valid && dmi_op == 2'b10 && !debug_locked) begin
-            // DMI WRITE
-            case (dmi_addr)
-                7'h10: dmcontrol  <= dmi_wdata;
-                7'h17: abstractcs <= dmi_wdata;  // W1C for cmderr
+        end else if ((dmui_state == DMUI_PROC) && dmi_op_cdc == 2'b10 && !debug_locked) begin
+            // DMI WRITE (处理经 CDC 捕获后的请求)
+            case (dmi_addr_cdc)
+                7'h10: dmcontrol  <= dmi_wdata_cdc;
+                7'h17: abstractcs <= dmi_wdata_cdc;  // W1C for cmderr
                 7'h18: begin
-                    command <= dmi_wdata;
+                    command <= dmi_wdata_cdc;
                     abstractcs[12] <= 1'b1;  // busy = 1
                 end
-                7'h04: data0 <= dmi_wdata;
+                7'h04: data0 <= dmi_wdata_cdc;
                 default: begin
-                    if (dmi_addr >= 7'h20 && dmi_addr <= 7'h27)
-                        progbuf[dmi_addr[2:0]] <= dmi_wdata;
+                    if (dmi_addr_cdc >= 7'h20 && dmi_addr_cdc <= 7'h27)
+                        progbuf[dmi_addr_cdc[2:0]] <= dmi_wdata_cdc;
                 end
             endcase
         end
@@ -101,19 +179,18 @@ module lumi_debug_module (
     // ─── DMI 寄存器读取 ─────────────────────────────────────────
     always_comb begin
         dmi_rdata = 32'h0;
-        case (dmi_addr)
+        case (dmi_addr_cdc)
             7'h10: dmi_rdata = dmcontrol;
             7'h11: dmi_rdata = dmstatus;
             7'h17: dmi_rdata = abstractcs;
             7'h18: dmi_rdata = command;
             7'h04: dmi_rdata = data0;
             default: begin
-                if (dmi_addr >= 7'h20 && dmi_addr <= 7'h27)
-                    dmi_rdata = progbuf[dmi_addr[2:0]];
+                if (dmi_addr_cdc >= 7'h20 && dmi_addr_cdc <= 7'h27)
+                    dmi_rdata = progbuf[dmi_addr_cdc[2:0]];
             end
         endcase
     end
-    assign dmi_req_ready = 1'b1;  // 始终就绪 (简化 CDC)
 
     // ─── dmstatus 更新 ──────────────────────────────────────────
     always_ff @(posedge clk_core or negedge reset_n) begin
