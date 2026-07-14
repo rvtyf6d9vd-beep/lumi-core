@@ -11,7 +11,7 @@
 //   - Cache Refill: ARLEN=3 (4 beat × 128bit = 64B), ARSIZE=4
 //   - Cache Evict: AWLEN=3, AWSIZE=4
 //   - FFP 外设接口: AXI4-Lite 32bit, 0xF000_0000~0xF000_FFFF
-//   - CDC 2-flop 同步器: clk_core ↔ clk_bus
+//   - CDC 2-flop 同步器 + 异步 FIFO: clk_core ↔ clk_bus
 //   - AXI ID 分配: DC=0x1, IC=0x0, NC=0x2, Trace=0x3
 // =================================================================
 
@@ -167,16 +167,13 @@ module lumi_axi_wrapper #(
     logic [2:0]              evict_beat_cnt;
 
     // ─── CDC 2-flop 同步器 ──────────────────────────────────
-    // 请求从 clk_core 域同步到 clk_bus 域
-    // 应答从 clk_bus 域同步回 clk_core 域
-    // 简化实现: 假设 clk_core == clk_bus (同步模式)
-    // 异步模式需额外添加 2-flop 同步器
+    // 请求/应答源已在 clk_core 域, 保持同域直通。
+    // AXI 5 通道在模块底部经 lumi_cdc_async_fifo 做跨时钟域桥接。
     logic ic_req_sync, dc_refill_req_sync, dc_evict_req_sync;
     logic nc_req_sync, trace_req_sync;
     logic ic_ack_bus, dc_refill_ack_bus, dc_evict_ack_bus;
     logic nc_ack_bus, trace_ack_bus;
 
-    // 同步器 (简化: 直通, 异步时替换为 2-flop)
     assign ic_req_sync          = ic_refill_req;
     assign dc_refill_req_sync   = dc_refill_req;
     assign dc_evict_req_sync    = dc_evict_req;
@@ -189,6 +186,59 @@ module lumi_axi_wrapper #(
     assign nc_access_ack        = nc_ack_bus;
     assign trace_write_ack      = trace_ack_bus;
     assign nc_access_rdata      = nc_rdata_reg[31:0];
+
+    // ─── AXI core-domain internal signals (before CDC) ───────
+    // 写地址通道 (clk_core -> clk_bus)
+    logic                    axi_awvalid_core;
+    logic [AXI_ADDR_W-1:0]   axi_awaddr_core;
+    logic [AXI_ID_W-1:0]     axi_awid_core;
+    logic [7:0]              axi_awlen_core;
+    logic [2:0]              axi_awsize_core;
+    logic [1:0]              axi_awburst_core;
+    logic                    axi_awlock_core;
+    logic [3:0]              axi_awcache_core;
+    logic [2:0]              axi_awprot_core;
+    logic                    axi_awready_core;
+
+    // 写数据通道 (clk_core -> clk_bus)
+    logic                    axi_wvalid_core;
+    logic [AXI_DATA_W-1:0]   axi_wdata_core;
+    logic [AXI_DATA_W/8-1:0] axi_wstrb_core;
+    logic                    axi_wlast_core;
+    logic                    axi_wready_core;
+
+    // 写响应通道 (clk_bus -> clk_core)
+    logic                    axi_bvalid_core;
+    logic [AXI_ID_W-1:0]     axi_bid_core;
+    logic [1:0]              axi_bresp_core;
+    logic                    axi_bready_core;
+
+    // 读地址通道 (clk_core -> clk_bus)
+    logic                    axi_arvalid_core;
+    logic [AXI_ADDR_W-1:0]   axi_araddr_core;
+    logic [AXI_ID_W-1:0]     axi_arid_core;
+    logic [7:0]              axi_arlen_core;
+    logic [2:0]              axi_arsize_core;
+    logic [1:0]              axi_arburst_core;
+    logic                    axi_arlock_core;
+    logic [3:0]              axi_arcache_core;
+    logic [2:0]              axi_arprot_core;
+    logic                    axi_arready_core;
+
+    // 读数据通道 (clk_bus -> clk_core)
+    logic                    axi_rvalid_core;
+    logic [AXI_ID_W-1:0]     axi_rid_core;
+    logic [AXI_DATA_W-1:0]   axi_rdata_core;
+    logic [1:0]              axi_rresp_core;
+    logic                    axi_rlast_core;
+    logic                    axi_rready_core;
+
+    // CDC FIFO 空满标志
+    logic aw_empty, aw_full;
+    logic w_empty,  w_full;
+    logic b_empty,  b_full;
+    logic ar_empty, ar_full;
+    logic r_empty,  r_full;
 
     // ─── 仲裁逻辑 ────────────────────────────────────────────
     // 优先级: DC > IC > NC > Trace
@@ -270,34 +320,34 @@ module lumi_axi_wrapper #(
             trace_ack_bus       <= 1'b0;
 
             // IC refill 完成
-            if (state_reg == ST_IC_REFILL_R && m_axi_rvalid && m_axi_rlast)
+            if (state_reg == ST_IC_REFILL_R && axi_rvalid_core && axi_rlast_core)
                 ic_ack_bus <= 1'b1;
 
             // DC refill 完成
-            if (state_reg == ST_DC_REFILL_R && m_axi_rvalid && m_axi_rlast)
+            if (state_reg == ST_DC_REFILL_R && axi_rvalid_core && axi_rlast_core)
                 dc_refill_ack_bus <= 1'b1;
 
             // DC evict 完成
-            if (state_reg == ST_DC_EVICT_B && m_axi_bvalid)
+            if (state_reg == ST_DC_EVICT_B && axi_bvalid_core)
                 dc_evict_ack_bus <= 1'b1;
 
             // NC read 完成
-            if (state_reg == ST_NC_READ_R && m_axi_rvalid && m_axi_rlast) begin
+            if (state_reg == ST_NC_READ_R && axi_rvalid_core && axi_rlast_core) begin
                 nc_ack_bus     <= 1'b1;
-                nc_rdata_reg   <= m_axi_rdata;
+                nc_rdata_reg   <= axi_rdata_core;
                 nc_rdata_valid <= 1'b1;
             end
 
             // NC write 完成
-            if (state_reg == ST_NC_WRITE_B && m_axi_bvalid)
+            if (state_reg == ST_NC_WRITE_B && axi_bvalid_core)
                 nc_ack_bus <= 1'b1;
 
             // Trace 完成
-            if (state_reg == ST_TRACE_B && m_axi_bvalid)
+            if (state_reg == ST_TRACE_B && axi_bvalid_core)
                 trace_ack_bus <= 1'b1;
 
             // Evict beat 计数
-            if (state_reg == ST_DC_EVICT_W && m_axi_wvalid && m_axi_wready)
+            if (state_reg == ST_DC_EVICT_W && axi_wvalid_core && axi_wready_core)
                 evict_beat_cnt <= evict_beat_cnt + 3'd1;
             else if (state_next == ST_DC_EVICT_W)
                 evict_beat_cnt <= 3'd0;
@@ -308,31 +358,31 @@ module lumi_axi_wrapper #(
     always_comb begin
         state_next = state_reg;
 
-        // AXI 输出默认
-        m_axi_awvalid = 1'b0;
-        m_axi_awaddr  = '0;
-        m_axi_awid    = '0;
-        m_axi_awlen   = '0;
-        m_axi_awsize  = '0;
-        m_axi_awburst = '0;
-        m_axi_awlock  = 1'b0;       // AXI4 sideband default
-        m_axi_awcache = 4'b0;       // AXI4 sideband default
-        m_axi_awprot  = 3'b0;       // AXI4 sideband default
-        m_axi_wvalid  = 1'b0;
-        m_axi_wdata   = '0;
-        m_axi_wstrb   = '0;
-        m_axi_wlast   = 1'b0;
-        m_axi_bready  = 1'b1;
-        m_axi_arvalid = 1'b0;
-        m_axi_araddr  = '0;
-        m_axi_arid    = '0;
-        m_axi_arlen   = '0;
-        m_axi_arsize  = '0;
-        m_axi_arburst = '0;
-        m_axi_arlock  = 1'b0;       // AXI4 sideband default
-        m_axi_arcache = 4'b0;       // AXI4 sideband default
-        m_axi_arprot  = 3'b0;       // AXI4 sideband default
-        m_axi_rready  = 1'b1;
+        // AXI 输出默认 (core-domain internal)
+        axi_awvalid_core = 1'b0;
+        axi_awaddr_core  = '0;
+        axi_awid_core    = '0;
+        axi_awlen_core   = '0;
+        axi_awsize_core  = '0;
+        axi_awburst_core = '0;
+        axi_awlock_core  = 1'b0;       // AXI4 sideband default
+        axi_awcache_core = 4'b0;       // AXI4 sideband default
+        axi_awprot_core  = 3'b0;       // AXI4 sideband default
+        axi_wvalid_core  = 1'b0;
+        axi_wdata_core   = '0;
+        axi_wstrb_core   = '0;
+        axi_wlast_core   = 1'b0;
+        axi_bready_core  = 1'b1;
+        axi_arvalid_core = 1'b0;
+        axi_araddr_core  = '0;
+        axi_arid_core    = '0;
+        axi_arlen_core   = '0;
+        axi_arsize_core  = '0;
+        axi_arburst_core = '0;
+        axi_arlock_core  = 1'b0;       // AXI4 sideband default
+        axi_arcache_core = 4'b0;       // AXI4 sideband default
+        axi_arprot_core  = 3'b0;       // AXI4 sideband default
+        axi_rready_core  = 1'b1;
 
         // FFP 默认
         m_ffp_awvalid = 1'b0;
@@ -367,138 +417,138 @@ module lumi_axi_wrapper #(
 
             // ── I-Cache Refill (AR + R) ─────────────────────
             ST_IC_REFILL_AR: begin
-                m_axi_arvalid = 1'b1;
-                m_axi_araddr  = addr_reg;
-                m_axi_arid    = id_reg;
-                m_axi_arlen   = len_reg;
-                m_axi_arsize  = size_reg;
-                m_axi_arburst = AXI_BURST_INCR;
-                if (m_axi_arready)
+                axi_arvalid_core = 1'b1;
+                axi_araddr_core  = addr_reg;
+                axi_arid_core    = id_reg;
+                axi_arlen_core   = len_reg;
+                axi_arsize_core  = size_reg;
+                axi_arburst_core = AXI_BURST_INCR;
+                if (axi_arready_core)
                     state_next = ST_IC_REFILL_R;
             end
 
             ST_IC_REFILL_R: begin
-                m_axi_rready = 1'b1;
-                if (m_axi_rvalid && m_axi_rlast)
+                axi_rready_core = 1'b1;
+                if (axi_rvalid_core && axi_rlast_core)
                     state_next = ST_IDLE;
             end
 
             // ── D-Cache Refill (AR + R) ─────────────────────
             ST_DC_REFILL_AR: begin
-                m_axi_arvalid = 1'b1;
-                m_axi_araddr  = addr_reg;
-                m_axi_arid    = id_reg;
-                m_axi_arlen   = len_reg;
-                m_axi_arsize  = size_reg;
-                m_axi_arburst = AXI_BURST_INCR;
-                if (m_axi_arready)
+                axi_arvalid_core = 1'b1;
+                axi_araddr_core  = addr_reg;
+                axi_arid_core    = id_reg;
+                axi_arlen_core   = len_reg;
+                axi_arsize_core  = size_reg;
+                axi_arburst_core = AXI_BURST_INCR;
+                if (axi_arready_core)
                     state_next = ST_DC_REFILL_R;
             end
 
             ST_DC_REFILL_R: begin
-                m_axi_rready = 1'b1;
-                if (m_axi_rvalid && m_axi_rlast)
+                axi_rready_core = 1'b1;
+                if (axi_rvalid_core && axi_rlast_core)
                     state_next = ST_IDLE;
             end
 
             // ── D-Cache Evict (AW + W + B) ──────────────────
             ST_DC_EVICT_AW: begin
-                m_axi_awvalid = 1'b1;
-                m_axi_awaddr  = addr_reg;
-                m_axi_awid    = id_reg;
-                m_axi_awlen   = len_reg;
-                m_axi_awsize  = size_reg;
-                m_axi_awburst = AXI_BURST_INCR;
-                if (m_axi_awready)
+                axi_awvalid_core = 1'b1;
+                axi_awaddr_core  = addr_reg;
+                axi_awid_core    = id_reg;
+                axi_awlen_core   = len_reg;
+                axi_awsize_core  = size_reg;
+                axi_awburst_core = AXI_BURST_INCR;
+                if (axi_awready_core)
                     state_next = ST_DC_EVICT_W;
             end
 
             ST_DC_EVICT_W: begin
-                m_axi_wvalid = 1'b1;
-                m_axi_wdata  = wdata_reg;
-                m_axi_wstrb  = {AXI_DATA_W/8{1'b1}};  // all bytes
-                m_axi_wlast  = (evict_beat_cnt == len_reg);
-                if (m_axi_wready) begin
-                    if (m_axi_wlast)
+                axi_wvalid_core = 1'b1;
+                axi_wdata_core  = wdata_reg;
+                axi_wstrb_core  = {AXI_DATA_W/8{1'b1}};  // all bytes
+                axi_wlast_core  = ({5'b0, evict_beat_cnt} == len_reg);
+                if (axi_wready_core) begin
+                    if (axi_wlast_core)
                         state_next = ST_DC_EVICT_B;
                 end
             end
 
             ST_DC_EVICT_B: begin
-                m_axi_bready = 1'b1;
-                if (m_axi_bvalid)
+                axi_bready_core = 1'b1;
+                if (axi_bvalid_core)
                     state_next = ST_IDLE;
             end
 
             // ── NC Read (AR + R, single beat) ───────────────
             ST_NC_READ_AR: begin
-                m_axi_arvalid = 1'b1;
-                m_axi_araddr  = addr_reg;
-                m_axi_arid    = id_reg;
-                m_axi_arlen   = len_reg;
-                m_axi_arsize  = size_reg;
-                m_axi_arburst = AXI_BURST_INCR;
-                if (m_axi_arready)
+                axi_arvalid_core = 1'b1;
+                axi_araddr_core  = addr_reg;
+                axi_arid_core    = id_reg;
+                axi_arlen_core   = len_reg;
+                axi_arsize_core  = size_reg;
+                axi_arburst_core = AXI_BURST_INCR;
+                if (axi_arready_core)
                     state_next = ST_NC_READ_R;
             end
 
             ST_NC_READ_R: begin
-                m_axi_rready = 1'b1;
-                if (m_axi_rvalid && m_axi_rlast)
+                axi_rready_core = 1'b1;
+                if (axi_rvalid_core && axi_rlast_core)
                     state_next = ST_IDLE;
             end
 
             // ── NC Write (AW + W + B, single beat) ──────────
             ST_NC_WRITE_AW: begin
-                m_axi_awvalid = 1'b1;
-                m_axi_awaddr  = addr_reg;
-                m_axi_awid    = id_reg;
-                m_axi_awlen   = len_reg;
-                m_axi_awsize  = size_reg;
-                m_axi_awburst = AXI_BURST_INCR;
-                if (m_axi_awready)
+                axi_awvalid_core = 1'b1;
+                axi_awaddr_core  = addr_reg;
+                axi_awid_core    = id_reg;
+                axi_awlen_core   = len_reg;
+                axi_awsize_core  = size_reg;
+                axi_awburst_core = AXI_BURST_INCR;
+                if (axi_awready_core)
                     state_next = ST_NC_WRITE_W;
             end
 
             ST_NC_WRITE_W: begin
-                m_axi_wvalid = 1'b1;
-                m_axi_wdata  = wdata_reg;
-                m_axi_wstrb  = {4'hF, 12'h0};  // 低 4 byte 有效
-                m_axi_wlast  = 1'b1;
-                if (m_axi_wready)
+                axi_wvalid_core = 1'b1;
+                axi_wdata_core  = wdata_reg;
+                axi_wstrb_core  = {4'hF, 12'h0};  // 低 4 byte 有效
+                axi_wlast_core  = 1'b1;
+                if (axi_wready_core)
                     state_next = ST_NC_WRITE_B;
             end
 
             ST_NC_WRITE_B: begin
-                m_axi_bready = 1'b1;
-                if (m_axi_bvalid)
+                axi_bready_core = 1'b1;
+                if (axi_bvalid_core)
                     state_next = ST_IDLE;
             end
 
             // ── Trace Write (AW + W + B) ────────────────────
             ST_TRACE_AW: begin
-                m_axi_awvalid = 1'b1;
-                m_axi_awaddr  = addr_reg;
-                m_axi_awid    = id_reg;
-                m_axi_awlen   = len_reg;
-                m_axi_awsize  = size_reg;
-                m_axi_awburst = AXI_BURST_INCR;
-                if (m_axi_awready)
+                axi_awvalid_core = 1'b1;
+                axi_awaddr_core  = addr_reg;
+                axi_awid_core    = id_reg;
+                axi_awlen_core   = len_reg;
+                axi_awsize_core  = size_reg;
+                axi_awburst_core = AXI_BURST_INCR;
+                if (axi_awready_core)
                     state_next = ST_TRACE_W;
             end
 
             ST_TRACE_W: begin
-                m_axi_wvalid = 1'b1;
-                m_axi_wdata  = wdata_reg;
-                m_axi_wstrb  = {AXI_DATA_W/8{1'b1}};
-                m_axi_wlast  = 1'b1;
-                if (m_axi_wready)
+                axi_wvalid_core = 1'b1;
+                axi_wdata_core  = wdata_reg;
+                axi_wstrb_core  = {AXI_DATA_W/8{1'b1}};
+                axi_wlast_core  = 1'b1;
+                if (axi_wready_core)
                     state_next = ST_TRACE_B;
             end
 
             ST_TRACE_B: begin
-                m_axi_bready = 1'b1;
-                if (m_axi_bvalid)
+                axi_bready_core = 1'b1;
+                if (axi_bvalid_core)
                     state_next = ST_IDLE;
             end
 
@@ -510,6 +560,108 @@ module lumi_axi_wrapper #(
             default: state_next = ST_IDLE;
         endcase
     end
+
+    // ─── AXI 5 通道 CDC 桥接 ─────────────────────────────────
+    // 原则: 多 bit 数据/地址经异步 FIFO, valid/ready 由 FIFO 空满自然产生。
+
+    // AW 通道: clk_core -> clk_bus
+    lumi_cdc_async_fifo #(
+        .DATA_WIDTH(AXI_ADDR_W + AXI_ID_W + 8 + 3 + 2 + 1 + 4 + 3),
+        .DEPTH(4)
+    ) u_axi_aw_cdc (
+        .clk_wr   (clk_core),
+        .rst_n_wr (reset_n),
+        .wr_en    (axi_awvalid_core && !aw_full),
+        .wr_data  ({axi_awaddr_core, axi_awid_core, axi_awlen_core, axi_awsize_core,
+                    axi_awburst_core, axi_awlock_core, axi_awcache_core, axi_awprot_core}),
+        .wr_full  (aw_full),
+        .clk_rd   (clk_bus),
+        .rst_n_rd (reset_n),
+        .rd_en    (m_axi_awready && !aw_empty),
+        .rd_data  ({m_axi_awaddr, m_axi_awid, m_axi_awlen, m_axi_awsize,
+                    m_axi_awburst, m_axi_awlock, m_axi_awcache, m_axi_awprot}),
+        .rd_empty (aw_empty)
+    );
+    assign m_axi_awvalid = !aw_empty;
+    assign axi_awready_core = !aw_full;
+
+    // W 通道: clk_core -> clk_bus
+    lumi_cdc_async_fifo #(
+        .DATA_WIDTH(AXI_DATA_W + AXI_DATA_W/8 + 1),
+        .DEPTH(4)
+    ) u_axi_w_cdc (
+        .clk_wr   (clk_core),
+        .rst_n_wr (reset_n),
+        .wr_en    (axi_wvalid_core && !w_full),
+        .wr_data  ({axi_wdata_core, axi_wstrb_core, axi_wlast_core}),
+        .wr_full  (w_full),
+        .clk_rd   (clk_bus),
+        .rst_n_rd (reset_n),
+        .rd_en    (m_axi_wready && !w_empty),
+        .rd_data  ({m_axi_wdata, m_axi_wstrb, m_axi_wlast}),
+        .rd_empty (w_empty)
+    );
+    assign m_axi_wvalid = !w_empty;
+    assign axi_wready_core = !w_full;
+
+    // B 通道: clk_bus -> clk_core
+    lumi_cdc_async_fifo #(
+        .DATA_WIDTH(AXI_ID_W + 2),
+        .DEPTH(4)
+    ) u_axi_b_cdc (
+        .clk_wr   (clk_bus),
+        .rst_n_wr (reset_n),
+        .wr_en    (m_axi_bvalid && !b_full),
+        .wr_data  ({m_axi_bid, m_axi_bresp}),
+        .wr_full  (b_full),
+        .clk_rd   (clk_core),
+        .rst_n_rd (reset_n),
+        .rd_en    (axi_bready_core && !b_empty),
+        .rd_data  ({axi_bid_core, axi_bresp_core}),
+        .rd_empty (b_empty)
+    );
+    assign axi_bvalid_core = !b_empty;
+    assign m_axi_bready    = !b_full;
+
+    // AR 通道: clk_core -> clk_bus
+    lumi_cdc_async_fifo #(
+        .DATA_WIDTH(AXI_ADDR_W + AXI_ID_W + 8 + 3 + 2 + 1 + 4 + 3),
+        .DEPTH(4)
+    ) u_axi_ar_cdc (
+        .clk_wr   (clk_core),
+        .rst_n_wr (reset_n),
+        .wr_en    (axi_arvalid_core && !ar_full),
+        .wr_data  ({axi_araddr_core, axi_arid_core, axi_arlen_core, axi_arsize_core,
+                    axi_arburst_core, axi_arlock_core, axi_arcache_core, axi_arprot_core}),
+        .wr_full  (ar_full),
+        .clk_rd   (clk_bus),
+        .rst_n_rd (reset_n),
+        .rd_en    (m_axi_arready && !ar_empty),
+        .rd_data  ({m_axi_araddr, m_axi_arid, m_axi_arlen, m_axi_arsize,
+                    m_axi_arburst, m_axi_arlock, m_axi_arcache, m_axi_arprot}),
+        .rd_empty (ar_empty)
+    );
+    assign m_axi_arvalid = !ar_empty;
+    assign axi_arready_core = !ar_full;
+
+    // R 通道: clk_bus -> clk_core
+    lumi_cdc_async_fifo #(
+        .DATA_WIDTH(AXI_ID_W + AXI_DATA_W + 2 + 1),
+        .DEPTH(4)
+    ) u_axi_r_cdc (
+        .clk_wr   (clk_bus),
+        .rst_n_wr (reset_n),
+        .wr_en    (m_axi_rvalid && !r_full),
+        .wr_data  ({m_axi_rid, m_axi_rdata, m_axi_rresp, m_axi_rlast}),
+        .wr_full  (r_full),
+        .clk_rd   (clk_core),
+        .rst_n_rd (reset_n),
+        .rd_en    (axi_rready_core && !r_empty),
+        .rd_data  ({axi_rid_core, axi_rdata_core, axi_rresp_core, axi_rlast_core}),
+        .rd_empty (r_empty)
+    );
+    assign axi_rvalid_core = !r_empty;
+    assign m_axi_rready    = !r_full;
 
     // ─── FFP 接口: 当前为直连 stub ──────────────────────────
     // FFP 外设通过独立路径直接访问, 不经过主总线仲裁
