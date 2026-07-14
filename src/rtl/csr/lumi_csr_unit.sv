@@ -248,6 +248,7 @@ module lumi_csr_unit #(
     // HPM 事件匹配 (组合逻辑)
     // ═══════════════════════════════════════════════════════════
     logic [HPM_COUNTERS-1:0] hpm_event_match;
+    logic [HPM_COUNTERS-1:0] hpmcounter_write_conflict;
 
     always_comb begin
         for (int i = 0; i < HPM_COUNTERS; i++) begin
@@ -262,6 +263,15 @@ module lumi_csr_unit #(
                 10'h007: hpm_event_match[i] = csr_we;                 // CSR_ACCESS
                 default: hpm_event_match[i] = 1'b0;
             endcase
+        end
+    end
+
+    // ── HPM 计数器写冲突检测 (CSR 写优先级高于 HPM 递增) ──
+    always_comb begin
+        for (int i = 0; i < HPM_COUNTERS; i++) begin
+            hpmcounter_write_conflict[i] = csr_we && csr_addr_valid &&
+                ((csr_addr == (12'hB03 + i[11:0])) ||
+                 (csr_addr == (12'hB83 + i[11:0])));
         end
     end
 
@@ -458,8 +468,10 @@ module lumi_csr_unit #(
             end // csr_we
 
             // ── HPM 计数器递增 ──
+            // CSR 写 mhpmcounter[n]/mhpmcounterh[n] 时跳过自动递增,
+            // 避免 HPM 事件覆盖显式 CSR 写入值.
             for (int i = 0; i < HPM_COUNTERS; i++) begin
-                if (hpm_event_match[i])
+                if (hpm_event_match[i] && !hpmcounter_write_conflict[i])
                     mhpmcounter_r[i] <= mhpmcounter_r[i] + 64'h1;
                 hi_latch_hpm[i] <= mhpmcounter_r[i][63:32];
             end
