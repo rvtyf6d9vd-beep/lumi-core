@@ -75,8 +75,8 @@ module lumi_csr_unit #(
 
     // ── Machine Trap Setup ───────────────────────────────────
     logic [31:0] mstatus_r;
-    // misa: RV32IMAC = {30'b0, 2'b01, 26'b0000_0100_0001_0001_0000_0000}
-    localparam logic [31:0] MISA_VAL = 32'h4000_1100; // RV32 I+M+A+C
+    // misa: RV32IMABC_Zce (MXL=01, I/M/A/C/B/Z=1, F/D/V=0)
+    localparam logic [31:0] MISA_VAL = 32'h4200_1107; // RV32 I+M+A+C+B+Zce
     // medeleg/mideleg: 异常/中断委托位图
     logic [31:0] medeleg_r;
     logic [31:0] mideleg_r;
