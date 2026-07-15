@@ -494,6 +494,79 @@ risks:
     resolution_date: null
     source_ref: "Lumi_RTL_Bug_修正计划_task-d94 Phase 3 regression"
 
+  # ─── RTL Static Analysis Round 2 新增风险 (2026-07-15) ─────
+  - id: "RISK-027"
+    title: "ISA decode compliance — Zicond opcode error + Zimop violation"
+    severity: critical
+    status: open
+    reported_by: rtl-static-scan-r2
+    reported_date: "2026-07-15"
+    assigned_to: hw-design
+    description: >
+      第2轮静态分析发现两个 ISA 合规性问题:
+      (1) ERR-093 (Critical): lumi_decode_issue.sv 中 OP_ZICOND = 7'b0111011 不正确。
+      RISC-V Zicond 规范中 CZERO.EQZ 使用 opcode=0110011 (OP), CZERO.NEZ 使用
+      opcode=0010011 (OP-IMM)。当前编码导致真实 Zicond 指令被当作普通 ALU 指令
+      静默误执行，产生错误结果却不报异常。
+      (2) ERR-094 (High): OP_CUSTOM0 (Zimop 编码空间) 触发 EXC_ILLEGAL_INST 异常。
+      RISC-V Zimop 规范要求 may-be-operations 作为 NOP 处理，不应触发异常。
+    mitigation: >
+      (1) 修正 OP_ZICOND 值或在 OP_REG/OP_IMM case 中检测 funct7==0000111 并正确
+      解码 CZERO.EQZ/CZERO.NEZ。当前为静默误执行，比'未实现'更危险。
+      (2) 将 OP_CUSTOM0 从非法指令触发列表中移除，保持 FU_MISC + NOP 行为。
+      两个问题需在 RTL Freeze 前修复并添加回归测试。
+    resolution: null
+    resolution_date: null
+    source_ref: "ERR-093, ERR-094"
+
+  - id: "RISK-028"
+    title: "SoC top-level signal disconnection (Exception/ECC/Power)"
+    severity: high
+    status: open
+    reported_by: rtl-static-scan-r2
+    reported_date: "2026-07-15"
+    assigned_to: hw-design
+    description: >
+      第2轮静态分析发现 lumi_soc_top.sv 中三个模块的信号在 SoC 顶层未正确连接:
+      (1) ERR-095 (High): lumi_exception 模块输入信号 (trap_enter, trap_cause 等)
+      全部硬编码为 0，异常处理在 SoC 层面完全断路。
+      (2) ERR-096 (High): regfile 和 TCM 的 ECC IRQ 输出 (ecc_ce_irq/ecc_ded_irq)
+      未连接到中断控制器，ECC 错误中断在 SoC 层面完全断路。
+      (3) ERR-097 (Medium): lumi_power_mgmt 模块的 irq_pending 未连接，wfi_req 和
+      wrs_req 硬编码为 0，低功耗管理机制在 SoC 层面完全不工作。
+    mitigation: >
+      需要在 lumi_soc_top.sv 中正确连接:
+      (1) exception 模块输入到 core_top 的 trap 信号输出
+      (2) ECC IRQ 信号到 CLIC 中断输入
+      (3) power_mgmt 的 irq_pending 到 CLIC irq_pending, wfi_req 到 core_top WFI
+      修复后需运行 SoC 级集成回归测试验证信号连接。
+    resolution: null
+    resolution_date: null
+    source_ref: "ERR-095, ERR-096, ERR-097"
+
+  - id: "RISK-029"
+    title: "Verification coverage 0% — 35 Cover Groups pending + 4 modules zero tests"
+    severity: high
+    status: open
+    reported_by: rtl-static-scan-r2
+    reported_date: "2026-07-15"
+    assigned_to: hw-ver
+    description: >
+      第2轮静态分析发现验证环境存在严重覆盖率缺口:
+      (1) coverage-plan.yaml 中 35 个 Cover Groups 全部处于 pending 状态 (0% 实现)。
+      (2) 4 个模块零 directed test: trace, CDC, ECC, 安全启动。
+      (3) 无 ISA Reference Model (Spike/gem5) 集成到 Scoreboard。
+      (4) UVM Shim 功能有限 (ERR-070 open)。
+      当前验证签核不完整，无法保证 RTL 实现的正确性。
+    mitigation: >
+      详见 RISK-024 (Scoreboard RM deferred), RISK-025 (19 Cover Group deferred)。
+      新增风险: 35 个 CGs 全部 pending 需要在 M3-S4 前完成至少 80%。
+      4 个零测试模块需优先补充 directed test。
+      ISA RM 集成需 Spike 环境就绪 (预计 5 天工作量)。
+    resolution: null
+    resolution_date: null
+    source_ref: "ERR-068~073, ERR-076~086 resolved, coverage-plan.yaml"
+
 # 示例条目格式:
 # - id: "RISK-001"
 #   title: "CSR 模块时序不满足"

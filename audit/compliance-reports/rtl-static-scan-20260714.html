@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumi-Core RTL 全局静态代码扫描分析报告</title>
+<style>
+  :root { --crit:#dc2626; --high:#ea580c; --med:#ca8a04; --low:#2563eb; --ok:#16a34a; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f8fafc; color: #1e293b; }
+  h1 { text-align: center; color: #0f172a; border-bottom: 3px solid #3b82f6; padding-bottom: 12px; }
+  h2 { color: #1e40af; border-left: 4px solid #3b82f6; padding-left: 12px; margin-top: 32px; }
+  h3 { color: #334155; margin-top: 24px; }
+  .meta { text-align: center; color: #64748b; font-size: 0.9em; margin-bottom: 24px; }
+  .exec-summary { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+  .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 16px 0; }
+  .stat-card { text-align: center; padding: 16px 8px; border-radius: 8px; color: #fff; font-weight: bold; }
+  .stat-card .num { font-size: 2em; display: block; }
+  .stat-card .label { font-size: 0.8em; opacity: 0.9; }
+  .bg-crit { background: var(--crit); } .bg-high { background: var(--high); }
+  .bg-med { background: var(--med); } .bg-low { background: var(--low); } .bg-ok { background: var(--ok); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88em; }
+  th { background: #1e40af; color: #fff; padding: 8px 10px; text-align: left; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) { background: #f1f5f9; }
+  tr:hover { background: #e0f2fe; }
+  .sev { display: inline-block; padding: 2px 8px; border-radius: 4px; color: #fff; font-size: 0.8em; font-weight: 600; }
+  .sev-crit { background: var(--crit); } .sev-high { background: var(--high); }
+  .sev-med { background: var(--med); } .sev-low { background: var(--low); }
+  .sev-ok { background: var(--ok); }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.75em; margin-right: 4px; }
+  .tag-rtl { background: #dbeafe; color: #1e40af; } .tag-doc { background: #fef3c7; color: #92400e; }
+  .tag-tb { background: #d1fae5; color: #065f46; } .tag-req { background: #fce7f3; color: #9d174d; }
+  code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-size: 0.88em; }
+  .section-box { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .fix-prio { font-weight: bold; } .p0 { color: var(--crit); } .p1 { color: var(--high); } .p2 { color: var(--med); } .p3 { color: var(--low); }
+  .toc { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px 24px; margin: 20px 0; }
+  .toc a { text-decoration: none; color: #2563eb; } .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 8px 0; padding-left: 24px; } .toc li { margin: 4px 0; }
+  .footer { text-align: center; color: #94a3b8; font-size: 0.8em; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+  details { margin: 8px 0; } summary { cursor: pointer; font-weight: 600; color: #1e40af; }
+</style>
+</head>
+<body>
+
+<h1>Lumi-Core RTL 全局静态代码扫描分析报告</h1>
+<p class="meta">
+  报告日期: 2026-07-14 | 基线: BL-1.1 (99条需求) | RTL: 28 × .sv | 设计文档: 16 × .html<br>
+  分析范围: M2-S1 RTL 骨架定版 → M3-S2 实现 | 分析方法: 静态代码分析 + 文档交叉验证
+</p>
+
+<div class="toc">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#sec1">执行摘要</a></li>
+    <li><a href="#sec2">设计一致性偏差清单 (Task 1)</a></li>
+    <li><a href="#sec3">逻辑缺陷清单 (Task 2)</a></li>
+    <li><a href="#sec4">验证覆盖缺口 (Task 3)</a></li>
+    <li><a href="#sec5">需求追溯矩阵 (Task 4)</a></li>
+    <li><a href="#sec6">架构合规偏差 (Task 5)</a></li>
+    <li><a href="#sec7">改进建议优先级排序</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec1">1. 执行摘要</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="exec-summary">
+<p>本次对 Lumi-Core 全部 28 个 RTL 文件、16 份设计文档、11 个 TB 文件及 66 个 directed 测试执行了独立全局静态代码扫描。
+分析覆盖 <strong>设计一致性</strong>、<strong>逻辑缺陷</strong>、<strong>验证完整性</strong>、<strong>需求追溯</strong>、<strong>架构合规</strong> 五个维度。</p>
+
+<div class="stat-grid">
+  <div class="stat-card bg-crit"><span class="num">8</span><span class="label">Critical</span></div>
+  <div class="stat-card bg-high"><span class="num">14</span><span class="label">High</span></div>
+  <div class="stat-card bg-med"><span class="num">18</span><span class="label">Medium</span></div>
+  <div class="stat-card bg-low"><span class="num">9</span><span class="label">Low</span></div>
+  <div class="stat-card bg-ok"><span class="num">49</span><span class="label">总发现</span></div>
+</div>
+
+<p><strong>关键结论:</strong></p>
+<ul>
+  <li><strong>SoC 集成层断路 (3× Critical)</strong>: <code>lumi_soc_top.sv</code> 中 trap/CLIC/NMI 信号全部硬编码为 0 或未连接，导致异常处理与中断控制器在 SoC 层面完全断路</li>
+  <li><strong>数据通路关键缺陷 (3× Critical)</strong>: Cache Evict 丢失 48B 脏数据、CSR 写与 HPM 递增竞争、CDC 同步器短路</li>
+  <li><strong>流水线旁路时序 (1× Critical)</strong>: E2→M 级 MUL/DIV 结果旁路存在 1-cycle 延迟窗口</li>
+  <li><strong>ISA 合规缺口 (1× Critical)</strong>: 13 个 Profile Mandatory 扩展中 8 个在解码层完全缺失</li>
+  <li><strong>验证覆盖不足</strong>: 35 个 Cover Groups 中仅 16 个有对应测试映射；Scoreboard 无 Reference Model 交叉验证</li>
+  <li><strong>全局参数 100% 合规</strong>: 9 项核心架构参数 (XLEN/AXI/HPM/TCM/Cache/CLIC 等) 与 platform-spec.html 完全一致</li>
+</ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec2">2. 设计一致性偏差清单</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>2.1 模块端口与接口一致性 (Task 1.1)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>RTL 文件</th><th>设计文档</th><th>偏差描述</th></tr>
+<tr>
+  <td>DC-01</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_soc_top.sv</code></td><td><span class="tag tag-doc">platform-spec.html</span></td>
+  <td>SoC 顶层 trap 接口 (<code>trap_valid</code>, <code>trap_cause</code>, <code>trap_pc</code>) 全部硬编码为 0，与 platform-spec §4.2 异常处理架构不一致。异常信号无法传播至 SoC 级错误处理逻辑。</td>
+</tr>
+<tr>
+  <td>DC-02</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_soc_top.sv</code></td><td><span class="tag tag-doc">clic-plic.html</span></td>
+  <td>CLIC CSR 接口 (<code>clic_csr_addr</code>, <code>clic_csr_wdata</code>, <code>clic_csr_rdata</code>) 在 SoC 实例化中未连接。中断控制器的寄存器读写在 SoC 层完全断路。</td>
+</tr>
+<tr>
+  <td>DC-03</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_soc_top.sv</code></td><td><span class="tag tag-doc">clic-plic.html</span></td>
+  <td>NMI (Non-Maskable Interrupt) 输入端口硬接 <code>1'b0</code>，与 clic-plic.html §2.3 NMI 处理机制不一致。不可屏蔽中断功能失效。</td>
+</tr>
+<tr>
+  <td>DC-04</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_axi_wrapper.sv</code></td><td><span class="tag tag-doc">pma-axi.html</span></td>
+  <td>CDC 同步器完全短路 — 跨时钟域信号直连无同步器。pma-axi.html §4.1 要求 AXI 总线接口必须有 2-FF CDC 同步。</td>
+</tr>
+<tr>
+  <td>DC-05</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_tcm.sv</code></td><td><span class="tag tag-doc">tcm.html</span></td>
+  <td>DMA 端口地址解码复用 <code>core_addr</code>，tcm.html §3.2 要求 DMA 有独立地址解码路径。DMA 与 CPU 访问可能发生地址混叠。</td>
+</tr>
+<tr>
+  <td>DC-06</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_plic.sv</code></td><td><span class="tag tag-doc">clic-plic.html</span></td>
+  <td>PLIC 多核中断路由仅连接到 hart0，clic-plic.html §2.2 要求支持 <code>NUM_HARTS</code> 参数化路由。多核场景下其他核无法接收外部中断。</td>
+</tr>
+<tr>
+  <td>DC-07</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_debug_module.sv</code></td><td><span class="tag tag-doc">debug-trace.html</span></td>
+  <td>JTAG TCK 域与系统 clk_core 域之间的 CDC 处理仅使用单级触发器，debug-trace.html §3.1 要求 2-FF + DMUI 握手协议。</td>
+</tr>
+<tr>
+  <td>DC-08</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_power_mgmt.sv</code></td><td><span class="tag tag-doc">power-reset.html</span></td>
+  <td>ST_SLEEP 状态在 FSM 中定义但不可达 (无任何状态转移指向它)。power-reset.html §2.2 定义了 Sleep/Wake-up 功耗管理流程。</td>
+</tr>
+<tr>
+  <td>DC-09</td><td><span class="sev sev-low">Low</span></td>
+  <td><code>lumi_lockstep.sv</code></td><td><span class="tag tag-doc">multicore-lockstep.html</span></td>
+  <td>锁步比较器输出信号命名与文档不一致: RTL 使用 <code>lockstep_error</code>，文档使用 <code>ls_mismatch_fault</code>。</td>
+</tr>
+</table>
+</div>
+
+<h3>2.2 流水线架构一致性 (Task 1.2)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>检查项</th><th>状态</th><th>详情</th></tr>
+<tr>
+  <td>PA-01</td><td><span class="sev sev-ok">PASS</span></td>
+  <td>8 级流水线实例化 (LUMI-PIPE-001)</td><td>一致</td>
+  <td><code>lumi_core_top.sv</code> 正确实例化 F1→F2→D→I→E1→E2→M→W 共 8 级，级间使用 <code>pipeline_if</code> 接口传递。</td>
+</tr>
+<tr>
+  <td>PA-02</td><td><span class="sev sev-crit">Critical</span></td>
+  <td>E1→M MUL/DIV 旁路时序</td><td>偏差</td>
+  <td><code>lumi_core_top.sv</code>: E2 级 MUL/DIV 结果在旁路网络中存在 1-cycle 延迟窗口。当 E2 结果需要在 M 级同一 cycle 被使用时，旁路路径未正确对齐，导致读取到旧值。</td>
+</tr>
+<tr>
+  <td>PA-03</td><td><span class="sev sev-ok">PASS</span></td>
+  <td>3 发射宽度参数</td><td>一致</td>
+  <td><code>ISSUE_WIDTH=3</code> 在 <code>lumi_types_pkg.sv</code> 定义，<code>lumi_decode_issue.sv</code> 中 skip-stalled 发射策略正确实现 3 路发射。</td>
+</tr>
+<tr>
+  <td>PA-04</td><td><span class="sev sev-med">Medium</span></td>
+  <td>FENCE 指令实现</td><td>偏差</td>
+  <td>FENCE 仅实现为 1-cycle NOP，未 drain store buffer。design/execute-alu.html §4.3 要求 FENCE 等待所有 pending store 完成。</td>
+</tr>
+</table>
+</div>
+
+<h3>2.3 顶层 SoC 集成一致性 (Task 1.3)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>检查项</th><th>状态</th><th>详情</th></tr>
+<tr>
+  <td>SI-01</td><td><span class="sev sev-ok">PASS</span></td>
+  <td>AXI4 主总线 128-bit (LUMI-IF-001)</td><td>一致</td>
+  <td><code>lumi_soc_top.sv</code> 的 AXI4 端口使用 <code>axi4_if</code> 接口，数据宽度 128-bit，与 platform-spec.html §3.1 一致。</td>
+</tr>
+<tr>
+  <td>SI-02</td><td><span class="sev sev-ok">PASS</span></td>
+  <td>JTAG 端口 (LUMI-FEAT-004)</td><td>一致</td>
+  <td>tck/tms/tdi/tdo/trst_n 五线 JTAG 端口与 debug-trace.html §2.1 定义一致。</td>
+</tr>
+<tr>
+  <td>SI-03</td><td><span class="sev sev-ok">PASS</span></td>
+  <td>中断输入 ext_irq_in[31:0] (LUMI-IF-004)</td><td>一致</td>
+  <td>32-bit 外部中断输入端口与 clic-plic.html §2.1 PLIC 32 外部中断定义一致。</td>
+</tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec3">3. 逻辑缺陷清单</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>3.1 信号完整性 (Task 2.1)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>文件</th><th>行号</th><th>问题描述</th><th>修复建议</th></tr>
+<tr>
+  <td>SIG-01</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_regfile.sv</code></td><td>~45-70</td>
+  <td><strong>Regfile 双写端口冲突</strong>: 当两个写端口同时写同一寄存器时，缺少仲裁逻辑。后写入的值不确定 (取决于仿真器/综合工具行为)。</td>
+  <td>添加写端口优先级仲裁: slot0 > slot1 > slot2，或添加冲突检测并 stall。</td>
+</tr>
+<tr>
+  <td>SIG-02</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_csr_unit.sv</code></td><td>~120-180</td>
+  <td><strong>MISA_VAL 不正确</strong>: MISA CSR 的硬编码值未包含所有已实现的 ISA 扩展 (如 B/Zba/Zbb 扩展位)。</td>
+  <td>根据实际已实现扩展更新 MISA_VAL，确保 MISA[25:0] 各扩展位正确反映硬件能力。</td>
+</tr>
+<tr>
+  <td>SIG-03</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_fetch.sv</code></td><td>~280-320</td>
+  <td><strong>BTB 写入无 ECC 保护</strong>: BTB SRAM 写入未添加 ECC 校验位，而 TCM/Cache 均有 ECC。BTB 单 bit 翻转可能导致误预测。</td>
+  <td>为 BTB 添加 SECDED ECC (与 TCM_ECC_EN 参数对齐)，或至少在 BTB 命中时添加奇偶校验。</td>
+</tr>
+<tr>
+  <td>SIG-04</td><td><span class="sev sev-low">Low</span></td>
+  <td><code>lumi_execute.sv</code></td><td>~135</td>
+  <td><strong>already_redirected 标志</strong>: 使用 <code>bit</code> 类型而非 <code>logic</code>，在仿真中默认为 0 但在综合中可能不确定。</td>
+  <td>改用 <code>logic</code> 类型或在 always_comb 块开头显式初始化。</td>
+</tr>
+</table>
+</div>
+
+<h3>3.2 时序与竞争条件 (Task 2.2)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>文件</th><th>行号</th><th>问题描述</th><th>修复建议</th></tr>
+<tr>
+  <td>TIM-01</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_csr_unit.sv</code></td><td>~90-150</td>
+  <td><strong>CSR 写与 HPM 递增竞争</strong>: 当 CSR 写操作 (如 CSRRW 写 mhpmcounter) 与 HPM 自动递增在同一 cycle 发生时，递增逻辑后执行会覆盖写入值。数据损坏。</td>
+  <td>在 HPM 递增逻辑中添加写冲突检测: 若当前 cycle 有 CSR 写目标为 hpmcounter[n]，则跳过该 cycle 递增。</td>
+</tr>
+<tr>
+  <td>TIM-02</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_cache.sv</code></td><td>~200-260</td>
+  <td><strong>Cache Evict 仅发送 1/4 beat</strong>: 64B cache line 在 evict 时仅发送第一个 16B beat (AXI 128-bit = 16B/beat)，剩余 48B 脏数据丢失。需发送 4 beats。</td>
+  <td>修复 evict FSM: 添加 beat 计数器，确保发送完整 4 beats (arlen=3) 后才完成 evict。</td>
+</tr>
+<tr>
+  <td>TIM-03</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_axi_wrapper.sv</code></td><td>~50-100</td>
+  <td><strong>CDC 同步器短路</strong>: 跨时钟域信号 (clk_core ↔ clk_bus) 直接连线无同步器。亚稳态传播风险极高。</td>
+  <td>实现标准 2-FF CDC 同步器 (单 bit) 和 DMUX/异步 FIFO (多 bit)。参考 LUMI-CLK-001 需求。</td>
+</tr>
+<tr>
+  <td>TIM-04</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_debug_module.sv</code></td><td>~80-140</td>
+  <td><strong>Debug CDC 处理不当</strong>: JTAG TCK 域 (低速 ~10MHz) 与系统 clk_core 域 (高速 ~100MHz+) 之间仅使用单级触发器同步。</td>
+  <td>实现 TCK→sys 的 2-FF 同步 + DMUI 握手协议 (JTAG 写请求 → sys 响应 → JTAG 确认)。</td>
+</tr>
+</table>
+</div>
+
+<h3>3.3 状态机完整性 (Task 2.3)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>文件</th><th>FSM</th><th>问题描述</th><th>修复建议</th></tr>
+<tr>
+  <td>FSM-01</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_fetch.sv</code></td><td>取指 FSM (5状态)</td>
+  <td>case 语句有 <code>default</code> 分支 ✓，但 default 仅执行空操作。异常状态跳转未定义。</td>
+  <td>default 分支应跳转到 ST_IDLE 并置错误标志。</td>
+</tr>
+<tr>
+  <td>FSM-02</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_dft_ctrl.sv</code></td><td>MBIST FSM</td>
+  <td>MBIST 测试 FSM 缺少 default 状态处理。综合工具可能推断出锁存器。</td>
+  <td>添加 <code>default: state_next = ST_IDLE;</code> 安全回退。</td>
+</tr>
+<tr>
+  <td>FSM-03</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_lockstep.sv</code></td><td>锁步比较 FSM</td>
+  <td>缺少 default 分支。锁步错误后 FSM 可能进入不确定状态。</td>
+  <td>添加 default 回退到 IDLE 并触发安全中断。</td>
+</tr>
+<tr>
+  <td>FSM-04</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_power_mgmt.sv</code></td><td>功耗管理 FSM</td>
+  <td>ST_SLEEP 状态不可达 — 没有任何状态转移指向 ST_SLEEP。该状态为死代码。</td>
+  <td>实现 ST_ACTIVE → ST_SLEEP 转移条件 (如 WFI 指令触发)，或移除未使用的状态定义。</td>
+</tr>
+<tr>
+  <td>FSM-05</td><td><span class="sev sev-low">Low</span></td>
+  <td><code>lumi_cache.sv</code></td><td>Cache 控制器 FSM</td>
+  <td>FSM 有 default 分支 ✓，复位进入 ST_IDLE ✓。但 evict 子状态机的状态编码未使用 one-hot。</td>
+  <td>改用 one-hot 编码以提高综合质量和时序。</td>
+</tr>
+</table>
+</div>
+
+<h3>3.4 资源冲突与死代码 (Task 2.4)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>文件</th><th>问题描述</th><th>修复建议</th></tr>
+<tr>
+  <td>RES-01</td><td><span class="sev sev-crit">Critical</span></td>
+  <td><code>lumi_core_top.sv</code></td>
+  <td><strong>E1→M MUL/DIV 旁路时序</strong>: E2 级产生的 MUL/DIV 结果在传递到 M 级时，旁路网络未正确对齐 1-cycle 延迟，导致 M 级读取到 E1 级的旧操作数而非 E2 结果。</td>
+  <td>在旁路 MUX 中添加 E2→M 路径，使用 E2 级输出寄存器值而非 E1 级组合逻辑值。</td>
+</tr>
+<tr>
+  <td>RES-02</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_fpu.sv</code></td>
+  <td><strong>FPU 运算为 passthrough</strong>: FPU 模块当前仅实现数据透传 (输入直接连接到输出)，无实际浮点运算逻辑。所有 F/D 扩展指令返回未修改的操作数。</td>
+  <td>按 fpu-vector.html 实现 FADD/FMUL/FDIV/FSQRT/FCVT 运算单元。当前阶段可添加 "FPU not implemented" 异常。</td>
+</tr>
+<tr>
+  <td>RES-03</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_vector.sv</code></td>
+  <td><strong>Vector SIMD 硬编码为加法</strong>: 向量模块仅实现 SIMD 加法运算，乘法/除法/比较/转换等操作均返回加法结果。</td>
+  <td>按 fpu-vector.html §4 实现完整 SIMD 运算集，或对未实现操作触发 illegal instruction 异常。</td>
+</tr>
+<tr>
+  <td>RES-04</td><td><span class="sev sev-low">Low</span></td>
+  <td><code>lumi_decode_issue.sv</code></td>
+  <td><strong>RV32C 扩展保留字段</strong>: 压缩指令展开后，<code>inst_raw[15:0]</code> 保留原始 16-bit 指令。但 32-bit 非压缩指令仅存低 16-bit，高 16-bit 信息丢失。</td>
+  <td>对 32-bit 指令，<code>inst_raw</code> 应保存完整 32-bit 或明确文档说明仅用于调试。</td>
+</tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec4">4. 验证覆盖缺口</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>4.1 测试用例覆盖率 (Task 3.1)</h3>
+<div class="section-box">
+<p>coverage-plan.yaml 定义了 <strong>35 个 Cover Groups</strong>，当前所有 status 均为 <code>pending</code>。66 个 directed 测试仅映射到其中 <strong>16 个</strong> Cover Groups。</p>
+
+<table>
+<tr><th>类别</th><th>已映射 Cover Groups</th><th>缺失 Cover Groups</th><th>覆盖率</th></tr>
+<tr>
+  <td>ISA 指令</td>
+  <td>CG-ISA-BASE, CG-ISA-MUL, CG-ISA-ATOM, CG-ISA-COMP</td>
+  <td>CG-ISA-FP, CG-ISA-VEC, CG-ISA-B-EXT, CG-ISA-ZCE, CG-ISA-CSR</td>
+  <td>4/9 (44%)</td>
+</tr>
+<tr>
+  <td>流水线</td>
+  <td>CG-PIPE-BASIC, CG-PIPE-HAZARD</td>
+  <td>CG-PIPE-MULTI-ISSUE, CG-PIPE-BYPASS, CG-PIPE-PREDICT</td>
+  <td>2/5 (40%)</td>
+</tr>
+<tr>
+  <td>内存系统</td>
+  <td>CG-MEM-TCM, CG-MEM-PMP</td>
+  <td>CG-MEM-CACHE, CG-MEM-PMA, CG-MEM-ECC, CG-MEM-DMA</td>
+  <td>2/6 (33%)</td>
+</tr>
+<tr>
+  <td>中断/异常</td>
+  <td>CG-IRQ-BASIC, CG-EXC-BASIC</td>
+  <td>CG-IRQ-CLIC, CG-IRQ-PLIC, CG-EXC-NESTED, CG-IRQ-NMI</td>
+  <td>2/6 (33%)</td>
+</tr>
+<tr>
+  <td>接口/总线</td>
+  <td>CG-BUS-AXI</td>
+  <td>CG-BUS-FFP, CG-BUS-TCM-SLAVE</td>
+  <td>1/3 (33%)</td>
+</tr>
+<tr>
+  <td>调试/安全/DFT</td>
+  <td>CG-DBG-BASIC</td>
+  <td>CG-DBG-JTAG, CG-SEC-PMP-ISO, CG-SEC-BOOT, CG-DFT-SCAN, CG-DFT-MBIST</td>
+  <td>1/6 (17%)</td>
+</tr>
+<tr>
+  <td>多核/功耗</td>
+  <td>—</td>
+  <td>CG-MC-LOCKSTEP, CG-MC-ARB, CG-PWR-SLEEP, CG-PWR-RESET</td>
+  <td>0/4 (0%)</td>
+</tr>
+<tr style="font-weight:bold; background:#fef3c7;">
+  <td>合计</td><td>16 个有映射</td><td>19 个缺失</td><td>16/35 (46%)</td>
+</tr>
+</table>
+
+<p><strong>高风险未覆盖场景:</strong></p>
+<ul>
+  <li><span class="tag tag-tb">测试缺口</span> 多核锁步错误注入 (CG-MC-LOCKSTEP)</li>
+  <li><span class="tag tag-tb">测试缺口</span> Cache evict/replacement 完整流程 (CG-MEM-CACHE)</li>
+  <li><span class="tag tag-tb">测试缺口</span> CLIC 中断优先级抢占 (CG-IRQ-CLIC)</li>
+  <li><span class="tag tag-tb">测试缺口</span> ECC 多 bit 错误检测 (CG-MEM-ECC)</li>
+  <li><span class="tag tag-tb">测试缺口</span> 冷/暖/软复位序列 (CG-PWR-RESET, LUMI-BOOT-001)</li>
+  <li><span class="tag tag-tb">测试缺口</span> JTAG DMI 读写时序 (CG-DBG-JTAG)</li>
+</ul>
+</div>
+
+<h3>4.2 Testbench 架构完整性 (Task 3.2)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>组件</th><th>评估结果</th></tr>
+<tr>
+  <td>TB-01</td><td><span class="sev sev-high">High</span></td>
+  <td><code>lumi_scoreboard.sv</code></td>
+  <td><strong>Scoreboard 无 Reference Model 验证</strong>: 当前 Scoreboard 仅做指令计数和基本正确性检查，未集成 Spike/gem5 Reference Model 进行交叉比对。验证策略 §4.2 明确要求 RM 交叉验证。</td>
+</tr>
+<tr>
+  <td>TB-02</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>lumi_coverage.sv</code></td>
+  <td><strong>Coverage Collector 仅覆盖 16/35 Cover Groups</strong>: 缺少 FPU/Vector/CLIC/Cache/Debug/DFT/多核/功耗相关的 cover 采样点。</td>
+</tr>
+<tr>
+  <td>TB-03</td><td><span class="sev sev-med">Medium</span></td>
+  <td><code>uvm_shim_pkg.sv</code></td>
+  <td><strong>UVM Shim 层功能有限</strong>: 提供基本 uvm_component/uvm_sequence 框架，但缺少 UVM Phase 控制和 config_db 完整实现。对复杂验证场景支持不足。</td>
+</tr>
+<tr>
+  <td>TB-04</td><td><span class="sev sev-low">Low</span></td>
+  <td><code>lumi_tb_top.sv</code></td>
+  <td>DUT 实例化端口连接完整 ✓。但缺少 AXI slave memory model 的可配置参数。</td>
+</tr>
+</table>
+</div>
+
+<h3>4.3 回归套件完整性 (Task 3.3)</h3>
+<div class="section-box">
+<table>
+<tr><th>套件</th><th>配置项数</th><th>评估</th><th>缺口</th></tr>
+<tr>
+  <td>smoke</td><td>6 项</td><td><span class="sev sev-ok">基本覆盖</span></td>
+  <td>覆盖 ISA 基础、中断、CSR。缺少 TCM 基本测试。</td>
+</tr>
+<tr>
+  <td>regression</td><td>12 项</td><td><span class="sev sev-med">部分覆盖</span></td>
+  <td>缺少 FPU/Vector、多核、DFT、功耗管理相关回归项。</td>
+</tr>
+<tr>
+  <td>nightly</td><td>35 项</td><td><span class="sev sev-med">部分覆盖</span></td>
+  <td>覆盖大部分功能场景，但 errata_regression 未映射 known-issues.yaml 中全部已解决问题。</td>
+</tr>
+<tr>
+  <td>编译配置</td><td><code>rv32imac_zicsr</code></td><td><span class="sev sev-high">覆盖不足</span></td>
+  <td>march 仅覆盖基础整数+乘除+原子+压缩+CSR。缺少 F/D/V/B/Zce 扩展测试编译配置。</td>
+</tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec5">5. 需求追溯矩阵</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="section-box">
+<p>BL-1.1 基线共 <strong>99 条需求</strong>: 84 Must + 12 Should + 3 Could。其中 76 条硬件需求需 RTL 实现，23 条标记为 N/A (软件/工具类)。</p>
+
+<table>
+<tr><th>需求类别</th><th>数量</th><th>RTL 实现状态</th><th>验证覆盖状态</th><th>主要缺口</th></tr>
+<tr>
+  <td>ISA 需求</td><td>11 条</td>
+  <td><span class="sev sev-med">部分实现</span></td>
+  <td><span class="sev sev-high">覆盖不足</span></td>
+  <td>基础 RV32IMA + C 已实现。F/D/V/B/Zce 扩展解码存在但功能不完整 (FPU passthrough, Vector 仅加法)。8/13 Mandatory 扩展解码缺失。</td>
+</tr>
+<tr>
+  <td>内存需求</td><td>11 条</td>
+  <td><span class="sev sev-ok">基本实现</span></td>
+  <td><span class="sev sev-med">部分覆盖</span></td>
+  <td>TCM/PMP/PMA RTL 已实现。Cache evict 有 bug (TIM-02)。ECC/DMA 测试覆盖不足。</td>
+</tr>
+<tr>
+  <td>接口需求</td><td>6 条</td>
+  <td><span class="sev sev-ok">已实现</span></td>
+  <td><span class="sev sev-med">部分覆盖</span></td>
+  <td>AXI4/JTAG 接口定义正确。FFP/TCM-slave 接口测试覆盖不足。</td>
+</tr>
+<tr>
+  <td>功能特性</td><td>5 条</td>
+  <td><span class="sev sev-med">部分实现</span></td>
+  <td><span class="sev sev-high">覆盖不足</span></td>
+  <td>Debug 基本功能存在但 CDC 有问题。Trace 功能未验证。JTAG 完整流程未测试。</td>
+</tr>
+<tr>
+  <td>安全需求</td><td>8 条</td>
+  <td><span class="sev sev-med">部分实现</span></td>
+  <td><span class="sev sev-high">覆盖不足</span></td>
+  <td>PMP 隔离已实现。安全启动、调试锁定、总线 Parity 实现状态未验证。</td>
+</tr>
+<tr>
+  <td>DFT 需求</td><td>3 条</td>
+  <td><span class="sev sev-med">部分实现</span></td>
+  <td><span class="sev sev-high">覆盖不足</span></td>
+  <td>Scan chain/MBIST FSM 存在但缺少 default 分支。JTAG 边界扫描未验证。</td>
+</tr>
+<tr>
+  <td>多核需求</td><td>5 条</td>
+  <td><span class="sev sev-med">部分实现</span></td>
+  <td><span class="sev sev-crit">无覆盖</span></td>
+  <td>锁步模块存在。多核仲裁、核间中断路由 (仅 hart0) 存在问题。</td>
+</tr>
+<tr>
+  <td>时钟/功耗/启动</td><td>8 条</td>
+  <td><span class="sev sev-high">实现不足</span></td>
+  <td><span class="sev sev-crit">无覆盖</span></td>
+  <td>功耗管理 ST_SLEEP 不可达。时钟切换/CDC 同步器短路 (TIM-03)。复位序列未测试。</td>
+</tr>
+<tr>
+  <td>全局/配置</td><td>19 条</td>
+  <td><span class="sev sev-ok">基本实现</span></td>
+  <td><span class="sev sev-ok">部分覆盖</span></td>
+  <td>全局参数 100% 合规。Filelist 有 3 个文件引用不存在。</td>
+</tr>
+<tr>
+  <td>N/A (软件/工具)</td><td>23 条</td>
+  <td colspan="2"><span class="sev sev-low">需审查</span></td>
+  <td>部分 N/A 需求可能需重新分类为硬件需求 (如工具链对 F/D/V 扩展的支持要求)。</td>
+</tr>
+</table>
+
+<details>
+<summary><strong>需求映射文档一致性检查</strong></summary>
+<table>
+<tr><th>ID</th><th>严重程度</th><th>描述</th></tr>
+<tr><td>RM-01</td><td><span class="sev sev-med">Medium</span></td><td>coverage-plan.yaml 的 traceability_matrix 中 7 个 Cover Group 的需求映射与实际代码状态不一致。</td></tr>
+<tr><td>RM-02</td><td><span class="sev sev-low">Low</span></td><td>verification-strategy.html §7 "设计文档→验证单元映射" 表中引用了 2 个已更名的 RTL 文件。</td></tr>
+</table>
+</details>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec6">6. 架构合规偏差</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>6.1 ISA 合规性 (Task 5.1)</h3>
+<div class="section-box">
+<p>Profile Mandatory 扩展解码覆盖检查 (LUMI-ISA-011):</p>
+<table>
+<tr><th>扩展</th><th>状态</th><th>详情</th></tr>
+<tr><td>Zicsr</td><td><span class="sev sev-ok">已实现</span></td><td>CSRRW/CSRRS/CSRRC/CSRRWI/CSRRSI/CSRRCS 6 条指令已解码</td></tr>
+<tr><td>Zicntr</td><td><span class="sev sev-ok">已实现</span></td><td>cycle/time/instret 计数器 CSR 已映射</td></tr>
+<tr><td>Zihpm</td><td><span class="sev sev-ok">已实现</span></td><td>29 个 HPM 计数器 (HPM_COUNTERS=29)</td></tr>
+<tr><td>Zifencei</td><td><span class="sev sev-med">部分</span></td><td>FENCE.I 解码存在但实现为 NOP (无 I-cache 同步)</td></tr>
+<tr><td>Zicbom</td><td><span class="sev sev-crit">缺失</span></td><td>Cache block management (CBO.CLEAN/CBO.FLUSH/CBO.INVAL) 解码缺失</td></tr>
+<tr><td>Zicbop</td><td><span class="sev sev-crit">缺失</span></td><td>Cache block prefetch (PREFETCH.R/W/I) 解码缺失</td></tr>
+<tr><td>Zicboz</td><td><span class="sev sev-crit">缺失</span></td><td>Cache block zero (CBO.ZERO) 解码缺失</td></tr>
+<tr><td>Zicond</td><td><span class="sev sev-crit">缺失</span></td><td>CZERO.EQZ/CZERO.NEZ 条件零指令解码缺失</td></tr>
+<tr><td>Zihintpause</td><td><span class="sev sev-med">部分</span></td><td>PAUSE hint 解码存在但实现为 NOP (可接受，但应添加 delay)</td></tr>
+<tr><td>Zihintntl</td><td><span class="sev sev-crit">缺失</span></td><td>Non-Temporal Locality hints 解码缺失</td></tr>
+<tr><td>Zimop</td><td><span class="sev sev-crit">缺失</span></td><td>May-Be-Operations 编码空间未保留</td></tr>
+<tr><td>Zcmop</td><td><span class="sev sev-crit">缺失</span></td><td>Compressed May-Be-Operations 编码空间未保留</td></tr>
+<tr><td>Ziccamoa</td><td><span class="sev sev-crit">缺失</span></td><td>AMO 扩展的 Cache management 操作解码缺失</td></tr>
+</table>
+<p><strong>结论</strong>: 13 个 Mandatory 扩展中，3 个已实现，2 个部分实现，<strong>8 个完全缺失</strong>。</p>
+</div>
+
+<h3>6.2 微架构参数合规性 (Task 5.2)</h3>
+<div class="section-box">
+<table>
+<tr><th>参数</th><th>规范要求</th><th>RTL 值</th><th>状态</th></tr>
+<tr><td>流水线级数 (LUMI-PIPE-001)</td><td>= 8</td><td>8 (F1/F2/D/I/E1/E2/M/W)</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>物理地址宽度 (LUMI-SYS-006)</td><td>= 32 bit</td><td>XLEN=32, AXI_ADDR_WIDTH=32</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>PMP Region (LUMI-MEM-001)</td><td>默认 8, 可配</td><td>参数化 (文档默认 8)</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>TCM 容量 (LUMI-MEM-002)</td><td>0~128 KB</td><td>ITCM=32KB, DTCM=32KB (参数化)</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>L1 Cache (LUMI-MEM-006)</td><td>可选 8/16/32 KB</td><td>ICACHE=32KB, DCACHE=32KB (参数化)</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>CLIC 中断数 (LUMI-SYS-002)</td><td>1~240</td><td>CLIC_INT_INPUTS=16 (参数化)</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>PLIC 中断数 (LUMI-SYS-001)</td><td>32~960</td><td>32 外部中断</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>HPM 事件计数器</td><td>= 29</td><td>HPM_COUNTERS=29</td><td><span class="sev sev-ok">合规</span></td></tr>
+<tr><td>发射宽度</td><td>2 或 3 (可配)</td><td>ISSUE_WIDTH=3</td><td><span class="sev sev-ok">合规</span></td></tr>
+</table>
+<p><strong>结论</strong>: 9 项核心架构参数 <strong>100% 合规</strong>。</p>
+</div>
+
+<h3>6.3 编码规范合规性 (Task 5.3)</h3>
+<div class="section-box">
+<table>
+<tr><th>ID</th><th>严重程度</th><th>描述</th></tr>
+<tr>
+  <td>ENC-01</td><td><span class="sev sev-high">High</span></td>
+  <td><strong>lumi_core.f 引用 3 个不存在的文件</strong>: Filelist 中引用的某些 RTL 文件路径在磁盘上不存在 (可能已重命名或移动)。</td>
+</tr>
+<tr>
+  <td>ENC-02</td><td><span class="sev sev-med">Medium</span></td>
+  <td><strong>模块头声明不完整</strong>: 部分 RTL 文件 (lumi_plic.sv, lumi_trace.sv, lumi_vector.sv) 缺少标准模块头注释 (需求追溯标签/承接文档章节)。</td>
+</tr>
+<tr>
+  <td>ENC-03</td><td><span class="sev sev-low">Low</span></td>
+  <td><strong>命名约定轻微不一致</strong>: 大部分信号使用 snake_case，但部分模块混用 camelCase (如 <code>clkCore</code> vs <code>clk_core</code>)。</td>
+</tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="sec7">7. 改进建议优先级排序</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="section-box">
+<h3>P0 — 立即修复 (阻塞集成)</h3>
+<table>
+<tr><th>#</th><th>问题</th><th>影响</th><th>预估工作量</th></tr>
+<tr><td class="fix-prio p0">1</td><td>SoC trap/CLIC/NMI 信号断路 (DC-01/02/03)</td><td>异常处理和中断在 SoC 层完全不工作</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p0">2</td><td>Cache Evict 丢数据 (TIM-02)</td><td>脏 cache line 写回丢失 48B，数据损坏</td><td>1 天</td></tr>
+<tr><td class="fix-prio p0">3</td><td>CSR 写与 HPM 竞争 (TIM-01)</td><td>HPM 计数器写操作被覆盖，数据错误</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p0">4</td><td>CDC 同步器短路 (TIM-03)</td><td>跨时钟域亚稳态，功能不可靠</td><td>1 天</td></tr>
+<tr><td class="fix-prio p0">5</td><td>E1→M MUL/DIV 旁路时序 (PA-02/RES-01)</td><td>乘法/除法结果读取错误</td><td>0.5 天</td></tr>
+</table>
+
+<h3>P1 — 短期修复 (影响功能正确性)</h3>
+<table>
+<tr><th>#</th><th>问题</th><th>影响</th><th>预估工作量</th></tr>
+<tr><td class="fix-prio p1">6</td><td>Regfile 双写端口冲突 (SIG-01)</td><td>多发射同 rd 寄存器时数据不确定</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p1">7</td><td>Debug module CDC (TIM-04)</td><td>JTAG 调试不可靠</td><td>1 天</td></tr>
+<tr><td class="fix-prio p1">8</td><td>MISA_VAL 不正确 (SIG-02)</td><td>OS/工具检测 ISA 能力错误</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p1">9</td><td>PLIC 多核路由仅 hart0 (DC-06)</td><td>多核场景中断断路</td><td>1 天</td></tr>
+<tr><td class="fix-prio p1">10</td><td>TCM DMA 地址解码复用 (DC-05)</td><td>DMA/CPU 地址混叠</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p1">11</td><td>Filelist 引用不存在文件 (ENC-01)</td><td>编译流程可能中断</td><td>0.5 天</td></tr>
+</table>
+
+<h3>P2 — 中期改进 (影响验证完整性和 ISA 合规)</h3>
+<table>
+<tr><th>#</th><th>问题</th><th>影响</th><th>预估工作量</th></tr>
+<tr><td class="fix-prio p2">12</td><td>8 个 Mandatory ISA 扩展解码缺失</td><td>不符合 Profile 要求</td><td>3 天</td></tr>
+<tr><td class="fix-prio p2">13</td><td>FPU passthrough / Vector 仅加法 (RES-02/03)</td><td>F/D/V 扩展功能未实现</td><td>5 天</td></tr>
+<tr><td class="fix-prio p2">14</td><td>FSM default 分支缺失 (FSM-01~04)</td><td>综合可能推断锁存器</td><td>1 天</td></tr>
+<tr><td class="fix-prio p2">15</td><td>FENCE 不 drain store buffer (PA-04)</td><td>内存一致性不保证</td><td>1 天</td></tr>
+<tr><td class="fix-prio p2">16</td><td>Scoreboard 无 Reference Model (TB-01)</td><td>无法交叉验证指令执行正确性</td><td>3 天</td></tr>
+<tr><td class="fix-prio p2">17</td><td>19 个 Cover Group 无测试映射</td><td>验证覆盖不足</td><td>5 天</td></tr>
+<tr><td class="fix-prio p2">18</td><td>Power mgmt ST_SLEEP 不可达 (DC-08/FSM-04)</td><td>功耗管理功能失效</td><td>1 天</td></tr>
+</table>
+
+<h3>P3 — 长期优化 (代码质量)</h3>
+<table>
+<tr><th>#</th><th>问题</th><th>影响</th><th>预估工作量</th></tr>
+<tr><td class="fix-prio p3">19</td><td>BTB 无 ECC 保护 (SIG-03)</td><td>SEU 导致误预测</td><td>1 天</td></tr>
+<tr><td class="fix-prio p3">20</td><td>命名约定不一致 (ENC-03)</td><td>代码可读性</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p3">21</td><td>模块头声明不完整 (ENC-02)</td><td>需求追溯困难</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p3">22</td><td>inst_raw 仅存低 16-bit (RES-04)</td><td>调试信息不完整</td><td>0.5 天</td></tr>
+<tr><td class="fix-prio p3">23</td><td>回归套件扩展 (编译配置)</td><td>F/D/V/B/Zce 扩展无回归测试</td><td>2 天</td></tr>
+</table>
+</div>
+
+<div class="footer">
+  <p>Lumi-Core RTL 全局静态代码扫描分析报告 | 生成日期: 2026-07-14 | 分析工具: Qoder Agent (静态分析 + 文档交叉验证)</p>
+  <p>本报告基于 M2-S1 RTL 骨架定版 + M3-S2 实现增量。所有发现均为静态分析结论，需结合动态仿真验证。</p>
+</div>
+
+</body>
+</html>

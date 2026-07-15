@@ -1720,11 +1720,11 @@ errata:
     affected_modules: ["interrupt/clic", "interrupt/plic"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-077"
@@ -1737,11 +1737,11 @@ errata:
     affected_modules: ["bus/lumi_axi_wrapper", "top/lumi_soc_top"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-078"
@@ -1754,11 +1754,11 @@ errata:
     affected_modules: ["debug/lumi_debug_module", "interrupt/plic", "top/lumi_soc_top"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-079"
@@ -1771,11 +1771,11 @@ errata:
     affected_modules: ["core/lumi_core_top", "core/lumi_decode_issue"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-080"
@@ -1788,11 +1788,11 @@ errata:
     affected_modules: ["include/lumi_params", "core/lumi_core_top"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-081"
@@ -1805,11 +1805,11 @@ errata:
     affected_modules: ["include/lumi_params", "core/lumi_decode_issue", "tb/lumi_scoreboard"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-082"
@@ -1822,11 +1822,11 @@ errata:
     affected_modules: ["include/lumi_params", "bus/lumi_axi_wrapper"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-083"
@@ -1839,11 +1839,11 @@ errata:
     affected_modules: ["csr/lumi_csr_unit", "include/lumi_params"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-084"
@@ -1856,11 +1856,11 @@ errata:
     affected_modules: ["memory/lumi_tcm", "include/lumi_params"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-085"
@@ -1873,11 +1873,11 @@ errata:
     affected_modules: ["memory/lumi_cache", "include/lumi_params"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-086"
@@ -1890,11 +1890,11 @@ errata:
     affected_modules: ["interrupt/clic", "interrupt/plic", "include/lumi_params"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "N/A"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-static-scan-r2"
+    resolution: "Compliance confirmed, no issue found (round 2 verification)"
     regression_test: "N/A"
 
   - id: "ERR-087"
@@ -1998,3 +1998,97 @@ errata:
     resolved_by: null
     resolution: null
     regression_test: "rules/scripts/validate_rules.py"
+
+  - id: "ERR-093"
+    title: "OP_ZICOND opcode 值错误导致 Zicond 指令静默误执行"
+    description: >
+      第2轮静态分析发现 lumi_decode_issue.sv 第81行 OP_ZICOND = 7'b0111011 不正确。
+      RISC-V Zicond 规范中 CZERO.EQZ 使用 opcode=0110011 (OP), CZERO.NEZ 使用
+      opcode=0010011 (OP-IMM), 均配合 funct7=0000111/funct3=011 编码。
+      当前 opcode 值 0111011 不是 Zicond 的有效编码。真实 Zicond 指令会落入 OP_REG
+      case 被当作普通 ALU 指令静默误执行, 而非触发非法指令异常。
+      这比'未实现'更危险, 因为产生错误结果却不报异常。
+    discovered_date: "2026-07-15"
+    discovered_by: rtl-static-scan-r2
+    affected_modules: ["core/lumi_decode_issue"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: open
+    workaround: "移除 OP_ZICOND 常量, 在 OP_REG/OP_IMM case 中检测 funct7==0000111 并触发非法指令"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/zicond_decode/"
+
+  - id: "ERR-094"
+    title: "Zimop 指令违反规范触发非法指令异常"
+    description: >
+      第2轮静态分析发现 lumi_decode_issue.sv 中 OP_CUSTOM0 (Zimop 编码空间) 触发
+      EXC_ILLEGAL_INST 异常。RISC-V Zimop 规范要求 may-be-operations 作为 NOP 处理,
+      不应触发异常。当前行为违反 Zimop 规范。
+    discovered_date: "2026-07-15"
+    discovered_by: rtl-static-scan-r2
+    affected_modules: ["core/lumi_decode_issue"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "将 OP_CUSTOM0 从非法指令触发列表中移除, 保持 FU_MISC + NOP 行为"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/zimop_nop/"
+
+  - id: "ERR-095"
+    title: "SoC 顶层 Exception 模块输入信号硬编码为 0"
+    description: >
+      第2轮静态分析发现 lumi_soc_top.sv 中 lumi_exception 模块实例的输入信号
+      (trap_enter, trap_cause 等) 全部硬编码为 0。异常处理在 SoC 层面完全断路,
+      与第1轮 DC-01 同类问题但位于不同模块。异常信号无法传播至 CSR 和 PC 重定向。
+    discovered_date: "2026-07-15"
+    discovered_by: rtl-static-scan-r2
+    affected_modules: ["top/lumi_soc_top", "interrupt/lumi_exception"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "连接 exception 模块输入到 core_top 的 trap 信号输出"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/exception_soc/"
+
+  - id: "ERR-096"
+    title: "SoC 顶层 ECC IRQ 信号未连接 (regfile + TCM)"
+    description: >
+      第2轮静态分析发现 lumi_soc_top.sv 中 regfile 的 ecc_ce_irq/ecc_ded_irq 和
+      TCM 的 ecc_ce_irq/ecc_ded_irq 输出端口均未连接到中断控制器。ECC 错误中断
+      在 SoC 层面完全断路, 无法触发 CLIC/PLIC 中断处理。违反 LUMI-MEM-006 ECC
+      保护需求。
+    discovered_date: "2026-07-15"
+    discovered_by: rtl-static-scan-r2
+    affected_modules: ["top/lumi_soc_top", "csr/lumi_regfile", "memory/lumi_tcm"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "连接 ECC IRQ 信号到 CLIC 中断输入"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/ecc_irq_soc/"
+
+  - id: "ERR-097"
+    title: "SoC 顶层 Power mgmt irq_pending/wfi_req/wrs_req 未连接"
+    description: >
+      第2轮静态分析发现 lumi_soc_top.sv 中 lumi_power_mgmt 模块的 irq_pending
+      输入未连接 (Phase 3 修复添加的新端口), wfi_req 和 wrs_req 硬编码为 0。
+      低功耗管理机制在 SoC 层面完全不工作: WFI 无法触发 sleep, 中断无法唤醒。
+    discovered_date: "2026-07-15"
+    discovered_by: rtl-static-scan-r2
+    affected_modules: ["top/lumi_soc_top", "power/lumi_power_mgmt"]
+    affected_versions: ["v0.2"]
+    severity: medium
+    status: open
+    workaround: "连接 power_mgmt 的 irq_pending 到 CLIC irq_pending, wfi_req 到 core_top WFI 信号"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/power_soc_wfi/"

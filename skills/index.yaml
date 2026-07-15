@@ -134,3 +134,21 @@ skills:
       - perf/gem5-model/configs/gem5-overlay/configs/lumi-interrupt.py
     status: verified
     last_used: "2026-07-01"
+
+  - name: "RTL 静态分析"
+    id: skill-rtl-static-analysis
+    description: >
+      六维 RTL 代码静态分析工具：设计一致性、逻辑缺陷、验证环境、需求追溯、
+      架构合规、前期问题验证。自动扫描 .sv 文件，生成 HTML+YAML 报告，
+      对比历史基线，更新 errata。可复用于每个开发周期。
+    usage: >
+      运行: python3 skills/rtl-static-analysis/scan_rtl.py --project-root . --round 2
+      报告输出: audit/compliance-reports/rtl-static-scan-r{N}-YYYYMMDD.html
+      遵循规则: [03] 工作留痕, [16] 指令记录, [20] Errata 维护
+    files_required:
+      - skills/rtl-static-analysis/SKILL.md
+      - skills/rtl-static-analysis/scan_rtl.py
+      - src/rtl/**/*.sv
+      - audit/errata/known-issues.yaml
+    status: verified
+    last_used: "2026-07-14"
