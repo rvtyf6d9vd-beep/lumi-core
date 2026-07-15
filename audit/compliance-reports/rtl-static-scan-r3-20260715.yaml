@@ -1,0 +1,15 @@
+round: 3
+date: 2026-07-15
+rtl_files_scanned: 30
+total_findings: 10
+findings_by_dimension:
+  D1: 2
+  D3: 3
+  D4: 1
+  D5: 4
+fix_verification_summary:
+  total: 34
+  pass: 23
+  fail: 0
+  regression: 2
+  fixed_but_not_closed: 7

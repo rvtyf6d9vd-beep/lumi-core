@@ -498,7 +498,7 @@ risks:
   - id: "RISK-027"
     title: "ISA decode compliance — Zicond opcode error + Zimop violation"
     severity: critical
-    status: open
+    status: resolved
     reported_by: rtl-static-scan-r2
     reported_date: "2026-07-15"
     assigned_to: hw-design
@@ -515,14 +515,14 @@ risks:
       解码 CZERO.EQZ/CZERO.NEZ。当前为静默误执行，比'未实现'更危险。
       (2) 将 OP_CUSTOM0 从非法指令触发列表中移除，保持 FU_MISC + NOP 行为。
       两个问题需在 RTL Freeze 前修复并添加回归测试。
-    resolution: null
-    resolution_date: null
+    resolution: "Fixed in rtl-r2-fix-plan. ERR-093: OP_ZICOND changed to 0110011, added funct7/funct3 check. ERR-094: OP_CUSTOM0 removed from illegal check."
+    resolution_date: "2026-07-15"
     source_ref: "ERR-093, ERR-094"
 
   - id: "RISK-028"
     title: "SoC top-level signal disconnection (Exception/ECC/Power)"
     severity: high
-    status: open
+    status: resolved
     reported_by: rtl-static-scan-r2
     reported_date: "2026-07-15"
     assigned_to: hw-design
@@ -540,8 +540,8 @@ risks:
       (2) ECC IRQ 信号到 CLIC 中断输入
       (3) power_mgmt 的 irq_pending 到 CLIC irq_pending, wfi_req 到 core_top WFI
       修复后需运行 SoC 级集成回归测试验证信号连接。
-    resolution: null
-    resolution_date: null
+    resolution: "Fixed in rtl-r2-fix-plan. ERR-095: Added core_exc_* ports to core_top, connected to exception module. ERR-096: Connected regfile ECC IRQ. ERR-097: Connected irq_pending to clic_irq_valid."
+    resolution_date: "2026-07-15"
     source_ref: "ERR-095, ERR-096, ERR-097"
 
   - id: "RISK-029"

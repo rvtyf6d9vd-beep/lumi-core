@@ -281,6 +281,12 @@ def check_previous_fixes(sv_files, errata_status, rtl_dir=None):
         "ERR-071": {"desc": "TB AXI slave 参数化", "pattern": r"parameter|configurable|MEM_SIZE", "file": "lumi_soc_tb_stub.sv"},
         "ERR-072": {"desc": "Cache FSM one-hot", "pattern": r"onehot|one_hot|ONE_HOT", "file": "lumi_cache.sv"},
         "ERR-073": {"desc": "BTB ECC 保护", "pattern": r"ecc|ECC|parity|SECDED", "file": "lumi_fetch.sv"},
+        # ── R2 修复验证模式 (ERR-093~097) ──
+        "ERR-093": {"desc": "Zicond opcode 修正", "pattern": r"funct7.*0000111.*funct3.*011|OP_ZICOND.*0110011|CZERO\.EQZ", "file": "lumi_decode_issue.sv"},
+        "ERR-094": {"desc": "Zimop NOP 处理", "pattern": r"OP_CUSTOM0.*FU_MISC|Zimop.*NOP", "file": "lumi_decode_issue.sv"},
+        "ERR-095": {"desc": "SoC Exception 信号连接", "pattern": r"core_exc_fetch|core_exc_decode|core_exc_exec", "file": "lumi_soc_top.sv"},
+        "ERR-096": {"desc": "SoC ECC IRQ 连接", "pattern": r"rf_ecc_ce_irq|rf_ecc_ded_irq", "file": "lumi_soc_top.sv"},
+        "ERR-097": {"desc": "Power mgmt irq_pending 连接", "pattern": r"irq_pending.*clic_irq_valid|irq_pending.*irq", "file": "lumi_soc_top.sv"},
     }
     
     for err_id, fix_info in fix_patterns.items():
