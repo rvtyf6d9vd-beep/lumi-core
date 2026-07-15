@@ -39,6 +39,8 @@ module lumi_fetch #(
     output logic                    f2_pred_taken_out,     // F2 预测 taken
     output logic [15:0]             f2_carry_hw_out,       // carry halfword
     output logic                    f2_carry_valid_out,    // carry 有效
+    // ERR-BTB: 预测分支所在 slot (predecode 用于正确截断)
+    output logic [3:0]              pred_branch_slot,      // 0~7: slot号, 0xF: 无预测
 
     // ── 分支反馈 (← Execute E1) ───────────────────────────────
     input  logic [31:0]             branch_redirect_pc,     // fetch-bpred.html §3.1
@@ -56,6 +58,8 @@ module lumi_fetch #(
     // ERR-044: call/ret 区分 (BTB 写入时设置 is_call/is_ret)
     input  logic                    br_update_is_call,
     input  logic                    br_update_is_ret,
+    // ERR-RAS: execute-level RAS 压缩标志 (从 execute 级传递)
+    input  logic                    br_update_is_compressed,
 
     // ── Predecode 反馈 (ERR-042) ─────────────────────────────
     input  logic [4:0]              predecode_bytes_consumed,
@@ -146,6 +150,10 @@ module lumi_fetch #(
     logic                      ras_pop;
     logic [31:0]               ras_peek;                   // 栈顶值
 
+    // ERR-RAS: RAS 检查点 (flush 时恢复, 防止重复 push 导致 RAS 溢出)
+    logic [RAS_PTR_W-1:0]      ras_top_ckpt;
+    logic [31:0]               ras_stack_ckpt [RAS_DEPTH-1:0];
+
     // ═══════════════════════════════════════════════════════════
     // LTAGE — TAGE 分支预测器, 12 表 (fetch-bpred.html §3.3)
     // ═══════════════════════════════════════════════════════════
@@ -189,6 +197,7 @@ module lumi_fetch #(
     logic [31:0]               f2_pc_r;
     logic                      f2_pred_taken_r;
     logic [31:0]               f2_pred_target_r;
+    logic [3:0]                f2_pred_branch_slot_r;  // ERR-BTB: 分支 slot 寄存器
 
     // ERR-042: carry 寄存器 (跨 cache line 边界的 halfword)
     logic [15:0]               carry_hw_r;
@@ -196,6 +205,7 @@ module lumi_fetch #(
 
     // ERR-019: 寄存版 stall 信号, 用于延迟 F2 捕获 (避免组合环路)
     logic                      dec_stall_r;
+
 
     // ═══════════════════════════════════════════════════════════
     // 指令拆分与有效计数
@@ -218,7 +228,8 @@ module lumi_fetch #(
     // ═══════════════════════════════════════════════════════════
     // RAS peek (组合逻辑)
     // ═══════════════════════════════════════════════════════════
-    assign ras_peek = ras_stack[ras_top];
+    // ERR-RAS-FIX: peek 应读栈顶 (ras_top-1), 而非 ras_top (下一空位)
+    assign ras_peek = ras_stack[(ras_top == '0) ? RAS_PTR_W'(RAS_DEPTH-1) : ras_top - 1'b1];
 
     // ═══════════════════════════════════════════════════════════
     // LTAGE 查找 (F1 级, 组合逻辑, fetch-bpred.html §3.3)
@@ -265,9 +276,52 @@ module lumi_fetch #(
     // ═══════════════════════════════════════════════════════════
     // 分支预测决策 (F1 级, 组合逻辑)
     // ═══════════════════════════════════════════════════════════
+    // ═════════════════════════════════════════════════════════
+    // 分支预测决策 (F1 级, 组合逻辑)
+    // ═════════════════════════════════════════════════════════
+    // ERR-BTB-FIX: 实际分支指令 PC (用于 RAS push 正确的返回地址)
+    // slot-0 BTB 命中: branch 在 pc_reg 处
+    // group lookup: branch 在 aligned_base + grp_slot*2 处
+    logic [31:0] actual_branch_pc;
+    assign actual_branch_pc = (grp_found && !btb_hit)
+        ? ({pc_reg[31:4], 4'h0} + {28'h0, grp_slot, 1'b0})
+        : pc_reg;
+
+    // ERR-RAS-FIX: 检查分支指令是否为压缩指令
+    // slot-0: byte offset = pc_reg[3:0]
+    // group lookup: byte offset = grp_slot*2
+    logic f1_branch_is_compressed;
+    logic [3:0] branch_byte_off;
+    assign branch_byte_off = (grp_found && !btb_hit)
+        ? {grp_slot, 1'b0}
+        : pc_reg[3:0];
+    assign f1_branch_is_compressed = f2_icache_valid &&
+        (f2_icache_data[{branch_byte_off, 3'b0} +: 2] != 2'b11);
+
+
+    // ═════════════════════════════════════════════════════════
+    // 分支预测决策 (F1 级, 组合逻辑)
+    // ═════════════════════════════════════════════════════════
     logic [31:0] f1_pred_target_comb;
     logic        f1_pred_taken_comb;
     logic        f1_btb_hit_comb;
+
+    // ERR-BTB: 多位置 BTB 查找 — 检查当前 fetch group 内所有指令位置
+    // 解决分支不在 fetch group 起始位置时 BTB 永远 miss 的问题
+    logic [BTB_IDX_W-1:0] grp_base_idx;
+    logic [BTB_TAG_W-1:0] grp_tag;
+    logic        grp_found;
+    logic [3:0]  grp_slot;       // 2-byte aligned 组内位置 (0~7)
+    logic [31:0] grp_target;
+    logic        grp_is_call;
+    logic        grp_is_ret;
+    logic        grp_is_branch;
+
+    // ERR-BTB-FIX: grp_base_idx 使用 16-byte 对齐基地址 (与 8192 条目 BTB 匹配)
+    // BTB 写入索引 = instruction_pc[13:1], 读取 group base = aligned_pc[13:1]
+    // 同 16-byte block 内的地址具有相同的 group base, 通过位置偏移查找
+    assign grp_base_idx = {pc_reg[31:4], 4'h0}[BTB_IDX_W:1];
+    assign grp_tag      = pc_reg[31 : BTB_IDX_W+1];
 
     always_comb begin
         f1_pred_taken_comb  = 1'b0;
@@ -275,21 +329,20 @@ module lumi_fetch #(
         f1_btb_hit_comb     = 1'b0;
         ras_push            = 1'b0;
         ras_pop             = 1'b0;
+        pred_branch_slot    = 4'hF;  // 默认: 无组级别预测
 
+        // ── 原始 slot-0 BTB 查找 (pc_reg 处的 BTB 条目) ──
         if (btb_hit) begin
             f1_btb_hit_comb = 1'b1;
 
             if (btb_is_ret) begin
-                // RET: 使用 RAS 弹出的返回地址
                 f1_pred_taken_comb  = 1'b1;
                 f1_pred_target_comb = ras_peek;
                 ras_pop             = 1'b1;
 
             end else if (btb_is_call) begin
-                // CALL (JAL/JALR with rd=x1/x5): push PC+4 到 RAS
                 ras_push            = 1'b1;
                 if (btb_is_branch) begin
-                    // 条件 call (不应该存在, 但安全处理)
                     f1_pred_taken_comb  = ltage_pred;
                     f1_pred_target_comb = ltage_pred ? btb_target : (pc_reg + 32'd4);
                 end else begin
@@ -298,15 +351,49 @@ module lumi_fetch #(
                 end
 
             end else if (btb_is_branch) begin
-                // 条件分支: 使用 LTAGE 预测
                 f1_pred_taken_comb  = ltage_pred;
                 f1_pred_target_comb = ltage_pred ? btb_target : (pc_reg + 32'd4);
 
             end else begin
-                // 无条件跳转 (JAL)
                 f1_pred_taken_comb  = 1'b1;
                 f1_pred_target_comb = btb_target;
             end
+        end
+
+        // ── ERR-BTB: 组级别多位置 BTB 查找 ──────────────
+        // 当 slot-0 未命中时, 检查 fetch group 内其他指令位置
+        // 每个 16-byte fetch group 最多 8 个 2-byte 对齐的指令位置
+        grp_found   = 1'b0;
+        grp_slot    = 4'h0;
+        grp_target  = 32'h0;
+        grp_is_call = 1'b0;
+        grp_is_ret  = 1'b0;
+        grp_is_branch = 1'b0;
+
+        // ERR-BTB-FIX: grp_base_idx = pc_reg[BTB_IDX_W:1], 所以位置 p 对应
+        // pc_reg + p*2 的 BTB 条目. 只搜索 p >= 1 (p=0 由 slot-0 查找处理).
+        for (int p = 1; p < 8; p++) begin
+            if (!grp_found) begin
+                // 检查位置 p 的 BTB 条目 (tag 应与 pc_reg 相同)
+                if (btb_mem[grp_base_idx + BTB_IDX_W'(p)].valid &&
+                    btb_mem[grp_base_idx + BTB_IDX_W'(p)].tag == grp_tag) begin
+                    grp_found   = 1'b1;
+                    grp_slot    = 4'(p);
+                    grp_target  = btb_mem[grp_base_idx + BTB_IDX_W'(p)].target;
+                    grp_is_call = btb_mem[grp_base_idx + BTB_IDX_W'(p)].is_call;
+                    grp_is_ret  = btb_mem[grp_base_idx + BTB_IDX_W'(p)].is_ret;
+                    grp_is_branch = btb_mem[grp_base_idx + BTB_IDX_W'(p)].is_branch;
+                end
+            end
+        end
+
+        // 组级别预测: 已禁用 (ERR-GRP-FIX)
+        // carry fetch 导致 pc_reg 跳过某些地址, 使 group lookup 无法区分
+        // 已执行和未执行的分支. RAS push/pop 通过 slot-0 BTB + execute 级
+        // 误预测反馈实现. 每个 CALL/RET 有一次误预测惩罚 (flush 2 cycles).
+        // grp_found 仍然计算但不用於预测决策.
+        begin
+            // 不应用 group 级预测, 仅依赖 slot-0 BTB
         end
     end
 
@@ -329,14 +416,18 @@ module lumi_fetch #(
             f2_pc_r         <= 32'h0;
             f2_pred_taken_r <= 1'b0;
             f2_pred_target_r <= 32'h0;
+            f2_pred_branch_slot_r <= 4'hF;  // ERR-BTB
             dec_stall_r     <= 1'b0;  // ERR-019
             // ERR-042: carry 寄存器复位
             carry_hw_r      <= 16'h0;
             carry_valid_r   <= 1'b0;
             // RAS
             ras_top         <= {RAS_PTR_W{1'b0}};
-            for (int i = 0; i < RAS_DEPTH; i++)
-                ras_stack[i] <= 32'h0;
+            ras_top_ckpt    <= {RAS_PTR_W{1'b0}};
+            for (int i = 0; i < RAS_DEPTH; i++) begin
+                ras_stack[i]      <= 32'h0;
+                ras_stack_ckpt[i] <= 32'h0;
+            end
             // BTB
             for (int i = 0; i < BTB_ENTRIES; i++)
                 btb_mem[i]  <= '0;
@@ -348,13 +439,7 @@ module lumi_fetch #(
         end else begin
             state_reg <= state_next;
             flush_cnt <= flush_cnt_next;
-
-            // ── PC 更新 ──────────────────────────────────────
-            // ERR-019 修复: 始终从 pc_next 更新 pc_reg.
-            // 当 branch_redirect_valid=1 时, 组合逻辑 priority override 已将
-            // pc_next 设为 branch_redirect_pc, 因此 pc_reg 自然获取正确的重定向地址.
-            // 原 bug: if (!branch_redirect_valid) pc_reg <= pc_next — redirect 时
-            // pc_reg 不更新, fetch 永远无法跳转到正确路径.
+            // ── PC 更新 ──
             pc_reg <= pc_next;
             // ERR-019: 寄存 dec_stall 供 F2 捕获门控使用
             dec_stall_r <= dec_stall;
@@ -380,6 +465,7 @@ module lumi_fetch #(
                 // 而非前一周期的 F1 寄存器 (r). 否则 F2 预测与数据不对齐.
                 f2_pred_taken_r  <= f1_pred_taken_comb;
                 f2_pred_target_r <= f1_pred_target_comb;
+                f2_pred_branch_slot_r <= pred_branch_slot;  // ERR-BTB
             end else if (!dec_all_issued) begin
                 // ERR-019: carry-over 指令未发射完, F2 保持有效不变
             end else begin
@@ -403,29 +489,32 @@ module lumi_fetch #(
             if (branch_redirect_valid || state_next == ST_FLUSH)
                 f2_valid_r <= 1'b0;
 
-            // ── RAS 更新 (fetch-bpred.html §3.1) ────────────
-            if (state_reg == ST_FETCH && !branch_redirect_valid) begin
-                if (ras_push && !ras_pop) begin
-                    // push PC+4 (返回地址)
-                    ras_stack[ras_top] <= f1_pc_out + 32'd4;
-                    ras_top <= (ras_top == RAS_PTR_W'(RAS_DEPTH - 1)) ? '0 : ras_top + 1'b1;
-                end else if (ras_pop && !ras_push) begin
-                    // pop
-                    ras_top <= (ras_top == '0) ? RAS_PTR_W'(RAS_DEPTH - 1) : ras_top - 1'b1;
-                end
-                // push && pop 同时 → 栈不变, 仅替换栈顶
-                if (ras_push && ras_pop) begin
-                    ras_stack[ras_top] <= f1_pc_out + 32'd4;
-                end
+            // ── RAS 更新 (ERR-RAS-FIX: execute-level only) ─────
+            // BUG-FIX: flush 期间不更新 RAS, 防止错误路径指令污染 RAS
+            if (tage_update_valid && state_reg != ST_FLUSH && br_update_is_call) begin
+                ras_stack[ras_top] <= tage_update_pc + (br_update_is_compressed ? 32'd2 : 32'd4);
+                ras_top <= (ras_top == RAS_PTR_W'(RAS_DEPTH - 1)) ? '0 : ras_top + 1'b1;
+                if (tage_update_pc >= 32'h3ca0 && tage_update_pc <= 32'h3cc0)
+                    $display("[RAS-PUSH] pc=0x%08h compressed=%b ret_addr=0x%08h top=%0d->%0d",
+                             tage_update_pc, br_update_is_compressed,
+                             tage_update_pc + (br_update_is_compressed ? 32'd2 : 32'd4),
+                             ras_top, (ras_top == RAS_PTR_W'(RAS_DEPTH-1)) ? 0 : ras_top+1);
+            end else if (tage_update_valid && state_reg != ST_FLUSH && br_update_is_ret) begin
+                ras_top <= (ras_top == '0) ? RAS_PTR_W'(RAS_DEPTH - 1) : ras_top - 1'b1;
+                $display("[RAS-POP] pc=0x%08h peek=0x%08h top=%0d->%0d",
+                         tage_update_pc, ras_peek, ras_top,
+                         (ras_top == '0) ? RAS_DEPTH-1 : ras_top-1);
             end
 
             // ── BTB 更新 (分支反馈, fetch-bpred.html §3.1) ──
-            if (branch_redirect_valid) begin
+            // BUG-FIX: flush 期间不写入 BTB, 防止错误路径指令污染 BTB
+            if (branch_redirect_valid && state_reg != ST_FLUSH) begin
                 btb_mem[btb_wr_idx] <= btb_wr_data;
             end
 
             // ── LTAGE 更新 (fetch-bpred.html §3.3) ─────────
-            if (tage_update_valid) begin
+            // BUG-FIX: flush 期间不更新 LTAGE, 防止错误路径分支污染预测器
+            if (tage_update_valid && state_reg != ST_FLUSH) begin
                 // 更新分支历史 (左移, 新结果进入 bit[0])
                 branch_history <= {branch_history[LTAGE_HIST_MAX-2:0], tage_update_taken};
 
@@ -527,13 +616,20 @@ module lumi_fetch #(
     assign f2_pred_taken   = f2_pred_taken_r;
     assign f2_pred_target  = f2_pred_target_r;
 
-    // ERR-042: predecode 输入 mux (F2 有效时用寄存器数据, 否则用当前 ICache 数据)
-    assign f2_raw_data_out     = f2_valid_r ? f2_data_r : f2_icache_data;
-    assign f2_base_pc_out      = f2_valid_r ? {f2_pc_r[31:4], 4'h0} : {pc_reg[31:4], 4'h0};
-    assign f2_start_offset_out = f2_valid_r ? f2_pc_r[3:0] : fetch_start_offset;
-    assign f2_pred_taken_out   = f2_valid_r ? f2_pred_taken_r : f1_pred_taken_comb;
+    // ERR-042: predecode 输入 mux
+    // BUG-FIX: 始终使用当前 ICache 数据 (f2_icache_data / pc_reg).
+    // V1 SRAM 是组合逻辑 (0 latency), 所以 f2_icache_data 始终反映当前 pc_reg.
+    // 旧代码在 f2_valid_r 时选择 f2_data_r (上一个 block), 导致 predecode
+    // 重复处理旧数据, bytes_consumed 不匹配当前 pc_reg, PC 无法正确前进.
+    assign f2_raw_data_out     = f2_icache_data;
+    assign f2_base_pc_out      = pc_reg;
+    assign f2_start_offset_out = fetch_start_offset;
+    assign f2_pred_taken_out   = f1_pred_taken_comb;
     assign f2_carry_hw_out     = carry_hw_r;
     assign f2_carry_valid_out  = carry_valid_r;
+    // ERR-BTB: pred_branch_slot 输出 mux
+    // 注: 这里直接传递组合逻辑值, 因为 predecode 也是组合逻辑
+    // pred_branch_slot 始终反映当前周期的 F1 预测
 
     // ═══════════════════════════════════════════════════════════
     // FSM 组合逻辑
@@ -576,9 +672,18 @@ module lumi_fetch #(
                         pc_next = f1_pred_target_comb;
                     end else begin
                         // ERR-042: PC 前进量由 predecode 动态计算
-                        pc_next = (f2_valid_r ? f2_pc_r : pc_reg) +
-                                  {27'h0, predecode_bytes_consumed};
+                        // BUG-FIX: 始终使用 pc_reg (当前 F1 PC), 而不是 f2_pc_r.
+                        // f2_pc_r 是上一个 fetch block 的 PC, 与当前 predecode
+                        // 处理的 f2_data_r (也是上一个 block) 匹配, 但 pc_next
+                        // 必须从当前 F1 PC 前进. predecode 是组合逻辑, 其输出
+                        // 反映当前 mux 选择的数据. 当 mux 选择 f2_data_r 时,
+                        // bytes_consumed 对应旧 block, 从 f2_pc_r 前进会重复处理.
+                        pc_next = pc_reg + {27'h0, predecode_bytes_consumed};
                     end
+                    if (pc_reg >= 32'h3a80 && pc_reg <= 32'h3c00)
+                        $display("[FETCH-ADV] pc_reg=0x%08h f2_pc_r=0x%08h f2v=%b bytes=%0d pred=%b pc_next=0x%08h",
+                                 pc_reg, f2_pc_r, f2_valid_r, predecode_bytes_consumed,
+                                 f1_pred_taken_comb, pc_next);
                     state_next = ST_FETCH;  // 保持取指
                 end else begin
                     // ICache 未就绪: stall
@@ -608,9 +713,8 @@ module lumi_fetch #(
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
                     end else begin
-                        // ERR-042: PC 前进量由 predecode 动态计算
-                        pc_next = (f2_valid_r ? f2_pc_r : pc_reg) +
-                                  {27'h0, predecode_bytes_consumed};
+                        // BUG-FIX: 同上, 始终使用 pc_reg
+                        pc_next = pc_reg + {27'h0, predecode_bytes_consumed};
                     end
                     state_next = ST_FETCH;
                 end
@@ -638,12 +742,51 @@ module lumi_fetch #(
             default: state_next = ST_IDLE;  // ERR-057: safe recovery
         endcase
 
-        // 分支反馈最高优先级覆盖
-        if (branch_redirect_valid) begin
-            pc_next    = branch_redirect_pc;
-            f1_pc_out  = branch_redirect_pc;
-            if (state_reg != ST_FLUSH)
-                state_next = ST_FLUSH;
+        // BUG-FIX: 仅在非 FLUSH 状态时接受 redirect.
+        // flush 期间, 错误路径指令继续在 E1 级执行并产生新的 mispredict 信号.
+        // 如果不忽略这些信号, pc_reg 会被反复覆盖, flush 无法正常完成.
+        // BUG-FIX2: 必须设置 flush_cnt_next = 2'd2, 否则 override 覆盖 case 语句
+        // 中已设置的 flush_cnt_next, 导致 flush 延迟为 0 cycle, 流水线冲刷不充分.
+        if (branch_redirect_valid && state_reg != ST_FLUSH) begin
+            pc_next        = branch_redirect_pc;
+            f1_pc_out      = branch_redirect_pc;
+            flush_cnt_next = 2'd2;
+            state_next     = ST_FLUSH;
+        end
+
+        // DIAG-PC: trace pc_reg in critical range + any redirect
+        if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00 || (branch_redirect_valid && state_reg != ST_FLUSH))
+            $display("[PC-TRACE] pc_reg=0x%08h pc_next=0x%08h st=%0d f2v=%b pred=%b redir=%b redir_pc=0x%08h",
+                     pc_reg, pc_next, state_reg, f2_icache_valid, f1_pred_taken_comb,
+                     branch_redirect_valid, branch_redirect_pc);
+        // DIAG-JUMP: detect non-sequential PC jumps (>16 bytes away, excluding normal prediction targets)
+        if (state_reg == ST_FETCH && f2_icache_valid && !branch_redirect_valid && !trap_redirect_valid &&
+            !dec_stall && dec_all_issued &&
+            (pc_next > pc_reg + 32'd16 || (pc_next < pc_reg && pc_reg - pc_next > 32'd16)))
+            $display("[JUMP] pc_reg=0x%08h pc_next=0x%08h pred=%b pred_target=0x%08h bytes=%0d",
+                     pc_reg, pc_next, f1_pred_taken_comb, f1_pred_target_comb, predecode_bytes_consumed);
+    end
+
+    // DIAG-PC: separate block for PC tracing (always @* for Verilator)
+    always @(pc_reg or state_reg) begin
+        if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00)
+            $display("[PC-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
+        if (state_reg != ST_IDLE && pc_reg < 32'h40)
+            $display("[FSM-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
+    end
+
+    // DIAG-CYC: per-cycle PC sampler (always_ff) - only for first 100 cycles
+    int cyc_cnt;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            cyc_cnt <= 0;
+        end else begin
+            cyc_cnt <= cyc_cnt + 1;
+            if (cyc_cnt < 100)
+                $display("[CYC-DBG] cyc=%0d pc=0x%08h st=%0d f2v=%b redir=%b redir_pc=0x%08h trap=%b trap_pc=0x%08h",
+                         cyc_cnt, pc_reg, state_reg, f2_valid_r,
+                         branch_redirect_valid, branch_redirect_pc,
+                         trap_redirect_valid, trap_redirect_pc);
         end
     end
 

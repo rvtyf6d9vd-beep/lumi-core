@@ -185,9 +185,6 @@ module lumi_v1_tb_top;
   wire        v1_dc_ready  = u_dut.dc_ready;
   wire [31:0] v1_dc_addr   = u_dut.dc_addr;
   // ERR-026 调试: 暴露 SRAM 写入跟踪
-  wire [31:0] v1_last_we_addr  = u_dut.last_sram_we_addr;
-  wire [31:0] v1_last_we_wdata = u_dut.last_sram_we_wdata;
-  wire [3:0]  v1_last_we_be    = u_dut.last_sram_we_be;
   wire [31:0] v1_we_count      = u_dut.sram_we_count;
 
   // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
@@ -310,6 +307,9 @@ module lumi_v1_tb_top;
                u_dut.v1_sram[16384], u_dut.v1_sram[16385]);
       $display("[V1-DEBUG] v1_sram[0x4002]=0x%08h v1_sram[0x4003]=0x%08h",
                u_dut.v1_sram[16386], u_dut.v1_sram[16387]);
+      // ERR-RAS-DBG: 验证 0x3010-0x3020 区域 SRAM 内容
+      $display("[V1-DEBUG] v1_sram[0xC04]=0x%08h v1_sram[0xC05]=0x%08h v1_sram[0xC06]=0x%08h v1_sram[0xC07]=0x%08h",
+               u_dut.v1_sram[3076], u_dut.v1_sram[3077], u_dut.v1_sram[3078], u_dut.v1_sram[3079]);
     end else begin
       $display("[V1-DEBUG] No itcm_file plusarg");
     end
@@ -496,9 +496,6 @@ module lumi_v1_tb_top;
       $display(" checks     = %0d %s", r_checks, (r_checks == 0) ? "(PASS)" : "(FAIL)");
       $display("============================================");
       $display(" [ERR-026-DBG] SRAM write count: %0d", v1_we_count);
-      $display(" [ERR-026-DBG] last_we_addr: 0x%08h", v1_last_we_addr);
-      $display(" [ERR-026-DBG] last_we_wdata: 0x%08h", v1_last_we_wdata);
-      $display(" [ERR-026-DBG] last_we_be: 0x%01h", v1_last_we_be);
       $display(" [ERR-026-DBG] v1_sram[65528]=0x%08h (should be 0xDEADBEEF if written)",
                u_dut.v1_sram[65528]);
       $display(" [ERR-026-DBG] v1_sram[65529]=0x%08h (should be 1 for CoreMark)",

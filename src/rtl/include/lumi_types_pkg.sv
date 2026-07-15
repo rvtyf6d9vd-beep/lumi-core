@@ -15,7 +15,7 @@ package lumi_pkg;
   parameter int XLEN            = 32;     // RV32 数据宽度
   parameter int VLEN            = 128;    // 向量寄存器位宽 (默认 128bit, 规范声明 128/256 可配, M3 实现 256)
   parameter int FETCH_WIDTH     = 6;      // 每 cycle 取指条数 (ISSUE_WIDTH*2)
-  parameter int BTB_ENTRIES     = 8192;   // BTB 条目数
+  parameter int BTB_ENTRIES     = 8192;   // BTB 条目数 (16-byte block 索引, PC[13:1])
   parameter int RAS_DEPTH       = 32;     // RAS 深度
   parameter int LTAGE_TABLES    = 12;     // LTAGE TAGE 表数量
 

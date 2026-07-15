@@ -283,11 +283,10 @@ module lumi_soc_top #(
     logic         v1_ic_hit;
 
     always_comb begin
-        // ERR-019 修复: IC SRAM 索引必须使用字节地址 bits [17:2],
-        // 而非 bits [17:4]<<2 (过度对齐, 导致 128-bit cache line 对齐到
-        // 16 字节边界而非 4 字节边界, PC=0x14 时错误返回 PC=0x10 的数据).
-        // DC 路径 dc_addr[17:2] 已正确使用字节地址.
-        automatic int ic_word_idx = ic_addr[17:2];  // 字节地址 → 32-bit word 索引
+        // ERR-IC-ALIGN: IC SRAM 索引必须对齐到 16 字节 (4 word) 边界.
+        // ic_addr 可能包含非零 offset (例如 branch redirect 到 0x4308),
+        // 但 ICache 128-bit block 必须从 16 字节对齐的地址开始.
+        automatic int ic_word_idx = {ic_addr[17:4], 2'b00};
         v1_ic_line = {v1_sram[ic_word_idx+3], v1_sram[ic_word_idx+2],
                       v1_sram[ic_word_idx+1], v1_sram[ic_word_idx]};
         v1_ic_hit = reset_n;
@@ -302,9 +301,6 @@ module lumi_soc_top #(
     assign dc_hit   = reset_n;
 
     // Store: 同步写入 V1 SRAM (byte-enable)
-    logic [31:0] last_sram_we_addr;
-    logic [31:0] last_sram_we_wdata;
-    logic [3:0]  last_sram_we_be;
     int unsigned sram_we_count;
     always_ff @(posedge clk_core) begin
         if (dc_valid && dc_we && reset_n) begin
@@ -312,10 +308,7 @@ module lumi_soc_top #(
                 if (dc_be[b])
                     v1_sram[dc_addr[17:2]][b*8 +: 8] <= dc_wdata[b*8 +: 8];
             end
-            last_sram_we_addr  <= dc_addr;
-            last_sram_we_wdata <= dc_wdata;
-            last_sram_we_be    <= dc_be;
-            sram_we_count      <= sram_we_count + 1;
+            sram_we_count <= sram_we_count + 1;
         end
     end
 

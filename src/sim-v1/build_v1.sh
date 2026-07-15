@@ -30,6 +30,7 @@ verilator --binary --trace --timing --coverage \
   src/rtl/memory/lumi_cache.sv \
   src/rtl/memory/lumi_tcm.sv \
   src/rtl/bus/lumi_axi_wrapper.sv \
+  src/rtl/bus/lumi_cdc_sync.sv \
   src/rtl/bus/lumi_pma_checker.sv \
   src/rtl/top/lumi_soc_top.sv \
   src/rtl/top/lumi_soc_tb_stub.sv \

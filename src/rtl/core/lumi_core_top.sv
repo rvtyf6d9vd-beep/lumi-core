@@ -118,6 +118,8 @@ module lumi_core_top #(
     // ── ERR-044: Execute call/ret 信号 ──
     logic          e1_br_is_call;
     logic          e1_br_is_ret;
+    // ── ERR-RAS: Execute 分支压缩标志 ──
+    logic          e1_br_is_compressed;
 
     // ── D/I 级 ──
     inst_pkt_t     i_inst [ISSUE_WIDTH-1:0];
@@ -250,6 +252,7 @@ module lumi_core_top #(
         // ERR-044: call/ret 区分
         .br_update_is_call     (e1_br_is_call),
         .br_update_is_ret      (e1_br_is_ret),
+        .br_update_is_compressed (e1_br_is_compressed),
         // ERR-042: predecode 反馈
         .predecode_bytes_consumed (pd_bytes_consumed),
         .predecode_inst_count     (pd_inst_count),
@@ -262,6 +265,7 @@ module lumi_core_top #(
         .f2_pred_taken_out     (f2_pd_pred_taken),
         .f2_carry_hw_out       (f2_pd_carry_hw),
         .f2_carry_valid_out    (f2_pd_carry_valid),
+        .pred_branch_slot      (f2_pd_pred_branch_slot),  // ERR-BTB
         .dec_stall             (dec_stall),
         .dec_all_issued        (all_issued),  // ERR-019
         .debug_halt            (debug_halt)
@@ -278,6 +282,7 @@ module lumi_core_top #(
     logic         f2_pd_pred_taken;
     logic [15:0]  f2_pd_carry_hw;
     logic         f2_pd_carry_valid;
+    logic [3:0]   f2_pd_pred_branch_slot;  // ERR-BTB
 
     // ═══════════════════════════════════════════════════════════
     // Predecode (ERR-042: 指令边界扫描器)
@@ -291,6 +296,7 @@ module lumi_core_top #(
         .carry_hw           (f2_pd_carry_hw),
         .carry_valid        (f2_pd_carry_valid),
         .pred_taken         (f2_pd_pred_taken),
+        .pred_branch_slot   (f2_pd_pred_branch_slot),  // ERR-BTB
         .inst               (pd_inst),
         .inst_pc            (pd_inst_pc),
         .inst_valid         (pd_inst_valid),
@@ -554,6 +560,7 @@ module lumi_core_top #(
         .e1_br_is_jalr         (e1_br_is_jalr),   // ERR-019
         .e1_br_is_call         (e1_br_is_call),    // ERR-044
         .e1_br_is_ret          (e1_br_is_ret),     // ERR-044
+        .e1_br_is_compressed   (e1_br_is_compressed), // ERR-RAS
         .e1_mem_addr           (e1_mem_addr),
         .e1_mem_we             (e1_mem_we),
         .e1_mem_wdata          (e1_mem_wdata),

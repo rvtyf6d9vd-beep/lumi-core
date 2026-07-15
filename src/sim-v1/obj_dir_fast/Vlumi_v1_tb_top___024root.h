@@ -85,8 +85,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__csr_we;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__dbg_halt;
-        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec;
-        CData/*3:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__last_sram_we_be;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid;
         CData/*7:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_id;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_we;
@@ -128,10 +126,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__r_full;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__arb_trace_grant;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__wr_ptr_bin;
-    };
-    struct {
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__rd_ptr_bin;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__wr_ptr_gray;
+    };
+    struct {
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__rd_ptr_gray;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__wr_ptr_gray_sync0;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__wr_ptr_gray_sync1;
@@ -185,7 +183,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__fetch_exc_cause;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_valid;
         CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_cause;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_prev;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__state_reg;
@@ -194,11 +191,11 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__halted_ack;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__single_step_done;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_req_valid_sync0;
-    };
-    struct {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_req_valid_sync1;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_req_valid_sync_d;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_req_posedge_core;
+    };
+    struct {
         CData/*6:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_addr_cdc;
         CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_op_cdc;
         CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmui_state;
@@ -224,6 +221,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_carry_valid_out;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_is_call;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_is_ret;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_is_compressed;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__i_valid;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__bp_rs1_hit;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__bp_rs2_hit;
@@ -240,39 +238,37 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_bypass_valid;
         CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__rf_wr_en;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__trap_request;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__dec_stall;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__all_issued;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__mem_busy;
-        CData/*3:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__f2_pd_start_offset;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__f2_pd_pred_taken;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vcellinp__u_decode_issue__flush;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__bp_m_valid;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_has_branch;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__post_mispredict_bubble_r;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__mispredict_branch_has_rd;
-        CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hc005fe3c__0;
-        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hddeb28cb__0;
-        CData/*7:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hbff7f001__0;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hc01bf382__0;
-        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h6073cc22__1;
-        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h6073cc22__0;
+        CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h41f5090f__0;
+        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h3f5cc07a__0;
+        CData/*7:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h51d6b8ac__0;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h51f287c2__0;
+        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hd6783a92__1;
+        CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_hd6783a92__0;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__state_reg;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__state_next;
         CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__flush_cnt;
         CData/*1:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__flush_cnt_next;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__btb_hit;
-    };
-    struct {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__btb_is_call;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__btb_is_ret;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__btb_is_branch;
+    };
+    struct {
         CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ras_top;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ras_push;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ras_pop;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ltage_pred;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_valid_r;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_pred_taken_r;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__carry_valid_r;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f1_pred_taken_comb;
-        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk8__DOT__any_hit;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk9__DOT__any_hit;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_h12bdafec__1;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_he4b3611e__1;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_h12bdafec__0;
@@ -304,6 +300,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hb1c86c4c__1;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_h4c8e2f45__3;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____VlemCall_8__branch_evaluate;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__already_redirected;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__mul_active;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__mul_funct3;
         CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__mul_rd_comb;
@@ -326,11 +323,11 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*3:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT____VlemCall_1__gen_byte_enable;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__sb_head;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__sb_tail;
-    };
-    struct {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__sb_empty;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__state_reg;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__state_next;
+    };
+    struct {
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__pending_port1_r;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__port0_done_r;
         CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m_pipe_valid;
@@ -375,6 +372,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*3:0*/ lumi_v1_tb_top__DOT__u_cov__DOT__security_hit;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__test_done;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__prev_had_commit;
+        CData/*0:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__exit_reached;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__trace_enable;
         CData/*0:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__found_ecall;
         CData/*4:0*/ __Vfunc_c_ext_expand__24__rs1p;
@@ -392,10 +390,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__30__shamt;
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__31__funct3;
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__31__funct7_5;
-    };
-    struct {
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__31__shamt;
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__32__funct3;
+    };
+    struct {
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__32__funct7_5;
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__32__shamt;
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__33__funct3;
@@ -458,10 +456,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__52__funct3;
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__52__funct7_5;
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__52__shamt;
-    };
-    struct {
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__53__funct3;
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__53__funct7_5;
+    };
+    struct {
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__53__shamt;
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__54__funct3;
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__54__funct7_5;
@@ -469,7 +467,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*2:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__55__funct3;
         CData/*0:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__55__funct7_5;
         CData/*4:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__55__shamt;
-        CData/*0:0*/ __VdfgRegularize_hebeb780c_0_0;
         CData/*0:0*/ __VdfgRegularize_hebeb780c_0_1;
         CData/*1:0*/ __VdlyDim0__lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__mem__v0;
         CData/*0:0*/ __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__mem__v0;
@@ -477,6 +474,9 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         CData/*0:0*/ __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_w_cdc__DOT__mem__v0;
         CData/*1:0*/ __VdlyDim0__lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_ar_cdc__DOT__mem__v0;
         CData/*0:0*/ __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_ar_cdc__DOT__mem__v0;
+        CData/*0:0*/ __Vtrigprevexpr___TOP__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__dec_stall__0;
+        CData/*4:0*/ __Vtrigprevexpr___TOP__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_bytes_consumed__0;
+        CData/*0:0*/ __Vtrigprevexpr___TOP__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__all_issued__0;
         CData/*0:0*/ __VstlDidInit;
         CData/*0:0*/ __VstlFirstIteration;
         CData/*0:0*/ __VstlPhaseResult;
@@ -492,7 +492,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         SData/*9:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT____Vlvbound_ha063f697__0;
         SData/*8:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_trace__DOT__fifo_count;
         SData/*15:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_carry_hw_out;
-        SData/*13:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h5e5aa4fd__0;
+        SData/*13:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h8ed7d1a0__0;
         SData/*15:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__carry_hw_r;
         SData/*15:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_h58010ed1__0;
         SData/*15:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT__hw;
@@ -522,12 +522,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_checks;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__dc_addr;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__dc_wdata;
-        VlWide<4>/*127:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__v1_ic_line;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__last_sram_we_addr;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__sram_we_count;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
     };
     struct {
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__last_sram_we_wdata;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__sram_we_count;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_pc;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc;
@@ -573,7 +571,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mstatus_trap_enter;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_clic__DOT__mintstatus_r;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_tval;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmcontrol;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__dmi_wdata_cdc;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_trace__DOT__prev_pc;
@@ -585,24 +582,21 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h2b7f92da__0;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h2e371279__2;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h2e371279__1;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__f1_pc;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_pred_target_r;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_target;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_pc;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__f2_pd_base_pc;
-    };
-    struct {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__pc_reg;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__pc_next;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__btb_target;
-        VlWide<4>/*127:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_data_r;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_pc_r;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_pred_target_r;
+    };
+    struct {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f1_pred_target_comb;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk7__DOT__t;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk8__DOT__unnamedblk10__DOT__t;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk4__DOT__i;
-        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk5__DOT__unnamedblk6__DOT__i;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk8__DOT__t;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk9__DOT__unnamedblk11__DOT__t;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk5__DOT__i;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk6__DOT__unnamedblk7__DOT__i;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_ha7dd09de__1;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_ha7dd09de__0;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_predecode__DOT____Vlvbound_hfe6acb0b__0;
@@ -656,14 +650,14 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__18;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__17;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__16;
-    };
-    struct {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__15;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__14;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__13;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__12;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__10;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__9;
+    };
+    struct {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__8;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__7;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT____Vlvbound_hab7c4f96__6;
@@ -722,13 +716,17 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_mon__DOT__trace_wr_ptr;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_mon__DOT__trace_count;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_mon__DOT__realtime_fd;
-    };
-    struct {
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT____Vlvbound_h099a2002__0;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__exit_code;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__last_commit_pc;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__spin_count;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__restart_count;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__prev_commit_pc;
+    };
+    struct {
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__max_commit_pc;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__last_10_idx;
+        IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__system_inst_count;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__ecall_a0_comb;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__ecall_pc_comb;
         IData/*31:0*/ lumi_v1_tb_top__DOT__u_sb__DOT__retired_this_cycle;
@@ -788,10 +786,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__45__res;
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__46__op1;
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__46__op2;
-    };
-    struct {
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__46__res;
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__47__op1;
+    };
+    struct {
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__47__op2;
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__47__res;
         IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__alu_compute__48__op1;
@@ -854,10 +852,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         VlUnpacked<CData/*4:0*/, 3> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__mon_rd;
         VlUnpacked<IData/*31:0*/, 3> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__mon_rd_data;
         VlUnpacked<QData/*56:0*/, 4> lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_aw_cdc__DOT__mem;
-    };
-    struct {
         VlUnpacked<VlWide<5>/*144:0*/, 4> lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_w_cdc__DOT__mem;
         VlUnpacked<QData/*56:0*/, 4> lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_ar_cdc__DOT__mem;
+    };
+    struct {
         VlUnpacked<VlWide<5>/*134:0*/, 4> lumi_v1_tb_top__DOT__u_dut__DOT__u_axi__DOT__u_axi_r_cdc__DOT__mem;
         VlUnpacked<SData/*9:0*/, 29> lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mhpmevent_r;
         VlUnpacked<QData/*63:0*/, 29> lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mhpmcounter_r;
@@ -920,10 +918,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         VlUnpacked<CData/*0:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__lsu_misalign;
         VlUnpacked<CData/*3:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__lsu_be;
         VlUnpacked<IData/*31:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__lsu_aligned_data;
-    };
-    struct {
         VlUnpacked<IData/*31:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__lsu_load_data;
         VlUnpacked<IData/*31:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m1_mem_addr;
+    };
+    struct {
         VlUnpacked<CData/*0:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m1_mem_we;
         VlUnpacked<IData/*31:0*/, 2> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m1_mem_wdata;
         VlUnpacked<VlWide<5>/*153:0*/, 3> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m_pipe;
@@ -937,6 +935,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         VlUnpacked<CData/*6:0*/, 3> lumi_v1_tb_top__DOT__u_cov__DOT__opcode;
         VlUnpacked<CData/*2:0*/, 3> lumi_v1_tb_top__DOT__u_cov__DOT__funct3;
         VlUnpacked<CData/*6:0*/, 3> lumi_v1_tb_top__DOT__u_cov__DOT__funct7;
+        VlUnpacked<IData/*31:0*/, 10> lumi_v1_tb_top__DOT__u_sb__DOT__last_10_pc;
         VlUnpacked<IData/*31:0*/, 32> lumi_v1_tb_top__DOT__u_sb__DOT__reg_file;
         VlUnpacked<IData/*31:0*/, 32> lumi_v1_tb_top__DOT__u_sb__DOT__next_reg_file;
         VlUnpacked<QData/*63:0*/, 2> __VstlTriggered;

@@ -35,6 +35,13 @@ module lumi_scoreboard #(
   logic [31:0] prev_commit_pc;
   logic        prev_had_commit;
 
+  // ─── 调试: _exit 范围追踪 ──────────────────────────────────
+  logic        exit_reached;
+  logic [31:0] max_commit_pc;
+  logic [31:0] last_10_pc [0:9];
+  int unsigned last_10_idx;
+  int unsigned system_inst_count;  // opcode=0x73 计数
+
   // ─── 寄存器文件快照 (用于跨周期跟踪) ──────────────────────
   logic [31:0] reg_file [0:31];  // x0 固定为 0
 
@@ -54,6 +61,11 @@ module lumi_scoreboard #(
     restart_count = 0;
     prev_commit_pc = 32'h0;
     prev_had_commit = 1'b0;
+    exit_reached = 1'b0;
+    max_commit_pc = 32'h0;
+    last_10_idx = 0;
+    system_inst_count = 0;
+    for (int i = 0; i < 10; i++) last_10_pc[i] = 32'h0;
     trace_enable = $test$plusargs("dump_trace");
     for (int i = 0; i < 32; i++) reg_file[i] = 32'h0;
   end
@@ -142,6 +154,32 @@ module lumi_scoreboard #(
         end
       end
 
+      // 调试: 追踪 _exit 范围和 SYSTEM 指令
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        if (commit_valid[s]) begin
+          // 记录最后 10 个 commit PC
+          last_10_pc[last_10_idx] <= commit_pc[s];
+          last_10_idx <= (last_10_idx + 1) % 10;
+          // 追踪最大 PC
+          if (commit_pc[s] > max_commit_pc)
+            max_commit_pc <= commit_pc[s];
+          // _exit 范围: 0x3a8a-0x3aba
+          if (commit_pc[s] >= 32'h3a8a && commit_pc[s] <= 32'h3aba) begin
+            if (!exit_reached) begin
+              $display("[SB-DBG] _exit reached! cyc=%0d pc=0x%08h inst=0x%08h",
+                       cycle_cnt, commit_pc[s], commit_inst[s]);
+            end
+            exit_reached <= 1'b1;
+          end
+          // SYSTEM 指令 (opcode=0x73) 计数
+          if (commit_inst[s][6:0] == 7'h73) begin
+            system_inst_count <= system_inst_count + 1;
+            $display("[SB-DBG] SYSTEM inst cyc=%0d pc=0x%08h inst=0x%08h",
+                     cycle_cnt, commit_pc[s], commit_inst[s]);
+          end
+        end
+      end
+
       // PC Restart 检测: 当 PC 回到 0x0 且之前有非零 PC 提交
       if (commit_valid[0] && commit_pc[0] == 32'h0 && prev_had_commit && prev_commit_pc != 32'h0) begin
         restart_count <= restart_count + 1;
@@ -197,6 +235,12 @@ module lumi_scoreboard #(
     end else begin
       $display(" Test Result:   INCOMPLETE (no ECALL/spin detected)");
     end
+    $display(" Max PC:       0x%08h", max_commit_pc);
+    $display(" _exit reached: %0s", exit_reached ? "YES" : "NO");
+    $display(" SYSTEM insts:  %0d", system_inst_count);
+    $display(" Last 10 commit PCs:");
+    for (int i = 0; i < 10; i++)
+      $display("   [%0d] 0x%08h", i, last_10_pc[i]);
     $display("===========================================");
   endfunction
 

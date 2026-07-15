@@ -40,6 +40,8 @@ module lumi_execute #(
     // ERR-044: call/ret 区分 (BTB 写入时设置 is_call/is_ret, 驱动 RAS)
     output logic                    e1_br_is_call,
     output logic                    e1_br_is_ret,
+    // ERR-RAS: 分支指令压缩标志 (execute-level RAS 区分 PC+2/PC+4)
+    output logic                    e1_br_is_compressed,
 
     // ── E1 LSU 地址 (→ Memory 级) ─────────────────────────────
     output logic [31:0]             e1_mem_addr [1:0],        // 2x LSU
@@ -351,6 +353,7 @@ module lumi_execute #(
         e1_br_is_jalr    = 1'b0;   // ERR-019
         e1_br_is_call    = 1'b0;   // ERR-044
         e1_br_is_ret     = 1'b0;   // ERR-044
+        e1_br_is_compressed = 1'b0; // ERR-RAS
         e2_div_busy      = div_busy_r;
 
         // ERR-020: 多槽误预测优先级 — 最早 slot (最低 i) 优先
@@ -613,9 +616,12 @@ module lumi_execute #(
                             end
                         end
 
-                        // 调试: 打印所有误预测
-                        if (e1_mispredict) begin
-                            // ERR-022: debug 已移除 (修复完成)
+                        // 调试: 打印分支taken事件 (含 _exit/init 区域)
+                        if (branch_taken[i] && (e1_inst[i].pc < 32'h200 || e1_inst[i].pc == 32'h2ed8 || e1_inst[i].pc == 32'h3018 || e1_inst[i].pc == 32'h2ed2 || (e1_inst[i].pc >= 32'h3a80 && e1_inst[i].pc <= 32'h3b00))) begin
+                            $display("[DIAG-BR] slot=%0d pc=0x%08h inst=0x%08h target=0x%08h mis=%b pred=0x%08h pred_taken=%b is_call=%b is_ret=%b",
+                                     i, e1_inst[i].pc, e1_inst[i].inst,
+                                     branch_target[i], e1_mispredict, e1_pred_target, e1_pred_taken,
+                                     e1_br_is_call, e1_br_is_ret);
                         end
 
                         // ERR-019 修复: 始终更新分支反馈, 不受 mispredict 门控
@@ -631,6 +637,7 @@ module lumi_execute #(
                             e1_br_is_ret  = (e1_inst[i].inst[6:0] == 7'b1100111)
                                             && (e1_inst[i].inst[19:15] == 5'd1 || e1_inst[i].inst[19:15] == 5'd5)
                                             && (e1_inst[i].inst[11:7] == 5'd0);
+                            e1_br_is_compressed = e1_inst[i].is_compressed;
                         end
 
                         if (e1_mispredict && !already_redirected) begin
@@ -640,6 +647,9 @@ module lumi_execute #(
                             e1_branch_pc     = e1_inst[i].pc;
                             e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
+                            // DIAG: print all misprediction redirects (unconditional range)
+                            $display("[DIAG-MIS] slot=%0d pc=0x%08h inst=0x%08h target=0x%08h pred_target=0x%08h imm=0x%08h",
+                                     i, e1_inst[i].pc, e1_inst[i].inst, branch_target[i], e1_pred_target, e1_inst[i].imm);
                         end else if (!e1_mispredict && !already_redirected) begin
                             // 非误预测但仍需更新分支反馈 (BTB 学习)
                             e1_branch_taken  = branch_taken[i];
