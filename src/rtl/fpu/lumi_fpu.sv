@@ -195,24 +195,16 @@ module lumi_fpu (
         fpu_busy   = 1'b1;
 
         case (state_reg)
+            // ERR-064: FPU not implemented (MISA F/D = 0)
+            // All FPU instructions trigger illegal exception via decode stage
+            // Do not accept any instructions
             ST_IDLE: begin
                 fpu_issue_ready = 1'b1;
                 fpu_busy  = 1'b0;
                 if (fpu_issue_valid) begin
-                    case (fpu_inst_type)
-                        INST_FADD:  state_next = ST_FADD;
-                        INST_FMUL:  state_next = ST_FMUL;
-                        INST_FMA:   state_next = ST_FMA;
-                        INST_FDIV:  state_next = ST_FDIV;
-                        INST_FSQRT: state_next = ST_FSQRT;
-                        INST_FCVT:  state_next = ST_FCVT;
-                        INST_FMV:   state_next = ST_IDLE;  // 1-cycle 直接完成
-                        INST_FCMP:  state_next = ST_FCMP;
-                        default:    state_next = ST_IDLE;
-                    endcase
-                    // FMV 1-cycle: 直接跳 DONE
-                    if (fpu_inst_type == INST_FMV)
-                        state_next = ST_DONE;
+                    // FPU instruction received but FPU is disabled
+                    // Signal illegal exception back to pipeline
+                    state_next = ST_IDLE;  // Stay idle, exception handled by decode
                 end
             end
 

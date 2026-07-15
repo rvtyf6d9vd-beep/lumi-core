@@ -21,6 +21,11 @@ module lumi_decode_issue #(
     input  logic [31:0]             d_pc,
     input  logic                    d_valid,
 
+    // ERR-042: per-instruction PC + 压缩标志 (← predecode)
+    input  logic [31:0]             d_inst_pc [FETCH_WIDTH-1:0],
+    input  logic [FETCH_WIDTH-1:0]  d_inst_compressed,
+    input  logic [15:0]             d_inst_raw [FETCH_WIDTH-1:0],
+
     // ── D 级输出 (→ RegFile 读端口) ───────────────────────────
     output logic [31:0]             d_rs1_data [ISSUE_WIDTH-1:0],
     output logic [31:0]             d_rs2_data [ISSUE_WIDTH-1:0],
@@ -47,6 +52,7 @@ module lumi_decode_issue #(
 
     // ── 控制 ─────────────────────────────────────────────────
     output logic                    stall_out,
+        output logic                    all_issued,  // ERR-019: 当前批次全部已发射
     input  logic                    flush,
     input  logic                    div_busy
 );
@@ -71,6 +77,8 @@ module lumi_decode_issue #(
     localparam logic [6:0] OP_FLOAD  = 7'b0000111;  // FP Load
     localparam logic [6:0] OP_FSTORE = 7'b0100111;  // FP Store
     localparam logic [6:0] OP_FP     = 7'b1010011;  // FP Compute
+    localparam logic [6:0] OP_CUSTOM0 = 7'b0001011; // Zimop may-be-operations
+    localparam logic [6:0] OP_ZICOND  = 7'b0111011; // Zicond: CZERO.EQZ/CZERO.NEZ
 
     // ═══════════════════════════════════════════════════════════
     // 解码结构体
@@ -368,35 +376,71 @@ module lumi_decode_issue #(
                     dec[i].fu_type = FU_MEM;
                 end
 
-                // ── FP Load ──
+                // ── FP Load ── ERR-064: FPU disabled, trigger illegal ──
                 OP_FLOAD: begin
                     dec[i].has_rs1 = 1'b1;
                     dec[i].imm = {{20{tmp_inst[31]}}, tmp_inst[31:20]};
                     dec[i].fu_type = FU_FP;
+                    dec[i].valid = 1'b0;  // ERR-064: illegal (FPU not implemented)
                 end
 
-                // ── FP Store ──
+                // ── FP Store ── ERR-064: FPU disabled, trigger illegal ──
                 OP_FSTORE: begin
                     dec[i].has_rs1 = 1'b1;
                     dec[i].has_rs2 = 1'b1;
                     dec[i].imm = {{20{tmp_inst[31]}}, tmp_inst[31:25], tmp_inst[11:7]};
                     dec[i].fu_type = FU_FP;
                     dec[i].has_rd  = 1'b0;
+                    dec[i].valid = 1'b0;  // ERR-064: illegal (FPU not implemented)
                 end
 
-                // ── FP Compute ──
+                // ── FP Compute ── ERR-064: FPU disabled, trigger illegal ──
                 OP_FP: begin
                     dec[i].has_rs1 = 1'b1;
                     dec[i].has_rs2 = 1'b1;
                     dec[i].fu_type = FU_FP;
+                    dec[i].valid = 1'b0;  // ERR-064: illegal (FPU not implemented)
                 end
 
-                // ── FENCE: NOP-like (ERR-013 修复) ──
+                // ── Zicond: CZERO.EQZ / CZERO.NEZ (OP_ZICOND = 0111011) ──
+                OP_ZICOND: begin
+                    dec[i].has_rs1 = 1'b1;
+                    dec[i].has_rs2 = 1'b1;
+                    dec[i].fu_type = FU_ALU;
+                    // Placeholder: trigger illegal instruction until implemented
+                    // Implemented when Zicond profile is enabled
+                end
+
+                // ── Zicbom/Zicbop/Zicboz: Cache Block Operations (OP_MISC funct3=010) ──
+                // CBO.{CLEAN,FLUSH,INVAL} and CBO.ZERO and PREFETCH.{R,W,I}
+                // Encoded as: opcode=MISC-MEM(0001111), funct3=010
+                // Currently handled by OP_FENCE branch (same opcode).
+                // When funct3=010 and funct12 matches CBO encodings,
+                // we mark as illegal until cache management is implemented.
+
+                // ── Zimop: May-Be-Operations (OP_CUSTOM0 = 0001011) ──
+                OP_CUSTOM0: begin
+                    dec[i].fu_type = FU_MISC;
+                    dec[i].has_rs1 = 1'b0;
+                    dec[i].has_rs2 = 1'b0;
+                    dec[i].has_rd  = 1'b0;
+                end
+
+                // ── FENCE + Zicbom/Zicbop/Zicboz (MISC-MEM opcode) ──
                 OP_FENCE: begin
                     dec[i].fu_type = FU_MISC;
                     dec[i].has_rs1 = 1'b0;
                     dec[i].has_rs2 = 1'b0;
-                    dec[i].has_rd  = 1'b0;  // FENCE 不写寄存器 (避免 false RAW)
+                    dec[i].has_rd  = 1'b0;
+                    // ERR-066~069: Zicbom/Zicbop/Zicboz (funct3=010):
+                    // CBO.CLEAN/FLUSH/INVAL/ZERO and PREFETCH are not yet implemented.
+                    // Mark as illegal instruction until cache management is enabled.
+                    if (tmp_inst[14:12] == 3'b010) begin
+                        // Cache Block Operation: illegal until implemented
+                        dec[i].valid = dec[i].valid; // keep valid, exception handled in I stage
+                    end
+                    // Zihintntl: NTL.P1/NTL.PALL/NTL.S1/NTL.ALL (funct3=100, funct7 patterns)
+                    // NTL hints are NOP-equivalent, no special handling needed
                 end
 
                 // ── SYSTEM: CSR/ECALL/EBREAK ──
@@ -445,6 +489,8 @@ module lumi_decode_issue #(
 
     // 冒险检测: RAW 依赖 (同一 decode 批次内的 WAW/WAR)
     logic [ISSUE_WIDTH-1:0] raw_stall;
+    logic stop_issue;       // ERR-019: 程序序发射停止标志
+    logic found_for_slot;   // ERR-019: 当前 slot 是否已找到指令
 
     always_comb begin
         issue_count = '0;
@@ -458,48 +504,67 @@ module lumi_decode_issue #(
             issue_ready[s] = 1'b0;
         end
 
-        // skip-stalled 扫描: 从解码队列中选择可发射的指令
+        // ERR-019 修复: 程序序发射 — 如果队列中某条指令被阻塞 (FU busy 或 RAW),
+        // 其后面所有指令都不允许发射, 保证程序序正确.
+        stop_issue = 1'b0;
+
+        // ERR-019: post_flush_block 时禁止发射 — flush 后等待正确路径批次
+        if (!post_flush_block_r) begin
+
+        // 程序序扫描: 从解码队列中按序选择可发射的指令
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
-            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
-                if (dec[qi].valid && !issued_mask_r[qi] && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
-                    // 检查该解码槽是否已被选中
-                    tmp_already_selected = 1'b0;
-                    for (int p = 0; p < s; p++) begin
-                        if (issue_sel[p] == qi[2:0] && issue_ready[p])
-                            tmp_already_selected = 1'b1;
-                    end
-
-                    if (!tmp_already_selected) begin
-                        // 检查 FU 可用性 (decode-issue.html §3.2)
-                        tmp_fu_available = !fu_busy[dec[qi].fu_type];
-                        if (dec[qi].fu_type == FU_DIV)
-                            tmp_fu_available = tmp_fu_available && !div_busy;
-
-                        // 检查批次内 RAW 冒险
-                        tmp_batch_raw = 1'b0;
+            if (!stop_issue) begin
+                found_for_slot = 1'b0;
+                for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
+                    if (!found_for_slot && dec[qi].valid && !issued_mask_r[qi] && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
+                        // 检查该解码槽是否已被选中
+                        tmp_already_selected = 1'b0;
                         for (int p = 0; p < s; p++) begin
-                            if (issue_ready[p]) begin
-                                tmp_prev = dec[issue_sel[p]];
-                                // 当前指令的 rs1/rs2 依赖前一条的 rd
-                                if (tmp_prev.has_rd && tmp_prev.rd != 5'h0) begin
-                                    if ((dec[qi].has_rs1 && dec[qi].rs1 == tmp_prev.rd) ||
-                                        (dec[qi].has_rs2 && dec[qi].rs2 == tmp_prev.rd)) begin
-                                        tmp_batch_raw = 1'b1;
+                            if (issue_sel[p] == qi[2:0] && issue_ready[p])
+                                tmp_already_selected = 1'b1;
+                        end
+
+                        if (!tmp_already_selected) begin
+                            // 检查 FU 可用性 (decode-issue.html §3.2)
+                            tmp_fu_available = !fu_busy[dec[qi].fu_type];
+                            if (dec[qi].fu_type == FU_DIV)
+                                tmp_fu_available = tmp_fu_available && !div_busy;
+
+                            // 检查批次内 RAW 冒险
+                            tmp_batch_raw = 1'b0;
+                            for (int p = 0; p < s; p++) begin
+                                if (issue_ready[p]) begin
+                                    tmp_prev = dec[issue_sel[p]];
+                                    // 当前指令的 rs1/rs2 依赖前一条的 rd
+                                    if (tmp_prev.has_rd && tmp_prev.rd != 5'h0) begin
+                                        if ((dec[qi].has_rs1 && dec[qi].rs1 == tmp_prev.rd) ||
+                                            (dec[qi].has_rs2 && dec[qi].rs2 == tmp_prev.rd)) begin
+                                            tmp_batch_raw = 1'b1;
+                                        end
                                     end
                                 end
                             end
-                        end
 
-                        if (tmp_fu_available && !tmp_batch_raw && !issue_ready[s]) begin
-                            issue_sel[s]   = qi[2:0];
-                            issue_ready[s] = 1'b1;
-                            issue_count    = issue_count + 1'b1;
+                            if (tmp_fu_available && !tmp_batch_raw && !issue_ready[s]) begin
+                                issue_sel[s]   = qi[2:0];
+                                issue_ready[s] = 1'b1;
+                                issue_count    = issue_count + 1'b1;
+                                found_for_slot = 1'b1;
+                                // ERR-019: 分支指令后停止发射 (分支结果在 E1 才确定,
+                                // 后续指令不能推测执行, 需等分支退休后再重定向)
+                                if (dec[qi].fu_type == FU_BRANCH)
+                                    stop_issue = 1'b1;
+                            end else if (!tmp_fu_available || tmp_batch_raw) begin
+                                // ERR-019: 指令被阻塞 → 停止所有后续发射
+                                found_for_slot = 1'b1;
+                                stop_issue     = 1'b1;
+                            end
                         end
-                        // skip-stalled: 如果不可发射, 继续检查下一条
                     end
                 end
             end
         end
+        end // ERR-019: close if (!post_flush_block_r)
 
         // 如果队列中有有效指令但无法全部发射, stall
         if (d_valid) begin
@@ -514,6 +579,26 @@ module lumi_decode_issue #(
                 end
             end
         end
+
+        // ERR-019: 检查当前批次是否全部已发射
+        // 用于 F2 流水线门控: 仅当 all_issued 时才允许 F2 前进
+        all_issued = 1'b1;
+        if (d_valid) begin
+            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
+                if (dec[qi].valid && !issued_mask_r[qi])
+                    all_issued = 1'b0;
+            end
+        end
+
+        // DEBUG: decode/issue 状态 (ERR-019 调试, 注释保留)
+        // $display("[DI] d_pc=0x%08h d_valid=%b mask=%b stall=%b flush=%b state=%0d",
+        //          d_pc, d_valid, issued_mask_r, stall_out, flush, state_reg);
+        // for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        //     if (issue_ready[s])
+        //         $display("[DI]   slot=%0d sel=%0d pc=0x%08h fu=%0d inst=0x%08h",
+        //                  s, issue_sel[s], d_pc + 32'd4 * {29'h0, issue_sel[s]},
+        //                  dec[issue_sel[s]].fu_type, d_instructions[issue_sel[s]]);
+        // end
     end
 
     // ═══════════════════════════════════════════════════════════
@@ -524,6 +609,9 @@ module lumi_decode_issue #(
             if (issue_ready[s]) begin
                 regfile_rs1_addr[s] = dec[issue_sel[s]].rs1;
                 regfile_rs2_addr[s] = dec[issue_sel[s]].rs2;
+                // DEBUG: DI 读寄存器端口 (ERR-019 调试, 注释保留)
+                // $display("[DI-RF] slot=%0d sel=%0d rs1=%0d rs2=%0d ready=%b",
+                //          s, issue_sel[s], dec[issue_sel[s]].rs1, dec[issue_sel[s]].rs2, issue_ready[s]);
             end else begin
                 regfile_rs1_addr[s] = 5'h0;
                 regfile_rs2_addr[s] = 5'h0;
@@ -542,15 +630,12 @@ module lumi_decode_issue #(
             if (issue_ready[s]) begin
                 tmp_dec_d = dec[issue_sel[s]];
 
-                i_issue[s].pc       = d_pc + 32'd4 * {29'h0, issue_sel[s]};
-                // ERR-018 修复: 压缩指令使用展开后的 32-bit 等效指令
-                // 原代码: i_issue[s].inst = d_instructions[issue_sel[s]];
-                if (d_instructions[issue_sel[s]][1:0] != 2'b11)
-                    i_issue[s].inst = c_ext_expand(d_instructions[issue_sel[s]][15:0]);
-                else
-                    i_issue[s].inst = d_instructions[issue_sel[s]];
-                // inst_raw: 保留原始低 16-bit 指令, 用于 coverage 检测
-                i_issue[s].inst_raw = d_instructions[issue_sel[s]][15:0];
+                i_issue[s].pc       = d_inst_pc[issue_sel[s]];  // ERR-042: per-instruction PC
+                // ERR-042: 指令已由 predecode 展开为 32-bit, 无需再次展开
+                i_issue[s].inst = d_instructions[issue_sel[s]];
+                // ERR-042: inst_raw 来自 predecode (原始 16-bit halfword)
+                i_issue[s].inst_raw = d_inst_raw[issue_sel[s]];
+                i_issue[s].is_compressed = d_inst_compressed[issue_sel[s]];  // ERR-042
                 i_issue[s].rd       = tmp_dec_d.has_rd ? tmp_dec_d.rd : 5'h0;
                 i_issue[s].rs1      = tmp_dec_d.rs1;
                 i_issue[s].rs2      = tmp_dec_d.rs2;
@@ -565,6 +650,16 @@ module lumi_decode_issue #(
 
                 // 检查非法指令
                 if (tmp_dec_d.opcode == 7'b0 && !d_inst_valid[issue_sel[s]]) begin
+                    i_issue[s].exc_valid = 1'b1;
+                    i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
+                end
+                // ERR-066~069: Unimplemented ISA extensions trigger illegal instruction
+                // Zicond (0111011), Zimop (0001011), cache block ops (MISC-MEM funct3=010)
+                if (d_inst_valid[issue_sel[s]] && (
+                    tmp_dec_d.opcode == OP_ZICOND ||
+                    tmp_dec_d.opcode == OP_CUSTOM0 ||
+                    (tmp_dec_d.opcode == OP_FENCE && d_instructions[issue_sel[s]][14:12] == 3'b010)
+                )) begin
                     i_issue[s].exc_valid = 1'b1;
                     i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
                 end
@@ -650,29 +745,69 @@ module lumi_decode_issue #(
                     state_next = ST_DECODE;
             end
             ST_FLUSH:  state_next = ST_DECODE;
+            default:   state_next = ST_IDLE;  // ERR-057: defensive default
         endcase
     end
 
     // ═══════════════════════════════════════════════════════════
     // issued_mask 寄存器: 跨周期跟踪已发射指令 (ERR-014 修复)
     // ═══════════════════════════════════════════════════════════
+    // ERR-019: post_flush_block — flush 后阻止发射, 直到新批次 (正确路径) 到达.
+    // 原理: flush 时 batch_pc_r = 当前 d_pc (错误路径), flush 后 F2 被清空
+    // (f2_valid_r <= 0), d_valid=0. ST_FLUSH 结束后 F2 捕获新批次 (来自
+    // 重定向 PC), d_valid 转 1, 此时可解除 block 继续发射.
+    //
+    // ERR-025 修复: 不再要求 d_pc != batch_pc_r, 因为:
+    // (1) 循环结构 (如 crt0 BSS 清零循环 j 1b) 重定向到与原 PC 相同位置,
+    //     旧条件会导致 post_flush_block_r 永远不清, 死锁.
+    // (2) F2 在 flush 周期已清空 (f2_valid_r <= 0), 新批次必然来自重定向路径,
+    //     d_valid 上升沿即为"正确路径批次到达"信号, 无需 PC 比较.
+    logic post_flush_block_r;
+
     always_comb begin
         issued_mask_next = issued_mask_r;
         batch_pc_next    = batch_pc_r;
 
         if (flush) begin
+            // ERR-019: flush 时清除 mask, 启用 post_flush_block
             issued_mask_next = '0;
             batch_pc_next    = d_pc;
+        end else if (post_flush_block_r && d_valid) begin
+            // ERR-025 修复: 新批次到达 (d_valid 上升沿) 即解除 block.
+            // 旧条件 `&& d_pc != batch_pc_r` 在循环回 PC 自重定向时死锁
+            // (crt0_v1.S 的 j 1b 跳回 BGEU 的 PC, 新旧 F2 PC 相同).
+            // F2 在 flush 周期已清空, 新 d_valid=1 必然来自重定向路径, 安全.
+            issued_mask_next = '0;
+            batch_pc_next    = d_pc;
+        end else if (post_flush_block_r) begin
+            // ERR-019: post_flush_block 期间, 不允许发射
+            issued_mask_next = '0;
         end else if (d_valid && d_pc != batch_pc_r) begin
             // 新批次到达 (PC 变化): 清除 mask
             issued_mask_next = '0;
             batch_pc_next    = d_pc;
         end else if (d_valid) begin
-            // always-record: 每周期都记录已发射指令
-            // 确保 carry-over 指令不被丢失
-            for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                if (issue_ready[s])
-                    issued_mask_next[issue_sel[s]] = 1'b1;
+            // ERR-019: 检查是否所有有效指令都已发射 (batch 已完全消费)
+            // 对于自循环 JAL (j .), 每次迭代 fetch 重新取相同 PC 的批次,
+            // 必须清除 mask 以允许重新发射.
+            begin
+                logic all_valid_issued;
+                all_valid_issued = 1'b1;
+                for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
+                    if (dec[qi].valid && !issued_mask_r[qi])
+                        all_valid_issued = 1'b0;
+                end
+                if (all_valid_issued && |issued_mask_r) begin
+                    // 所有有效指令已发射 → 清除 mask, 允许下一迭代重新发射
+                    issued_mask_next = '0;
+                end else begin
+                    // always-record: 每周期都记录已发射指令
+                    // 确保 carry-over 指令不被丢失
+                    for (int s = 0; s < ISSUE_WIDTH; s++) begin
+                        if (issue_ready[s])
+                            issued_mask_next[issue_sel[s]] = 1'b1;
+                    end
+                end
             end
         end
     end
@@ -681,9 +816,15 @@ module lumi_decode_issue #(
         if (!reset_n) begin
             issued_mask_r <= '0;
             batch_pc_r    <= 32'h0;
+            post_flush_block_r <= 1'b0;
         end else begin
             issued_mask_r <= issued_mask_next;
             batch_pc_r    <= batch_pc_next;
+            // ERR-019: post_flush_block 逻辑
+            if (flush)
+                post_flush_block_r <= 1'b1;
+            else if (post_flush_block_r && d_valid)
+                post_flush_block_r <= 1'b0;  // 新正确路径批次到达 (ERR-025)
         end
     end
 

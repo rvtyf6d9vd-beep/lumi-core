@@ -193,19 +193,14 @@ module lumi_vector #(parameter int VLEN = lumi_pkg::VLEN) (
         vec_mem_we    = 1'b0;
 
         case (state_reg)
+            // ERR-065: Vector extension not implemented (MISA V = 0)
+            // All vector instructions trigger illegal exception via decode stage
             ST_IDLE: begin
                 vec_ready = 1'b1;
                 vec_busy  = 1'b0;
                 if (vec_issue_valid) begin
-                    case (vec_opcode)
-                        INST_VARITH, INST_VMUL, INST_VPERM, INST_VCMP:
-                            state_next = ST_ARITH;
-                        INST_VREDUCE: state_next = ST_REDUCE;
-                        INST_VLOAD:   state_next = ST_LOAD;
-                        INST_VSTORE:  state_next = ST_STORE;
-                        INST_VMASK:   state_next = ST_MASK;
-                        default:      state_next = ST_DONE;
-                    endcase
+                    // Vector instruction received but Vector unit is disabled
+                    state_next = ST_IDLE;  // Stay idle, exception handled by decode
                 end
             end
 
