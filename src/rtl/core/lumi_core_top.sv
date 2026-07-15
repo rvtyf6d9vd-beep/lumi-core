@@ -779,9 +779,31 @@ module lumi_core_top #(
     assign core_exc_fetch  = 2'b00;           // F 级异常 (暂未实现)
     assign core_exc_decode = 4'b0000;         // D 级异常 (暂未实现)
     assign core_exc_exec   = {|e1_exception, |m_exception_r, 1'b0};  // E/M 级异常
-    assign core_exc_addr   = 32'h0;           // 异常地址 (TODO: 从 CSR 获取)
-    assign core_exc_insn   = 32'h0;           // 异常指令 (TODO: 从流水线获取)
-    assign core_exc_pc     = 32'h0;           // 异常 PC (TODO: 从流水线获取)
+
+    // ── Task 4: 异常信号完善 (从流水线获取真实值) ──
+    // core_exc_pc: 异常指令 PC (从 E1 级流水线寄存器获取)
+    // core_exc_insn: 异常指令字 (从 E1 级流水线寄存器获取)
+    // core_exc_addr: 异常地址 (load/store 异常时为访问地址)
+    always_comb begin
+        core_exc_pc   = 32'h0;
+        core_exc_insn = 32'h0;
+        core_exc_addr = 32'h0;
+        // 优先取 E1 级异常, 其次取 M 级异常
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            if (e1_exception[i]) begin
+                core_exc_pc   = e1_inst_r[i].pc;
+                core_exc_insn = e1_inst_r[i].inst;
+                // load/store 异常地址: 从 execute 结果获取 (base+offset)
+                if (e1_exc_cause[i] >= EXC_LOAD_MISALIGN &&
+                    e1_exc_cause[i] <= EXC_STORE_ACCESS) begin
+                    core_exc_addr = e1_result[i];
+                end
+            end else if (m_exception_r[i]) begin
+                core_exc_pc   = m_inst_r[i].pc;
+                core_exc_insn = m_inst_r[i].inst;
+            end
+        end
+    end
 
     // ── WFI 检测 (Task 3: 当 WFI 指令到达 E1 级时产生 wfi_req) ──
     // WFI 编码: opcode=1110011(SYSTEM), funct3=000, imm=0x105
