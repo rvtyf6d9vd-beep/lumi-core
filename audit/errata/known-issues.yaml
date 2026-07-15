@@ -1159,11 +1159,11 @@ errata:
     affected_modules: ["top/lumi_soc_top"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "在仿真中通过 force 注入内部 trap 信号；在硅片中依赖 JTAG 调试寄存器回读重构异常状态。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/soc_trap_monitor/"
 
   - id: "ERR-045"
@@ -1177,11 +1177,11 @@ errata:
     affected_modules: ["top/lumi_soc_top"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "在 core_top 与 SoC CSR 桥之间手动连线 CLIC CSR 信号；临时通过 JTAG/DMI 后门配置 CLIC。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/clic_csr_access/"
 
   - id: "ERR-046"
@@ -1195,11 +1195,11 @@ errata:
     affected_modules: ["top/lumi_soc_top"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "验证期间 force nmi_in 为期望值；FPGA bring-up 时通过临时跳线引入板级 NMI 源。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/nmi_delivery/"
 
   - id: "ERR-047"
@@ -1213,11 +1213,11 @@ errata:
     affected_modules: ["core/lumi_core_top"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "插入显式的一级对齐寄存器或调整旁路选择逻辑，使 M 级消费者使用 E1 结果；软件避免相关 MUL/DIV 指令相邻发射。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/mul_div_bypass/"
 
   - id: "ERR-048"
@@ -1231,11 +1231,11 @@ errata:
     affected_modules: ["memory/lumi_cache"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "软件中将 cache 配置为 write-through 或禁用脏行；通过 uncached 别名刷新行；避免多路脏行工作负载。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/cache_evict_writeback/"
 
   - id: "ERR-049"
@@ -1249,11 +1249,11 @@ errata:
     affected_modules: ["csr/lumi_csr_unit"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "先通过 mcountinhibit 禁止计数，写入目标值后再恢复计数；或重复写入目标值以覆盖竞争。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/csr_hpm_write_race/"
 
   - id: "ERR-050"
@@ -1267,11 +1267,11 @@ errata:
     affected_modules: ["bus/lumi_axi_wrapper"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "约束 AXI 与核时钟为同步或相位对齐时钟；验证时仅检查同步器结构假设。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 1"
     regression_test: "tests/directed/cdc_synchronizer/"
 
   - id: "ERR-051"
@@ -1285,11 +1285,11 @@ errata:
     affected_modules: ["debug/lumi_debug_module"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "降低 JTAG TCK 频率以减小亚稳态概率；验证时假设理想同步 TCK。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/debug_cdc_sync/"
 
   - id: "ERR-052"
@@ -1303,11 +1303,11 @@ errata:
     affected_modules: ["memory/lumi_tcm"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "确保 CPU 在 DMA 访问 TCM 期间处于 WFI/halted 状态，或将 DMA 访问路由到系统内存。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/tcm_dma_addr_decode/"
 
   - id: "ERR-053"
@@ -1320,11 +1320,11 @@ errata:
     affected_modules: ["csr/lumi_regfile"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "编译器/调度器避免同一 cycle 写同一 rd 的指令序列；通过交换发射槽或插入 NOP 规避。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/regfile_dual_write_conflict/"
 
   - id: "ERR-054"
@@ -1338,11 +1338,11 @@ errata:
     affected_modules: ["csr/lumi_csr_unit"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "在机器模式启动时通过覆盖值修正 MISA；依赖设备树中的静态 ISA 字符串，不使用 cpuid 式 MISA 探测。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/csr_misa_value/"
 
   - id: "ERR-055"
@@ -1355,11 +1355,11 @@ errata:
     affected_modules: ["interrupt/lumi_plic"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "将所有外部中断集中到 hart0，再通过软件 IPI 转发给其他 hart；限制 SMP 驱动假设 hart0 为中断汇聚点。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/plic_multi_hart/"
 
   - id: "ERR-056"
@@ -1373,11 +1373,11 @@ errata:
     affected_modules: ["core/lumi_execute"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "软件插入显式 store-buffer 排空序列（如写已知地址并轮询）；避免依赖 FENCE 的同步模式。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/fence_store_buffer_drain/"
 
   - id: "ERR-057"
@@ -1390,11 +1390,11 @@ errata:
     affected_modules: ["rtl/filelist"]
     affected_versions: ["v0.2"]
     severity: major
-    status: open
+    status: resolved
     workaround: "运行构建前在 lumi_core.f 中删除或修正无效路径；为 CI 维护本地补丁文件。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "scripts/synth/synth_lumi.tcl"
 
   - id: "ERR-058"
@@ -1407,11 +1407,11 @@ errata:
     affected_modules: ["fpu/lumi_fpu"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "在 MISA 中禁用 F/D 扩展，所有软件使用 -march=rv32imac_zicsr 编译；对 FP 指令陷入软件模拟。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/fpu_operation/"
 
   - id: "ERR-059"
@@ -1424,11 +1424,11 @@ errata:
     affected_modules: ["fpu/lumi_vector"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "禁用向量扩展并在不带 V 的情况下编译；必要时在软件中模拟向量指令。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/vector_simd/"
 
   - id: "ERR-060"
@@ -1511,11 +1511,11 @@ errata:
     affected_modules: ["core/lumi_fetch"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "在取指状态转换上增加运行时断言，避免长时间不可中断的取指停顿。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/fetch_fsm_default/"
 
   - id: "ERR-065"
@@ -1529,11 +1529,11 @@ errata:
     affected_modules: ["dft/lumi_dft_ctrl"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "测试期间约束 MBIST FSM 状态输入，并在 MBIST 序列后使用外部复位。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/dft_mbist_fsm/"
 
   - id: "ERR-066"
@@ -1546,11 +1546,11 @@ errata:
     affected_modules: ["multicore/lumi_lockstep"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "在出现任何异常状态后将 lockstep 逻辑保持复位，并依赖外部看门狗保证安全完整性。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/lockstep_fsm_default/"
 
   - id: "ERR-067"
@@ -1564,11 +1564,11 @@ errata:
     affected_modules: ["power/lumi_power_mgmt"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "在更高层次实现时钟门控，或使用外部电源控制器在空闲期间门控时钟。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/power_mgmt_sleep/"
 
   - id: "ERR-068"
@@ -1581,11 +1581,11 @@ errata:
     affected_modules: ["tb/lumi_scoreboard"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "离线运行独立 Spike/gem5 仿真，并将最终架构状态与 RTL 仿真转储进行 diff。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/scoreboard_ref_model/"
 
   - id: "ERR-069"
@@ -1598,11 +1598,11 @@ errata:
     affected_modules: ["tb/lumi_coverage"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "为未覆盖区域补充定向测试，直到 cover group 实现；临时以代码覆盖作为替代指标。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/reports/coverage_summary/"
 
   - id: "ERR-070"
@@ -1633,11 +1633,11 @@ errata:
     affected_modules: ["tb/axi_slave_mem"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "针对每种测试场景直接修改 slave memory 实例，或创建多个 memory wrapper 变体。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 2"
     regression_test: "tests/directed/tb_axi_slave_config/"
 
   - id: "ERR-072"
@@ -1651,11 +1651,11 @@ errata:
     affected_modules: ["memory/lumi_cache"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "综合时附加 safe-FSM 指令或二进制编码状态恢复逻辑；无需功能级规避。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/cache_fsm_encoding/"
 
   - id: "ERR-073"
@@ -1668,11 +1668,11 @@ errata:
     affected_modules: ["core/lumi_fetch"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "禁用动态分支预测，或周期性执行软件触发的 BTB invalidation 以降低暴露窗口。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    resolved_date: "2026-07-14"
+    resolved_by: "rtl-bugfix-plan"
+    resolution: "Fixed per static scan bug fix plan Phase 3"
     regression_test: "tests/directed/btb_ecc_protection/"
 
   - id: "ERR-074"

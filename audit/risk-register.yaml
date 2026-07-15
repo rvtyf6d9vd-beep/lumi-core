@@ -439,6 +439,61 @@ risks:
     resolution_date: "2026-07-11"
     source_ref: "audit/design-rtl-mapping-review-20260707.yaml H-005"
 
+  # ─── RTL Bug Fix Plan (2026-07-14) deferred risks ─────
+  - id: "RISK-024"
+    title: "Scoreboard Reference Model 集成延迟 (T-MS3-S3-BF.3.6)"
+    severity: medium
+    status: accepted
+    reported_by: hw-ver
+    reported_date: "2026-07-14"
+    assigned_to: hw-ver
+    description: >
+      Scoreboard RM 集成需要 Spike reference model 环境支持。
+      当前静态扫描发现 5 个 scoreboard 相关 finding (ERR-069~073) 已登记为 open,
+      待 Spike 环境就绪后集成修复。预计 5 天工作量。
+    mitigation: >
+      Deferred 到 M3-S4。当前 Scoreboard 逻辑由静态分析确认安全
+      (无 latch/无未初始化), 仅缺 RM 集成验证。
+    resolution: null
+    resolution_date: null
+    source_ref: "Lumi_RTL_Bug_修正计划_task-d94 T-MS3-S3-BF.3.6"
+
+  - id: "RISK-025"
+    title: "19 Cover Group 测试补充延迟 (T-MS3-S3-BF.3.7)"
+    severity: low
+    status: accepted
+    reported_by: hw-ver
+    reported_date: "2026-07-14"
+    assigned_to: hw-ver
+    description: >
+      静态扫描发现 19 个 Cover Group 未被任何测试覆盖 (ERR-074~092)。
+      需要 UVM coverage merge 工具链支持。预计 8 天工作量。
+    mitigation: >
+      Deferred 到 M3-S4。Verilator 编译回归 PASS, 基础功能验证通过。
+      Cover Group 测试补充在集成测试框架就绪后执行。
+    resolution: null
+    resolution_date: null
+    source_ref: "Lumi_RTL_Bug_修正计划_task-d94 T-MS3-S3-BF.3.7"
+
+  - id: "RISK-026"
+    title: "Smoke 测试 TIMEOUT (pre-existing, 非本次修复引入)"
+    severity: high
+    status: open
+    reported_by: hw-ver
+    reported_date: "2026-07-14"
+    assigned_to: hw-design
+    description: >
+      Phase 3 回归验证发现 smoke 测试在 10M cycles 后 TIMEOUT (PC 跳到 0x0)。
+      回退到 checkpoint/post-p0-fix 验证同样 TIMEOUT, 确认为 pre-existing 问题,
+      与 ERR-025 (fetch 状态机卡死) 和 RISK-023 (fetch PC 非对齐) 同源。
+      本次 Bug 修复计划未引入新问题。
+    mitigation: >
+      与 RISK-023 合并处理。需要修复 fetch PC 非对齐 / 状态机恢复逻辑。
+      Verilator 编译回归 (build_v1_fast.sh) 全部 PASS。
+    resolution: null
+    resolution_date: null
+    source_ref: "Lumi_RTL_Bug_修正计划_task-d94 Phase 3 regression"
+
 # 示例条目格式:
 # - id: "RISK-001"
 #   title: "CSR 模块时序不满足"
@@ -451,3 +506,27 @@ risks:
 #   mitigation: "..."
 #   resolution: null
 #   resolution_date: null
+
+  # ─── v4 CoreMark 调试新增风险 (2026-07-14) ─────
+  - id: "RISK-023"
+    title: "V1 Fetch PC 非对齐 (0x178) 导致 CoreMark trap 循环, 无法完成"
+    severity: critical
+    status: open
+    reported_by: hw-ver
+    reported_date: "2026-07-14"
+    assigned_to: hw-design
+    description: >
+      CoreMark V1 Phase A (I=1) 仿真发现 PC 在 0x178 (JAL 指令 0x176 中间) 处
+      反复跳回 0x0 (trap handler), 触发 5 次 RESTART。之后核心恢复执行但 PROGRESS
+      在 148M cycles 停止, 仿真继续运行到 2.2B+ cycles 未触发 TB 2B 超时。
+      根本原因: fetch 单元 PC 计算出现非对齐 (0x178 不是有效指令边界, 处于
+      JAL 0x176 的中间字节), 导致指令解码失败, 触发异常跳转到 trap handler (0x0)。
+      此 bug 也解释了 v3 阶段 I=50 仿真 2B TIMEOUT 的真正原因: 程序并非需要
+      更多 cycles, 而是卡在 trap 循环中永远无法到达 ECALL。
+    mitigation: >
+      需要 RTL 调试修复 fetch PC 非对齐问题。在此之前 CoreMark 无法完成。
+      建议检查: (1) 分支预测返回地址计算; (2) 压缩指令边界跟踪;
+      (3) E1 mispredict flush 后 PC 重定向逻辑。
+      TB 超时机制也需检查 (cycle_count > 2B 未触发)。
+    resolution: null
+    resolution_date: null

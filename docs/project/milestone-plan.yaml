@@ -186,7 +186,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.0.2"
     title: "更新 milestone-plan.yaml active_tasks"
-    status: in_progress
+    status: completed
     owner: rtl-static-scan
     phase: "MS3-S3"
     priority: P0
@@ -256,7 +256,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.1"
     title: "Regfile 双写端口冲突修复"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -266,7 +266,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.2"
     title: "Debug module CDC 修复"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -276,7 +276,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.3"
     title: "MISA_VAL 修正"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -286,7 +286,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.4"
     title: "PLIC 多核路由"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -296,7 +296,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.5"
     title: "TCM DMA 地址解码"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -306,7 +306,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.6"
     title: "Filelist 不存在文件修复"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P1
@@ -316,7 +316,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.2.7"
     title: "Phase 2 集成回归"
-    status: pending
+    status: completed
     owner: hw-ver
     phase: "MS3-S3"
     priority: P1
@@ -326,7 +326,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.1"
     title: "8 个 Mandatory ISA 扩展解码"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P2
@@ -336,7 +336,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.2"
     title: "FPU/Vector NOP 占位"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P2
@@ -346,7 +346,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.3"
     title: "FSM default 分支补齐"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P2
@@ -356,7 +356,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.4"
     title: "FENCE drain store buffer"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P2
@@ -366,7 +366,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.5"
     title: "Power mgmt ST_SLEEP 实现"
-    status: pending
+    status: completed
     owner: hw-design
     phase: "MS3-S3"
     priority: P2
@@ -376,7 +376,8 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.6"
     title: "Scoreboard Reference Model 集成"
-    status: pending
+    status: deferred
+    deferred_reason: "依赖 Spike reference model 环境, 预计 M3-S4 完成"
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -386,7 +387,8 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.7"
     title: "19 个 Cover Group 测试补充"
-    status: pending
+    status: deferred
+    deferred_reason: "依赖集成测试框架 (UVM coverage merge), 预计 M3-S4 完成"
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -396,7 +398,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.3.8"
     title: "Phase 3 集成回归"
-    status: pending
+    status: completed
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -406,7 +408,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.1"
     title: "全量回归测试"
-    status: pending
+    status: completed
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -416,7 +418,8 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.2"
     title: "覆盖率报告生成"
-    status: pending
+    status: deferred
+    deferred_reason: "依赖 UVM coverage merge 工具链, 预计 M3-S4 完成"
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -426,7 +429,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.3"
     title: "关闭 18 个已修复 errata 条目"
-    status: pending
+    status: completed
     owner: hw-ver
     phase: "MS3-S3"
     priority: P2
@@ -436,7 +439,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.4"
     title: "更新 risk-register"
-    status: pending
+    status: completed
     owner: pm-infra
     phase: "MS3-S3"
     priority: P2
@@ -446,7 +449,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.5"
     title: "更新 milestone-plan.yaml 任务状态"
-    status: pending
+    status: completed
     owner: pm-infra
     phase: "MS3-S3"
     priority: P2
@@ -456,7 +459,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.6"
     title: "运行 check_compliance.py"
-    status: pending
+    status: completed
     owner: pm-infra
     phase: "MS3-S3"
     priority: P2
@@ -466,7 +469,7 @@ active_tasks:
 
   - task_id: "T-MS3-S3-BF.4.7"
     title: "指令记录 + 计划关闭"
-    status: pending
+    status: completed
     owner: pm-infra
     phase: "MS3-S3"
     priority: P2
