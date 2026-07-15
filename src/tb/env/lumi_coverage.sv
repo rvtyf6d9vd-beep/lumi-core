@@ -7,7 +7,9 @@
 // CG11: cg_lockstep (4)   CG12: cg_power_states (4)
 // CG13: cg_dft_scan (4)   CG14: cg_boot_sequence (4)
 // CG15: cg_multicore (4)  CG16: cg_security (4)
-// Total: 140 cover points (V1: 80, V2: 36, V4: 24)
+// CG17: cg_zicbom (3)  CG18: cg_zicboz (1)  CG19: cg_zicbop (3)
+// CG20: cg_zicond (2)  CG21: cg_zimop (1)
+// Total: 150 cover points (V1: 80, V2: 36, V4: 24, V5: 10)
 // =================================================================
 
 module lumi_coverage #(
@@ -613,6 +615,95 @@ module lumi_coverage #(
     end
   end
 
+  // ─── CG17: cg_zicbom (CBO.CLEAN/FLUSH/INVAL) ──
+  logic [2:0] zicbom_hit;
+  always_ff @(posedge clk_core) begin
+    if (!reset_n) begin
+      zicbom_hit <= 3'h0;
+    end else begin
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        if (commit_valid[s] && !is_compressed[s] && opcode[s] == 7'b0001111 &&
+            funct3[s] == 3'b010) begin
+          case (commit_inst[s][31:20])
+            12'h000: zicbom_hit[0] <= 1; // CBO.INVAL
+            12'h001: zicbom_hit[1] <= 1; // CBO.CLEAN
+            12'h002: zicbom_hit[2] <= 1; // CBO.FLUSH
+            default: ;
+          endcase
+        end
+      end
+    end
+  end
+
+  // ─── CG18: cg_zicboz (CBO.ZERO) ──
+  logic zicboz_hit;
+  always_ff @(posedge clk_core) begin
+    if (!reset_n) begin
+      zicboz_hit <= 1'b0;
+    end else begin
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        if (commit_valid[s] && !is_compressed[s] && opcode[s] == 7'b0001111 &&
+            funct3[s] == 3'b010 && commit_inst[s][31:20] == 12'h004)
+          zicboz_hit <= 1'b1; // CBO.ZERO
+      end
+    end
+  end
+
+  // ─── CG19: cg_zicbop (PREFETCH.R/W/I) ──
+  logic [2:0] zicbop_hit;
+  always_ff @(posedge clk_core) begin
+    if (!reset_n) begin
+      zicbop_hit <= 3'h0;
+    end else begin
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        if (commit_valid[s] && !is_compressed[s] && opcode[s] == 7'b0001111 &&
+            funct3[s] == 3'b110) begin
+          case (commit_inst[s][31:20])
+            12'h000: zicbop_hit[0] <= 1; // PREFETCH.I
+            12'h001: zicbop_hit[1] <= 1; // PREFETCH.R
+            12'h003: zicbop_hit[2] <= 1; // PREFETCH.W
+            default: ;
+          endcase
+        end
+      end
+    end
+  end
+
+  // ─── CG20: cg_zicond (CZERO.EQZ/NEZ) ──
+  logic [1:0] zicond_hit;
+  always_ff @(posedge clk_core) begin
+    if (!reset_n) begin
+      zicond_hit <= 2'h0;
+    end else begin
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        if (commit_valid[s] && !is_compressed[s]) begin
+          // CZERO.EQZ: opcode=0110011(OP_REG), funct7=0000111, funct3=011
+          if (opcode[s] == 7'b0110011 && funct7[s] == 7'b0000111 &&
+              funct3[s] == 3'b011)
+            zicond_hit[0] <= 1;
+          // CZERO.NEZ: opcode=0010011(OP_IMM), funct7=0000111, funct3=011
+          if (opcode[s] == 7'b0010011 && funct7[s] == 7'b0000111 &&
+              funct3[s] == 3'b011)
+            zicond_hit[1] <= 1;
+        end
+      end
+    end
+  end
+
+  // ─── CG21: cg_zimop (May-Be-Operations) ──
+  logic zimop_hit;
+  always_ff @(posedge clk_core) begin
+    if (!reset_n) begin
+      zimop_hit <= 1'b0;
+    end else begin
+      for (int s = 0; s < ISSUE_WIDTH; s++) begin
+        // Zimop: opcode=0001011 (CUSTOM0)
+        if (commit_valid[s] && !is_compressed[s] && opcode[s] == 7'b0001011)
+          zimop_hit <= 1'b1;
+      end
+    end
+  end
+
   // ─── 覆盖率报告 ────────────────────────────────────────────
   function automatic void report_coverage();
     int rv32i_covered, m_covered, b_covered, c_covered, zce_covered;
@@ -732,7 +823,14 @@ module lumi_coverage #(
     $display(" V1 Total: %0d / 80", rv32i_covered + m_covered + b_covered + c_covered + zce_covered);
     $display(" V2 Total: %0d / 36", mandatory_covered + pmp_covered + timer_covered + clic_covered + tcm_covered);
     $display(" V4 Total: %0d / 24", $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit));
-    $display(" Combined: %0d / 140", rv32i_covered + m_covered + b_covered + c_covered + zce_covered + mandatory_covered + pmp_covered + timer_covered + clic_covered + tcm_covered + $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit));
+    $display(" --- V5 ISA Extension Cover Groups ---");
+    $display(" cg_zicbom:    %0d / 3  (%0d%%)", $countones(zicbom_hit), $countones(zicbom_hit) * 100 / 3);
+    $display(" cg_zicboz:    %0d / 1  (%0d%%)", zicboz_hit, zicboz_hit * 100);
+    $display(" cg_zicbop:    %0d / 3  (%0d%%)", $countones(zicbop_hit), $countones(zicbop_hit) * 100 / 3);
+    $display(" cg_zicond:    %0d / 2  (%0d%%)", $countones(zicond_hit), $countones(zicond_hit) * 100 / 2);
+    $display(" cg_zimop:     %0d / 1  (%0d%%)", zimop_hit, zimop_hit * 100);
+    $display(" V5 Total: %0d / 10", $countones(zicbom_hit) + zicboz_hit + $countones(zicbop_hit) + $countones(zicond_hit) + zimop_hit);
+    $display(" Combined: %0d / 150", rv32i_covered + m_covered + b_covered + c_covered + zce_covered + mandatory_covered + pmp_covered + timer_covered + clic_covered + tcm_covered + $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit) + $countones(zicbom_hit) + zicboz_hit + $countones(zicbop_hit) + $countones(zicond_hit) + zimop_hit);
     $display("===========================================");
   endfunction
 
@@ -796,7 +894,20 @@ module lumi_coverage #(
     $fwrite(fd, "covered: %0d / 4\n", $countones(security_hit));
     $fwrite(fd, "\n# --- Updated Summary ---\n");
     $fwrite(fd, "v4_total: %0d / 24\n", $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit));
-    $fwrite(fd, "grand_total: %0d / 140\n", $countones(rv32i_hit) + $countones(m_ext_hit) + $countones(b_ext_hit) + $countones(c_ext_hit) + $countones(zce_hit) + $countones(mandatory_hit) + $countones(pmp_hit) + $countones(timer_hit) + $countones(clic_hit) + $countones(tcm_access_hit) + $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit));
+    $fwrite(fd, "\n# --- V5 ISA Extension Cover Groups ---\n");
+    $fwrite(fd, "\ncover_group: cg_zicbom\n");
+    $fwrite(fd, "covered: %0d / 3\n", $countones(zicbom_hit));
+    $fwrite(fd, "\ncover_group: cg_zicboz\n");
+    $fwrite(fd, "covered: %0d / 1\n", zicboz_hit);
+    $fwrite(fd, "\ncover_group: cg_zicbop\n");
+    $fwrite(fd, "covered: %0d / 3\n", $countones(zicbop_hit));
+    $fwrite(fd, "\ncover_group: cg_zicond\n");
+    $fwrite(fd, "covered: %0d / 2\n", $countones(zicond_hit));
+    $fwrite(fd, "\ncover_group: cg_zimop\n");
+    $fwrite(fd, "covered: %0d / 1\n", zimop_hit);
+    $fwrite(fd, "\n# --- Grand Summary ---\n");
+    $fwrite(fd, "v5_total: %0d / 10\n", $countones(zicbom_hit) + zicboz_hit + $countones(zicbop_hit) + $countones(zicond_hit) + zimop_hit);
+    $fwrite(fd, "grand_total: %0d / 150\n", $countones(rv32i_hit) + $countones(m_ext_hit) + $countones(b_ext_hit) + $countones(c_ext_hit) + $countones(zce_hit) + $countones(mandatory_hit) + $countones(pmp_hit) + $countones(timer_hit) + $countones(clic_hit) + $countones(tcm_access_hit) + $countones(lockstep_hit) + $countones(power_hit) + $countones(dft_hit) + $countones(boot_hit) + $countones(multicore_hit) + $countones(security_hit) + $countones(zicbom_hit) + zicboz_hit + $countones(zicbop_hit) + $countones(zicond_hit) + zimop_hit);
     $fclose(fd);
     $display("[COV] Dumped coverage to %s", filename);
   endtask
