@@ -366,18 +366,7 @@ module lumi_execute #(
             branch_target[i] = 32'h0;
             is_branch[i]    = 1'b0;
 
-            // DEBUG: E1 入口跟踪 (ERR-019 调试, 注释保留)
-            // if (e1_valid[i])
-            //     $display("[E1-IN] slot=%0d pc=0x%08h inst=0x%08h fu=%0d valid=%b",
-            //              i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type, e1_valid[i]);
-
             if (e1_valid[i]) begin
-                // DEBUG: E1 入口/源数据 (ERR-019/020/022 调试, 注释保留)
-                // $display("[E1-IN] slot=%0d pc=0x%08h inst=0x%08h fu=%0d valid=%b",
-                //          i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type, e1_valid[i]);
-                // $display("[E1-RS] slot=%0d pc=0x%08h inst=0x%08h fu=%0d rs1=0x%08h rs2=0x%08h",
-                //          i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type,
-                //          e1_rs1_data[i], e1_rs2_data[i]);
                 case (e1_inst[i].fu_type)
                     // ── ALU: 1-cycle (execute-alu.html §3.1) ──
                     // Phase B: 增加 Zba/Zbb B-extension 运算路径
@@ -602,11 +591,7 @@ module lumi_execute #(
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             if (branch_taken[i])
                                 e1_result[i] = branch_target[i]; // 占位
-                            // DEBUG: 条件分支跟踪 (ERR-019 调试, 注释保留)
-                            // $display("[BR-DBG] slot=%0d pc=0x%08h f3=%b rs1=0x%08h rs2=0x%08h taken=%b target=0x%08h imm=0x%08h",
-                            //          i, e1_inst[i].pc, e1_inst[i].funct3,
-                            //          e1_rs1_data[i], e1_rs2_data[i],
-                            //          branch_taken[i], branch_target[i], e1_inst[i].imm);
+
                         end
 
                         // 误预测检测: ERR-019 修复 — 比较预测与实际

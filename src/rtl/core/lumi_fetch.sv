@@ -276,13 +276,6 @@ module lumi_fetch #(
         ras_push            = 1'b0;
         ras_pop             = 1'b0;
 
-        // DEBUG: BTB-RD (ERR-019 调试, 注释保留)
-        // if (state_reg == ST_FETCH && pc_reg[1:0] == 2'b00) begin
-        //     $display("[BTB-RD] pc=0x%08h idx=%0d tag=0x%05h hit=%b valid=%b target=0x%08h is_br=%b",
-        //              pc_reg, btb_idx, btb_tag, btb_hit, btb_mem[btb_idx].valid,
-        //              btb_mem[btb_idx].target, btb_mem[btb_idx].is_branch);
-        // end
-
         if (btb_hit) begin
             f1_btb_hit_comb = 1'b1;
 
@@ -363,14 +356,6 @@ module lumi_fetch #(
             // 原 bug: if (!branch_redirect_valid) pc_reg <= pc_next — redirect 时
             // pc_reg 不更新, fetch 永远无法跳转到正确路径.
             pc_reg <= pc_next;
-
-            // DEBUG: PC 回零检测 (ERR-019/020 调试, 注释保留)
-            // if (pc_next == 32'h0 && pc_reg != 32'h0 && state_reg != ST_IDLE) begin
-            //     $display("[FETCH-PC0] pc_reg=0x%08h -> pc_next=0x0 state=%d trap_v=%b br_v=%b pred_taken=%b pred_target=0x%08h btb_hit=%b",
-            //              pc_reg, state_reg, trap_redirect_valid, branch_redirect_valid,
-            //              f1_pred_taken_comb, f1_pred_target_comb, btb_hit);
-            // end
-
             // ERR-019: 寄存 dec_stall 供 F2 捕获门控使用
             dec_stall_r <= dec_stall;
 
@@ -437,9 +422,6 @@ module lumi_fetch #(
             // ── BTB 更新 (分支反馈, fetch-bpred.html §3.1) ──
             if (branch_redirect_valid) begin
                 btb_mem[btb_wr_idx] <= btb_wr_data;
-                // DEBUG: BTB-WR (ERR-019 调试, 注释保留)
-                // $display("[BTB-WR] idx=%0d tag=0x%05h target=0x%08h pc=0x%08h",
-                //          btb_wr_idx, btb_wr_data.tag, btb_wr_data.target, tage_update_pc);
             end
 
             // ── LTAGE 更新 (fetch-bpred.html §3.3) ─────────

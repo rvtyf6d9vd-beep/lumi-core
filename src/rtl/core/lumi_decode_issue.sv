@@ -591,17 +591,7 @@ module lumi_decode_issue #(
             end
         end
 
-        // DEBUG: decode/issue 状态 (ERR-019 调试, 注释保留)
-        // $display("[DI] d_pc=0x%08h d_valid=%b mask=%b stall=%b flush=%b state=%0d",
-        //          d_pc, d_valid, issued_mask_r, stall_out, flush, state_reg);
-        // for (int s = 0; s < ISSUE_WIDTH; s++) begin
-        //     if (issue_ready[s])
-        //         $display("[DI]   slot=%0d sel=%0d pc=0x%08h fu=%0d inst=0x%08h",
-        //                  s, issue_sel[s], d_pc + 32'd4 * {29'h0, issue_sel[s]},
-        //                  dec[issue_sel[s]].fu_type, d_instructions[issue_sel[s]]);
-        // end
     end
-
     // ═══════════════════════════════════════════════════════════
     // RegFile 读端口地址 (D 级输出)
     // ═══════════════════════════════════════════════════════════
@@ -610,9 +600,6 @@ module lumi_decode_issue #(
             if (issue_ready[s]) begin
                 regfile_rs1_addr[s] = dec[issue_sel[s]].rs1;
                 regfile_rs2_addr[s] = dec[issue_sel[s]].rs2;
-                // DEBUG: DI 读寄存器端口 (ERR-019 调试, 注释保留)
-                // $display("[DI-RF] slot=%0d sel=%0d rs1=%0d rs2=%0d ready=%b",
-                //          s, issue_sel[s], dec[issue_sel[s]].rs1, dec[issue_sel[s]].rs2, issue_ready[s]);
             end else begin
                 regfile_rs1_addr[s] = 5'h0;
                 regfile_rs2_addr[s] = 5'h0;
