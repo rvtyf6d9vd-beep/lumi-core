@@ -13,6 +13,7 @@ src/rtl/include/lumi_interfaces.sv
 
 // --- Core Pipeline (F1→F2→D→I→E1→E2→M→W) ---
 src/rtl/core/lumi_fetch.sv
+src/rtl/core/lumi_predecode.sv
 src/rtl/core/lumi_decode_issue.sv
 src/rtl/core/lumi_execute.sv
 src/rtl/core/lumi_memory_stage.sv
@@ -27,6 +28,7 @@ src/rtl/memory/lumi_cache.sv
 // --- Bus / PMA ---
 src/rtl/bus/lumi_pma_checker.sv
 src/rtl/bus/lumi_axi_wrapper.sv
+src/rtl/bus/lumi_cdc_sync.sv
 
 // --- CSR / Register File ---
 src/rtl/csr/lumi_csr_unit.sv
