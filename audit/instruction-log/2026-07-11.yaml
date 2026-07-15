@@ -568,3 +568,42 @@ operations:
     risks_closed: []
     known_limitations:
       - "2B cycles 仿真预计需要 ~4.2 小时 walltime"
+
+  - id: "CoreMark V1 调试总结与交接"
+    title: "RTL $display 清理 + CoreMark V1 仿真调试 + 总结报告 + Handoff"
+    status: COMPLETE
+    date: "2026-07-15"
+    details:
+      - "RTL debug $display 清理: fetch.sv(-18行) + decode_issue.sv(-13行) + execute.sv(-17行)"
+      - "Verilator 重新编译: Build exit code 0"
+      - "Smoke Test: 6/6 PASS"
+      - "RV32I Full Test: PASS=1, FAIL=0"
+      - "CoreMark main() 修复: 确保 _exit(rc) 被调用 (结果写入 0x3FFE0)"
+      - "CoreMark V1 hex 重建: ITERATIONS=1, TOTAL_DATA_SIZE=2000"
+      - "CoreMark V1 仿真: PC 跳转到数据区 (0x3a6e), 程序崩溃无限重启"
+      - "根因分析: PC 到达 32-bit 指令中间位置 (0x3a6c+2), 错误解码为 JAL"
+      - "可能原因: predecode 指令对齐逻辑 bug / BTB tag 碰撞 / bytes_consumed 计算错误"
+      - "we_count=0: SRAM 写入计数始终为 0, Store 写入路径可能有问题"
+      - "回归测试: 编译回归通过, 报告生成 regression-20260715-065033.html"
+      - "总结报告: knowledge/lessons-learned/coremark-v1-debug-summary-20260715.md"
+      - "Handoff 清单: docs/project/notes/coremark-v1-handoff-20260715.md"
+    choices:
+      option: "创建独立总结和 Handoff 文件 (选中)"
+      alternatives:
+        - "仅提交 git commit 并继续"
+        - "创建独立总结和 Handoff 文件 (选中, 便于 Agent 交接)"
+    files_modified:
+      - "src/rtl/core/lumi_fetch.sv (移除调试 $display)"
+      - "src/rtl/core/lumi_decode_issue.sv (移除调试 $display)"
+      - "src/rtl/core/lumi_execute.sv (移除调试 $display)"
+      - "perf/benchmarks/coremark-v1/coremark_v1_main.c (main() 修复)"
+      - "tests/results/v1-realtime-trace.dat (CoreMark trace)"
+      - "tests/results/v1-trace.dat (CoreMark trace)"
+    files_created:
+      - "knowledge/lessons-learned/coremark-v1-debug-summary-20260715.md"
+      - "docs/project/notes/coremark-v1-handoff-20260715.md"
+      - "tests/reports/regression-20260715-065033.html"
+    known_limitations:
+      - "CoreMark V1 PC 跳转异常未修复, 需要深入分析 predecode 对齐逻辑"
+      - "we_count=0 问题未修复, 需要检查 DC 写入路径"
+      - "Dhrystone V1 仿真未开始"
