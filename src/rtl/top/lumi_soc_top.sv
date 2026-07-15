@@ -542,9 +542,10 @@ module lumi_soc_top #(
     lumi_power_mgmt u_power (
         .clk_core    (clk_core),
         .reset_n     (reset_n),
-        .wfi_req     (1'b0),   // TODO: 连接 core_top WFI 信号
-        .wrs_req     (1'b0),   // TODO: 连接 core_top WRS 信号
+        .wfi_req     (1'b0),   // TODO: 连接 core_top WFI 信号 (待实现)
+        .wrs_req     (1'b0),   // TODO: 连接 core_top WRS 信号 (待实现)
         .core_active (|commit_valid),
+        .irq_pending (clic_irq_valid),  // ERR-097: CLIC 中断作为唤醒源
         .icg_en      (pwr_icg_en),
         .core_sleep  (pwr_core_sleep),
         .hart_sleep  (pwr_hart_sleep),
