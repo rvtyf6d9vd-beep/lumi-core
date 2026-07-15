@@ -64,6 +64,14 @@ module lumi_core_top #(
     output logic                    hpm_store,
     output logic                    hpm_exception,
 
+    // ── 异常信号输出 (ERR-095: SoC exception module connection) ──
+    output logic [1:0]              core_exc_fetch,
+    output logic [3:0]              core_exc_decode,
+    output logic [2:0]              core_exc_exec,
+    output logic [31:0]             core_exc_addr,
+    output logic [31:0]             core_exc_insn,
+    output logic [31:0]             core_exc_pc,
+
     // ── V1 验证探针 (Verification Probe, all slots) ───────────────
     output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
     output logic [15:0]             mon_inst_raw [ISSUE_WIDTH-1:0],
@@ -752,6 +760,18 @@ module lumi_core_top #(
         .ecc_ce_irq      (rf_ecc_ce),
         .ecc_ded_irq     (rf_ecc_ded)
     );
+
+    // ═══════════════════════════════════════════════════════════
+    // 异常信号输出连接 (ERR-095: SoC exception module connection)
+    // ═══════════════════════════════════════════════════════════
+    // 简化: 当前异常信号来自 E1 级和 M 级
+    // TODO: 从流水线各级收集完整的异常信息
+    assign core_exc_fetch  = 2'b00;           // F 级异常 (暂未实现)
+    assign core_exc_decode = 4'b0000;         // D 级异常 (暂未实现)
+    assign core_exc_exec   = {|e1_exception, |m_exception_r, 1'b0};  // E/M 级异常
+    assign core_exc_addr   = 32'h0;           // 异常地址 (TODO: 从 CSR 获取)
+    assign core_exc_insn   = 32'h0;           // 异常指令 (TODO: 从流水线获取)
+    assign core_exc_pc     = 32'h0;           // 异常 PC (TODO: 从流水线获取)
 
     // ── 调试: 误预测检测 (已移除 ERR-022 debug) ────────────────
 

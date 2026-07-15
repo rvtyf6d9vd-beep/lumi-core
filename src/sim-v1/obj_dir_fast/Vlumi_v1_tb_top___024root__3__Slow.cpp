@@ -4057,6 +4057,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
         vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__commit_pc[__Vi0] = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 4477185636823120716ull);
     }
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__dbg_halt = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 791062494928706750ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec = VL_SCOPED_RAND_RESET_I(3, __VscopeHash, 12104543342110531324ull);
     for (int __Vi0 = 0; __Vi0 < 65536; ++__Vi0) {
         vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram[__Vi0] = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 2501650943425445746ull);
     }
@@ -4239,9 +4240,12 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_clic__DOT__latch_level = VL_SCOPED_RAND_RESET_I(8, __VscopeHash, 8640551137387604272ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_clic__DOT__claim_id = VL_SCOPED_RAND_RESET_I(8, __VscopeHash, 14289385933737990044ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_clic__DOT__claim_valid = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 8090003111454623225ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__fetch_exc_valid = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 13110873319415925766ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__fetch_exc_cause = VL_SCOPED_RAND_RESET_I(5, __VscopeHash, 12092503139267777754ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_valid = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 11860089278024140031ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_cause = VL_SCOPED_RAND_RESET_I(5, __VscopeHash, 5620166609093029915ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_tval = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 8495665921326604402ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 3796493720413632328ull);
-    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel = VL_SCOPED_RAND_RESET_I(5, __VscopeHash, 3455857409342461510ull);
-    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 8352899555346910585ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 8760914365516391819ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 2776249058229234238ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_prev = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 9147567344676783491ull);
@@ -4382,6 +4386,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     for (int __Vi0 = 0; __Vi0 < 2; ++__Vi0) {
         vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_mem_wdata[__Vi0] = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 15362506145494610485ull);
     }
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_exception = VL_SCOPED_RAND_RESET_I(3, __VscopeHash, 11211198596755020448ull);
     for (int __Vi0 = 0; __Vi0 < 3; ++__Vi0) {
         VL_SCOPED_RAND_RESET_W(154, vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_inst_r[__Vi0], __VscopeHash, 12829173775783384976ull);
     }
@@ -4392,6 +4397,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     for (int __Vi0 = 0; __Vi0 < 3; ++__Vi0) {
         vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_rd_r[__Vi0] = VL_SCOPED_RAND_RESET_I(5, __VscopeHash, 13048043635493275064ull);
     }
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_exception_r = VL_SCOPED_RAND_RESET_I(3, __VscopeHash, 11086077820645319915ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_bypass_valid = VL_SCOPED_RAND_RESET_I(3, __VscopeHash, 8541186035987337189ull);
     for (int __Vi0 = 0; __Vi0 < 3; ++__Vi0) {
         VL_SCOPED_RAND_RESET_W(154, vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_inst_out[__Vi0], __VscopeHash, 13984439072156733575ull);

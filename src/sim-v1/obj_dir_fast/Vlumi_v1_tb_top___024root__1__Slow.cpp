@@ -13,6 +13,14 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___stl_sequent__TOP__1(Vlumi_v1_tb_to
     lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata = 0;
     IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__unnamedblk1__DOT__ic_word_idx;
     lumi_v1_tb_top__DOT__u_dut__DOT__unnamedblk1__DOT__ic_word_idx = 0;
+    CData/*0:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid = 0;
+    CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause = 0;
+    CData/*4:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel = 0;
+    IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel = 0;
     IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h2e371279__0;
     lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h2e371279__0 = 0;
     CData/*2:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT____Vlvbound_h50e10d1e__0;
@@ -304,50 +312,10 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___stl_sequent__TOP__1(Vlumi_v1_tb_to
             }
         }
     }
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 0U;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 0U;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_pc 
-        = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause = 0U;
-    if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception) {
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 0U;
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 1U;
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_pc 
-            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m;
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval 
-            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel;
-        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause 
-            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel;
-    } else {
-        if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch) {
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 1U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_pc 
-                = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause = 0x80000000U;
-        } else if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid) 
-                    & (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mstatus_r 
-                       >> 3U))) {
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 1U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_pc 
-                = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
-            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause 
-                = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_id;
-        }
-        if ((1U & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch)))) {
-            if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid) 
-                 & (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mstatus_r 
-                    >> 3U))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 1U;
-            }
-        }
-    }
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec 
+        = (((0U != (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_exception)) 
+            << 2U) | ((0U != (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__m_exception_r)) 
+                      << 1U));
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__slot2_need_stall = 0U;
     if ((IData)((((((7U == (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m_pipe_valid)) 
                     & (~ ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_memory__DOT__m_pipe_exception) 
@@ -1167,6 +1135,25 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___stl_sequent__TOP__1(Vlumi_v1_tb_to
         = (IData)(((((QData)((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_pc[2U])) 
                      << 0x00000020U) | (QData)((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_pc[1U]))) 
                    >> 0x00000020U));
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause = 0U;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid = 0U;
+    if ((4U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec))) {
+        if ((1U & (~ ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec) 
+                      >> 1U)))) {
+            if ((1U & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec)))) {
+                lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause = 7U;
+                lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid = 1U;
+            }
+        }
+    } else if ((2U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec))) {
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause 
+            = ((1U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec))
+                ? 5U : 6U);
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid = 1U;
+    } else if ((1U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__core_exc_exec))) {
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause = 4U;
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid = 1U;
+    }
     vlSelfRef.lumi_v1_tb_top__DOT__commit_rd_packed 
         = (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__mon_rd[2U]) 
             << 0x0000000aU) | (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__mon_rd[1U]) 
@@ -1315,6 +1302,26 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___stl_sequent__TOP__1(Vlumi_v1_tb_to
     } else if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__trigger_hit) 
                 & (0U != (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__debug_security_level)))) {
         vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_dbg__DOT__state_next = 5U;
+    }
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel = 0U;
+    lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception = 0U;
+    if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__fetch_exc_valid) {
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel = 0U;
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel 
+            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__fetch_exc_cause;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception = 1U;
+    } else if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_valid) {
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel 
+            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_tval;
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel 
+            = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__decode_exc_cause;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception = 1U;
+    } else if (lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_valid) {
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel = 0U;
+        lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel 
+            = lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exec_exc_cause;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception = 1U;
     }
     if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f2_valid_r) {
         vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__f2_pd_pred_taken 
@@ -6852,6 +6859,54 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___stl_sequent__TOP__1(Vlumi_v1_tb_to
                [(0x0000001fU & ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb) 
                                 - (IData)(3U)))] : 0U);
     }
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_nmi_enter = 0U;
+    if ((1U & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception)))) {
+        if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch) {
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_nmi_enter = 1U;
+        }
+    }
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause = 0U;
+    if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception) {
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 0U;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 1U;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval 
+            = lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_tval_sel;
+        vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause 
+            = lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel;
+    } else {
+        if (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch) {
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 1U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause = 0x80000000U;
+        } else if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid) 
+                    & (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mstatus_r 
+                       >> 3U))) {
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_epc = 0U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_is_irq = 1U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_tval = 0U;
+            vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_cause 
+                = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_id;
+        }
+        if ((1U & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__nmi_latch)))) {
+            if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid) 
+                 & (vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mstatus_r 
+                    >> 3U))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__exc_trap_enter = 1U;
+            }
+        }
+    }
+    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__trap_target_m 
+        = ((1U & ((~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__has_exception)) 
+                  & vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mtvec_r))
+            ? ((0xfffffffcU & vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mtvec_r) 
+               + ((IData)(lumi_v1_tb_top__DOT__u_dut__DOT__u_exc__DOT__exc_cause_sel) 
+                  << 2U)) : (0xfffffffcU & vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__mtvec_r));
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_inst[0U] = 0U;
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_inst_pc[0U] = 0U;
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__pd_inst_valid 

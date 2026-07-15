@@ -147,6 +147,14 @@ module lumi_soc_top #(
     // DFT
     logic        dft_scan_mode, dft_jtag_select, dft_secure_lock;
 
+    // ── 异常信号连线 (ERR-095: SoC exception module connection) ──
+    logic [1:0]  core_exc_fetch;
+    logic [3:0]  core_exc_decode;
+    logic [2:0]  core_exc_exec;
+    logic [31:0] core_exc_addr;
+    logic [31:0] core_exc_insn;
+    logic [31:0] core_exc_pc;
+
     // ─── Core Top 实例化 (单核模式, D-018 generate 切换多核) ─
     generate
         if (NUM_HARTS == 1) begin : gen_single_core
@@ -190,6 +198,18 @@ module lumi_soc_top #(
                 .commit_valid    (commit_valid),
                 .commit_pc       (commit_pc),
                 .commit_result   (commit_result),
+                .hpm_inst_retired (),
+                .hpm_branch      (),
+                .hpm_branch_miss (),
+                .hpm_load        (),
+                .hpm_store       (),
+                .hpm_exception   (),
+                .core_exc_fetch  (core_exc_fetch),
+                .core_exc_decode (core_exc_decode),
+                .core_exc_exec   (core_exc_exec),
+                .core_exc_addr   (core_exc_addr),
+                .core_exc_insn   (core_exc_insn),
+                .core_exc_pc     (core_exc_pc),
                 .mon_inst        (mon_inst),
                 .mon_inst_raw    (mon_inst_raw),
                 .mon_rd          (mon_rd),
@@ -242,9 +262,15 @@ module lumi_soc_top #(
         .vrf_rs1_addr    (5'h0), .vrf_rs2_addr    (5'h0),
         .vrf_rs1_data    (), .vrf_rs2_data    (),
         .vrf_wr_en       (1'b0), .vrf_wr_addr     (5'h0), .vrf_wr_data     ('0),
-        .ecc_ce_irq      (),
-        .ecc_ded_irq     ()
+        .ecc_ce_irq      (rf_ecc_ce_irq),
+        .ecc_ded_irq     (rf_ecc_ded_irq)
     );
+
+    // ── ECC IRQ 连线 (ERR-096: SoC ECC IRQ signal connection) ──
+    logic rf_ecc_ce_irq, rf_ecc_ded_irq;
+    logic tcm_ecc_ce_irq, tcm_ecc_ded_irq;
+    // 合并 regfile 和 TCM 的 ECC IRQ，路由到 PLIC ext_irq_in
+    // TODO: 实现完整的 ECC IRQ 路由逻辑
 
     // ─── V1 统一 SRAM 旁路 ──────────────────────────────────────
     // 替代 cache: 256KiB 统一 SRAM, 同时服务 IC (指令) 和 DC (数据)
@@ -467,12 +493,12 @@ module lumi_soc_top #(
     lumi_exception u_exc (
         .clk_core      (clk_core),
         .reset_n       (reset_n),
-        .exc_fetch     (2'b00),
-        .exc_decode    (4'b0000),
-        .exc_exec      (3'b000),
-        .exc_addr      (32'h0),
-        .exc_insn      (32'h0),
-        .exc_pc        (32'h0),
+        .exc_fetch     (core_exc_fetch),
+        .exc_decode    (core_exc_decode),
+        .exc_exec      (core_exc_exec),
+        .exc_addr      (core_exc_addr),
+        .exc_insn      (core_exc_insn),
+        .exc_pc        (core_exc_pc),
         .nmi_signal    (nmi_signal),
         .irq_request   (clic_irq_valid),
         .irq_id        (clic_irq_id),
