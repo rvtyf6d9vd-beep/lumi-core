@@ -202,3 +202,71 @@ operations:
   tests_created:
     - "tests/directed/test_zicond_illegal.S"
     - "tests/directed/test_zimop_nop.S"
+
+# ============================================================
+# RTL Legacy Fix Plan — 遗留项修复 (6 Tasks)
+# 执行日期: 2026-07-15
+# ============================================================
+
+legacy_fix_plan:
+  task_id: "T-legacy-fix"
+  checkpoint_pre: "checkpoint/pre-legacy-fix"
+  checkpoint_post: "checkpoint/post-legacy-fix"
+
+  tasks:
+    - id: "LF-TASK-1"
+      title: "ERR-060 Zicbom decode (CBO.CLEAN/FLUSH/INVAL)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_decode_issue.sv"
+        - "tests/directed/test_zicbom_zicbop_nop.S"
+      commit: "9f16844"
+      details: "CBO instructions decoded as NOP in OP_FENCE case, illegal check removed"
+
+    - id: "LF-TASK-2"
+      title: "ERR-061 Zicboz+Zicbop decode (CBO.ZERO + PREFETCH)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_decode_issue.sv"
+      commit: "9f16844"
+      details: "Merged with Task 1. CBO.ZERO and PREFETCH.R/W/I decoded as NOP"
+
+    - id: "LF-TASK-3"
+      title: "WFI/WRS implementation"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_core_top.sv"
+        - "src/rtl/top/lumi_soc_top.sv"
+      commit: "e5a2abc"
+      details: "wfi_req output port added, WFI detection at E1 stage, connected to power_mgmt"
+
+    - id: "LF-TASK-4"
+      title: "Exception signal refinement"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_core_top.sv"
+      commit: "78bc38a"
+      details: "core_exc_pc/insn/addr now sourced from e1_inst_r/m_inst_r pipeline registers"
+
+    - id: "LF-TASK-5"
+      title: "RISK-029 verification coverage (CG17-CG21)"
+      status: COMPLETE
+      files_changed:
+        - "src/tb/env/lumi_coverage.sv"
+      commit: "0a39374"
+      details: "Added 5 ISA extension cover groups (Zicbom/Zicboz/Zicbop/Zicond/Zimop), 10 new cover points, total 150"
+
+    - id: "LF-TASK-6"
+      title: "scan_rtl.py false negative fix (ERR-072/073)"
+      status: COMPLETE
+      files_changed:
+        - "skills/rtl-static-analysis/scan_rtl.py"
+        - "audit/compliance-reports/rtl-static-scan-r4-20260715"
+      commit: "8a78ec4"
+      details: "ERR-072 pattern: cache_state_e/typedef enum. ERR-073: btb.*valid/btb_hit. R4: 30 PASS / 0 FAIL"
+
+  errata_closed_legacy: ["ERR-060", "ERR-061"]
+  risks_partially_mitigated: ["RISK-029"]
+  git_commits_legacy: 6
+  tests_created:
+    - "tests/directed/test_zicbom_zicbop_nop.S"

@@ -563,6 +563,11 @@ risks:
       新增风险: 35 个 CGs 全部 pending 需要在 M3-S4 前完成至少 80%。
       4 个零测试模块需优先补充 directed test。
       ISA RM 集成需 Spike 环境就绪 (预计 5 天工作量)。
+      ---
+      Partial mitigation (2026-07-15, rtl-legacy-fix-plan):
+      Added CG17-CG21 (Zicbom/Zicboz/Zicbop/Zicond/Zimop) = 10 new cover points.
+      Total coverage now 150 cover points across 21 CGs.
+      Remaining: 35 CGs from coverage-plan.yaml still need implementation.
     resolution: null
     resolution_date: null
     source_ref: "ERR-068~073, ERR-076~086 resolved, coverage-plan.yaml"

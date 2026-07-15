@@ -1442,12 +1442,12 @@ errata:
     affected_modules: ["core/lumi_decode_issue"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "软件中避免 cache-block 管理指令，或通过系统调用/模拟陷入实现。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
-    regression_test: "tests/directed/zicbom_decode/"
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-legacy-fix-plan"
+    resolution: "CBO.CLEAN/FLUSH/INVAL decoded as NOP in OP_FENCE case (funct3=010), rs1 base address preserved. Regression test: tests/directed/test_zicbom_zicbop_nop.S"
+    regression_test: "tests/directed/test_zicbom_zicbop_nop.S"
 
   - id: "ERR-061"
     title: "Zicbop/Zicboz 解码缺失"
@@ -1459,12 +1459,12 @@ errata:
     affected_modules: ["core/lumi_decode_issue"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "使用不包含 Zicbop/Zicboz 的 -march 编译；用显式零存储替换 CBO.ZERO。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
-    regression_test: "tests/directed/zicbop_zicboz_decode/"
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-legacy-fix-plan"
+    resolution: "CBO.ZERO decoded as NOP (funct3=010, rs2=00100). PREFETCH.R/I/W decoded as NOP (funct3=110). Regression test: tests/directed/test_zicbom_zicbop_nop.S"
+    regression_test: "tests/directed/test_zicbom_zicbop_nop.S"
 
   - id: "ERR-062"
     title: "Zicond/Zihintntl 解码缺失"
