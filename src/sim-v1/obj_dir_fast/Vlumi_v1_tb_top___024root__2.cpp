@@ -293,18 +293,303 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__3(Vlumi_v1_tb_top___024root* 
     __VdlySet__lumi_v1_tb_top__DOT__u_sb__DOT__reg_file__v2 = 0U;
     __VdlySet__lumi_v1_tb_top__DOT__u_sb__DOT__reg_file__v4 = 0U;
     __VdlySet__lumi_v1_tb_top__DOT__u_sb__DOT__reg_file__v32 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_regfile__DOT__irf_mem__v0 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_regfile__DOT__irf_mem__v1 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v0 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v1 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v2 = 0U;
+    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v3 = 0U;
     if (vlSelfRef.lumi_v1_tb_top__DOT__reset_n) {
+        __Vdly__lumi_v1_tb_top__DOT__cycle_count = 
+            ((IData)(1U) + vlSelfRef.lumi_v1_tb_top__DOT__cycle_count);
+        __VdlyMask__lumi_v1_tb_top__DOT__cycle_count = 0xffffffffU;
+        if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
+             & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[0U])) {
+            if ((0U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
+                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x0dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x0dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            } else if ((1U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000000fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000000eU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000000dU)))
+                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
+                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000000dU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000000eU)))
+                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000000dU)))
+                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
+                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000000dU)))
+                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
+                }
+            } else if ((2U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000000fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000000eU)))) {
+                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000000dU))))) {
+                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                        }
+                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x0000000dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000000eU)))) {
+                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000000dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x0000000dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            }
+            if ((IData)((0x00008000U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x00008400U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000b062U == (0x0000f063U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000ac02U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+        }
+        if ((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
+              >> 1U) & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[1U])) {
+            if ((0U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                      >> 0x10U))))) {
+                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x1dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x1dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x1dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            } else if ((1U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x10U))))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000001fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000001eU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000001dU)))
+                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
+                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000001dU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000001eU)))
+                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000001dU)))
+                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
+                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000001dU)))
+                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
+                }
+            } else if ((2U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x10U))))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000001fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000001eU)))) {
+                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000001dU))))) {
+                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                        }
+                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x0000001dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000001eU)))) {
+                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000001dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x0000001dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            }
+            if ((IData)((0x00008000U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x00008400U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000b062U == (0x0000f063U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000ac02U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+        }
+        if ((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
+              >> 2U) & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[2U])) {
+            if ((0U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                      >> 0x20U))))) {
+                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x2dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x2dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x2dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            } else if ((1U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x20U))))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000002fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000002eU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000002dU)))
+                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
+                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000002dU)))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000002eU)))
+                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000002dU)))
+                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
+                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000002dU)))
+                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
+                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
+                }
+            } else if ((2U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x20U))))) {
+                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                   >> 0x0000002fU)))) {
+                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                       >> 0x0000002eU)))) {
+                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                              >> 0x0000002dU))))) {
+                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                        }
+                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                                 >> 0x0000002dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000002eU)))) {
+                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                          >> 0x0000002dU))))) {
+                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                    }
+                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
+                                             >> 0x0000002dU))))) {
+                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
+                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
+                }
+            }
+            if ((IData)((0x00008000U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x00008400U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000b062U == (0x0000f063U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+            if ((IData)((0x0000ac02U == (0x0000fc03U 
+                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
+                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
+                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
+            }
+        }
         if ((1U & ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
                    & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[0U]))))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U]) 
-                              | (0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U]))))) {
-                VL_WRITEF_NX("[COV-DBG] t=%0t s=0 cv=%0b op=%07b f3=%03b inst=%08h\n",6, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',1,(1U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid))
-                             , '#',7,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U]
-                             , '#',3,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[0U]
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U]);
-            }
             if ((0x33U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U])) {
                 vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit 
                     = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit));
@@ -994,33 +1279,8 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__3(Vlumi_v1_tb_top___024root* 
                     = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__dft_hit));
             }
         }
-        if ((((~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid)) 
-              & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[0U]))) 
-             & (0U != vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U]))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U]) 
-                              & (0U != vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[0U]))))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=0 CSR not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U]);
-            }
-            if (VL_UNLIKELY(((0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[0U])))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=0 FENCE not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U]);
-            }
-        }
         if ((1U & (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
                     >> 1U) & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[1U]))))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U]) 
-                              | (0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U]))))) {
-                VL_WRITEF_NX("[COV-DBG] t=%0t s=1 cv=%0b op=%07b f3=%03b inst=%08h\n",6, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',1,(1U & ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-                                            >> 1U))
-                             , '#',7,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U]
-                             , '#',3,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[1U]
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U]);
-            }
             if ((0x33U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U])) {
                 vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit 
                     = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit));
@@ -1710,33 +1970,8 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__3(Vlumi_v1_tb_top___024root* 
                     = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__dft_hit));
             }
         }
-        if ((((~ ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-                  >> 1U)) & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[1U]))) 
-             & (0U != vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U]))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U]) 
-                              & (0U != vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[1U]))))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=1 CSR not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U]);
-            }
-            if (VL_UNLIKELY(((0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[1U])))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=1 FENCE not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U]);
-            }
-        }
         if ((IData)((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
                       >> 2U) & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[2U]))))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U]) 
-                              | (0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U]))))) {
-                VL_WRITEF_NX("[COV-DBG] t=%0t s=2 cv=%0b op=%07b f3=%03b inst=%08h\n",6, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',1,(1U & ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-                                            >> 2U))
-                             , '#',7,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U]
-                             , '#',3,vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[2U]
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U]);
-            }
             if ((0x33U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U])) {
                 vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit 
                     = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__lockstep_hit));
@@ -2424,309 +2659,6 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__3(Vlumi_v1_tb_top___024root* 
                     = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__power_hit));
                 vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__dft_hit 
                     = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__dft_hit));
-            }
-        }
-        if ((((~ ((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-                  >> 2U)) & (~ (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[2U]))) 
-             & (0U != vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U]))) {
-            if (VL_UNLIKELY((((0x73U == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U]) 
-                              & (0U != vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__funct3[2U]))))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=2 CSR not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U]);
-            }
-            if (VL_UNLIKELY(((0x0fU == vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__opcode[2U])))) {
-                VL_WRITEF_NX("[COV-WARN] t=%0t s=2 FENCE not committed! inst=%08h\n",3, 'T',-12
-                             , '#',64,VL_TIME_UNITED_Q(1)
-                             , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U]);
-            }
-        }
-        __Vdly__lumi_v1_tb_top__DOT__cycle_count = 
-            ((IData)(1U) + vlSelfRef.lumi_v1_tb_top__DOT__cycle_count);
-        __VdlyMask__lumi_v1_tb_top__DOT__cycle_count = 0xffffffffU;
-        if (((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-             & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[0U])) {
-            if ((0U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
-                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x0dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x0dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            } else if ((1U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000000fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000000eU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000000dU)))
-                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
-                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000000dU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000000eU)))
-                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000000dU)))
-                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
-                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000000dU)))
-                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
-                }
-            } else if ((2U == (3U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed)))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000000fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000000eU)))) {
-                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000000dU))))) {
-                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                        }
-                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x0000000dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000000eU)))) {
-                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000000dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x0000000dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            }
-            if ((IData)((0x00008000U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x00008400U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000b062U == (0x0000f063U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000ac02U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[0U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-        }
-        if ((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-              >> 1U) & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[1U])) {
-            if ((0U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                      >> 0x10U))))) {
-                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x1dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x1dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x1dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            } else if ((1U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x10U))))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000001fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000001eU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000001dU)))
-                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
-                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000001dU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000001eU)))
-                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000001dU)))
-                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
-                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000001dU)))
-                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
-                }
-            } else if ((2U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x10U))))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000001fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000001eU)))) {
-                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000001dU))))) {
-                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                        }
-                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x0000001dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000001eU)))) {
-                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000001dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x0000001dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            }
-            if ((IData)((0x00008000U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x00008400U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000b062U == (0x0000f063U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000ac02U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[1U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-        }
-        if ((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
-              >> 2U) & vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__is_compressed[2U])) {
-            if ((0U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                      >> 0x20U))))) {
-                if ((0U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x2dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((2U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x2dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                } else if ((6U == (7U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x2dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            } else if ((1U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x20U))))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000002fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000002eU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000002dU)))
-                                ? (0x00000100U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000080U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)));
-                    } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000002dU)))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000040U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000002eU)))
-                            ? ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000002dU)))
-                                ? (0x00000020U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (0x00000010U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit)))
-                            : ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000002dU)))
-                                ? (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))
-                                : (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit))));
-                }
-            } else if ((2U == (3U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x20U))))) {
-                if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                   >> 0x0000002fU)))) {
-                    if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                       >> 0x0000002eU)))) {
-                        if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                              >> 0x0000002dU))))) {
-                            vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                                = (0x00000800U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                        }
-                    } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                                 >> 0x0000002dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000400U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000002eU)))) {
-                    if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                          >> 0x0000002dU))))) {
-                        vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                            = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                    }
-                } else if ((1U & (~ (IData)((vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_raw_packed 
-                                             >> 0x0000002dU))))) {
-                    vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit 
-                        = (0x00000200U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__c_ext_hit));
-                }
-            }
-            if ((IData)((0x00008000U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (1U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x00008400U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (2U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000b062U == (0x0000f063U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (4U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
-            }
-            if ((IData)((0x0000ac02U == (0x0000fc03U 
-                                         & vlSelfRef.lumi_v1_tb_top__DOT__commit_inst_packed[2U])))) {
-                vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit 
-                    = (8U | (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_cov__DOT__zce_hit));
             }
         }
         if (((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__commit_valid) 
@@ -3584,12 +3516,6 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__3(Vlumi_v1_tb_top___024root* 
         vlSelfRef.lumi_v1_tb_top__DOT__u_sb__DOT__prev_had_commit = 0U;
         __VdlySet__lumi_v1_tb_top__DOT__u_sb__DOT__reg_file__v32 = 1U;
     }
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_regfile__DOT__irf_mem__v0 = 0U;
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_regfile__DOT__irf_mem__v1 = 0U;
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v0 = 0U;
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v1 = 0U;
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v2 = 0U;
-    __VdlySet__lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram__v3 = 0U;
     if ((((IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__dc_valid) 
           & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__dc_we)) 
          & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__reset_n))) {

@@ -22,14 +22,14 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___eval_static(Vlumi_v1_tb_top___024r
     __Vinline__eval_static__TOP___Vfunc_lumi_v1_tb_top__DOT__u_axi_mem__DOT__addr_to_line__65__addr = 0;
     // Body
     Vlumi_v1_tb_top_uvm_shim___eval_static__TOP__uvm_shim((&vlSymsp->TOP__uvm_shim));
-    vlSelfRef.lumi_v1_tb_top__DOT__unnamedblk1__DOT__max_cyc = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__unnamedblk3__DOT__max_cyc = 0U;
     const uint64_t __VscopeHash = VL_MURMUR64_HASH(vlSelf->vlNamep);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_magic = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 14747165464321685645ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_bench_id = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 205938328401557253ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_iters = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 10050610340695876425ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_ticks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 10885452452452014905ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_metric = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 11226398872149594281ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_checks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 794813767289846636ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_magic = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 9104312651850826982ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_bench_id = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 6505474697978747400ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_iters = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 12478723382461984098ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_ticks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 8490740805775058879ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_metric = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 11924036374885657514ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_checks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 745222828135782561ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk8__DOT__any_hit = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 4773016829126980536ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__unnamedblk13__DOT__all_valid_issued = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 14341020673140430324ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__unnamedblk3__DOT__sub_result = VL_SCOPED_RAND_RESET_Q(33, __VscopeHash, 17220598655334523980ull);
@@ -86,14 +86,14 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___eval_static__TOP(Vlumi_v1_tb_top__
     IData/*31:0*/ __Vfunc_lumi_v1_tb_top__DOT__u_axi_mem__DOT__addr_to_line__65__addr;
     __Vfunc_lumi_v1_tb_top__DOT__u_axi_mem__DOT__addr_to_line__65__addr = 0;
     // Body
-    vlSelfRef.lumi_v1_tb_top__DOT__unnamedblk1__DOT__max_cyc = 0U;
+    vlSelfRef.lumi_v1_tb_top__DOT__unnamedblk3__DOT__max_cyc = 0U;
     const uint64_t __VscopeHash = VL_MURMUR64_HASH(vlSelf->vlNamep);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_magic = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 14747165464321685645ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_bench_id = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 205938328401557253ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_iters = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 10050610340695876425ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_ticks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 10885452452452014905ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_metric = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 11226398872149594281ull);
-    vlSelf->lumi_v1_tb_top__DOT__unnamedblk2__DOT__r_checks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 794813767289846636ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_magic = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 9104312651850826982ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_bench_id = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 6505474697978747400ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_iters = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 12478723382461984098ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_ticks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 8490740805775058879ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_metric = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 11924036374885657514ull);
+    vlSelf->lumi_v1_tb_top__DOT__unnamedblk4__DOT__r_checks = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 745222828135782561ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk8__DOT__any_hit = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 4773016829126980536ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__unnamedblk13__DOT__all_valid_issued = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 14341020673140430324ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_execute__DOT__unnamedblk3__DOT__sub_result = VL_SCOPED_RAND_RESET_Q(33, __VscopeHash, 17220598655334523980ull);
@@ -165,7 +165,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___eval_initial__TOP(Vlumi_v1_tb_top_
     }
     if (VL_TESTPLUSARGS_I("vcd"s)) {
         vlSymsp->_vm_contextp__->dumpfile("lumi_v1_tb.vcd"s);
-        VL_PRINTF_MT("-Info: src/tb/top/lumi_v1_tb_top.sv:507: $dumpvar ignored, as Verilated without --trace\n");
+        VL_PRINTF_MT("-Info: src/tb/top/lumi_v1_tb_top.sv:524: $dumpvar ignored, as Verilated without --trace\n");
     }
     lumi_v1_tb_top__DOT__u_axi_mem__DOT__unnamedblk1__DOT__i = 0U;
     while (VL_GTS_III(32, 0x00004000U, lumi_v1_tb_top__DOT__u_axi_mem__DOT__unnamedblk1__DOT__i)) {

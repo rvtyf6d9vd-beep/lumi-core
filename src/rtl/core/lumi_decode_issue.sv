@@ -78,7 +78,8 @@ module lumi_decode_issue #(
     localparam logic [6:0] OP_FSTORE = 7'b0100111;  // FP Store
     localparam logic [6:0] OP_FP     = 7'b1010011;  // FP Compute
     localparam logic [6:0] OP_CUSTOM0 = 7'b0001011; // Zimop may-be-operations
-    localparam logic [6:0] OP_ZICOND  = 7'b0111011; // Zicond: CZERO.EQZ/CZERO.NEZ
+    localparam logic [6:0] OP_ZICOND     = 7'b0110011; // Zicond CZERO.EQZ (within OP_REG)
+    localparam logic [6:0] OP_ZICOND_IMM = 7'b0010011; // Zicond CZERO.NEZ (within OP_IMM)
 
     // ═══════════════════════════════════════════════════════════
     // 解码结构体
@@ -299,8 +300,12 @@ module lumi_decode_issue #(
                     dec[i].has_rs1 = 1'b1;
                     dec[i].has_rs2 = 1'b1;
                     dec[i].imm     = 32'h0;
+                    // ERR-093: Check for Zicond CZERO.EQZ (funct7=0000111, funct3=011)
+                    if (tmp_inst[31:25] == 7'b0000111 && tmp_inst[14:12] == 3'b011) begin
+                        dec[i].fu_type = FU_ALU;
+                        dec[i].valid = 1'b0;  // Not implemented, trigger illegal instruction
                     // M-extension: funct7 == 7'b0000001
-                    if (tmp_inst[31:25] == 7'b0000001) begin
+                    end else if (tmp_inst[31:25] == 7'b0000001) begin
                         if (tmp_inst[14:12] < 3'b100)
                             dec[i].fu_type = FU_MUL;
                         else
@@ -315,6 +320,11 @@ module lumi_decode_issue #(
                     dec[i].has_rs1 = 1'b1;
                     dec[i].imm = {{20{tmp_inst[31]}}, tmp_inst[31:20]};
                     dec[i].fu_type = FU_ALU;
+                    // ERR-093: Check for Zicond CZERO.NEZ (funct7=0000111, funct3=011)
+                    if (tmp_inst[31:25] == 7'b0000111 && tmp_inst[14:12] == 3'b011) begin
+                        dec[i].has_rs2 = 1'b1;  // rs2 field used for CZERO.NEZ
+                        dec[i].valid = 1'b0;    // Not implemented, trigger illegal instruction
+                    end
                 end
 
                 // ── LUI ──
@@ -400,15 +410,6 @@ module lumi_decode_issue #(
                     dec[i].has_rs2 = 1'b1;
                     dec[i].fu_type = FU_FP;
                     dec[i].valid = 1'b0;  // ERR-064: illegal (FPU not implemented)
-                end
-
-                // ── Zicond: CZERO.EQZ / CZERO.NEZ (OP_ZICOND = 0111011) ──
-                OP_ZICOND: begin
-                    dec[i].has_rs1 = 1'b1;
-                    dec[i].has_rs2 = 1'b1;
-                    dec[i].fu_type = FU_ALU;
-                    // Placeholder: trigger illegal instruction until implemented
-                    // Implemented when Zicond profile is enabled
                 end
 
                 // ── Zicbom/Zicbop/Zicboz: Cache Block Operations (OP_MISC funct3=010) ──
@@ -654,10 +655,10 @@ module lumi_decode_issue #(
                     i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
                 end
                 // ERR-066~069: Unimplemented ISA extensions trigger illegal instruction
-                // Zicond (0111011), Zimop (0001011), cache block ops (MISC-MEM funct3=010)
+                // Cache block ops (MISC-MEM funct3=010) only
+                // ERR-093: Zicond (OP_ZICOND/OP_ZICOND_IMM) handled via valid=0 in decode
+                // ERR-094: Zimop (OP_CUSTOM0) is NOP, not illegal
                 if (d_inst_valid[issue_sel[s]] && (
-                    tmp_dec_d.opcode == OP_ZICOND ||
-                    tmp_dec_d.opcode == OP_CUSTOM0 ||
                     (tmp_dec_d.opcode == OP_FENCE && d_instructions[issue_sel[s]][14:12] == 3'b010)
                 )) begin
                     i_issue[s].exc_valid = 1'b1;
