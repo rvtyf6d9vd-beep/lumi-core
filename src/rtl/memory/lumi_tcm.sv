@@ -44,6 +44,7 @@ module lumi_tcm #(
     input  logic                    dma_wvalid,
     output logic                    dma_wready,
     input  logic [31:0]             dma_araddr,
+    input  logic [31:0]             dma_addr,
     input  logic                    dma_arvalid,
     output logic                    dma_arready,
     output logic [31:0]             dma_rdata,
@@ -69,19 +70,36 @@ module lumi_tcm #(
 
     // ─── 地址解码 ────────────────────────────────────────────
     logic itcm_hit, dtcm0_hit, dtcm1_hit, any_hit;
+    logic core_itcm_hit, core_dtcm0_hit, core_dtcm1_hit, core_any_hit;
+    logic [31:0] active_addr;
     logic [12:0] bank_offset;  // 字偏移 (13 bit for 8192 words)
 
-    assign itcm_hit  = (core_addr >= ITCM_BASE)  && (core_addr < ITCM_BASE  + ITCM_SIZE);
-    assign dtcm0_hit = (core_addr >= DTCM0_BASE) && (core_addr < DTCM0_BASE + DTCM_SIZE);
-    assign dtcm1_hit = (core_addr >= DTCM1_BASE) && (core_addr < DTCM1_BASE + DTCM_SIZE);
+    // 核心侧独立命中 (用于 core_hit 输出)
+    assign core_itcm_hit  = (core_addr >= ITCM_BASE)  && (core_addr < ITCM_BASE  + ITCM_SIZE);
+    assign core_dtcm0_hit = (core_addr >= DTCM0_BASE) && (core_addr < DTCM0_BASE + DTCM_SIZE);
+    assign core_dtcm1_hit = (core_addr >= DTCM1_BASE) && (core_addr < DTCM1_BASE + DTCM_SIZE);
+    assign core_any_hit   = core_itcm_hit || core_dtcm0_hit || core_dtcm1_hit;
+    assign core_hit       = core_any_hit;
+
+    // DMA 状态使用独立 dma_addr (已锁存到 dma_addr_reg)
+    always_comb begin
+        if (state_reg == ST_DMA_READ || state_reg == ST_DMA_WRITE ||
+            (state_reg == ST_ECC_CHECK && dma_pending))
+            active_addr = dma_addr_reg;
+        else
+            active_addr = core_addr;
+    end
+
+    assign itcm_hit  = (active_addr >= ITCM_BASE)  && (active_addr < ITCM_BASE  + ITCM_SIZE);
+    assign dtcm0_hit = (active_addr >= DTCM0_BASE) && (active_addr < DTCM0_BASE + DTCM_SIZE);
+    assign dtcm1_hit = (active_addr >= DTCM1_BASE) && (active_addr < DTCM1_BASE + DTCM_SIZE);
     assign any_hit   = itcm_hit || dtcm0_hit || dtcm1_hit;
-    assign core_hit  = any_hit;
 
     // 字偏移计算 (去掉区域基址)
     always_comb begin
-        if (itcm_hit)       bank_offset = core_addr[14:2];  // [14:2] for 32KB
-        else if (dtcm0_hit) bank_offset = core_addr[14:2];
-        else if (dtcm1_hit) bank_offset = core_addr[14:2];
+        if (itcm_hit)       bank_offset = active_addr[14:2];  // [14:2] for 32KB
+        else if (dtcm0_hit) bank_offset = active_addr[14:2];
+        else if (dtcm1_hit) bank_offset = active_addr[14:2];
         else                bank_offset = 13'h0;
     end
 
@@ -266,6 +284,23 @@ module lumi_tcm #(
                 dma_rvalid_reg <= 1'b0;
             end
 
+            // DMA 地址/数据锁存 (使用独立 dma_addr)
+            if (state_reg == ST_IDLE && !(core_valid && any_hit)) begin
+                if (dma_arvalid) begin
+                    dma_addr_reg  <= dma_addr;
+                    dma_wdata_reg <= dma_wdata;
+                    dma_is_write  <= 1'b0;
+                    dma_pending   <= 1'b1;
+                end else if (dma_awvalid && dma_wvalid) begin
+                    dma_addr_reg  <= dma_addr;
+                    dma_wdata_reg <= dma_wdata;
+                    dma_is_write  <= 1'b1;
+                    dma_pending   <= 1'b1;
+                end
+            end else if ((state_reg == ST_DMA_WRITE || state_reg == ST_ECC_CHECK) && dma_pending) begin
+                dma_pending <= 1'b0;
+            end
+
             // ECC 回写 (CE 纠正后写回, 使用组合信号 ecc_wb_req)
             if (ecc_wb_req) begin
                 if (ecc_wb_itcm) begin
@@ -308,7 +343,7 @@ module lumi_tcm #(
             end
 
             // DMA 写入
-            if (state_reg == ST_DMA_WRITE && !dma_pending) begin
+            if (state_reg == ST_DMA_WRITE && dma_pending) begin
                 if (itcm_hit) begin
                     itcm_mem[bank_offset] <= dma_wdata_reg;
                     if (ECC_EN) ecc_itcm[bank_offset] <= ecc_encode(dma_wdata_reg);
@@ -449,10 +484,7 @@ module lumi_tcm #(
     assign dma_rvalid = dma_rvalid_reg;
     assign dma_bvalid = dma_bvalid_reg;
 
-    // DMA 地址锁存 (用于 bank_offset 计算)
-    // 注意: DMA 地址复用 core_addr 解码逻辑
-    // 简化: DMA 地址直接使用 dma_araddr/dma_awaddr 进行命中判断
-    // 由于 bank_offset 基于 core_addr, DMA 场景需要额外处理
-    // 此处简化: DMA 命中判断在组合逻辑中使用 dma 地址
+    // DMA 地址已独立: DMA 状态使用 dma_addr (锁存到 dma_addr_reg),
+    // ITCM/DTCM bank 选择不再复用 core_addr。
 
 endmodule
