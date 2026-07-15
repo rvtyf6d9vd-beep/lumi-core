@@ -34,6 +34,10 @@ build/
 *.hex
 coverage.dat
 
+# V1 simulation trace outputs (too large for GitHub)
+tests/results/*-trace.dat
+tests/results/*-realtime-trace.dat
+
 # ── IDE / 编辑器 ──
 .qoder/
 .vscode/
