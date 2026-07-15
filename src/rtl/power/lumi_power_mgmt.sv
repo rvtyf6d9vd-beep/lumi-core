@@ -7,6 +7,7 @@ module lumi_power_mgmt #(parameter int NUM_HARTS = lumi_pkg::NUM_HARTS) (
     input  logic clk_core, input  logic reset_n,
     input  logic wfi_req, input  logic wrs_req,
     input  logic core_active,
+    input  logic irq_pending,   // ERR-073: interrupt pending for wake-up
     output logic icg_en,        // ICG 时钟门控使能
     output logic core_sleep,    // Core 进入 sleep
     output logic [NUM_HARTS-1:0] hart_sleep,
@@ -39,7 +40,7 @@ module lumi_power_mgmt #(parameter int NUM_HARTS = lumi_pkg::NUM_HARTS) (
 
     // ─── 唤醒事件检测 ───────────────────────────────────────────
     logic wake_event;
-    assign wake_event = core_active || reservation_invalidate || !sys_reset_n;
+    assign wake_event = core_active || irq_pending || reservation_invalidate || !sys_reset_n;
 
     // ─── ICG 模块级门控信号 ─────────────────────────────────────
     logic icg_fpu_en, icg_vec_en, icg_tcm_en;
@@ -126,6 +127,17 @@ module lumi_power_mgmt #(parameter int NUM_HARTS = lumi_pkg::NUM_HARTS) (
     assign core_reset_n = sys_reset_n;
     assign bus_reset_n  = sys_reset_n;
 
+    // ─── ERR-073: Idle duration counter for ST_IDLE → ST_SLEEP ───
+    logic [3:0] idle_cnt;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n)
+            idle_cnt <= 4'h0;
+        else if (state_reg == ST_IDLE && !wake_event)
+            idle_cnt <= idle_cnt + 4'h1;
+        else
+            idle_cnt <= 4'h0;
+    end
+
     // ─── 主 FSM ─────────────────────────────────────────────────
     always_comb begin
         state_next = state_reg;
@@ -158,6 +170,9 @@ module lumi_power_mgmt #(parameter int NUM_HARTS = lumi_pkg::NUM_HARTS) (
                     state_next = ST_WAKEUP;
                 else if (deep_sleep_req)
                     state_next = ST_DEEP_SLEEP;
+                else if (idle_cnt >= 4'd4)
+                    // ERR-073: Sustained idle → ST_SLEEP (deeper power saving)
+                    state_next = ST_SLEEP;
             end
 
             ST_SLEEP: begin
