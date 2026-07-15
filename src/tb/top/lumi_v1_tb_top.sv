@@ -47,7 +47,7 @@ module lumi_v1_tb_top;
   logic [7:0]   m_axi_awlen, m_axi_arlen;
   logic [2:0]   m_axi_awsize, m_axi_arsize;
   logic [1:0]   m_axi_awburst, m_axi_arburst;
-  logic         m_axi_awvalid, m_axi_awready;
+  logic         m_axi_awvalid, m_axi_awready, m_axi_arvalid, m_axi_arready;
   logic [127:0] m_axi_wdata;
   logic [15:0]  m_axi_wstrb;
   logic         m_axi_wlast, m_axi_wvalid, m_axi_wready;
@@ -184,18 +184,66 @@ module lumi_v1_tb_top;
   wire        v1_dc_we     = u_dut.dc_we;
   wire        v1_dc_ready  = u_dut.dc_ready;
   wire [31:0] v1_dc_addr   = u_dut.dc_addr;
+  // ERR-026 调试: 暴露 SRAM 写入跟踪
+  wire [31:0] v1_last_we_addr  = u_dut.last_sram_we_addr;
+  wire [31:0] v1_last_we_wdata = u_dut.last_sram_we_wdata;
+  wire [3:0]  v1_last_we_be    = u_dut.last_sram_we_be;
+  wire [31:0] v1_we_count      = u_dut.sram_we_count;
 
-  // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试)
-  wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
-  wire w_f2_valid  = u_dut.gen_single_core.u_core.f2_valid;
-  wire [31:0] w_f2_pc = u_dut.gen_single_core.u_core.f2_pc;
+  // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
+  // wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
+  // wire w_f2_valid  = u_dut.gen_single_core.u_core.f2_valid;
+  // wire [31:0] w_f2_pc = u_dut.gen_single_core.u_core.f2_pc;
+  // initial begin
+  //   wait(reset_n);
+  //   for (int i = 0; i < 50; i++) begin
+  //     @(posedge clk_core);
+  //     if (commit_valid_all != 3'b0 || w_dec_stall || w_f2_valid)
+  //     $display("[DBG] cyc=%0d commit=%b pc0=0x%08h f2v=%b f2pc=0x%08h stall=%b",
+  //              i, commit_valid_all, commit_pc_0, w_f2_valid, w_f2_pc, w_dec_stall);
+  //   end
+  // end
+
+  // ─── DBG: CoreMark 卡死诊断 (前 1000 周期) ──────────────────
+  // 已注释保留 (ERR-025 诊断): 显示 dec_stall + dc_ready + 当前 PC, 用于诊断 sw stall
+  // initial begin
+  //   logic [31:0] last_pc0;
+  //   int stall_count;
+  //   wait (reset_n);
+  //   last_pc0 = 32'h0;
+  //   stall_count = 0;
+  //   for (int i = 0; i < 5000; i++) begin
+  //     @(posedge clk_core);
+  //     if (commit_valid_all[0] && commit_pc_0 == 32'h24) begin
+  //       $display("[STALL-DBG] cyc=%0d: sw zero 0x24 committed", i);
+  //       stall_count = 0;
+  //     end else if (commit_valid_all == 3'b0) begin
+  //       stall_count++;
+  //       if (stall_count == 1000 || stall_count == 5000 || stall_count == 10000 || stall_count == 50000 || stall_count == 100000) begin
+  //         $display("[STALL-DBG] cyc=%0d: NO commit for %0d cycles, f2_pc=0x%08h dc_valid=%b dc_we=%b dc_ready=%b dc_addr=0x%08h",
+  //                  i, stall_count, u_dut.gen_single_core.u_core.f2_pc,
+  //                  v1_dc_valid, v1_dc_we, v1_dc_ready, v1_dc_addr);
+  //       end
+  //     end else begin
+  //       stall_count = 0;
+  //     end
+  //   end
+  // end
+
+  // ─── DEBUG: 提交指令追踪 ────────────────────────────────
   initial begin
     wait(reset_n);
-    for (int i = 0; i < 50; i++) begin
+    for (int d = 0; d < 200; d++) begin
       @(posedge clk_core);
-      if (commit_valid_all != 3'b0 || w_dec_stall || w_f2_valid)
-      $display("[DBG] cyc=%0d commit=%b pc0=0x%08h f2v=%b f2pc=0x%08h stall=%b",
-               i, commit_valid_all, commit_pc_0, w_f2_valid, w_f2_pc, w_dec_stall);
+      if (|commit_valid_all) begin
+        for (int s = 0; s < 3; s++) begin
+          if (commit_valid_all[s]) begin
+            $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h raw=0x%04h comp=%b op=0x%02h",
+                     d, s, commit_pc_packed[s], commit_inst_packed[s], commit_inst_raw_packed[s],
+                     (commit_inst_raw_packed[s][1:0] != 2'b11), commit_inst_packed[s][6:0]);
+          end
+        end
+      end
     end
   end
 
@@ -253,6 +301,17 @@ module lumi_v1_tb_top;
     if ($value$plusargs("itcm_file=%s", itcm_file)) begin
       $display("[V1] Loading V1 SRAM: %s", itcm_file);
       $readmemh(itcm_file, u_dut.v1_sram);
+      // 调试: 验证加载
+      $display("[V1-DEBUG] v1_sram[0]=0x%08h v1_sram[1]=0x%08h v1_sram[2]=0x%08h",
+               u_dut.v1_sram[0], u_dut.v1_sram[1], u_dut.v1_sram[2]);
+      $display("[V1-DEBUG] v1_sram[3]=0x%08h v1_sram[4]=0x%08h",
+               u_dut.v1_sram[3], u_dut.v1_sram[4]);
+      $display("[V1-DEBUG] v1_sram[0x4000]=0x%08h v1_sram[0x4001]=0x%08h",
+               u_dut.v1_sram[16384], u_dut.v1_sram[16385]);
+      $display("[V1-DEBUG] v1_sram[0x4002]=0x%08h v1_sram[0x4003]=0x%08h",
+               u_dut.v1_sram[16386], u_dut.v1_sram[16387]);
+    end else begin
+      $display("[V1-DEBUG] No itcm_file plusarg");
     end
   end
 
@@ -330,6 +389,25 @@ module lumi_v1_tb_top;
   int unsigned pass_count;
   int unsigned fail_count;
 
+  // ─── ERR-027 调试: 进度监控器 (每 2M 周期打印) ─────────────
+  wire [31:0] mon_total_retired = u_sb.total_retired;
+  wire [31:0] mon_pc_0 = u_dut.gen_single_core.u_core.m_result_r[0];
+  wire        mon_mem_busy = u_dut.gen_single_core.u_core.mem_busy;
+
+  initial begin
+    wait(reset_n);
+    forever begin
+      #(CLK_PERIOD_CORE * 2_000_000);  // 每 2M 周期
+      $display("[PROGRESS] cycle=%0d retired=%0d we_count=%0d mem_busy=%0b pc0=0x%08h",
+               cycle_count, mon_total_retired, v1_we_count, mon_mem_busy, commit_pc_0);
+      // ERR-043: 安全超时 (防止 Verilator wait() 未触发)
+      if (cycle_count > 32'd4_000_000_000) begin
+        $display("[PROGRESS] SAFETY TIMEOUT at %0d cycles", cycle_count);
+        $finish;
+      end
+    end
+  end
+
   initial begin
     pass_count = 0;
     fail_count = 0;
@@ -343,8 +421,23 @@ module lumi_v1_tb_top;
     wait (reset_n);
     #100;
 
-    // 等待 scoreboard 检测结束 或 超时 (Verilator: 不用 fork)
-    wait (u_sb.test_done || cycle_count > 5_000_000);
+    // ERR-025 验证: 实时 trace 监控 (同时 +dump_trace 即启用)
+    if ($test$plusargs("dump_trace")) begin
+      u_mon.enable_realtime_trace("tests/results/v1-realtime-trace.dat");
+    end
+
+    // 等待 scoreboard 检测结束 或 超时
+    // ERR-043 修复: Verilator --timing 模式下 wait(level-sensitive) 调度不可靠,
+    // 改用 edge-triggered 循环确保超时条件被及时评估
+    begin
+      int unsigned max_cyc;
+      max_cyc = 10_000_000; // 默认 10M 周期
+      if ($value$plusargs("max_cycles=%d", max_cyc))
+        $display("[V1] max_cycles = %0d", max_cyc);
+      @(posedge clk_core);
+      while (!(u_sb.test_done || cycle_count > max_cyc))
+        @(posedge clk_core);
+    end
     if (u_sb.test_done) begin
       #100;
       if (u_sb.exit_code == 0) begin
@@ -375,15 +468,51 @@ module lumi_v1_tb_top;
     // 导出覆盖率和跟踪
     if ($test$plusargs("dump_cov"))
       u_cov.dump_coverage("tests/results/v1-coverage.dat");
-    if ($test$plusargs("dump_trace"))
+    if ($test$plusargs("dump_trace")) begin
+      u_mon.disable_realtime_trace();  // 先关闭实时,避免双写
       u_mon.dump_trace("tests/results/v1-trace.dat");
+    end
+
+    // ─── V1 Benchmark Result Dump (0x3FFE0) ─────────────────────
+    begin
+      // 0x3FFE0 / 4 = 65528 = 0xFFF8
+      logic [31:0] r_magic, r_bench_id, r_iters, r_ticks, r_metric, r_checks;
+      r_magic    = u_dut.v1_sram[65528]; // 0x3FFE0
+      r_bench_id = u_dut.v1_sram[65529]; // 0x3FFE4
+      r_iters    = u_dut.v1_sram[65530]; // 0x3FFE8
+      r_ticks    = u_dut.v1_sram[65531]; // 0x3FFEC
+      r_metric   = u_dut.v1_sram[65532]; // 0x3FFF0
+      r_checks   = u_dut.v1_sram[65533]; // 0x3FFF4
+      $display("\n============================================");
+      $display(" V1 Benchmark Results (0x3FFE0)");
+      $display("============================================");
+      $display(" magic      = 0x%08h %s", r_magic,
+               (r_magic == 32'hDEADBEEF) ? "(VALID)" : "(INVALID - benchmark did not write results)");
+      $display(" bench_id   = %0d %s", r_bench_id,
+               (r_bench_id == 1) ? "(CoreMark)" : (r_bench_id == 2) ? "(Dhrystone)" : "(unknown)");
+      $display(" iterations = %0d", r_iters);
+      $display(" total_ticks= %0d", r_ticks);
+      $display(" metric_x100= %0d", r_metric);
+      $display(" checks     = %0d %s", r_checks, (r_checks == 0) ? "(PASS)" : "(FAIL)");
+      $display("============================================");
+      $display(" [ERR-026-DBG] SRAM write count: %0d", v1_we_count);
+      $display(" [ERR-026-DBG] last_we_addr: 0x%08h", v1_last_we_addr);
+      $display(" [ERR-026-DBG] last_we_wdata: 0x%08h", v1_last_we_wdata);
+      $display(" [ERR-026-DBG] last_we_be: 0x%01h", v1_last_we_be);
+      $display(" [ERR-026-DBG] v1_sram[65528]=0x%08h (should be 0xDEADBEEF if written)",
+               u_dut.v1_sram[65528]);
+      $display(" [ERR-026-DBG] v1_sram[65529]=0x%08h (should be 1 for CoreMark)",
+               u_dut.v1_sram[65529]);
+      $display("============================================\n");
+    end
 
     $finish;
   end
 
   // ─── 超时保护 ──────────────────────────────────────────────
   initial begin
-    #50_000_000; // 50ms
+    // ERR-026 修复: 8s→64s sim time, 800M cycles @ 50MHz = 16s, 64s 充分覆盖
+    #64_000_000_000; // 64 seconds simulation time (3.2B cycles at 50MHz)
     $display("[TIMEOUT] Simulation timeout at %0t", $time);
     $finish;
   end

@@ -12,7 +12,7 @@ module lumi_fetch #(
     parameter int BTB_ENTRIES  = lumi_pkg::BTB_ENTRIES,   // 8192
     parameter int RAS_DEPTH    = lumi_pkg::RAS_DEPTH,     // 32
     parameter int LTAGE_TABLES = lumi_pkg::LTAGE_TABLES,  // 12
-    parameter int RESET_VECTOR = 32'h0001_0000
+    parameter int RESET_VECTOR = 32'h0000_0000
 ) (
     input  logic                    clk_core,
     input  logic                    reset_n,

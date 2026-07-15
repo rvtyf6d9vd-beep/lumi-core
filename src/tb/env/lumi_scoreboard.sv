@@ -30,8 +30,16 @@ module lumi_scoreboard #(
   logic [31:0] last_commit_pc;
   int unsigned spin_count;
 
+  // ─── PC restart 检测 (调试用) ─────────────────────────────
+  int unsigned restart_count;
+  logic [31:0] prev_commit_pc;
+  logic        prev_had_commit;
+
   // ─── 寄存器文件快照 (用于跨周期跟踪) ──────────────────────
   logic [31:0] reg_file [0:31];  // x0 固定为 0
+
+  // ─── Trace 开关 (默认关闭, +dump_trace 启用) ──────
+  logic trace_enable;
 
   initial begin
     test_done = 1'b0;
@@ -43,6 +51,10 @@ module lumi_scoreboard #(
     cycle_cnt = 0;
     last_commit_pc = 32'h0;
     spin_count = 0;
+    restart_count = 0;
+    prev_commit_pc = 32'h0;
+    prev_had_commit = 1'b0;
+    trace_enable = $test$plusargs("dump_trace");
     for (int i = 0; i < 32; i++) reg_file[i] = 32'h0;
   end
 
@@ -85,15 +97,15 @@ module lumi_scoreboard #(
       end
     end
 
-    // Spin loop 检测: slot 0 连续提交相同 PC (j spin 循环)
+    // Spin loop 检测: 仅检测 JAL (opcode=0x6F) 类 spin: j . (无条件跳转到自身)
     if (!found_ecall && commit_valid[0] && !test_done &&
         commit_pc[0] == last_commit_pc && commit_pc[0] != 32'h0) begin
-      if (spin_count >= 3) begin
+      if (commit_inst[0][6:0] == 7'h6F && spin_count >= 3) begin
         found_ecall   = 1'b1;
         ecall_a0_comb = 32'h0;        // spin = PASS
         ecall_pc_comb = commit_pc[0];
-        $display("[SB] Spin loop detected at PC=0x%08h (spin_count=%0d, cycle=%0d)",
-                 commit_pc[0], spin_count, cycle_cnt);
+        $display("[SB] Spin loop (JAL) at PC=0x%08h inst=0x%08h spin_count=%0d cycle=%0d",
+                 commit_pc[0], commit_inst[0], spin_count, cycle_cnt);
       end
     end
   end
@@ -108,6 +120,9 @@ module lumi_scoreboard #(
       cycle_cnt    <= 0;
       last_commit_pc <= 32'h0;
       spin_count   <= 0;
+      restart_count <= 0;
+      prev_commit_pc <= 32'h0;
+      prev_had_commit <= 1'b0;
       for (int i = 0; i < 32; i++) reg_file[i] <= 32'h0;
     end else begin
       cycle_cnt <= cycle_cnt + 1;
@@ -118,13 +133,26 @@ module lumi_scoreboard #(
 
       total_retired <= total_retired + retired_this_cycle;
 
-      // 调试: 跟踪每条 commit 的指令
-      if (retired_this_cycle > 0) begin
+      // 调试: 跟踪每条 commit 的指令 (仅在 +dump_trace 时启用)
+      if (retired_this_cycle > 0 && trace_enable) begin
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
           if (commit_valid[s])
             $display("[TRACE] cyc=%0d s=%0d pc=0x%08h inst=0x%08h",
                      cycle_cnt, s, commit_pc[s], commit_inst[s]);
         end
+      end
+
+      // PC Restart 检测: 当 PC 回到 0x0 且之前有非零 PC 提交
+      if (commit_valid[0] && commit_pc[0] == 32'h0 && prev_had_commit && prev_commit_pc != 32'h0) begin
+        restart_count <= restart_count + 1;
+        if (restart_count < 5) begin
+          $display("[RESTART] cyc=%0d: PC jumped from 0x%08h back to 0x0 (restart #%0d)",
+                   cycle_cnt, prev_commit_pc, restart_count + 1);
+        end
+      end
+      if (commit_valid[0]) begin
+        prev_commit_pc <= commit_pc[0];
+        prev_had_commit <= 1'b1;
       end
 
       // ECALL 检测
@@ -144,9 +172,6 @@ module lumi_scoreboard #(
         if (commit_valid[0]) begin
           if (commit_pc[0] == last_commit_pc) begin
             spin_count <= spin_count + 1;
-            if (spin_count >= 2)
-              $display("[SB-SPIN] cycle=%0d: spin_count=%0d pc0=0x%08h (match)",
-                       cycle_cnt, spin_count + 1, commit_pc[0]);
           end else begin
             spin_count <= 1;
             last_commit_pc <= commit_pc[0];
@@ -163,6 +188,7 @@ module lumi_scoreboard #(
     $display(" Scoreboard Report");
     $display("===========================================");
     $display(" Total Retired: %0d", total_retired);
+    $display(" PC Restarts:  %0d", restart_count);
     if (test_done) begin
       if (exit_code == 0)
         $display(" Test Result:   PASS (exit_code=0)");

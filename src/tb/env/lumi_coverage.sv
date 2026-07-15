@@ -147,22 +147,23 @@ module lumi_coverage #(
   // ── 诊断: 追踪 CSR/FENCE 到达 commit ──────────────────
   always_ff @(posedge clk_core) begin
     if (reset_n) begin
-      for (int s = 0; s < ISSUE_WIDTH; s++) begin
-        if (commit_valid[s] && !is_compressed[s]) begin
-          if (opcode[s] == 7'b1110011 || opcode[s] == 7'b0001111)
-            $display("[COV-DBG] t=%0t s=%0d cv=%0b op=%07b f3=%03b inst=%08h",
-                     $time, s, commit_valid[s], opcode[s], funct3[s], commit_inst[s]);
-        end
-        // 即使 commit_valid=0, 也追踪 commit_inst 中是否有 CSR/FENCE
-        if (!commit_valid[s] && !is_compressed[s] && commit_inst[s] != 32'h0) begin
-          if (opcode[s] == 7'b1110011 && funct3[s] != 3'b000)
-            $display("[COV-WARN] t=%0t s=%0d CSR not committed! inst=%08h",
-                     $time, s, commit_inst[s]);
-          if (opcode[s] == 7'b0001111)
-            $display("[COV-WARN] t=%0t s=%0d FENCE not committed! inst=%08h",
-                     $time, s, commit_inst[s]);
-        end
-      end
+      // [COV-DBG disabled for speed — re-enable for CSR/FENCE debug]
+      // for (int s = 0; s < ISSUE_WIDTH; s++) begin
+      //   if (commit_valid[s] && !is_compressed[s]) begin
+      //     if (opcode[s] == 7'b1110011 || opcode[s] == 7'b0001111)
+      //       $display("[COV-DBG] t=%0t s=%0d cv=%0b op=%07b f3=%03b inst=%08h",
+      //                $time, s, commit_valid[s], opcode[s], funct3[s], commit_inst[s]);
+      //   end
+      //   if (!commit_valid[s] && !is_compressed[s] && commit_inst[s] != 32'h0) begin
+      //     if (opcode[s] == 7'b1110011 && funct3[s] != 3'b000)
+      //       $display("[COV-WARN] t=%0t s=%0d CSR not committed! inst=%08h",
+      //                $time, s, commit_inst[s]);
+      //     if (opcode[s] == 7'b0001111)
+      //       $display("[COV-WARN] t=%0t s=%0d FENCE not committed! inst=%08h",
+      //                $time, s, commit_inst[s]);
+      //   end
+      // end
+
     end
   end
 

@@ -85,7 +85,8 @@ ee_s32 get_seed_32(int i);
 #endif
 
 #if (MEM_METHOD == MEM_STATIC)
-ee_u8 static_memblk[TOTAL_DATA_SIZE];
+/* SA-8 修复: 强制 8 字节对齐, 避免 RV32 SW/LW misaligned exception */
+ee_u8 static_memblk[TOTAL_DATA_SIZE] __attribute__((aligned(8)));
 #endif
 char *mem_name[3] = { "Static", "Heap", "Stack" };
 /* Function: main
@@ -467,6 +468,39 @@ for (i = 0; i < MULTITHREAD; i++)
         ee_printf(
             "Cannot validate operation for these seed values, please compare "
             "with results on a known platform.\n");
+
+/* ═══════════════════════════════════════════════════════════
+ * V1 TB 性能结果 Dump (0x3FFE0)
+ * 仿真结束时 TB 读取该区域, 格式:
+ *   0x3FFE0 (65528): magic=0xDEADBEEF
+ *   0x3FFE4 (65529): bench_id=1 (CoreMark)
+ *   0x3FFE8 (65530): iterations
+ *   0x3FFEC (65531): total_ticks
+ *   0x3FFF0 (65532): metric_x100 (CM/MHz * 100)
+ *   0x3FFF4 (65533): checks=0 (PASS), non-zero=FAIL
+ * ═══════════════════════════════════════════════════════════ */
+#if defined(GEM5_SIMULATION)
+    {
+        volatile unsigned int *bench_result = (volatile unsigned int *)0x3FFE0;
+        /* metric_x100 计算: CM/MHz * 100 = iters * 1e8 / total_ticks */
+        unsigned long iters = (unsigned long)default_num_contexts
+                              * (unsigned long)results[0].iterations;
+        unsigned long ticks = (unsigned long)total_time;
+        unsigned long metric_x100 = 0;
+        if (ticks > 0) {
+            /* 使用 64-bit 中间变量避免溢出 (RV32 模拟)
+             * CM/MHz = iters * 1e6 / ticks
+             * metric_x100 = CM/MHz * 100 = iters * 1e8 / ticks */
+            metric_x100 = (iters * 100000000ULL) / ticks;
+        }
+        bench_result[0] = 0xDEADBEEFU;  /* magic */
+        bench_result[1] = 1U;            /* bench_id = 1 (CoreMark) */
+        bench_result[2] = (unsigned int)iters;
+        bench_result[3] = (unsigned int)ticks;
+        bench_result[4] = (unsigned int)metric_x100;
+        bench_result[5] = (total_errors != 0) ? 1U : 0U;  /* checks */
+    }
+#endif
 
 #if (MEM_METHOD == MEM_MALLOC)
     for (i = 0; i < MULTITHREAD; i++)

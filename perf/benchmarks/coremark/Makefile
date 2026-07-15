@@ -29,6 +29,10 @@ PORT_DIR  = .
 # other = VALIDATION_RUN
 TOTAL_DATA_SIZE ?= 2000
 
+# 分阶段迭代配置 (默认保持 50, 调试时显式使用 quick/full):
+#   make quick              → ITERATIONS=1, 快速 CRC 校验
+#   make full               → ITERATIONS=15, 中等迭代回归验证
+#   make eembc              → ITERATIONS=50, 正式 EEMBC 跑分
 ITERATIONS ?= 50
 
 CFLAGS = $(OPT) -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-builtin \
@@ -60,9 +64,19 @@ OBJS     = $(ALL_SRCS:.c=.o)
 
 TARGET = coremark.riscv
 
-.PHONY: all clean
+.PHONY: all clean quick full eembc
 
 all: $(TARGET)
+
+# 分阶段快捷 targets
+quick:
+	@$(MAKE) ITERATIONS=1 TOTAL_DATA_SIZE=2000
+
+full:
+	@$(MAKE) ITERATIONS=15 TOTAL_DATA_SIZE=2000
+
+eembc:
+	@$(MAKE) ITERATIONS=50 TOTAL_DATA_SIZE=2000
 
 $(TARGET): $(LIBC_CRT0) $(OBJS) $(LIBC_DIR)/libmini.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS) -lgcc

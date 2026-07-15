@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumi-Core 回归测试报告 — smoke (20260714-233916)</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #0f172a; }
+    h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; }
+    .meta { display: flex; gap: 2rem; flex-wrap: wrap; margin: 1rem 0; font-size: 0.9rem; color: #64748b; }
+    .meta span { background: #f1f5f9; padding: 0.3rem 0.8rem; border-radius: 4px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .card { background: white; border-radius: 8px; padding: 1rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card .num { font-size: 2rem; font-weight: bold; }
+    .card .label { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; }
+    .bar { height: 24px; border-radius: 12px; overflow: hidden; display: flex; margin: 1rem 0; background: #e2e8f0; }
+    .bar .pass { background: #22c55e; }
+    .bar .fail { background: #ef4444; }
+    .bar .skip { background: #f59e0b; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.9rem; }
+    th { background: #f1f5f9; padding: 0.6rem 0.8rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f1f5f9; }
+    tr:hover { background: #f8fafc !important; }
+    code { background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.85em; }
+    .footer { margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; text-align: center; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem; font-weight: bold; color: white; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Lumi-Core 回归测试报告</h1>
+    <div class="meta">
+        <span>Suite: <b>smoke</b></span>
+        <span>日期: 20260714</span>
+        <span>工具链: <code>riscv64-unknown-elf-gcc</code></span>
+        <span>架构: <code>rv32imac_zicsr</code></span>
+    </div>
+
+    <h2>概览</h2>
+    <div class="cards">
+        <div class="card"><div class="num" style="color:#0f172a">6</div><div class="label">总计</div></div>
+        <div class="card"><div class="num" style="color:#22c55e">6</div><div class="label">PASS</div></div>
+        <div class="card"><div class="num" style="color:#ef4444">0</div><div class="label">FAIL</div></div>
+        <div class="card"><div class="num" style="color:#f59e0b">0</div><div class="label">SKIP</div></div>
+        <div class="card"><div class="num" style="color:#3b82f6">100.0%</div><div class="label">通过率</div></div>
+    </div>
+
+    <div class="bar">
+        <div class="pass" style="width:100.0%"></div>
+        <div class="fail" style="width:0.0%"></div>
+        <div class="skip" style="width:0.0%"></div>
+    </div>
+
+    <h2>测试详情</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>测试名称</th><th>状态</th><th>ELF 大小</th><th>入口地址</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+            
+        <tr style="background:#dcfce7">
+            <td>1</td>
+            <td><code>rv32i_smoke</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4960</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>2</td>
+            <td><code>rv32m_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>4912</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>3</td>
+            <td><code>tcm_basic_rw</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5004</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>4</td>
+            <td><code>cache_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5000</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>5</td>
+            <td><code>csr_basic</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5004</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        <tr style="background:#dcfce7">
+            <td>6</td>
+            <td><code>clic_priority</code></td>
+            <td><span style="color:#22c55e;font-weight:bold">PASS</span></td>
+            <td>5480</td>
+            <td><code>0x00000000</code></td>
+            <td style="font-size:0.85em;color:#666"> </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>基准测试 (Dhrystone / CoreMark)</h2>
+    <div style="background:white;border-radius:8px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-top:0.5rem">
+        <p style="color:#64748b;font-size:0.9rem">
+            基准测试通过 <code>make -C perf/benchmarks/coremark</code> 和
+            <code>make -C perf/benchmarks/dhrystone</code> 独立编译运行。
+            完整性能数据见 <a href="../../perf/benchmarks/perf-report.yaml">perf-report.yaml</a>。
+        </p>
+        <table style="margin-top:0.5rem;box-shadow:none">
+            <tr><th>基准测试</th><th>架构</th><th>优化</th><th>目标</th><th>状态</th></tr>
+            <tr><td>CoreMark</td><td><code>rv32imac</code></td><td>-O2 -funroll-loops</td><td>≥ 5.0 CM/MHz</td><td><span style="color:#f59e0b">PENDING (待运行)</span></td></tr>
+            <tr><td>Dhrystone</td><td><code>rv32imac</code></td><td>-O2 -funroll-loops</td><td>≥ 1.5 DMIPS/MHz</td><td><span style="color:#f59e0b">PENDING (待运行)</span></td></tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Lumi-Core Regression Report — Generated 2026-07-14 23:39 UTC</p>
+        <p>规则 [11] 每日集成回归 | 规则 [14] HTML 文档格式与索引</p>
+    </div>
+</div>
+</body>
+</html>

@@ -94,8 +94,28 @@ module lumi_writeback #(
     // ═══════════════════════════════════════════════════════════
     // 仲裁策略: 槽 0 → W 端口 0, 槽 1 → W 端口 1, 槽 2 → 下周期
     // E2 级 (MUL/DIV): 独立路径, 抢占 W 端口 1
+    // SA-5 修复: 槽 2 被丢时延迟到下周期, 避免 3-slot 全有效场景下数据丢失
 
     logic [ISSUE_WIDTH-1:0] wr_select;  // 被选中写回的指令
+
+    // ── SA-5: Slot 2 延迟寄存的输出数据 (下周期尝试写回) ──
+    logic                    slot2_pending;       // slot 2 有待写回数据
+    logic [4:0]              slot2_rd_r;          // slot 2 的目标寄存器
+    logic [31:0]             slot2_data_r;        // slot 2 的数据
+    logic [31:0]             slot2_pc_r;          // slot 2 的 PC (用于 commit 跟踪)
+    logic [31:0]             slot2_inst_r;        // slot 2 的指令字 (用于 commit 跟踪)
+    logic                    slot2_is_csr_r;      // slot 2 是否 CSR 指令
+    logic [31:0]             slot2_csr_rdata_r;   // slot 2 的 CSR 读取值
+
+    // ── SA-5: 检测槽 2 是否需要延迟 ──
+    logic slot2_need_stall;
+    always_comb begin
+        slot2_need_stall = 1'b0;
+        if (w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] &&
+            w_valid[0] && w_valid[1] && !e2_mul_valid && !e2_div_valid) begin
+            slot2_need_stall = 1'b1;
+        end
+    end
 
     always_comb begin
         regfile_wr_en    = 2'b00;
@@ -157,6 +177,40 @@ module lumi_writeback #(
             else
                 regfile_wr_data[1]  = w_result[2];
             wr_select[2]        = 1'b1;
+        end
+
+        // ── SA-5: Slot 2 延迟数据抢占 (槽 0/1 都忙且无 E2 抢占) ──
+        // 上周期被stall的slot 2, 本周期尝试写回 (优先级最低)
+        if (slot2_pending && !regfile_wr_en[0] && !regfile_wr_en[1] &&
+            !e2_mul_valid && !e2_div_valid) begin
+            regfile_wr_en[1]    = 1'b1;
+            regfile_wr_addr[1]  = slot2_rd_r;
+            regfile_wr_data[1]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+        end
+    end
+
+    // ── SA-5: 寄存被stall的slot 2数据 (下周期写回) ──
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            slot2_pending     <= 1'b0;
+            slot2_rd_r        <= 5'h0;
+            slot2_data_r      <= 32'h0;
+            slot2_pc_r        <= 32'h0;
+            slot2_inst_r      <= 32'h0;
+            slot2_is_csr_r    <= 1'b0;
+            slot2_csr_rdata_r <= 32'h0;
+        end else if (slot2_need_stall) begin
+            // 捕获本周期被stall的slot 2数据
+            slot2_pending     <= 1'b1;
+            slot2_rd_r        <= w_rd[2];
+            slot2_data_r      <= w_result[2];
+            slot2_pc_r        <= w_pc[2];
+            slot2_inst_r      <= w_inst[2].inst;
+            slot2_is_csr_r    <= (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL);
+            slot2_csr_rdata_r <= csr_rdata;
+        end else begin
+            // 本周期成功写回 slot 2, 或本周期slot 2不存在, 清除pending
+            slot2_pending     <= 1'b0;
         end
     end
 

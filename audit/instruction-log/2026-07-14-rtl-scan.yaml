@@ -1,0 +1,163 @@
+# T-RTL-SCAN 操作指令记录
+# 规则 [03] 工作留痕 | 规则 [16] 指令记录
+# 日期: 2026-07-14 (周二) — 计划 ID: Lumi_RTL全局代码扫描_task-d94
+
+task_id: "T-RTL-SCAN"
+date: "2026-07-14"
+phase: "analysis"
+milestone: "M3 RTL 冻结"
+stage: "定期独立全局静态代码扫描"
+plan_id: "Lumi_RTL全局代码扫描_task-d94"
+
+summary: >
+  对 Lumi-Core 全部 28 个 RTL 文件、16 份设计文档、11 个 TB 文件及 66 个 directed 测试
+  执行独立全局静态代码扫描。分析覆盖设计一致性、逻辑缺陷、验证完整性、需求追溯、
+  架构合规五个维度。共发现 49 个问题: 8 Critical + 14 High + 18 Medium + 9 Low。
+  关键发现: SoC 集成层 trap/CLIC/NMI 信号断路 (3× Critical), Cache Evict 丢数据,
+  CSR 写与 HPM 竞争, CDC 同步器短路, E1→M 旁路时序错误, 8/13 Mandatory ISA 扩展缺失。
+  全局参数 (XLEN/AXI/HPM/TCM/Cache/CLIC 等 9 项) 100% 合规。
+
+operations:
+
+  - id: "T-RTL-SCAN.1"
+    title: "Task 1: 设计一致性检查"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "Task 1.1 模块端口与接口一致性: 逐模块比对 28 RTL vs 16 设计文档"
+      - "  发现 9 个偏差 (3 Critical, 3 High, 2 Medium, 1 Low)"
+      - "  Critical: SoC trap 接口硬编码 (DC-01), CLIC CSR 未连接 (DC-02), NMI 硬接0 (DC-03)"
+      - "  High: CDC 短路 (DC-04), TCM DMA 地址复用 (DC-05), PLIC 仅 hart0 (DC-06)"
+      - "Task 1.2 流水线架构一致性: 8 级流水线 + 3 发射确认一致"
+      - "  发现 E1→M MUL/DIV 旁路时序 Critical 问题 (PA-02)"
+      - "  FENCE 仅 1-cycle NOP 不 drain store buffer (PA-04)"
+      - "Task 1.3 SoC 集成一致性: AXI4 128-bit/JTAG/ext_irq 三项接口 PASS"
+    files_read:
+      - "src/rtl/top/lumi_soc_top.sv"
+      - "src/rtl/core/lumi_core_top.sv"
+      - "src/rtl/core/lumi_fetch.sv"
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "src/rtl/core/lumi_execute.sv"
+      - "src/rtl/include/lumi_types_pkg.sv"
+      - "src/rtl/include/lumi_interfaces.sv"
+      - "docs/design/*.html (16 files)"
+      - "docs/architecture/platform-spec.html"
+
+  - id: "T-RTL-SCAN.2"
+    title: "Task 2: 逻辑缺陷检测 (静态分析)"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "Task 2.1 信号完整性: 4 个发现"
+      - "  High: Regfile 双写端口冲突 (SIG-01), MISA_VAL 不正确 (SIG-02)"
+      - "  Medium: BTB 无 ECC (SIG-03) | Low: already_redirected bit 类型 (SIG-04)"
+      - "Task 2.2 时序与竞争: 4 个发现"
+      - "  Critical: CSR/HPM 竞争 (TIM-01), Cache Evict 丢数据 (TIM-02), CDC 短路 (TIM-03)"
+      - "  High: Debug CDC (TIM-04)"
+      - "Task 2.3 状态机完整性: 5 个 FSM 问题"
+      - "  4 Medium (fetch/dft/lockstep/power FSM) + 1 Low (cache FSM 编码)"
+      - "Task 2.4 资源冲突与死代码: 4 个发现"
+      - "  Critical: E1→M 旁路时序 (RES-01)"
+      - "  High: FPU passthrough (RES-02), Vector 仅加法 (RES-03)"
+      - "  Low: inst_raw 低 16-bit 截断 (RES-04)"
+    files_read:
+      - "src/rtl/csr/lumi_csr_unit.sv"
+      - "src/rtl/csr/lumi_regfile.sv"
+      - "src/rtl/memory/lumi_cache.sv"
+      - "src/rtl/memory/lumi_tcm.sv"
+      - "src/rtl/bus/lumi_axi_wrapper.sv"
+      - "src/rtl/bus/lumi_pma_checker.sv"
+      - "src/rtl/fpu/lumi_fpu.sv"
+      - "src/rtl/fpu/lumi_vector.sv"
+      - "src/rtl/power/lumi_power_mgmt.sv"
+      - "src/rtl/multicore/lumi_lockstep.sv"
+      - "src/rtl/dft/lumi_dft_ctrl.sv"
+      - "src/rtl/debug/lumi_debug_module.sv"
+
+  - id: "T-RTL-SCAN.3"
+    title: "Task 3: 验证完整性评估"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "Task 3.1 测试覆盖: 35 Cover Groups 中仅 16 个有测试映射 (46%)"
+      - "  ISA 4/9, 流水线 2/5, 内存 2/6, 中断 2/6, 接口 1/3, 调试 1/6, 多核 0/4"
+      - "Task 3.2 TB 架构: 4 个发现"
+      - "  High: Scoreboard 无 Reference Model (TB-01)"
+      - "  Medium: Coverage 仅 16/35 (TB-02), UVM Shim 有限 (TB-03)"
+      - "Task 3.3 回归套件: smoke(6)/regression(12)/nightly(35) 基本覆盖"
+      - "  High: march rv32imac_zicsr 不含 F/D/V/B/Zce (编译配置覆盖不足)"
+      - "  errata_regression 未映射 known-issues.yaml 全部已解决问题"
+    files_read:
+      - "src/tb/top/lumi_tb_top.sv"
+      - "src/tb/top/lumi_v1_tb_top.sv"
+      - "src/tb/env/"
+      - "src/tb/lib/uvm_shim_pkg.sv"
+      - "src/tb/lumi_scoreboard.sv"
+      - "src/tb/lumi_coverage.sv"
+      - "docs/verification/coverage-plan.yaml"
+      - "docs/verification/verification-strategy.html"
+      - "tests/regression-config.yaml"
+
+  - id: "T-RTL-SCAN.4"
+    title: "Task 4: 需求追溯验证"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "99 条需求 (84 Must + 12 Should + 3 Could) 逐条追溯"
+      - "76 条硬件需求: 基本实现但有功能缺口 (FPU/Vector/ISA 扩展)"
+      - "23 条 N/A 需求: 部分可能需重新分类"
+      - "coverage-plan.yaml traceability_matrix: 7 个 Cover Group 映射不一致 (RM-01)"
+      - "verification-strategy.html §7: 2 个已更名文件引用 (RM-02)"
+    files_read:
+      - "docs/project/baselines/baseline-BL-1.1.html"
+      - "docs/verification/coverage-plan.yaml"
+      - "docs/verification/verification-strategy.html"
+
+  - id: "T-RTL-SCAN.5"
+    title: "Task 5: 架构合规性检查"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "Task 5.1 ISA 合规: 13 Mandatory 扩展中 8 个解码完全缺失 (Critical)"
+      - "  已实现: Zicsr, Zicntr, Zihpm (3/13)"
+      - "  部分: Zifencei (NOP), Zihintpause (NOP)"
+      - "  缺失: Zicbom, Zicbop, Zicboz, Zicond, Zihintntl, Zimop, Zcmop, Ziccamoa"
+      - "Task 5.2 参数合规: 9 项核心参数 100% 合规"
+      - "Task 5.3 编码规范: 3 个发现"
+      - "  High: lumi_core.f 引用不存在文件 (ENC-01)"
+      - "  Medium: 模块头不完整 (ENC-02) | Low: 命名不一致 (ENC-03)"
+    files_read:
+      - "src/rtl/include/lumi_types_pkg.sv"
+      - "src/rtl/lumi_core.f"
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "docs/architecture/platform-spec.html"
+
+  - id: "T-RTL-SCAN.6"
+    title: "Task 6: 报告生成"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "生成 HTML 格式分析报告: audit/compliance-reports/rtl-static-scan-20260714.html"
+      - "报告包含 7 个章节: 执行摘要/设计一致性/逻辑缺陷/验证覆盖/需求追溯/架构合规/改进建议"
+      - "49 个问题按 P0~P3 四级排序: P0 (5项) / P1 (6项) / P2 (7项) / P3 (5项)"
+    output_files:
+      - "audit/compliance-reports/rtl-static-scan-20260714.html"
+      - "audit/instruction-log/2026-07-14-rtl-scan.yaml"
+
+findings_summary:
+  total: 49
+  by_severity:
+    critical: 8
+    high: 14
+    medium: 18
+    low: 9
+  by_category:
+    design_consistency: 12
+    logic_defects: 17
+    verification_coverage: 10
+    requirements_traceability: 4
+    architecture_compliance: 6
+  p0_fix_items: 5
+  p1_fix_items: 6
+  p2_fix_items: 7
+  p3_fix_items: 5

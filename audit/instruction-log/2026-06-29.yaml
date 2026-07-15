@@ -176,3 +176,80 @@ entries:
       - "perf/gem5-model/gem5/src/cpu/minor/execute.cc"
       - "perf/benchmarks/coremark/core_main.c"
       - "perf/gem5-model/configs/gem5-overlay/configs/lumi-lib/lumi_cpu.py"
+
+  # ──────────────────────────────────────────────
+  # 指令 4：更新文档地图和里程碑主计划链接
+  # ──────────────────────────────────────────────
+  - timestamp: "23:30:00"
+    role: pm-infra
+    session_mode: main
+    action: update_document
+    details:
+      description: >
+        更新 docs/index.html 文档地图和 docs/project/master-plan.html 里程碑主计划，
+        添加项目流程图链接，建立三页互连导航。
+      user_request: >
+        更新 docs/index.html 及其相关页面的链接状态。
+      steps:
+        - "step 1: 在 index.html 核心项目文档区域添加项目流程图卡片（含新增标签）"
+        - "step 2: 移除项目管理区域的重复流程图链接"
+        - "step 3: 更新 index.html 页脚日期为 2026-06-29"
+        - "step 4: 在 master-plan.html 顶部导航添加项目流程图链接"
+        - "step 5: 在 project-flowchart.html 添加里程碑主计划链接"
+      rules_checked: ["03", "14"]
+    outcome: >
+      成功。完成三页互连导航：index.html (文档地图) ↔ master-plan.html (里程碑主计划)
+      ↔ project-flowchart.html (项目流程图)。项目流程图已提升至核心文档区域。
+    files_changed:
+      - "docs/index.html"
+      - "docs/project/master-plan.html"
+      - "docs/project/project-flowchart.html"
+
+  # ──────────────────────────────────────────────
+  # 指令 5：更新 M2-M3 总结报告导航链接
+  # ──────────────────────────────────────────────
+  - timestamp: "23:45:00"
+    role: pm-infra
+    session_mode: main
+    action: update_document
+    details:
+      description: >
+        更新 audit/m2-m3-summary-20260707.html 添加导航链接，
+        并在 index.html 审计区域添加该报告入口。
+      user_request: >
+        检查并更新 audit/m2-m3-summary-20260707.html 页面的相关信息。
+      steps:
+        - "step 1: 在 m2-m3-summary 页面顶部添加导航栏（文档地图/里程碑主计划/项目流程图）"
+        - "step 2: 在 index.html 合规报告区域添加 M2→M3 总结报告链接"
+      rules_checked: ["03", "14"]
+    outcome: >
+      成功。M2-M3 总结报告已添加三页导航链接，index.html 审计区域已添加报告入口。
+    files_changed:
+      - "audit/m2-m3-summary-20260707.html"
+      - "docs/index.html"
+
+  # ─────────────────────────────────────────────
+  # 指令 6：更新 M2 里程碑状态为 Completed
+  # ──────────────────────────────────────────────
+  - timestamp: "23:55:00"
+    role: pm-infra
+    session_mode: main
+    action: update_document
+    details:
+      description: >
+        根据 M2→M3 总结报告，更新 master-plan.html 中 M2 状态从 In Progress 改为 Completed，
+        同步更新 index.html 里程碑进度条。
+      user_request: >
+        根据 m2-m3-summary-20260707.html 判断 MS2 的状态是否需要更新。
+      steps:
+        - "step 1: 分析 m2-m3-summary 确认 M2 已完成 (Sign-off 4/4 PASS, 完成日期 2026-07-07)"
+        - "step 2: 更新 master-plan.html M2 状态为 Completed，门禁全部改为 pass"
+        - "step 3: 更新任务状态 Pending → Completed，补充实际产出数据"
+        - "step 4: 更新 index.html 里程碑进度条 M2→Completed, M3→In Progress"
+      rules_checked: ["03", "14"]
+    outcome: >
+      成功。M2 状态已更新为 Completed (完成日期 2026-07-07)，门禁 4/4 PASS。
+      M3 状态更新为 In Progress。里程碑进度条同步更新。
+    files_changed:
+      - "docs/project/master-plan.html"
+      - "docs/index.html"

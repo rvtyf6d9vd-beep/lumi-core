@@ -349,24 +349,27 @@ module lumi_memory_stage #(
             state_reg <= state_next;
 
             // ERR-029 修复: 双 LSU 端口跟踪寄存器更新
-            // 当 stall_port1 时保持 (避免 ST_WAIT_READY 期间误更新)
-            if (!stall_port1) begin
-                if (pending_port1_r) begin
-                    // port 1 刚处理完 → 清除所有跟踪
-                    pending_port1_r <= 1'b0;
-                    port0_done_r    <= 1'b0;
+            // FIX(stall-port1-deadlock): pending_port1_r 需独立于 stall_port1,
+            // 否则 stall_port1=1 (同一 combo cycle 设置) 会阻止 pending_port1_r 更新,
+            // 导致 termianl deadlock: port0 被反复重执行, port1 永远不处理.
+            // ── pending_port1_r / port0_done_r: 独立于 stall_port1 ──
+            if (pending_port1_r) begin
+                // port 1 刚处理完 → 清除所有跟踪
+                pending_port1_r <= 1'b0;
+                port0_done_r    <= 1'b0;
+            end else begin
+                // 无 pending: 检查是否需要设置
+                if (lsu_valid[0] && lsu_valid[1]) begin
+                    pending_port1_r <= 1'b1;
+                    port0_done_r    <= 1'b1;
                 end else begin
-                    // 无 pending: 检查是否需要设置
-                    if (lsu_valid[0] && lsu_valid[1]) begin
-                        pending_port1_r <= 1'b1;
-                        port0_done_r    <= 1'b1;
-                    end else begin
-                        pending_port1_r <= 1'b0;
-                        if (batch_done) port0_done_r <= 1'b0;
-                    end
+                    pending_port1_r <= 1'b0;
+                    if (batch_done) port0_done_r <= 1'b0;
                 end
             end
 
+            // 流水线寄存器: 保持 stall_port1 门控
+            // (ERR-029: 避免 ST_WAIT_READY 期间误更新)
             // 流水线寄存器: M 级输入 → 管道
             // SA-6 修复: stall_port1 时保持寄存器 (防止 port 0 被重复捕获)
             if (!stall_port1) begin

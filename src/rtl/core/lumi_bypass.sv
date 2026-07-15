@@ -192,6 +192,8 @@ module lumi_bypass #(
             bypass_rs1_data[i] = rs1_match[31:0];
             bypass_rs2_hit[i]  = rs2_match[32];
             bypass_rs2_data[i] = rs2_match[31:0];
+
+            // ERR-024: 旁路查询已验证 (E1→E1 bypass 工作正常), 调试输出移除
         end
     end
 

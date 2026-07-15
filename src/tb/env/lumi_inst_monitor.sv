@@ -56,6 +56,7 @@ module lumi_inst_monitor #(
   endfunction
 
   // ─── 初始化 ────────────────────────────────────────────────
+  int realtime_fd;  // ERR-025 验证用: 实时写盘 fd
   initial begin
     trace_wr_ptr  = 0;
     trace_count   = 0;
@@ -63,6 +64,8 @@ module lumi_inst_monitor #(
     total_traps   = 0;
     total_irqs    = 0;
     total_branch_taken = 0;
+    // ERR-025 验证: 实时 trace 写盘 (每次 commit 即写)
+    realtime_fd = 0;
   end
 
   // ─── 主监视逻辑: 遍历所有发射槽 ────────────────────────────
@@ -94,6 +97,14 @@ module lumi_inst_monitor #(
 
           if (is_branch(commit_inst[s]) || is_jal(commit_inst[s]) || is_jalr(commit_inst[s]))
             total_branch_taken <= total_branch_taken + 1;
+
+          // ERR-025 验证: 实时 trace 写盘 (debug only, 监控 stall)
+          if (realtime_fd != 0) begin
+            $fwrite(realtime_fd, "%08h %08h x%02d  %08h %0d\n",
+                    commit_pc[s], commit_inst[s],
+                    commit_rd[s], commit_rd_data[s],
+                    trace_count);
+          end
         end
       end
     end
@@ -131,6 +142,28 @@ module lumi_inst_monitor #(
     end
     $fclose(fd);
     $display("[MON] Dumped %0d trace records to %s", count, filename);
+  endtask
+
+  // ─── 实时 trace 任务 (ERR-025 验证) ────────────────────────
+  task automatic enable_realtime_trace(input string filename);
+    if (realtime_fd != 0) begin
+      $fclose(realtime_fd);
+    end
+    realtime_fd = $fopen(filename, "w");
+    if (realtime_fd == 0) begin
+      $display("[MON] ERROR: Cannot open realtime trace: %s", filename);
+    end else begin
+      $fwrite(realtime_fd, "# PC        INST        RD   RD_DATA      CYCLE\n");
+      $display("[MON] Realtime trace ENABLED: %s", filename);
+    end
+  endtask
+
+  task automatic disable_realtime_trace();
+    if (realtime_fd != 0) begin
+      $fclose(realtime_fd);
+      realtime_fd = 0;
+      $display("[MON] Realtime trace DISABLED");
+    end
   endtask
 
 endmodule

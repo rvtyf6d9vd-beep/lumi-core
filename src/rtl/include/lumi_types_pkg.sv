@@ -74,6 +74,8 @@ package lumi_pkg;
     logic [3:0]  exc_cause;
     // 原始指令 (16-bit 压缩指令保留, 32-bit 指令存低 16-bit)
     logic [15:0] inst_raw;
+    // ERR-042: 压缩指令标志 (pre-decode 设置, RAS push 区分 PC+2/PC+4)
+    logic        is_compressed;
   } inst_pkt_t;
 
   // ───────────────────────────────────────────────────────────
@@ -153,5 +155,133 @@ package lumi_pkg;
   // ───────────────────────────────────────────────────────────
   parameter int CLIC_INT_INPUTS = 16;         // 本地中断输入数
   parameter int CLIC_HW_LATENCY = 16;         // 硬件延时 (cycle)
+
+  // ───────────────────────────────────────────────────────
+  // RV32C 压缩指令展开器 (decode-issue.html §3.1.1)
+  // ERR-042: 从 lumi_decode_issue 提取到 pkg, 供 predecode 复用
+  // ───────────────────────────────────────────────────────
+  function automatic logic [31:0] c_ext_expand(logic [15:0] ci);
+      logic [15:0] inst;
+      logic [4:0]  rd_rs2, rs1p, rs2p, rd_rs1;
+      logic [31:0] imm;
+
+      inst    = ci;
+      rs1p    = {2'b01, inst[9:7]};
+      rs2p    = {2'b01, inst[4:2]};
+      rd_rs2  = inst[11:7];
+      rd_rs1  = inst[11:7];
+
+      case (inst[1:0])
+          2'b00: begin
+              case (inst[15:13])
+                  3'b000: begin
+                      imm = {22'h0, inst[10:7], inst[12:11], inst[5], inst[6], 2'b00};
+                      return {imm[11:0], 5'd2, 3'b000, rs2p, 7'b0010011};
+                  end
+                  3'b010: begin
+                      imm = {25'h0, inst[5], inst[12:10], inst[6], 2'b00};
+                      return {imm[11:0], rs1p, 3'b010, rs2p, 7'b0000011};
+                  end
+                  3'b110: begin
+                      imm = {25'h0, inst[5], inst[12:10], inst[6], 2'b00};
+                      return {imm[11:5], rs2p, rs1p, 3'b010, imm[4:0], 7'b0100011};
+                  end
+                  default: return 32'h0000_0000;
+              endcase
+          end
+          2'b01: begin
+              case (inst[15:13])
+                  3'b000: begin
+                      imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                      return {imm[11:0], rd_rs1, 3'b000, rd_rs1, 7'b0010011};
+                  end
+                  3'b001: begin
+                      imm = {{21{inst[12]}}, inst[12], inst[8], inst[10:9], inst[6],
+                             inst[7], inst[2], inst[11], inst[5:3], 1'b0};
+                      return {imm[20], imm[10:1], imm[11], imm[19:12], 5'd1, 7'b1101111};
+                  end
+                  3'b010: begin
+                      imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                      return {imm[11:0], 5'd0, 3'b000, rd_rs1, 7'b0010011};
+                  end
+                  3'b011: begin
+                      if (rd_rs1 == 5'd2) begin
+                          imm = {{22{inst[12]}}, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0000};
+                          return {imm[11:0], 5'd2, 3'b000, 5'd2, 7'b0010011};
+                      end else begin
+                          imm = {{14{inst[12]}}, inst[12], inst[6:2], 12'h0};
+                          return {imm[31:12], rd_rs1, 7'b0110111};
+                      end
+                  end
+                  3'b100: begin
+                      case (inst[11:10])
+                          2'b00: return {7'b0000000, inst[6:2], rs1p, 3'b101, rs1p, 7'b0010011};
+                          2'b01: return {7'b0100000, inst[6:2], rs1p, 3'b101, rs1p, 7'b0010011};
+                          2'b10: begin
+                              imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                              return {imm[11:0], rs1p, 3'b111, rs1p, 7'b0010011};
+                          end
+                          2'b11: begin
+                              case ({inst[12], inst[6:5]})
+                                  3'b000: return {7'b0100000, rs2p, rs1p, 3'b000, rs1p, 7'b0110011};
+                                  3'b001: return {7'b0000000, rs2p, rs1p, 3'b100, rs1p, 7'b0110011};
+                                  3'b010: return {7'b0000000, rs2p, rs1p, 3'b110, rs1p, 7'b0110011};
+                                  3'b011: return {7'b0000000, rs2p, rs1p, 3'b111, rs1p, 7'b0110011};
+                                  default: return 32'h0000_0000;
+                              endcase
+                          end
+                      endcase
+                  end
+                  3'b101: begin
+                      imm = {{21{inst[12]}}, inst[12], inst[8], inst[10:9], inst[6],
+                             inst[7], inst[2], inst[11], inst[5:3], 1'b0};
+                      return {imm[20], imm[10:1], imm[11], imm[19:12], 5'd0, 7'b1101111};
+                  end
+                  3'b110: begin
+                      imm = {{23{inst[12]}}, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+                      return {imm[12], imm[10:5], 5'd0, rs1p, 3'b000, imm[4:1], imm[11], 7'b1100011};
+                  end
+                  3'b111: begin
+                      imm = {{23{inst[12]}}, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+                      return {imm[12], imm[10:5], 5'd0, rs1p, 3'b001, imm[4:1], imm[11], 7'b1100011};
+                  end
+                  default: return 32'h0000_0000;
+              endcase
+          end
+          2'b10: begin
+              case (inst[15:13])
+                  3'b000: return {7'b0000000, inst[6:2], rd_rs1, 3'b001, rd_rs1, 7'b0010011};
+                  3'b010: begin
+                      imm = {24'h0, inst[3:2], inst[12], inst[6:4], 2'b00};
+                      return {imm[11:0], 5'd2, 3'b010, rd_rs1, 7'b0000011};
+                  end
+                  3'b100: begin
+                      if (inst[12] == 1'b0) begin
+                          if (inst[6:2] == 5'd0)
+                              return {12'h0, rd_rs1, 3'b000, 5'd0, 7'b1100111};
+                          else
+                              return {7'b0000000, inst[6:2], 5'd0, 3'b000, rd_rs1, 7'b0110011};
+                      end else begin
+                          if (inst[6:2] == 5'd0) begin
+                              if (rd_rs1 == 5'd0)
+                                  return 32'h0000_0073;
+                              else
+                                  return {12'h0, rd_rs1, 3'b000, 5'd1, 7'b1100111};
+                          end else begin
+                              return {7'b0000000, inst[6:2], rd_rs1, 3'b000, rd_rs1, 7'b0110011};
+                          end
+                      end
+                  end
+                  3'b110: begin
+                      imm = {24'h0, inst[8:7], inst[12:9], 2'b00};
+                      return {imm[11:5], inst[6:2], 5'd2, 3'b010, imm[4:0], 7'b0100011};
+                  end
+                  default: return 32'h0000_0000;
+              endcase
+          end
+          default: return ci[15:0];
+      endcase
+      return 32'h0000_0000;
+  endfunction
 
 endpackage
