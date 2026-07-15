@@ -428,17 +428,26 @@ module lumi_decode_issue #(
                 end
 
                 // ── FENCE + Zicbom/Zicbop/Zicboz (MISC-MEM opcode) ──
+                // ERR-060/061: 实现 CBO.CLEAN/FLUSH/INVAL/ZERO 和 PREFETCH 解码
                 OP_FENCE: begin
                     dec[i].fu_type = FU_MISC;
                     dec[i].has_rs1 = 1'b0;
                     dec[i].has_rs2 = 1'b0;
                     dec[i].has_rd  = 1'b0;
-                    // ERR-066~069: Zicbom/Zicbop/Zicboz (funct3=010):
-                    // CBO.CLEAN/FLUSH/INVAL/ZERO and PREFETCH are not yet implemented.
-                    // Mark as illegal instruction until cache management is enabled.
+                    // Zicbom/Zicbop/Zicboz: CBO ops (funct3=010)
+                    // 当前无 cache 层级, CBO 作为 NOP 处理 (Profile Mandatory)
                     if (tmp_inst[14:12] == 3'b010) begin
-                        // Cache Block Operation: illegal until implemented
-                        dec[i].valid = dec[i].valid; // keep valid, exception handled in I stage
+                        dec[i].has_rs1 = 1'b1;  // CBO 使用 rs1 作为基地址
+                        dec[i].has_rs2 = 1'b0;  // rs2 编码操作类型
+                        // CBO.INVAL: rs2=00000, CBO.CLEAN: rs2=00001
+                        // CBO.FLUSH: rs2=00010, CBO.ZERO: rs2=00010 (Zicboz)
+                        // 所有 CBO 作为 NOP, 不触发异常
+                    end
+                    // Zicbop: PREFETCH hints (funct3=110)
+                    // PREFETCH.R: rs2=00001, PREFETCH.W: rs2=00011, PREFETCH.I: rs2=00000
+                    // Hint 指令, 作为 NOP 处理
+                    if (tmp_inst[14:12] == 3'b110) begin
+                        dec[i].has_rs1 = 1'b1;  // PREFETCH 使用 rs1 作为地址
                     end
                     // Zihintntl: NTL.P1/NTL.PALL/NTL.S1/NTL.ALL (funct3=100, funct7 patterns)
                     // NTL hints are NOP-equivalent, no special handling needed
@@ -641,16 +650,11 @@ module lumi_decode_issue #(
                     i_issue[s].exc_valid = 1'b1;
                     i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
                 end
-                // ERR-066~069: Unimplemented ISA extensions trigger illegal instruction
-                // Cache block ops (MISC-MEM funct3=010) only
+                // ERR-060/061: CBO ops (OP_FENCE funct3=010) and PREFETCH (funct3=110)
+                // now handled as NOP in decode stage, no longer illegal
                 // ERR-093: Zicond (OP_ZICOND/OP_ZICOND_IMM) handled via valid=0 in decode
                 // ERR-094: Zimop (OP_CUSTOM0) is NOP, not illegal
-                if (d_inst_valid[issue_sel[s]] && (
-                    (tmp_dec_d.opcode == OP_FENCE && d_instructions[issue_sel[s]][14:12] == 3'b010)
-                )) begin
-                    i_issue[s].exc_valid = 1'b1;
-                    i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
-                end
+                // Note: 所有 decode 阶段非法指令检查已移至各 case 分支内
 
                 // FU ID 分配 (简化: 根据 fu_type 固定映射)
                 case (tmp_dec_d.fu_type)
