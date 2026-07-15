@@ -8,7 +8,10 @@
 // Store Buffer: 写操作缓冲, commit 后提交到 Cache/TCM
 
 module lumi_memory_stage #(
-    parameter int ISSUE_WIDTH = lumi_pkg::ISSUE_WIDTH
+    parameter int ISSUE_WIDTH = lumi_pkg::ISSUE_WIDTH,
+    // ERR-027/028 修复: BYPASS_SB=1 时 store 直写 SRAM, 不经过 Store Buffer
+    // 规避 SB 无 load forwarding (ERR-027) 和 SB 满静默丢弃 (ERR-028)
+    parameter bit BYPASS_SB   = 1'b0
 ) (
     input  logic                    clk_core,
     input  logic                    reset_n,
@@ -42,9 +45,20 @@ module lumi_memory_stage #(
     output logic [31:0]             m_pc_out [ISSUE_WIDTH-1:0],
     output logic [ISSUE_WIDTH-1:0]  m_exception_out,
 
+    // ── ERR-030 修复: Memory stall 输出 (→ decode fu_busy) ────
+    output logic                    mem_busy,
+
+    // ── SA-10 修复: M 级旁路 valid 信号 (→ core_top bypass) ─────
+    // 旁路 valid 与 result 必须同步: load 旁路仅在 mem_ready_in=1 时有效
+    // (多周期 load 期间 m_result_out 还是旧值, 需要屏蔽旁路匹配)
+    output logic [ISSUE_WIDTH-1:0]  m_bypass_valid,
+
     // ── Store Buffer 确认 ─────────────────────────────────────
     output logic                    store_commit,
-    input  logic                    store_commit_ack
+    input  logic                    store_commit_ack,
+
+    // ERR-055: Store buffer empty signal for FENCE
+    output logic                    sb_empty_out
 );
 
     import lumi_pkg::*;
@@ -193,21 +207,51 @@ module lumi_memory_stage #(
     logic [31:0] lsu_aligned_data [1:0];
     logic [31:0] lsu_load_data [1:0];
 
+    // ═══════════════════════════════════════════════════════════
+    // E1→M1 流水线寄存器: 同步 e1_mem_* 与 m_inst (ERR-024 修复)
+    // 原 bug: e1_mem_addr 是 E1 阶段组合输出, m_inst 是 E1→M 延迟一拍
+    // 导致 M 阶段 lsu_addr 与 m_inst 不同步 (e1_mem_addr 是新 E1 阶段值)
+    // 修复: 在 memory stage 内寄存一拍 e1_mem_*, 使其与 m_inst 对齐
+    // ═══════════════════════════════════════════════════════════
+    logic [31:0] m1_mem_addr [1:0];
+    logic        m1_mem_we   [1:0];
+    logic [31:0] m1_mem_wdata[1:0];
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            for (int l = 0; l < 2; l++) begin
+                m1_mem_addr[l]  <= 32'h0;
+                m1_mem_we[l]    <= 1'b0;
+                m1_mem_wdata[l] <= 32'h0;
+            end
+        end else begin
+            // SA-9 修复: mem_busy 时保持 m1_mem_* 寄存器
+            // 与 core_top E1→M 寄存器 stall 保护一致
+            // 避免地址与 m_inst 不同步导致虚假 misalign 异常
+            if (!mem_busy) begin
+                for (int l = 0; l < 2; l++) begin
+                    m1_mem_addr[l]  <= e1_mem_addr[l];
+                    m1_mem_we[l]    <= e1_mem_we[l];
+                    m1_mem_wdata[l] <= e1_mem_wdata[l];
+                end
+            end
+        end
+    end
+
     // 从 M 级指令中提取 LSU 信息
+    // 修复 ERR-021: 每个 LSU 端口 l 映射到对应的 M-slot l
+    // 修复 ERR-024: 使用 m1_mem_* (寄存一拍) 而非 e1_mem_*
     always_comb begin
         for (int l = 0; l < 2; l++) begin
-            lsu_addr[l]   = e1_mem_addr[l];
-            lsu_we[l]     = e1_mem_we[l];
-            lsu_wdata[l]  = e1_mem_wdata[l];
-            lsu_funct3[l] = 3'b010; // 默认 Word
+            lsu_addr[l]   = m1_mem_addr[l];
+            lsu_we[l]     = m1_mem_we[l];
+            lsu_wdata[l]  = m1_mem_wdata[l];
+            lsu_funct3[l] = 3'b000; // 默认 Byte (安全默认: 永远对齐)
             lsu_valid[l]  = 1'b0;
 
-            // 从 M 级指令中找 MEM 类型, 获取 funct3
-            for (int i = 0; i < ISSUE_WIDTH; i++) begin
-                if (m_valid[i] && m_inst[i].fu_type == FU_MEM) begin
-                    lsu_funct3[l] = m_inst[i].funct3;
-                    lsu_valid[l]  = 1'b1;
-                end
+            // 从 M 级对应 slot 获取 funct3
+            if (m_valid[l] && m_inst[l].fu_type == FU_MEM) begin
+                lsu_funct3[l] = m_inst[l].funct3;
+                lsu_valid[l]  = 1'b1;
             end
 
             // 地址对齐检查
@@ -225,6 +269,33 @@ module lumi_memory_stage #(
     end
 
     // ═══════════════════════════════════════════════════════════
+    // SA-10 修复: M 级旁路 valid 信号
+    // ═══════════════════════════════════════════════════════════
+    // 原 bug (core_top.sv:315): 旁路 .m_valid (m_valid_r) 总是 1 when load in M
+    //                            但 .m_result (m_result_out) 是上一条指令结果
+    // 多周期 load 期间旁路返回旧数据 → load 依赖指令读到错误值
+    // 修复: load 旁路仅在 mem_ready_in=1 时有效 (SRAM 读完成)
+    //      store 永远不写 rd, 但加 m_bypass_valid=0 作为防御
+    //      非 MEM 指令直接使用 m_valid (如 ALU/MUL/DIV, 1 cycle latency)
+    always_comb begin
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            m_bypass_valid[i] = 1'b0;
+            if (m_valid[i]) begin
+                if (m_inst[i].fu_type == FU_MEM && !m_inst[i].inst[5]) begin
+                    // Load: 仅在 SRAM 读完成时旁路有效
+                    m_bypass_valid[i] = mem_ready_in;
+                end else if (m_inst[i].fu_type == FU_MEM && m_inst[i].inst[5]) begin
+                    // Store: 不需要旁路 (store 不写 rd)
+                    m_bypass_valid[i] = 1'b0;
+                end else begin
+                    // ALU/MUL/DIV/BRANCH: 1 cycle latency, 旁路总是有效
+                    m_bypass_valid[i] = 1'b1;
+                end
+            end
+        end
+    end
+
+    // ═══════════════════════════════════════════════════════════
     // FSM: 内存操作状态机
     // ═══════════════════════════════════════════════════════════
     typedef enum logic [2:0] {
@@ -238,6 +309,11 @@ module lumi_memory_stage #(
     mem_state_e state_reg, state_next;
     logic [1:0] lsu_sel;  // 当前处理的 LSU 端口
 
+    // ── ERR-029 修复: 双 LSU 端口串行化跟踪 ──
+    // 当同 cycle 两条 MEM 指令时, port 0 先处理, port 1 延后 1 cycle
+    logic pending_port1_r;  // port 1 等待处理
+    logic port0_done_r;     // 当前批次 port 0 已完成
+
     // ── 流水线寄存器 ──
     inst_pkt_t              m_pipe [ISSUE_WIDTH-1:0];
     logic [ISSUE_WIDTH-1:0] m_pipe_valid;
@@ -247,12 +323,23 @@ module lumi_memory_stage #(
     logic [31:0]            m_pipe_inst [ISSUE_WIDTH-1:0]; // 显式捕获指令字
     logic [ISSUE_WIDTH-1:0] m_pipe_exception;
 
+    // ── FSM 周期计数器 (供 future debug 使用) ──
+    int unsigned fsm_dbg_cycle;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n)
+            fsm_dbg_cycle <= 0;
+        else
+            fsm_dbg_cycle <= fsm_dbg_cycle + 1;
+    end
+
     // ── 时序逻辑 ──
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
             state_reg     <= ST_IDLE;
             m_pipe_valid  <= '0;
             lsu_sel       <= 2'h0;
+            pending_port1_r <= 1'b0;
+            port0_done_r  <= 1'b0;
             // Store Buffer
             sb_head       <= '0;
             sb_tail       <= '0;
@@ -261,7 +348,28 @@ module lumi_memory_stage #(
         end else begin
             state_reg <= state_next;
 
+            // ERR-029 修复: 双 LSU 端口跟踪寄存器更新
+            // 当 stall_port1 时保持 (避免 ST_WAIT_READY 期间误更新)
+            if (!stall_port1) begin
+                if (pending_port1_r) begin
+                    // port 1 刚处理完 → 清除所有跟踪
+                    pending_port1_r <= 1'b0;
+                    port0_done_r    <= 1'b0;
+                end else begin
+                    // 无 pending: 检查是否需要设置
+                    if (lsu_valid[0] && lsu_valid[1]) begin
+                        pending_port1_r <= 1'b1;
+                        port0_done_r    <= 1'b1;
+                    end else begin
+                        pending_port1_r <= 1'b0;
+                        if (batch_done) port0_done_r <= 1'b0;
+                    end
+                end
+            end
+
             // 流水线寄存器: M 级输入 → 管道
+            // SA-6 修复: stall_port1 时保持寄存器 (防止 port 0 被重复捕获)
+            if (!stall_port1) begin
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 m_pipe[i]       <= m_inst[i];
                 m_pipe_valid[i] <= m_valid[i];
@@ -273,11 +381,18 @@ module lumi_memory_stage #(
                     case (m_inst[i].fu_type)
                         FU_MEM: begin
                             if (m_inst[i].inst[5]) begin
-                                // Store: 结果无关紧要, 写 Store Buffer
+                                // Store: 结果无关紧要
                                 m_pipe_result[i] <= 32'h0;
                             end else begin
-                                // Load: 使用符号扩展后的数据
-                                m_pipe_result[i] <= lsu_load_data[0]; // 简化: LSU 0
+                                // Load: SA-10 修复 (v3 修正) — 仅在 mem_ready_in=1 时捕获
+                                // 原因: load 等待 SRAM 期间 mem_rdata_in 可能是
+                                //   不相关数据 (ICache 预取/另一端口 Load), 不可捕获
+                                // mem_ready_in=1 表示当前 cycle mem_rdata_in 属于本 load
+                                // (双保险: m_bypass_valid 同步旁路 valid, 此处同步结果捕获)
+                                if (mem_ready_in) begin
+                                    m_pipe_result[i] <= (i < 2) ? lsu_load_data[i] : lsu_load_data[0];
+                                end
+                                // 其他 cycle 保持 m_pipe_result 不变
                             end
                         end
                         default: begin
@@ -286,23 +401,25 @@ module lumi_memory_stage #(
                         end
                     endcase
 
-                    // 对齐异常检测
+                    // 对齐异常检测 — 修复 ERR-021: 使用 slot i 对应的 lsu_misalign[i]
                     m_pipe_exception[i] <= 1'b0;
                     if (m_inst[i].fu_type == FU_MEM) begin
-                        if (m_inst[i].inst[5] && lsu_misalign[0]) begin
+                        if (m_inst[i].inst[5] && lsu_misalign[i]) begin
                             m_pipe_exception[i] <= 1'b1;
                             m_pipe[i].exc_cause <= EXC_STORE_MISALIGN[3:0];
-                        end else if (!m_inst[i].inst[5] && lsu_misalign[0]) begin
+                        end else if (!m_inst[i].inst[5] && lsu_misalign[i]) begin
                             m_pipe_exception[i] <= 1'b1;
                             m_pipe[i].exc_cause <= EXC_LOAD_MISALIGN[3:0];
                         end
                     end
                 end
             end
+            end // if (!stall_port1)
 
             // Store Buffer 入队
+            // ERR-027/028 修复: BYPASS_SB=1 时跳过 SB, store 直写 SRAM
             for (int l = 0; l < 2; l++) begin
-                if (lsu_valid[l] && lsu_we[l] && !sb_full) begin
+                if (!BYPASS_SB && lsu_valid[l] && lsu_we[l] && !sb_full) begin
                     sb_mem[sb_tail].valid <= 1'b1;
                     sb_mem[sb_tail].addr  <= lsu_addr[l];
                     sb_mem[sb_tail].data  <= lsu_aligned_data[l];
@@ -326,6 +443,10 @@ module lumi_memory_stage #(
     end
 
     // ── 组合逻辑 ──
+    // ERR-029 修复: 双端口串行化控制信号
+    logic stall_port1;
+    logic batch_done;
+
     always_comb begin
         state_next    = state_reg;
         mem_addr_out  = 32'h0;
@@ -334,7 +455,109 @@ module lumi_memory_stage #(
         mem_be_out    = 4'hF;
         mem_valid_out = 1'b0;
         store_commit  = 1'b0;
+        mem_busy      = 1'b0;  // ERR-030 修复: 默认不忙
+        stall_port1   = 1'b0;
+        batch_done    = 1'b0;
+        // SA-4 修复: 使用 m_pipe_valid (流水线寄存器, 与 m_result_out 一致)
         m_valid_out   = m_pipe_valid;
+
+        if (BYPASS_SB) begin
+            // ═══════════════════════════════════════════════════════════
+            // ERR-027/028/029/032 修复: BYPASS_SB=1 直写模式
+            // Store 直写 SRAM, Load 直读 SRAM
+            // ERR-029 修复: 双 LSU 端口串行化 (优先端口 0, 端口 1 延后)
+            // ═══════════════════════════════════════════════════════════
+            if (pending_port1_r) begin
+                // ── 处理延迟的 LSU Port 1 操作 ──
+                mem_addr_out  = lsu_addr[1];
+                mem_wdata_out = lsu_aligned_data[1];
+                mem_we_out    = lsu_we[1];
+                mem_be_out    = lsu_be[1];
+                mem_valid_out = 1'b1;
+                if (!mem_ready_in) begin
+                    state_next = ST_WAIT_READY;
+                    mem_busy   = 1'b1;
+                end else begin
+                    state_next = ST_IDLE;
+                    batch_done = 1'b1;  // 两端口均已完成
+                end
+            end else if (port0_done_r) begin
+                // ── Port 0 已完成, 等待 port 1 (shouldn't normally reach here) ──
+                state_next = ST_IDLE;
+                batch_done = lsu_valid[1];
+            end else if (lsu_valid[0] && lsu_we[0]) begin
+                // ── Store Port 0: 直写 SRAM ──
+                mem_addr_out  = lsu_addr[0];
+                mem_wdata_out = lsu_aligned_data[0];
+                mem_we_out    = 1'b1;
+                mem_be_out    = lsu_be[0];
+                mem_valid_out = 1'b1;
+                if (!mem_ready_in) begin
+                    state_next = ST_WAIT_READY;
+                    mem_busy   = 1'b1;
+                end else begin
+                    state_next = ST_IDLE;
+                    if (lsu_valid[1]) begin
+                        stall_port1 = 1'b1;
+                        mem_busy   = 1'b1;  // stall decode 1 cycle
+                    end else begin
+                        batch_done = 1'b1;
+                    end
+                end
+            end else if (lsu_valid[0] && !lsu_we[0]) begin
+                // ── Load Port 0: 直读 SRAM ──
+                mem_addr_out  = lsu_addr[0];
+                mem_valid_out = 1'b1;
+                mem_we_out    = 1'b0;
+                mem_be_out    = lsu_be[0];
+                if (!mem_ready_in) begin
+                    state_next = ST_WAIT_READY;
+                    mem_busy   = 1'b1;
+                end else begin
+                    state_next = ST_IDLE;
+                    if (lsu_valid[1]) begin
+                        stall_port1 = 1'b1;
+                        mem_busy   = 1'b1;
+                    end else begin
+                        batch_done = 1'b1;
+                    end
+                end
+            end else if (lsu_valid[1]) begin
+                // ── 仅 Port 1 有效 (Port 0 无 MEM) ──
+                mem_addr_out  = lsu_addr[1];
+                mem_wdata_out = lsu_aligned_data[1];
+                mem_we_out    = lsu_we[1];
+                mem_be_out    = lsu_be[1];
+                mem_valid_out = 1'b1;
+                if (!mem_ready_in) begin
+                    state_next = ST_WAIT_READY;
+                    mem_busy   = 1'b1;
+                end else begin
+                    state_next = ST_IDLE;
+                    batch_done = 1'b1;
+                end
+            end else begin
+                state_next = ST_IDLE;
+                batch_done = 1'b1;  // 无 LSU 操作
+            end
+
+            // ST_WAIT_READY: 等待 SRAM 响应
+            if (state_reg == ST_WAIT_READY) begin
+                mem_addr_out  = pending_port1_r ? lsu_addr[1] : lsu_addr[0];
+                mem_wdata_out = pending_port1_r ? lsu_aligned_data[1] : lsu_aligned_data[0];
+                mem_we_out    = pending_port1_r ? lsu_we[1] : lsu_we[0];
+                mem_be_out    = pending_port1_r ? lsu_be[1] : lsu_be[0];
+                mem_valid_out = 1'b1;
+                mem_busy      = !mem_ready_in;
+                if (mem_ready_in) begin
+                    state_next = ST_IDLE;
+                    batch_done = 1'b1;
+                end
+            end
+        end else begin
+            // ═══════════════════════════════════════════════════════════
+            // 原始 FSM: 使用 Store Buffer (BYPASS_SB=0)
+            // ═══════════════════════════════════════════════════════════
 
         case (state_reg)
             ST_IDLE: begin
@@ -401,6 +624,7 @@ module lumi_memory_stage #(
                 state_next = ST_IDLE;
             end
         endcase
+        end // else (BYPASS_SB=0)
     end
 
     // ═══════════════════════════════════════════════════════════
@@ -416,5 +640,8 @@ module lumi_memory_stage #(
             m_exception_out[i] = m_pipe_exception[i];
         end
     end
+
+    // ERR-055: Expose store buffer empty status for FENCE
+    assign sb_empty_out = sb_empty;
 
 endmodule

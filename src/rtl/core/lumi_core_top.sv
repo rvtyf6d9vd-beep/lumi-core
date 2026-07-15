@@ -195,6 +195,9 @@ module lumi_core_top #(
     // ── ERR-030 修复: Memory busy 信号 ──
     logic          mem_busy;
 
+    // ── ERR-055: Store buffer empty for FENCE ──
+    logic          sb_empty;
+
     // ── ERR-030 修复: fu_busy 组合信号 (bit[3]=FU_MEM, bit[1]=div) ──
     logic [9:0]    fu_busy_combined;
     always_comb begin
@@ -530,6 +533,7 @@ module lumi_core_top #(
         .e1_rs1_data           (e1_rs1_data_r),
         .e1_rs2_data           (e1_rs2_data_r),
         .e1_pred_taken         (e1_pred_taken_r),     // ERR-019: F2 预测状态
+        .e1_sb_empty           (sb_empty),              // ERR-055: Store buffer empty for FENCE
         .e1_pred_target        (e1_pred_target_r),    // ERR-019: F2 预测目标
         .e1_result             (e1_result),
         .e1_rd                 (e1_rd),
@@ -654,7 +658,8 @@ module lumi_core_top #(
         // ERR-026 修复: V1 SRAM 同步写, 无需等待 ack, 立即清空 SB entry
         // 否则 SB 永远满, 后续 store 全部走 ST_COMMIT 路径写最早入队 entry,
         // 导致 mini-test 的 sw 0x3FFE0 永远不生效 (写入地址固定为 SB head)
-        .store_commit_ack      (1'b1)
+        .store_commit_ack      (1'b1),
+        .sb_empty_out          (sb_empty)              // ERR-055: FENCE drain
     );
 
     // ═══════════════════════════════════════════════════════════
