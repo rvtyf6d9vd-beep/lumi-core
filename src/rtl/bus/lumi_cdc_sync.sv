@@ -1,5 +1,5 @@
 // =================================================================
-// LUMI-DESIGN-CDC | 需求: T-MS3-S3-BF.1.4
+// LUMI-DESIGN-CDC | 需求: T-MS3-S3-BF.1.4, LUMI-BUS-005 | 承接: design/pma-axi.html §4.1
 // 模块: lumi_cdc_sync — 跨时钟域同步器集合
 // 阶段: M3 Batch-2 CDC 修复
 // 作者: Qoder Agent | 日期: 2026-07-14

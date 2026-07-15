@@ -1,5 +1,5 @@
 // =================================================================
-// LUMI-DESIGN-PREDECODE | 需求: ERR-042 修复 | 承接: design/fetch-bpred.html
+// LUMI-DESIGN-PREDECODE | 需求: ERR-042 修复, LUMI-IF-001 | 承接: design/fetch-bpred.html §3.1
 // 模块: lumi_predecode — pre-decode 指令边界扫描器
 // 阶段: M3-S1 Bug 修复 | 日期: 2026-07-14
 // =================================================================

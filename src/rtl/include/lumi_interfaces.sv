@@ -1,5 +1,5 @@
 // =================================================================
-// LUMI-DESIGN-INFRA | 需求: LUMI-GLOBAL | 承接: design/*.html
+// LUMI-DESIGN-INFRA | 需求: LUMI-GLOBAL, LUMI-SYS-010 | 承接: architecture/platform-spec.html
 // 模块: lumi_interfaces — SV Interface 定义
 // 阶段: M2-S1 RTL 骨架 (Interface 端口定义)
 // 作者: Qoder Agent | 日期: 2026-07-07

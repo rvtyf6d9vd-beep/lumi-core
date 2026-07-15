@@ -1477,12 +1477,12 @@ errata:
     affected_modules: ["core/lumi_decode_issue"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "编译时不使用 Zicond/Zihintntl，依赖分支/条件移动序列；忽略 NTL 提示。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
-    regression_test: "tests/directed/zicond_zihintntl_decode/"
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-r2-fix-plan"
+    resolution: "Zicond CZERO.EQZ/NEZ now detected via funct7/funct3 in OP_REG/OP_IMM cases, triggers illegal instruction (valid=0). Zihintntl NTL hints treated as NOP."
+    regression_test: "tests/directed/test_zicond_illegal.S"
 
   - id: "ERR-063"
     title: "Zimop/Zcmop/Ziccamoa 编码空间未保留"
@@ -1494,12 +1494,12 @@ errata:
     affected_modules: ["core/lumi_decode_issue"]
     affected_versions: ["v0.2"]
     severity: minor
-    status: open
+    status: resolved
     workaround: "确保编译生成的二进制不使用 Zimop/Zcmop/Ziccamoa opcode，直到相关扩展实现。"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
-    regression_test: "tests/directed/zimop_zcmop_reserved/"
+    resolved_date: "2026-07-15"
+    resolved_by: "rtl-r2-fix-plan"
+    resolution: "Zimop (OP_CUSTOM0=0001011) now treated as NOP per RISC-V specification. Removed from illegal instruction check."
+    regression_test: "tests/directed/test_zimop_nop.S"
 
   - id: "ERR-064"
     title: "Fetch FSM default 分支空操作"
