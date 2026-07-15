@@ -18,6 +18,11 @@ module lumi_execute #(
     input  logic [ISSUE_WIDTH-1:0]  e1_valid,
     input  logic [31:0]             e1_rs1_data [ISSUE_WIDTH-1:0],
     input  logic [31:0]             e1_rs2_data [ISSUE_WIDTH-1:0],
+    // ERR-019: F2 预测状态 (用于正确的误预测检测)
+    input  logic                    e1_pred_taken,
+    // ERR-055: Store buffer empty for FENCE drain
+    input  logic                    e1_sb_empty,
+    input  logic [31:0]             e1_pred_target,
 
     // ── E1 级输出 (→ M 级 + 旁路) ────────────────────────────
     output logic [31:0]             e1_result [ISSUE_WIDTH-1:0],
@@ -27,7 +32,14 @@ module lumi_execute #(
     // ── E1 分支反馈 (→ Fetch F1) ──────────────────────────────
     output logic                    e1_branch_taken,
     output logic [31:0]             e1_branch_target,
+    output logic [31:0]             e1_branch_pc,      // ERR-019: 分支指令 PC (BTB 更新用)
     output logic                    e1_mispredict,
+    // ERR-019: 分支类型 (BTB 写入时区分 JAL/JALR/条件分支)
+    output logic                    e1_br_is_jal,
+    output logic                    e1_br_is_jalr,
+    // ERR-044: call/ret 区分 (BTB 写入时设置 is_call/is_ret, 驱动 RAS)
+    output logic                    e1_br_is_call,
+    output logic                    e1_br_is_ret,
 
     // ── E1 LSU 地址 (→ Memory 级) ─────────────────────────────
     output logic [31:0]             e1_mem_addr [1:0],        // 2x LSU
@@ -89,6 +101,9 @@ module lumi_execute #(
     localparam logic [2:0] LS_BU = 3'b100;
     localparam logic [2:0] LS_HU = 3'b101;
 
+    // ERR-055: FENCE opcode
+    localparam logic [6:0] OP_FENCE_OPCODE = 7'b0001111;
+
     // ═══════════════════════════════════════════════════════════
     // ALU 组合逻辑 (E1 级, 1-cycle, execute-alu.html §3.1)
     // ═══════════════════════════════════════════════════════════
@@ -125,6 +140,7 @@ module lumi_execute #(
     logic        branch_taken [ISSUE_WIDTH-1:0];
     logic [31:0] branch_target [ISSUE_WIDTH-1:0];
     logic        is_branch [ISSUE_WIDTH-1:0];
+    bit          already_redirected; // ERR-020: 多槽误预测优先级标志
 
     function automatic logic branch_evaluate(
         input logic [2:0]  funct3,
@@ -319,6 +335,7 @@ module lumi_execute #(
             DIV_RUNNING: div_state_next = (div_cnt <= 6'd1) ? DIV_DONE : DIV_RUNNING;
             DIV_DONE:    div_state_next = DIV_IDLE;
             DIV_STALL:   div_state_next = DIV_IDLE;
+            default:     div_state_next = DIV_IDLE;  // ERR-057: safe recovery
         endcase
     end
 
@@ -328,8 +345,16 @@ module lumi_execute #(
     always_comb begin
         e1_branch_taken  = 1'b0;
         e1_branch_target = 32'h0;
+        e1_branch_pc     = 32'h0;   // ERR-019
         e1_mispredict    = 1'b0;
+        e1_br_is_jal     = 1'b0;   // ERR-019
+        e1_br_is_jalr    = 1'b0;   // ERR-019
+        e1_br_is_call    = 1'b0;   // ERR-044
+        e1_br_is_ret     = 1'b0;   // ERR-044
         e2_div_busy      = div_busy_r;
+
+        // ERR-020: 多槽误预测优先级 — 最早 slot (最低 i) 优先
+        already_redirected = 1'b0;
 
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             e1_result[i]    = 32'h0;
@@ -341,11 +366,52 @@ module lumi_execute #(
             branch_target[i] = 32'h0;
             is_branch[i]    = 1'b0;
 
+            // DEBUG: E1 入口跟踪 (ERR-019 调试, 注释保留)
+            // if (e1_valid[i])
+            //     $display("[E1-IN] slot=%0d pc=0x%08h inst=0x%08h fu=%0d valid=%b",
+            //              i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type, e1_valid[i]);
+
             if (e1_valid[i]) begin
+                // DEBUG: E1 入口/源数据 (ERR-019/020/022 调试, 注释保留)
+                // $display("[E1-IN] slot=%0d pc=0x%08h inst=0x%08h fu=%0d valid=%b",
+                //          i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type, e1_valid[i]);
+                // $display("[E1-RS] slot=%0d pc=0x%08h inst=0x%08h fu=%0d rs1=0x%08h rs2=0x%08h",
+                //          i, e1_inst[i].pc, e1_inst[i].inst, e1_inst[i].fu_type,
+                //          e1_rs1_data[i], e1_rs2_data[i]);
                 case (e1_inst[i].fu_type)
                     // ── ALU: 1-cycle (execute-alu.html §3.1) ──
                     // Phase B: 增加 Zba/Zbb B-extension 运算路径
                     FU_ALU: begin
+                        // ERR-023: AUIPC/LUI 特殊处理
+                        // AUIPC: rd = PC + (imm[31:12] << 12)
+                        // LUI:   rd = (imm[31:12] << 12)
+                        // 原 bug: ALU default 路径只计算 rs1+rs2, 但 auipc/lui 需要特殊计算
+                        if (e1_inst[i].inst[6:0] == 7'b0010111) begin
+                            // ERR-023: AUIPC
+                            e1_result[i] = e1_inst[i].pc + {e1_inst[i].inst[31:12], 12'h000};
+                        end else if (e1_inst[i].inst[6:0] == 7'b0110111) begin
+                            // ERR-023: LUI
+                            e1_result[i] = {e1_inst[i].inst[31:12], 12'h000};
+                        end else if (e1_inst[i].inst[6:0] == 7'b0010011) begin
+                            // ERR-024: OPIMM 显式实现 (避免 alu_compute 的 funct7_5 误用)
+                            // OPIMM 的 inst[31:25] 实际是 imm 的高 7 位, 不能用作 funct7.
+                            // SRAI 通过 inst[30]=1 区分 (而 SRLI inst[30]=0).
+                            case (e1_inst[i].funct3)
+                                FN_ADD:  e1_result[i] = e1_rs1_data[i] + e1_inst[i].imm;        // ADDI
+                                FN_SLT:  e1_result[i] = {31'h0, $signed(e1_rs1_data[i]) < $signed(e1_inst[i].imm)};  // SLTI
+                                FN_SLTU: e1_result[i] = {31'h0, e1_rs1_data[i] < e1_inst[i].imm};  // SLTIU
+                                FN_XOR:  e1_result[i] = e1_rs1_data[i] ^ e1_inst[i].imm;        // XORI
+                                FN_OR:   e1_result[i] = e1_rs1_data[i] | e1_inst[i].imm;        // ORI
+                                FN_AND:  e1_result[i] = e1_rs1_data[i] & e1_inst[i].imm;        // ANDI
+                                FN_SLL:  e1_result[i] = e1_rs1_data[i] << e1_inst[i].imm[4:0]; // SLLI
+                                FN_SRL:  e1_result[i] = e1_inst[i].inst[30] ? $unsigned($signed(e1_rs1_data[i]) >>> e1_inst[i].imm[4:0]) : (e1_rs1_data[i] >> e1_inst[i].imm[4:0]);  // SRLI/SRAI
+                                default: e1_result[i] = 32'h0;  // 未实现
+                            endcase
+                        end
+                        // ERR-024: OPIMM/AUIPC/LUI 已在上方赋值, 跳过 funct7 case 避免被覆盖
+                        if (e1_inst[i].inst[6:0] != 7'b0010011 &&
+                            e1_inst[i].inst[6:0] != 7'b0010111 &&
+                            e1_inst[i].inst[6:0] != 7'b0110111) begin
                         case (e1_inst[i].funct7)
                             // ── Zba: Shift-and-Add ──────────────────────
                             7'b0010000: begin
@@ -507,6 +573,8 @@ module lumi_execute #(
                             end
                         endcase
                     end
+                    // ERR-024: 关闭 OPIMM/AUIPC/LUI 跳过 funct7 case 的 if 块
+                    end
 
                     // ── BRANCH: 条件分支判定 (execute-alu.html §3.2) ──
                     FU_BRANCH: begin
@@ -534,19 +602,66 @@ module lumi_execute #(
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             if (branch_taken[i])
                                 e1_result[i] = branch_target[i]; // 占位
+                            // DEBUG: 条件分支跟踪 (ERR-019 调试, 注释保留)
+                            // $display("[BR-DBG] slot=%0d pc=0x%08h f3=%b rs1=0x%08h rs2=0x%08h taken=%b target=0x%08h imm=0x%08h",
+                            //          i, e1_inst[i].pc, e1_inst[i].funct3,
+                            //          e1_rs1_data[i], e1_rs2_data[i],
+                            //          branch_taken[i], branch_target[i], e1_inst[i].imm);
                         end
 
-                        // 误预测检测: 比较预测与实际
-                        // 注: 预测信息需要从 fetch 传递下来, 此处简化为直接反馈
-                        if (e1_branch_taken != branch_taken[i] ||
-                            (branch_taken[i] && e1_branch_target != branch_target[i])) begin
-                            e1_mispredict = 1'b1;
+                        // 误预测检测: ERR-019 修复 — 比较预测与实际
+                        // 原 bug: 无条件认为所有 taken 分支都是误预测, 导致
+                        // BTB 已正确预测的 JAL/BGEU 仍然触发 flush, 无限循环.
+                        if (branch_taken[i]) begin
+                            if (!e1_pred_taken) begin
+                                // 预测 not-taken (BTB 冷启动), 实际 taken → 误预测
+                                e1_mispredict = 1'b1;
+                            end else if (branch_target[i] != e1_pred_target) begin
+                                // 预测 taken 但目标不同 → 误预测
+                                e1_mispredict = 1'b1;
+                            end
+                            // else: 预测 taken + 实际 taken + 目标相同 → 正确预测
+                        end else begin
+                            if (e1_pred_taken) begin
+                                // 预测 taken, 实际 not-taken → 误预测
+                                e1_mispredict = 1'b1;
+                            end
                         end
 
-                        // 全局分支反馈 (只取第一个分支结果)
-                        if (!e1_mispredict) begin
+                        // 调试: 打印所有误预测
+                        if (e1_mispredict) begin
+                            // ERR-022: debug 已移除 (修复完成)
+                        end
+
+                        // ERR-019 修复: 始终更新分支反馈, 不受 mispredict 门控
+                        // 原代码: if (!e1_mispredict) — 导致 taken 分支的 target 不传递,
+                        // flush 重定向到 PC=0x0 (初始值), 程序崩溃.
+                        // ERR-020 修复: 仅最早误预测 slot 设置 redirect
+                        // ERR-044: call/ret 检测 (BTB 写入时设置 is_call/is_ret)
+                        // call = JAL/JALR with rd in {x1, x5}
+                        // ret  = JALR with rs1 in {x1, x5} and rd == x0
+                        if (is_branch[i] && branch_taken[i]) begin
+                            e1_br_is_call = (e1_inst[i].inst[6:0] == 7'b1101111 || e1_inst[i].inst[6:0] == 7'b1100111)
+                                            && (e1_inst[i].inst[11:7] == 5'd1 || e1_inst[i].inst[11:7] == 5'd5);
+                            e1_br_is_ret  = (e1_inst[i].inst[6:0] == 7'b1100111)
+                                            && (e1_inst[i].inst[19:15] == 5'd1 || e1_inst[i].inst[19:15] == 5'd5)
+                                            && (e1_inst[i].inst[11:7] == 5'd0);
+                        end
+
+                        if (e1_mispredict && !already_redirected) begin
+                            already_redirected = 1'b1;
                             e1_branch_taken  = branch_taken[i];
                             e1_branch_target = branch_target[i];
+                            e1_branch_pc     = e1_inst[i].pc;
+                            e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
+                            e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
+                        end else if (!e1_mispredict && !already_redirected) begin
+                            // 非误预测但仍需更新分支反馈 (BTB 学习)
+                            e1_branch_taken  = branch_taken[i];
+                            e1_branch_target = branch_target[i];
+                            e1_branch_pc     = e1_inst[i].pc;
+                            e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
+                            e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
                         end
                     end
 
@@ -591,7 +706,12 @@ module lumi_execute #(
                             e1_exception[i] = 1'b1;
                             e1_exc_cause[i] = EXC_BREAKPOINT[3:0];
                         end
-                        // FENCE (opcode=0001111): NOP, 无异常, 无操作
+                        // FENCE (opcode=0001111): drain store buffer
+                        // ERR-055: FENCE waits until store buffer is empty
+                        if (e1_inst[i].inst[6:0] == OP_FENCE_OPCODE && !e1_sb_empty) begin
+                            // Store buffer not empty: stall this instruction
+                            e1_valid_out[i] = 1'b0;  // Prevent commit until SB drained
+                        end
                     end
 
                     default: begin

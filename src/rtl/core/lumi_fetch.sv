@@ -12,7 +12,7 @@ module lumi_fetch #(
     parameter int BTB_ENTRIES  = lumi_pkg::BTB_ENTRIES,   // 8192
     parameter int RAS_DEPTH    = lumi_pkg::RAS_DEPTH,     // 32
     parameter int LTAGE_TABLES = lumi_pkg::LTAGE_TABLES,  // 12
-    parameter int RESET_VECTOR = 32'h0000_0000
+    parameter int RESET_VECTOR = 32'h0001_0000
 ) (
     input  logic                    clk_core,
     input  logic                    reset_n,
@@ -32,6 +32,14 @@ module lumi_fetch #(
     output logic                    f2_pred_taken,         // 分支预测 taken
     output logic [31:0]             f2_pred_target,        // 预测目标地址
 
+    // ── Predecode 接口 (ERR-042 修复) ─────────────────────────
+    output logic [127:0]            f2_raw_data_out,       // F2 原始 128-bit 数据
+    output logic [31:0]             f2_base_pc_out,        // F2 cache line 基地址
+    output logic [3:0]              f2_start_offset_out,   // PC[3:0] 起始偏移
+    output logic                    f2_pred_taken_out,     // F2 预测 taken
+    output logic [15:0]             f2_carry_hw_out,       // carry halfword
+    output logic                    f2_carry_valid_out,    // carry 有效
+
     // ── 分支反馈 (← Execute E1) ───────────────────────────────
     input  logic [31:0]             branch_redirect_pc,     // fetch-bpred.html §3.1
     input  logic                    branch_redirect_valid,   // 误预测纠正
@@ -42,9 +50,22 @@ module lumi_fetch #(
     input  logic [31:0]             tage_update_pc,          // LTAGE 更新 (fetch-bpred.html §3.3)
     input  logic                    tage_update_taken,
     input  logic                    tage_update_valid,
+    // ERR-019: 分支类型 (BTB 写入区分 JAL/JALR/条件分支)
+    input  logic                    br_update_is_jal,
+    input  logic                    br_update_is_jalr,
+    // ERR-044: call/ret 区分 (BTB 写入时设置 is_call/is_ret)
+    input  logic                    br_update_is_call,
+    input  logic                    br_update_is_ret,
+
+    // ── Predecode 反馈 (ERR-042) ─────────────────────────────
+    input  logic [4:0]              predecode_bytes_consumed,
+    input  logic [3:0]              predecode_inst_count,
+    input  logic [15:0]             predecode_carry_hw_out,
+    input  logic                    predecode_carry_valid_out,
 
     // ── Decode back-pressure (← Decode/Issue) ──────────────────
     input  logic                    dec_stall,             // decode 阻塞: 保持 PC 不前进
+    input  logic                    dec_all_issued,        // ERR-019: 当前批次全部已发射
 
     // ── Debug ─────────────────────────────────────────────────
     input  logic                    debug_halt
@@ -66,6 +87,10 @@ module lumi_fetch #(
     localparam logic [6:0] OP_JAL   = 7'b1101111;
     localparam logic [6:0] OP_JALR  = 7'b1100111;
     localparam logic [6:0] OP_BRANCH = 7'b1100011;
+
+    // ERR-042: ICache 地址对齐 + start_offset
+    logic [3:0] fetch_start_offset;
+    assign fetch_start_offset = pc_reg[3:0];
 
     // ═══════════════════════════════════════════════════════════
     // PC 寄存器与 FSM
@@ -165,6 +190,13 @@ module lumi_fetch #(
     logic                      f2_pred_taken_r;
     logic [31:0]               f2_pred_target_r;
 
+    // ERR-042: carry 寄存器 (跨 cache line 边界的 halfword)
+    logic [15:0]               carry_hw_r;
+    logic                      carry_valid_r;
+
+    // ERR-019: 寄存版 stall 信号, 用于延迟 F2 捕获 (避免组合环路)
+    logic                      dec_stall_r;
+
     // ═══════════════════════════════════════════════════════════
     // 指令拆分与有效计数
     // ═══════════════════════════════════════════════════════════
@@ -244,6 +276,13 @@ module lumi_fetch #(
         ras_push            = 1'b0;
         ras_pop             = 1'b0;
 
+        // DEBUG: BTB-RD (ERR-019 调试, 注释保留)
+        // if (state_reg == ST_FETCH && pc_reg[1:0] == 2'b00) begin
+        //     $display("[BTB-RD] pc=0x%08h idx=%0d tag=0x%05h hit=%b valid=%b target=0x%08h is_br=%b",
+        //              pc_reg, btb_idx, btb_tag, btb_hit, btb_mem[btb_idx].valid,
+        //              btb_mem[btb_idx].target, btb_mem[btb_idx].is_branch);
+        // end
+
         if (btb_hit) begin
             f1_btb_hit_comb = 1'b1;
 
@@ -297,6 +336,10 @@ module lumi_fetch #(
             f2_pc_r         <= 32'h0;
             f2_pred_taken_r <= 1'b0;
             f2_pred_target_r <= 32'h0;
+            dec_stall_r     <= 1'b0;  // ERR-019
+            // ERR-042: carry 寄存器复位
+            carry_hw_r      <= 16'h0;
+            carry_valid_r   <= 1'b0;
             // RAS
             ras_top         <= {RAS_PTR_W{1'b0}};
             for (int i = 0; i < RAS_DEPTH; i++)
@@ -314,8 +357,22 @@ module lumi_fetch #(
             flush_cnt <= flush_cnt_next;
 
             // ── PC 更新 ──────────────────────────────────────
-            if (!branch_redirect_valid)
-                pc_reg <= pc_next;
+            // ERR-019 修复: 始终从 pc_next 更新 pc_reg.
+            // 当 branch_redirect_valid=1 时, 组合逻辑 priority override 已将
+            // pc_next 设为 branch_redirect_pc, 因此 pc_reg 自然获取正确的重定向地址.
+            // 原 bug: if (!branch_redirect_valid) pc_reg <= pc_next — redirect 时
+            // pc_reg 不更新, fetch 永远无法跳转到正确路径.
+            pc_reg <= pc_next;
+
+            // DEBUG: PC 回零检测 (ERR-019/020 调试, 注释保留)
+            // if (pc_next == 32'h0 && pc_reg != 32'h0 && state_reg != ST_IDLE) begin
+            //     $display("[FETCH-PC0] pc_reg=0x%08h -> pc_next=0x0 state=%d trap_v=%b br_v=%b pred_taken=%b pred_target=0x%08h btb_hit=%b",
+            //              pc_reg, state_reg, trap_redirect_valid, branch_redirect_valid,
+            //              f1_pred_taken_comb, f1_pred_target_comb, btb_hit);
+            // end
+
+            // ERR-019: 寄存 dec_stall 供 F2 捕获门控使用
+            dec_stall_r <= dec_stall;
 
             // ── F1 → F2 流水线寄存器 ────────────────────────
             if (state_reg == ST_FETCH) begin
@@ -328,14 +385,33 @@ module lumi_fetch #(
             // ── F2 级: ICache 数据到达 ──────────────────────
             // 修复: V1 SRAM 旁路 ICache 为组合逻辑, 数据对应当前 pc_reg.
             // 因此 f2_pc_r 必须捕获当前 pc_reg, 而非上一周期的 f1_pc_r.
-            if (state_reg == ST_FETCH && f2_icache_valid) begin
+            // ERR-019 修复: 仅当 decode 报告当前批次全部已发射时才捕获新 F2 数据
+            // 这保证了有 carry-over 指令 (如被 RAW 阻塞的 BGEU) 时 F2 保持不变
+            if (state_reg == ST_FETCH && f2_icache_valid && dec_all_issued) begin
                 f2_data_r        <= f2_icache_data;
                 f2_valid_r       <= 1'b1;
                 f2_pc_r          <= pc_reg;  // 当前 PC (与 ICache 数据匹配)
-                f2_pred_taken_r  <= f1_pred_taken_r;
-                f2_pred_target_r <= f1_pred_target_r;
+                // ERR-019: V1 组合 ICache — 预测必须来自当前周期 (comb),
+                // 而非前一周期的 F1 寄存器 (r). 否则 F2 预测与数据不对齐.
+                f2_pred_taken_r  <= f1_pred_taken_comb;
+                f2_pred_target_r <= f1_pred_target_comb;
+            end else if (!dec_all_issued) begin
+                // ERR-019: carry-over 指令未发射完, F2 保持有效不变
             end else begin
                 f2_valid_r <= 1'b0;
+            end
+
+            // ERR-042: carry 寄存器更新 (与 F2 同步)
+            if (branch_redirect_valid || trap_redirect_valid || state_next == ST_FLUSH) begin
+                carry_hw_r    <= 16'h0;
+                carry_valid_r <= 1'b0;
+            end else if (f2_icache_valid && dec_all_issued) begin
+                carry_hw_r    <= predecode_carry_hw_out;
+                carry_valid_r <= predecode_carry_valid_out;
+            end else if (!dec_all_issued) begin
+                // F2 held → carry also held (no change)
+            end else begin
+                carry_valid_r <= 1'b0;
             end
 
             // 误预测/flush 时清除 F2
@@ -361,6 +437,9 @@ module lumi_fetch #(
             // ── BTB 更新 (分支反馈, fetch-bpred.html §3.1) ──
             if (branch_redirect_valid) begin
                 btb_mem[btb_wr_idx] <= btb_wr_data;
+                // DEBUG: BTB-WR (ERR-019 调试, 注释保留)
+                // $display("[BTB-WR] idx=%0d tag=0x%05h target=0x%08h pc=0x%08h",
+                //          btb_wr_idx, btb_wr_data.tag, btb_wr_data.target, tage_update_pc);
             end
 
             // ── LTAGE 更新 (fetch-bpred.html §3.3) ─────────
@@ -410,14 +489,32 @@ module lumi_fetch #(
     // ═══════════════════════════════════════════════════════════
     // BTB 写入数据 (误预测时更新)
     // ═══════════════════════════════════════════════════════════
+    // ERR-019 修复: 根据分支类型正确设置 BTB 条目字段
+    // 原 bug: is_branch 始终为 1, 导致 JAL 被当作条件分支,
+    // BTB 查找时使用 LTAGE 预测 (初始 not-taken), JAL 永远误预测.
     always_comb begin
         btb_wr_idx       = tage_update_pc[BTB_IDX_W:1];
         btb_wr_data.valid  = 1'b1;
         btb_wr_data.tag    = tage_update_pc[31 : BTB_IDX_W+1];
         btb_wr_data.target = branch_redirect_pc;
-        btb_wr_data.is_call   = 1'b0;
-        btb_wr_data.is_ret    = 1'b0;
-        btb_wr_data.is_branch = 1'b1;  // 默认条件分支
+        btb_wr_data.is_call    = 1'b0;
+        btb_wr_data.is_ret     = 1'b0;
+        btb_wr_data.is_branch  = 1'b0;  // 默认: 无条件跳转 (JAL)
+
+        if (br_update_is_jal) begin
+            // JAL: 无条件跳转, is_branch=0 → BTB 查找时预测 taken
+            btb_wr_data.is_call    = br_update_is_call;   // ERR-044
+            btb_wr_data.is_ret     = 1'b0;
+            btb_wr_data.is_branch  = 1'b0;
+        end else if (br_update_is_jalr) begin
+            // JALR: 间接跳转
+            btb_wr_data.is_call    = br_update_is_call;   // ERR-044
+            btb_wr_data.is_ret     = br_update_is_ret;    // ERR-044
+            btb_wr_data.is_branch  = 1'b0;
+        end else begin
+            // 条件分支 (BEQ/BNE/BLT/BGE/BLTU/BGEU)
+            btb_wr_data.is_branch  = 1'b1;
+        end
     end
 
     // ═══════════════════════════════════════════════════════════
@@ -431,26 +528,30 @@ module lumi_fetch #(
             f2_raw_inst[i] = f2_data_r[i*32 +: 32];
         end
 
-        // 计算有效指令数: 128-bit ICache = 4 words
-        f2_count_comb = {$clog2(FETCH_WIDTH)+1{1'b0}};
-        if (f2_valid_r) begin
-            // 如果预测分支 taken, 只有一条 (分支指令本身)
-            if (f2_pred_taken_r) begin
-                f2_count_comb = {{$clog2(FETCH_WIDTH){1'b0}}, 1'b1};
-            end else begin
-                // 128-bit ICache 提供 4 条有效指令
-                f2_count_comb = ICACHE_WORDS[$clog2(FETCH_WIDTH):0];
-            end
+        // ERR-042: 使用 predecode 动态指令数 (压缩指令场景下不再硬编码 4)
+        f2_count_comb = {{$clog2(FETCH_WIDTH)+1{1'b0}}};
+        if (f2_valid_r || f2_icache_valid) begin
+            f2_count_comb = {1'b0, predecode_inst_count};
         end
     end
 
     // 输出赋值
     assign f2_instructions = f2_raw_inst;
     assign f2_inst_count   = f2_count_comb;
-    assign f2_valid        = f2_valid_r;
+    // ERR-019: 组合 flush — mispredict 时立即使 F2 无效,
+    // 防止 decode 在 flush 后的第一个 posedge 从残留 F2 数据中发射错误路径指令
+    assign f2_valid        = branch_redirect_valid ? 1'b0 : f2_valid_r;
     assign f2_pc_out       = f2_pc_r;
     assign f2_pred_taken   = f2_pred_taken_r;
     assign f2_pred_target  = f2_pred_target_r;
+
+    // ERR-042: predecode 输入 mux (F2 有效时用寄存器数据, 否则用当前 ICache 数据)
+    assign f2_raw_data_out     = f2_valid_r ? f2_data_r : f2_icache_data;
+    assign f2_base_pc_out      = f2_valid_r ? {f2_pc_r[31:4], 4'h0} : {pc_reg[31:4], 4'h0};
+    assign f2_start_offset_out = f2_valid_r ? f2_pc_r[3:0] : fetch_start_offset;
+    assign f2_pred_taken_out   = f2_valid_r ? f2_pred_taken_r : f1_pred_taken_comb;
+    assign f2_carry_hw_out     = carry_hw_r;
+    assign f2_carry_valid_out  = carry_valid_r;
 
     // ═══════════════════════════════════════════════════════════
     // FSM 组合逻辑
@@ -483,8 +584,8 @@ module lumi_fetch #(
                     state_next = ST_FLUSH;
                     flush_cnt_next  = 2'd2;
                     pc_next    = branch_redirect_pc;
-                end else if (dec_stall) begin
-                    // decode back-pressure: 保持 PC, 不发新请求
+                end else if (dec_stall || !dec_all_issued) begin
+                    // ERR-019: decode back-pressure 或 carry-over 指令: 保持 PC
                     pc_next = pc_reg;
                     state_next = ST_FETCH;
                 end else if (f2_icache_valid) begin
@@ -492,7 +593,9 @@ module lumi_fetch #(
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
                     end else begin
-                        pc_next = pc_reg + 32'd16; // 128-bit ICache = 4 words = 16 bytes
+                        // ERR-042: PC 前进量由 predecode 动态计算
+                        pc_next = (f2_valid_r ? f2_pc_r : pc_reg) +
+                                  {27'h0, predecode_bytes_consumed};
                     end
                     state_next = ST_FETCH;  // 保持取指
                 end else begin
@@ -523,7 +626,9 @@ module lumi_fetch #(
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
                     end else begin
-                        pc_next = pc_reg + 32'd16; // 128-bit ICache = 4 words = 16 bytes
+                        // ERR-042: PC 前进量由 predecode 动态计算
+                        pc_next = (f2_valid_r ? f2_pc_r : pc_reg) +
+                                  {27'h0, predecode_bytes_consumed};
                     end
                     state_next = ST_FETCH;
                 end
@@ -547,6 +652,8 @@ module lumi_fetch #(
                     state_next = ST_FETCH;
                 end
             end
+
+            default: state_next = ST_IDLE;  // ERR-057: safe recovery
         endcase
 
         // 分支反馈最高优先级覆盖
