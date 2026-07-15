@@ -164,7 +164,9 @@ void _exit(int code) {
 #include "../coremark/core_main.c"
 #undef main
 
-/* V1 main: 调用原版 main，原版会在内部调用 _exit(0) */
+/* V1 main: 调用原版 main，返回后调用 _exit(0) 触发 v1_write_result */
 int main(int argc, char *argv[]) {
-    return coremark_orig_main(argc, argv);
+    int rc = coremark_orig_main(argc, argv);
+    _exit(rc);
+    return rc;  /* never reached */
 }
