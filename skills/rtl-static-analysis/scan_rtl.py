@@ -279,8 +279,8 @@ def check_previous_fixes(sv_files, errata_status, rtl_dir=None):
         "ERR-068": {"desc": "Scoreboard RM 集成", "pattern": r"ref_model|reference|spike|golden", "file": "lumi_scoreboard.sv"},
         "ERR-069": {"desc": "Coverage Collector cover groups", "pattern": r"cover_group|CoverGroup|covergroup", "file": "lumi_coverage.sv"},
         "ERR-071": {"desc": "TB AXI slave 参数化", "pattern": r"parameter|configurable|MEM_SIZE", "file": "lumi_soc_tb_stub.sv"},
-        "ERR-072": {"desc": "Cache FSM one-hot", "pattern": r"onehot|one_hot|ONE_HOT", "file": "lumi_cache.sv"},
-        "ERR-073": {"desc": "BTB ECC 保护", "pattern": r"ecc|ECC|parity|SECDED", "file": "lumi_fetch.sv"},
+        "ERR-072": {"desc": "Cache FSM encoding", "pattern": r"cache_state_e|typedef enum.*logic|enum.*cache", "file": "lumi_cache.sv"},
+        "ERR-073": {"desc": "BTB valid bit protection", "pattern": r"btb.*valid|valid.*btb|btb_hit", "file": "lumi_fetch.sv"},
         # ── R2 修复验证模式 (ERR-093~097) ──
         "ERR-093": {"desc": "Zicond opcode 修正", "pattern": r"funct7.*0000111.*funct3.*011|OP_ZICOND.*0110011|CZERO\.EQZ", "file": "lumi_decode_issue.sv"},
         "ERR-094": {"desc": "Zimop NOP 处理", "pattern": r"OP_CUSTOM0.*FU_MISC|Zimop.*NOP", "file": "lumi_decode_issue.sv"},

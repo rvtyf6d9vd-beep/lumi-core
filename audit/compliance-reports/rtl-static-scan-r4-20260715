@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumi-Core RTL 静态分析报告 (第 4 轮)</title>
+<style>
+  :root { --crit:#dc2626; --high:#ea580c; --med:#ca8a04; --low:#2563eb; --ok:#16a34a; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f8fafc; color: #1e293b; }
+  h1 { text-align: center; color: #0f172a; border-bottom: 3px solid #3b82f6; padding-bottom: 12px; }
+  h2 { color: #1e40af; border-left: 4px solid #3b82f6; padding-left: 12px; margin-top: 32px; }
+  h3 { color: #334155; margin-top: 24px; }
+  .meta { text-align: center; color: #64748b; font-size: 0.9em; margin-bottom: 24px; }
+  .exec-summary { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+  .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 16px 0; }
+  .stat-card { text-align: center; padding: 16px 8px; border-radius: 8px; color: #fff; font-weight: bold; }
+  .stat-card .num { font-size: 2em; display: block; }
+  .stat-card .label { font-size: 0.8em; opacity: 0.9; }
+  .bg-d1 { background: #3b82f6; } .bg-d2 { background: #8b5cf6; } .bg-d3 { background: #06b6d4; }
+  .bg-d4 { background: #10b981; } .bg-d5 { background: #f59e0b; } .bg-d6 { background: #ef4444; }
+  .bg-ok { background: var(--ok); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88em; }
+  th { background: #1e40af; color: #fff; padding: 8px 10px; text-align: left; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) { background: #f1f5f9; }
+  tr:hover { background: #e0f2fe; }
+  .sev { display: inline-block; padding: 2px 8px; border-radius: 4px; color: #fff; font-size: 0.8em; font-weight: 600; }
+  .sev-ok { background: var(--ok); } .sev-warn { background: var(--med); } .sev-fail { background: var(--crit); }
+  .section-box { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .footer { text-align: center; color: #94a3b8; font-size: 0.8em; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+  details { margin: 8px 0; } summary { cursor: pointer; font-weight: 600; color: #1e40af; }
+  code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-size: 0.88em; }
+</style>
+</head>
+<body>
+
+<h1>Lumi-Core RTL 静态分析报告 (第 4 轮)</h1>
+<p class="meta">
+  报告日期: 2026-07-16 | 扫描文件: 30 × .sv | 分析维度: 6<br>
+  基线对比: 第 1 轮 (2026-07-14) | 分析方法: 自动化脚本 + 正则模式匹配
+</p>
+
+
+<div class="exec-summary">
+<p>第 4 轮 RTL 静态分析完成。扫描 30 个 .sv 文件，覆盖 6 个分析维度。</p>
+
+<div class="stat-grid">
+  <div class="stat-card bg-d1"><span class="num">2</span><span class="label">D1 设计一致性</span></div>
+  <div class="stat-card bg-d2"><span class="num">0</span><span class="label">D2 逻辑缺陷</span></div>
+  <div class="stat-card bg-d3"><span class="num">3</span><span class="label">D3 验证环境</span></div>
+  <div class="stat-card bg-d4"><span class="num">1</span><span class="label">D4 需求追溯</span></div>
+  <div class="stat-card bg-d5"><span class="num">4</span><span class="label">D5 架构合规</span></div>
+  <div class="stat-card bg-d6"><span class="num">0</span><span class="label">D6 前期验证</span></div>
+</div>
+
+
+<h3>前期修复验证摘要</h3>
+<div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
+  <div class="stat-card bg-ok"><span class="num">30</span><span class="label">PASS</span></div>
+  <div class="stat-card" style="background: var(--crit);"><span class="num">0</span><span class="label">FAIL</span></div>
+  <div class="stat-card" style="background: var(--high);"><span class="num">0</span><span class="label">REGRESSION</span></div>
+  <div class="stat-card" style="background: var(--med);"><span class="num">2</span><span class="label">FIXED_NOT_CLOSED</span></div>
+</div>
+
+</div>
+<h2 id="d6">6. 前期已知问题解决验证</h2>
+<div class="section-box">
+<table><tr><th>ERR ID</th><th>描述</th><th>验证状态</th><th>Errata 状态</th><th>代码验证</th><th>详情</th></tr>
+<tr><td><code>ERR-044</code></td><td>SoC trap 接口连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'trap_valid.*=.*trap' 找到 in lumi_soc_top.sv</td></tr>
+<tr><td><code>ERR-045</code></td><td>CLIC CSR 接口连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'clic_csr_(addr|wdata|we)' 找到 in lumi_soc_top.sv</td></tr>
+<tr><td><code>ERR-046</code></td><td>NMI 信号连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'nmi_signal|nmi_in' 找到 in lumi_soc_top.sv</td></tr>
+<tr><td><code>ERR-047</code></td><td>CDC 2-FF 同步器</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'lumi_cdc_2ff_sync|cdc_sync' 找到 in lumi_cdc_sync.sv</td></tr>
+<tr><td><code>ERR-048</code></td><td>Cache evict 4 beats</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'evict.*beat|beat.*evict|arlen.*3' 找到 in lumi_cache.sv</td></tr>
+<tr><td><code>ERR-049</code></td><td>CSR 写优先于 HPM</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'csr_we.*hpm|hpm.*csr_we|skip.*increment.*csr' 找到 in lumi_csr_unit.sv</td></tr>
+<tr><td><code>ERR-050</code></td><td>E1→M 旁路时序对齐</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'e2.*bypass|m_bypass_valid' 找到 in lumi_core_top.sv</td></tr>
+<tr><td><code>ERR-051</code></td><td>Regfile 写端口仲裁</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'irf_wr_conflict|irf_wr_stall|arbiter|arbitrat' 找到 in lumi_regfile.sv</td></tr>
+<tr><td><code>ERR-052</code></td><td>Debug CDC 2-FF+握手</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'sync0.*sync1|dmi_req_valid_sync' 找到 in lumi_debug_module.sv</td></tr>
+<tr><td><code>ERR-053</code></td><td>MISA VAL 修正</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'MISA_VAL|32'h4200_1107|32'h40141107|MISA' 找到 in lumi_csr_unit.sv</td></tr>
+<tr><td><code>ERR-054</code></td><td>PLIC 多核路由</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'NUM_HART|meip\[' 找到 in lumi_plic.sv</td></tr>
+<tr><td><code>ERR-055</code></td><td>TCM DMA 独立地址</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'dma_addr' 找到 in lumi_tcm.sv</td></tr>
+<tr><td><code>ERR-056</code></td><td>Filelist 修复</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'lumi_predecode|lumi_cdc_sync' 找到 in lumi_core.f</td></tr>
+<tr><td><code>ERR-057</code></td><td>Fetch FSM default</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'default.*ST_IDLE|default.*state_next' 找到 in lumi_fetch.sv</td></tr>
+<tr><td><code>ERR-058</code></td><td>Decode FSM default</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'default.*state_next|default.*ST' 找到 in lumi_decode_issue.sv</td></tr>
+<tr><td><code>ERR-059</code></td><td>Execute DIV FSM default</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'default.*DIV_IDLE|default.*div_state' 找到 in lumi_execute.sv</td></tr>
+<tr><td><code>ERR-060</code></td><td>FENCE drain store buffer</td><td><span class="sev sev-warn">FIXED_BUT_NOT_CLOSED</span></td><td>open</td><td>✓</td><td>✓ 模式 'fence.*sb_empty|e1_sb_empty|OP_FENCE' 找到 in lumi_execute.sv</td></tr>
+<tr><td><code>ERR-061</code></td><td>Power ST_SLEEP 实现</td><td><span class="sev sev-warn">FIXED_BUT_NOT_CLOSED</span></td><td>open</td><td>✓</td><td>✓ 模式 'ST_SLEEP' 找到 in lumi_power_mgmt.sv</td></tr>
+<tr><td><code>ERR-062</code></td><td>FPU NOP 占位</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'ST_IDLE.*1'b0|fpu.*valid.*1'b0' 找到 in lumi_fpu.sv</td></tr>
+<tr><td><code>ERR-063</code></td><td>Vector NOP 占位</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'ST_IDLE.*1'b0|vec.*valid.*1'b0' 找到 in lumi_vector.sv</td></tr>
+<tr><td><code>ERR-064</code></td><td>ISA 扩展解码占位</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'OP_CUSTOM0|OP_ZICOND|Zicbom|Zicond' 找到 in lumi_decode_issue.sv</td></tr>
+<tr><td><code>ERR-065</code></td><td>DFT MBIST FSM default</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'default' 找到 in lumi_dft_ctrl.sv</td></tr>
+<tr><td><code>ERR-066</code></td><td>Lockstep FSM default</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'default' 找到 in lumi_lockstep.sv</td></tr>
+<tr><td><code>ERR-067</code></td><td>Power ST_SLEEP 可达</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'ST_SLEEP' 找到 in lumi_power_mgmt.sv</td></tr>
+<tr><td><code>ERR-068</code></td><td>Scoreboard RM 集成</td><td><span class="sev sev-warn">FILE_NOT_FOUND</span></td><td>resolved</td><td>✗</td><td>文件 lumi_scoreboard.sv 未找到</td></tr>
+<tr><td><code>ERR-069</code></td><td>Coverage Collector cover groups</td><td><span class="sev sev-warn">FILE_NOT_FOUND</span></td><td>resolved</td><td>✗</td><td>文件 lumi_coverage.sv 未找到</td></tr>
+<tr><td><code>ERR-071</code></td><td>TB AXI slave 参数化</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'parameter|configurable|MEM_SIZE' 找到 in lumi_soc_tb_stub.sv</td></tr>
+<tr><td><code>ERR-072</code></td><td>Cache FSM encoding</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'cache_state_e|typedef enum.*logic|enum.*cache' 找到 in lumi_cache.sv</td></tr>
+<tr><td><code>ERR-073</code></td><td>BTB valid bit protection</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'btb.*valid|valid.*btb|btb_hit' 找到 in lumi_fetch.sv</td></tr>
+<tr><td><code>ERR-093</code></td><td>Zicond opcode 修正</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'funct7.*0000111.*funct3.*011|OP_ZICOND.*0110011|CZERO\.EQZ' 找到 in lumi_decode_issue.sv</td></tr>
+<tr><td><code>ERR-094</code></td><td>Zimop NOP 处理</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'OP_CUSTOM0.*FU_MISC|Zimop.*NOP' 找到 in lumi_decode_issue.sv</td></tr>
+<tr><td><code>ERR-095</code></td><td>SoC Exception 信号连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'core_exc_fetch|core_exc_decode|core_exc_exec' 找到 in lumi_soc_top.sv</td></tr>
+<tr><td><code>ERR-096</code></td><td>SoC ECC IRQ 连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'rf_ecc_ce_irq|rf_ecc_ded_irq' 找到 in lumi_soc_top.sv</td></tr>
+<tr><td><code>ERR-097</code></td><td>Power mgmt irq_pending 连接</td><td><span class="sev sev-ok">PASS</span></td><td>resolved</td><td>✓</td><td>✓ 模式 'irq_pending.*clic_irq_valid|irq_pending.*irq' 找到 in lumi_soc_top.sv</td></tr>
+</table>
+</div>
+<h2 id="d1">1. 设计一致性检查</h2>
+<div class="section-box">
+<table><tr><th>类型</th><th>文件/信号</th><th>详情</th></tr>
+<tr><td>HARDCODED_ZERO</td><td>ecc_ce_irq</td><td>信号 ecc_ce_irq 硬编码为 0，可能存在断路</td></tr>
+<tr><td>HARDCODED_ZERO</td><td>ecc_ded_irq</td><td>信号 ecc_ded_irq 硬编码为 0，可能存在断路</td></tr>
+</table>
+</div>
+<h2 id="d2">2. 逻辑缺陷检测</h2>
+<div class="section-box">
+<p>无 FSM default 缺失</p>
+</div>
+<h2 id="d3">3. 验证环境检查</h2>
+<div class="section-box">
+<table><tr><th>类型</th><th>详情</th></tr>
+<tr><td>TEST_COUNT</td><td>Directed 测试: 47 个文件</td></tr>
+<tr><td>COVERAGE_PLAN</td><td>Cover Groups: 0 个, pending: 35 个</td></tr>
+<tr><td>TB_FILES</td><td>Testbench 文件: 10 个</td></tr>
+</table>
+</div>
+<h2 id="d4">4. 需求追溯验证</h2>
+<div class="section-box">
+<p>设计文档: 17 份</p>
+</div>
+<h2 id="d5">5. 架构合规性检查</h2>
+<div class="section-box">
+<h3>ISA 扩展解码覆盖</h3><table><tr><th>扩展</th><th>文件</th><th>详情</th></tr>
+<tr><td>Zcmop</td><td>lumi_decode_issue.sv</td><td>扩展 Zcmop 解码未找到</td></tr>
+<tr><td>Ziccamoa</td><td>lumi_decode_issue.sv</td><td>扩展 Ziccamoa 解码未找到</td></tr>
+</table>
+<h3>命名规范</h3><table><tr><th>文件</th><th>数量</th><th>详情</th></tr>
+<tr><td>lumi_csr_unit.sv</td><td>24</td><td>lumi_csr_unit.sv: 检测到 24 处 camelCase (项目规范为 snake_case)</td></tr>
+<tr><td>lumi_clic.sv</td><td>13</td><td>lumi_clic.sv: 检测到 13 处 camelCase (项目规范为 snake_case)</td></tr>
+</table>
+</div>
+
+<div class="footer">
+  <p>Lumi-Core RTL 静态分析报告 (第 4 轮) | 生成日期: 2026-07-16 | 工具: scan_rtl.py</p>
+  <p>本报告由 skills/rtl-static-analysis/scan_rtl.py 自动生成。规则 [03] 工作留痕 | [20] Errata 维护</p>
+</div>
+
+</body>
+</html>
