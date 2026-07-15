@@ -72,6 +72,9 @@ module lumi_core_top #(
     output logic [31:0]             core_exc_insn,
     output logic [31:0]             core_exc_pc,
 
+    // ── Power management 信号 (Task 3: WFI 检测) ──
+    output logic                    wfi_req,
+
     // ── V1 验证探针 (Verification Probe, all slots) ───────────────
     output logic [31:0]             mon_inst [ISSUE_WIDTH-1:0],
     output logic [15:0]             mon_inst_raw [ISSUE_WIDTH-1:0],
@@ -779,6 +782,19 @@ module lumi_core_top #(
     assign core_exc_addr   = 32'h0;           // 异常地址 (TODO: 从 CSR 获取)
     assign core_exc_insn   = 32'h0;           // 异常指令 (TODO: 从流水线获取)
     assign core_exc_pc     = 32'h0;           // 异常 PC (TODO: 从流水线获取)
+
+    // ── WFI 检测 (Task 3: 当 WFI 指令到达 E1 级时产生 wfi_req) ──
+    // WFI 编码: opcode=1110011(SYSTEM), funct3=000, imm=0x105
+    always_comb begin
+        wfi_req = 1'b0;
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            if (e1_inst_r[i].inst[6:0] == 7'b1110011 &&
+                e1_inst_r[i].funct3 == 3'b000 &&
+                e1_inst_r[i].imm == 32'h105) begin
+                wfi_req = 1'b1;
+            end
+        end
+    end
 
     // ── 调试: 误预测检测 (已移除 ERR-022 debug) ────────────────
 

@@ -155,6 +155,9 @@ module lumi_soc_top #(
     logic [31:0] core_exc_insn;
     logic [31:0] core_exc_pc;
 
+    // ── WFI 信号 (Task 3: core_top WFI 检测) ──
+    logic core_wfi_req;
+
     // ─── Core Top 实例化 (单核模式, D-018 generate 切换多核) ─
     generate
         if (NUM_HARTS == 1) begin : gen_single_core
@@ -210,6 +213,7 @@ module lumi_soc_top #(
                 .core_exc_addr   (core_exc_addr),
                 .core_exc_insn   (core_exc_insn),
                 .core_exc_pc     (core_exc_pc),
+                .wfi_req         (core_wfi_req),
                 .mon_inst        (mon_inst),
                 .mon_inst_raw    (mon_inst_raw),
                 .mon_rd          (mon_rd),
@@ -535,7 +539,7 @@ module lumi_soc_top #(
     lumi_power_mgmt u_power (
         .clk_core    (clk_core),
         .reset_n     (reset_n),
-        .wfi_req     (1'b0),   // TODO: 连接 core_top WFI 信号 (待实现)
+        .wfi_req     (core_wfi_req),  // Task 3: 连接 core_top WFI 信号
         .wrs_req     (1'b0),   // TODO: 连接 core_top WRS 信号 (待实现)
         .core_active (|commit_valid),
         .irq_pending (clic_irq_valid),  // ERR-097: CLIC 中断作为唤醒源
