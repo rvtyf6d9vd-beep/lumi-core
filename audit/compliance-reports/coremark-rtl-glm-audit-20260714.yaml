@@ -1,0 +1,295 @@
+# CoreMark 调试通路 RTL 逻辑推演审计 — GLM 第3轮
+# 审计方法: 端到端 carry 机制验证 + pred_taken 路径分析 + 级联 bug 推演
+# 审计者: GLM (independent deduction)
+# 日期: 2026-07-14
+
+report_id: "SA-AUDIT-GLM-20260714"
+date: "2026-07-14"
+auditor: "GLM (logic-deduction + carry verification)"
+audited_reports:
+  - "coremark-rtl-static-analysis-20260714.yaml (hw-design 第3轮, 17 issues)"
+  - "coremark-rtl-static-analysis-audit-20260714.yaml (qa-audit 第1轮, +3 issues)"
+  - "coremark-rtl-logic-deduction-audit-20260714.yaml (qa-audit 第2轮, +2 issues)"
+
+# ============================================================
+# 审计结论
+# ============================================================
+
+conclusion:
+  overall: >
+    本轮审计推翻了第2轮审计中 SA-CM-LD-002 (pred_branch_slot=0 导致 0x178) 的假说,
+    并确认 carry 机制是正确的。0x178 PC 非对齐的最可能根因是 P0 bug 的级联效应:
+    SA-CM-003 (MUL 结果串改) 或 SA-CM-001/002 (DIV 符号错误) 导致寄存器值错误,
+    进而 JALR 使用错误目标地址跳转到 0x178。
+    计划应简化: 不需要独立的 Phase 0 根因定位, 应直接修复 P0 bug 后验证。
+  verdict: "计划可以简化, Phase 0 可降级为 Phase 1 的前置步骤"
+  key_corrections:
+    - "SA-CM-LD-002 (pred_branch_slot=0) 假说被推翻 — 当 pred_taken=1 时 FSM 用 f1_pred_target_comb, 不用 bytes_consumed"
+    - "carry 机制经逐行验证确认正确 — bytes_consumed=16-start_offset 时 pc_reg 前进到下一对齐块"
+    - "0x178 根因重新判定: P0 bug 级联效应 (概率 80%)"
+    - "Phase 0 从独立阶段降级为 Phase 1 前置 (同一天完成)"
+
+# ============================================================
+# 推翻 SA-CM-LD-002 — pred_branch_slot=0 假说
+# ============================================================
+
+sa_cm_ld_002_refutation:
+  original_hypothesis: >
+    predecode.sv lines 202-205: 当 pred_branch_slot=0 且 !carry_valid 时,
+    bytes_consumed = inst_compressed[0] ? 2 : 4。
+    若 pc_reg=0x174 且 inst_compressed[0]=0 (32-bit), bytes_consumed=4,
+    pc_next = 0x178, 而 0x178 是 JAL 0x176 的中间字节。
+  refutation: >
+    该假说有一个致命缺陷: 当 pred_taken=1 时, fetch FSM (line 671-672)
+    使用 pc_next = f1_pred_target_comb, 而不是 pc_reg + bytes_consumed。
+    bytes_consumed 在 pred_taken=1 时根本不被使用。
+    只有当 pred_taken=0 时, pc_next = pc_reg + bytes_consumed (line 681)。
+    但当 pred_taken=0 时, predecode 不会进入 pred_branch_slot=0 的
+    特殊处理路径 (line 179: if (pred_taken && pred_branch_slot != 4'hF)),
+    而是使用默认的 bytes_consumed = bo - start_offset (line 176),
+    这正确反映了已处理指令的字节数。
+  confidence: "95% — 逻辑推演确认 pred_taken=1 时 bytes_consumed 不影响 pc_next"
+  impact: >
+    SA-CM-LD-002 应从 P0-根因候选 降级为 Low (假说不成立)。
+    ERR-105 可以保留为 open, 但严重度从 critical 降为 low。
+    0x178 的根因需要从其他方向寻找。
+
+# ============================================================
+# carry 机制逐行验证 — 确认正确
+# ============================================================
+
+carry_mechanism_verification:
+  concern: >
+    第2轮审计曾怀疑 carry 机制可能因 ICache 返回同一块数据而失效。
+    当 32-bit 指令跨 16-byte 边界时, carry_hw 保存低 2 字节,
+    下一周期 ICache 是否返回下一块数据?
+  verification: >
+    逐行验证确认 carry 机制正确:
+    (1) predecode.sv line 173-174: 当 carry_valid || carry_valid_out 时,
+        bytes_consumed = 16 - start_offset。
+        这使 pc_next = pc_reg + (16 - start_offset) = 下一对齐块地址。
+    (2) fetch.sv line 681: pc_next = pc_reg + bytes_consumed。
+    (3) SoC top line 293: ic_word_idx = {ic_addr[17:4], 2'b00}。
+        ICache 以 16-byte 对齐地址索引, 返回对齐块数据。
+    (4) 当 pc_reg 前进到下一对齐块 (如 0x170), ICache 返回 0x170-0x17F。
+    (5) predecode.sv line 77: eff_data = {raw_swapped(新块), carry_hw(旧块低2字节)}。
+    (6) 32-bit carry 指令: inst = eff_data[0+:32] = {raw[15:0](新块前2字节), carry_hw(旧块低2字节)}。
+        新块前2字节 = 32-bit 指令的高 2 字节 → 正确重组。
+  conclusion: "carry 机制完全正确, 不存在 bug。之前的怀疑被推翻。"
+
+# ============================================================
+# 0x178 根因重新判定 — 级联效应
+# ============================================================
+
+misalign_0x178_rerun:
+  previous_candidates:
+    - "pred_branch_slot=0 + bytes_consumed=4 (第2轮, 70%) → 推翻"
+    - "predecode 误识别 0x176 为 16-bit (第2轮, 30%) → 可能但无证据"
+    - "carry 机制错误 (第2轮, 20%) → 推翻"
+  new_primary_hypothesis:
+    title: "P0 bug 级联效应 — 错误寄存器值导致 JALR 跳到 0x178"
+    probability: 80%
+    mechanism: >
+      (1) SA-CM-003 (MUL 结果串改): 同批次两条 MUL, 第二条写入第一条的结果。
+          若第二条 MUL 的 rd 被 JALR 用作跳转目标 (如 rd=ra=x1),
+          JALR 会跳到错误地址 (可能是 0x178)。
+      (2) SA-CM-001 (DIVU 误判有符号): 无符号除法结果被错误取负。
+          若结果用于地址计算或 JALR 目标, 跳转到错误地址。
+      (3) SA-CM-002 (REM 符号错误): 取模结果符号错误。
+          若用于数组索引或指针运算, 导致错误地址。
+    evidence: >
+      (a) 5 次 PC RESTART 都发生在启动早期 — 与 BTB 冷启动期重合,
+          此时分支预测 miss 率高, JALR 依赖寄存器正确值;
+      (b) 148M cycles 后 PROGRESS 停止 — 可能是后续代码触发 MUL/DIV bug
+          导致数据结构损坏;
+      (c) 0x178 不是常见地址 — 像是错误计算的结果而非固定跳转目标。
+    test_to_verify: >
+      修复 SA-CM-001/002/003 后重新运行 CoreMark V1 ITERATIONS=1,
+      检查 0x178 PC RESTART 是否消失。
+
+  secondary_hypothesis:
+    title: "BTB 冷启动返回错误目标"
+    probability: 15%
+    mechanism: >
+      BTB 在冷启动时无有效条目。当 JAL 首次执行时, BTB miss,
+      预测 not-taken。JAL 在 E1 执行后触发 mispredict,
+      redirect 到正确目标。但如果 JAL 的 PC 或 imm 在某条路径上
+      被错误计算 (例如 AUIPC + JALR 链), redirect 目标可能是 0x178。
+    test_to_verify: "添加 BTB miss counter 和 redirect target trace"
+
+  tertiary_hypothesis:
+    title: "RAS 返回错误地址"
+    probability: 5%
+    mechanism: >
+      RAS 在 CALL/RET 时 push/pop。如果 CALL 和 RET 不配对
+      (例如因 flush 导致 push 但没有 pop), RAS 会返回错误地址。
+    test_to_verify: "添加 RAS 深度和 top 值 trace"
+
+# ============================================================
+# 新发现的问题
+# ============================================================
+
+newly_discovered:
+
+  - id: "SA-CM-GLM-001"
+    title: "BTB 反馈被误预测 slot 覆盖 — 非误预测 slot 的 BTB 学习丢失"
+    severity: low
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "651-668"
+    description: >
+      当同批次有两条分支指令 (slot 0 非 mispredict, slot 1 是 mispredict):
+      slot 0 进入 else-if 分支 (line 661), 设置 e1_branch_taken/target。
+      slot 1 进入 if 分支 (line 651), 覆盖 e1_branch_taken/target。
+      结果: BTB 只学习到 slot 1 的信息, slot 0 的 BTB 反馈丢失。
+    impact: >
+      BTB 学习不准确, 可能导致后续预测错误。但非正确性问题。
+    fix: >
+      为每个 slot 维护独立的 BTB 反馈, 或在 BTB 更新时使用
+      PC 匹配来确定更新哪个 entry。
+    priority: P3
+
+  - id: "SA-CM-GLM-002"
+    title: "post_mispredict_bubble 对 JALR 可能不足 — ra 值尚未写回"
+    severity: medium
+    module: "src/rtl/core/lumi_core_top.sv"
+    lines: "559-563"
+    description: >
+      post_mispredict_bubble 在误预测后插入 1 cycle 气泡, 让 W bypass
+      有正确 ra 值。但 JALR 的目标来自 rs1 (不是 PC+imm), 如果 rs1
+      是前一条 JAL 的 ra (PC+4), 需要确保 ra 已写回到 regfile 或 bypass。
+      若 JAL 和 JALR 在连续 cycle, 1-cycle bubble 可能不够
+      (需要 W→E1 bypass, 但 bypass 有 1-cycle 延迟)。
+    impact: >
+      JALR 可能读到旧 ra 值, 跳到错误地址。在 CALL/RET 密集代码中
+      可能导致间歇性错误。
+    coremark_relevance: >
+      CoreMark 有函数调用 (matrix_mul, crc, etc.), CALL/RET 密集。
+      但编译器通常在 CALL 和 RET 之间插入其他指令, 缓解此问题。
+    fix: >
+      (1) 验证 W→E1 bypass 对 ra 的覆盖;
+      (2) 若不足, 增加 post_mispredict_bubble 到 2 cycle;
+      (3) 或在 JALR 检测到 rs1 依赖前一条 JAL 时自动 stall。
+    priority: P2
+
+# ============================================================
+# 计划修正建议
+# ============================================================
+
+revised_plan_assessment:
+
+  overall_assessment: >
+    原始计划 (hw-design) 和第1轮审计 (qa-audit) 的修正方向基本正确,
+    但第2轮审计 (logic-deduction) 的 Phase 0 独立根因定位过于保守。
+    基于 0x178 级联效应假说 (80% 概率), Phase 0 可简化为 Phase 1 的前置步骤。
+
+  phase_0_reassessment:
+    original: "Phase 0 — 独立根因定位 (1-2 天, blocker)"
+    revised: "Phase 0 — 前置断言和复现 (0.5 天, 与 Phase 1 合并)"
+    rationale: >
+      0x178 最可能是 P0 bug 级联效应, 修复 P0 bug 后 0x178 应消失。
+      不需要独立 1-2 天定位根因。
+      但仍需在 Phase 1 开始前添加 PC 对齐断言 (0.5 天)。
+    deliverables_simplified:
+      - "PC 对齐断言 (0.5h)"
+      - "bytes_consumed 范围断言 (0.5h)"
+      - "JAL 0x176 最小复现用例 (2h, 可与 Phase 1 并行)"
+
+  revised_phase_structure:
+    - phase: "Phase 1 — 核心算术修复 + 前置断言 (P0)"
+      pre_step: "添加 PC 对齐断言 (0.5 天)"
+      issues: ["SA-CM-001", "SA-CM-002", "SA-CM-003", "SA-CM-AUDIT-003"]
+      post_step: "重新运行 CoreMark V1 I=1, 验证 0x178 消失"
+      estimated_effort: "2-3 天"
+      note: "若 0x178 仍存在, 再启动独立根因定位"
+
+    - phase: "Phase 2 — 取指控制 + TB 修复 (P0/P1)"
+      issues: ["SA-CM-004", "SA-CM-005", "SA-CM-007", "SA-CM-AUDIT-002"]
+      estimated_effort: "2-3 天"
+
+    - phase: "Phase 3 — 写回与验证环境 (P1/P2)"
+      issues: ["SA-CM-LD-001", "SA-CM-GLM-002", "SA-CM-012", "SA-CM-011"]
+      estimated_effort: "2-3 天"
+
+    - phase: "Phase 4 — 可选 (P2/P3)"
+      issues: ["SA-CM-006", "SA-CM-008~010", "SA-CM-013~017", "SA-CM-GLM-001", "SA-CM-LD-002"]
+      estimated_effort: "1-2 天"
+
+  total_estimated_effort: "7-11 天 (含验证)"
+
+# ============================================================
+# 补充建议
+# ============================================================
+
+additional_supplements:
+
+  1_assertion_strategy:
+    title: "分层断言策略 (Phase 1 前置)"
+    assertions:
+      - level: "PC 对齐"
+        location: "lumi_fetch.sv, FSM always_comb 末尾"
+        code: "// synthesis translate_off\nassert(pc_next[0] == 1'b0) else $error(\"PC not 2-byte aligned: 0x%08h\", pc_next);\n// synthesis translate_on"
+      - level: "bytes_consumed 范围"
+        location: "lumi_predecode.sv, bytes_consumed 赋值后"
+        code: "// synthesis translate_off\nassert(bytes_consumed inside {0, 2, 4, 6, 8, 10, 12, 14, 16}) else $error(\"invalid bytes_consumed: %0d\", bytes_consumed);\n// synthesis translate_on"
+      - level: "DIV 结果符号 (SA-CM-001/002 验证)"
+        location: "lumi_execute.sv, DIV_DONE 状态"
+        code: "// synthesis translate_off\nif (div_signed) begin\n  logic exp_quot_sign, exp_rem_sign;\n  exp_quot_sign = orig_dividend_sign ^ orig_divisor_sign;\n  exp_rem_sign = orig_dividend_sign;\n  assert(div_is_rem ? (div_result_r[31] == exp_rem_sign) : (div_result_r[31] == exp_quot_sign))\n    else $error(\"DIV sign mismatch\");\nend\n// synthesis translate_on"
+
+  2_cascade_debugging:
+    title: "级联调试策略"
+    description: >
+      若 Phase 1 修复后 0x178 仍存在, 按以下顺序排查:
+    step_1: "添加 redirect target trace: 打印每次 branch_redirect_pc 和 trap_redirect_pc"
+    step_2: "添加 JALR target trace: 打印每次 JALR 的 rs1 值和计算目标"
+    step_3: "添加 BTB content dump: 在 0x178 出现前 dump BTB 内容"
+    step_4: "添加 RAS trace: 打印每次 push/pop 和 peek 值"
+    step_5: "缩小范围: 二分法注释掉 CoreMark 代码段, 找到触发 0x178 的代码区间"
+
+  3_regression_test_plan:
+    title: "回归测试计划 (Phase 1 后)"
+    tests:
+      - name: "rv32m_div_all_signs"
+        target: "SA-CM-001, SA-CM-002"
+        coverage: "DIV/DIVU/REM/REMU × 正正/正负/负正/负负/零被除数/零除数"
+      - name: "rv32m_dual_mul"
+        target: "SA-CM-003"
+        coverage: "同批次两条 MUL, 验证各自结果正确"
+      - name: "pc_alignment_jal"
+        target: "ERR-042"
+        coverage: "JAL at 2-byte aligned but not 4-byte aligned PC, 验证 PC 不落入指令中间"
+      - name: "coremark_v1_i1"
+        target: "ERR-042, RISK-023"
+        coverage: "CoreMark V1 ITERATIONS=1, 验证无 PC RESTART 和 ECALL 到达"
+
+  4_risk_register_update:
+    new_risks:
+      - id: "RISK-031"
+        title: "SA-CM-LD-002 假说被推翻 — 0x178 根因仍需定位"
+        severity: medium
+        description: >
+          第2轮审计提出的 pred_branch_slot=0 假说被 GLM 推翻。
+          0x178 根因重新判定为 P0 bug 级联效应 (80%)。
+          若 Phase 1 修复后 0x178 仍存在, 需重新评估。
+      - id: "RISK-032"
+        title: "post_mispredict_bubble 对 JALR 可能不足"
+        severity: medium
+        description: >
+          SA-CM-GLM-002: JALR 在 CALL/RET 密集场景可能读到旧 ra 值。
+          需验证 W→E1 bypass 覆盖。
+
+# ============================================================
+# 最终结论
+# ============================================================
+
+final_verdict:
+  plan_status: "基本认可, 但需要以下修正"
+  corrections:
+    - "SA-CM-LD-002 从 P0-根因候选 降级为 Low (假说不成立)"
+    - "ERR-105 严重度从 critical 降为 low"
+    - "Phase 0 从独立阶段降级为 Phase 1 前置 (0.5 天)"
+    - "新增 SA-CM-GLM-001 (BTB 反馈覆盖, Low) 和 SA-CM-GLM-002 (JALR bubble, Medium)"
+    - "0x178 根因重新判定为 P0 bug 级联效应 (80%)"
+    - "建议: 修复 P0 bug 后验证 0x178, 若仍存在再启动独立定位"
+  approved_by: "GLM (independent deduction)"
+  human_sign_off_required: true
+  estimated_total_effort: "7-11 天 (含验证)"

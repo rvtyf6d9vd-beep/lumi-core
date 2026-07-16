@@ -2092,3 +2092,211 @@ errata:
     resolved_by: "rtl-r2-fix-plan"
     resolution: "Connected irq_pending to clic_irq_valid for wake-up detection. wfi_req/wrs_req remain 1'b0 (WFI/WRS not yet implemented in core_top)"
     regression_test: "Verilator compilation pass"
+
+  - id: "ERR-098"
+    title: "DIVU/REMU 有符号判断逻辑错误 — 无符号除法被当作有符号处理"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_execute.sv 中 div_signed 计算
+      公式 `funct3[0] ^ (funct3 == MUL_DIV || funct3 == MUL_REM)` 对
+      DIVU(101) 和 REMU(111) 产生 div_signed=1 (有符号), 但应为 0 (无符号)。
+      原因: funct3[0]=1 时 XOR 0 = 1, 误判为有符号。导致无符号除法
+      操作数被取绝对值, 结果符号被错误修正。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: open
+    workaround: "N/A — 必须修复"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/rv32m_divu_test.S"
+
+  - id: "ERR-099"
+    title: "DIV 余数符号计算错误 — 被除数为正除数为负时余数符号翻转"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_execute.sv DIV_DONE 状态使用
+      `div_dividend[31] ^ div_divisor[31]` 判断余数符号, 但这两个寄存器
+      已被取绝对值。RISC-V 规定余数符号与被除数相同, 而非 XOR。
+      当被除数为正、除数为负时 (如 7 % -2), 余数错误取负。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: open
+    workaround: "N/A — 必须修复"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/rv32m_rem_sign_test.S"
+
+  - id: "ERR-100"
+    title: "MUL 单槽限制未在发射端强制执行 — 同批次两条 MUL 结果丢失"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_execute.sv MUL 单元仅处理
+      第一条 FU_MUL 指令, 但 lumi_decode_issue.sv 未检测同批次 MUL 互斥
+      (fu_busy[FU_MUL] 始终为 0)。同一 fetch batch 中两条 MUL 指令
+      第二条结果丢失, 导致后续计算错误。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_execute.sv", "src/rtl/core/lumi_decode_issue.sv", "src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: open
+    workaround: "N/A — 必须修复"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/rv32m_dual_mul_test.S"
+
+  - id: "ERR-101"
+    title: "LTAGE 分支历史双移位 — 推测值污染实际历史"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_fetch.sv 中 LTAGE 历史更新存在
+      双移位: tage_update_valid 时移入实际结果 (line 519), 无 update 时
+      若 BTB 预测 taken 也移入 bit=1 (line 554-555)。推测值始终为 1,
+      即使实际结果为 not-taken, 导致历史被污染, 预测准确率下降。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: open
+    workaround: "N/A — 必须修复"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/bpred_history_test.S"
+
+  - id: "ERR-102"
+    title: "Fetch FSM 覆盖逻辑 — branch_redirect 优先级高于 trap"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_fetch.sv FSM 覆盖块 (line 750-755)
+      在 case 语句之后无条件覆盖 pc_next, 当 trap_redirect_valid 和
+      branch_redirect_valid 同时为 true 时, branch redirect 覆盖 trap,
+      违反 RISC-V 异常优先级。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "N/A — 需修复确保异常优先级正确"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/exception_priority_test.S"
+
+  - id: "ERR-103"
+    title: "LSU 端口分配使用地址 0 判断空闲 — 地址 0 冲突"
+    description: >
+      CoreMark 调试通路静态分析发现 lumi_execute.sv LSU 端口分配逻辑
+      (line 743) 使用 `e1_mem_addr[0] == 32'h0` 判断端口空闲, 但地址 0x0
+      是有效地址 (V1 SRAM 起始)。若同批次第一条 MEM 访问地址 0x0,
+      第二条 MEM 误判端口空闲, 覆盖第一条数据。
+    discovered_date: "2026-07-14"
+    discovered_by: hw-design (CoreMark static analysis)
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "N/A — 边界条件缺陷"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/lsu_addr0_test.S"
+
+  - id: "ERR-104"
+    title: "W 阶段 E2 抢占槽 1 — 槽 1 MUL/MISC 写回被丢失"
+    description: >
+      qa-audit 第2轮逻辑推演发现 lumi_writeback.sv (lines 140-155) 的写回
+      优先级逻辑: 当 e2_mul_valid || e2_div_valid 时, 端口 1 写 E2 结果,
+      槽 1 的 w_valid[1] 写回被完全丢弃。SA-CM-LD-001 (high)。
+      触发场景: MUL 之后紧跟 ALU 指令, ALU 写回丢失 (但 MUL 正确写回)。
+      MUL 单槽限制修复后, 此 bug 会因 MUL 频率上升而显现。
+    discovered_date: "2026-07-14"
+    discovered_by: qa-audit (logic-deduction audit)
+    affected_modules: ["src/rtl/core/lumi_writeback.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "MUL 后不立即发射 ALU 指令 (编译器需 awareness, 不现实)"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/wb_e2_preempt_test.S"
+
+  - id: "ERR-105"
+    title: "0x178 PC 非对齐 — pred_branch_slot=0 候选根因"
+    description: >
+      qa-audit 第2轮逻辑推演发现 predecode.sv (lines 202-205) 在
+      pred_branch_slot=0 时的 bytes_consumed 计算可能导致 PC 落在
+      指令中间:
+      pred_branch_slot=0 + !carry_valid + inst_compressed[0]=0 (32-bit)
+      → bytes_consumed = 4
+      → pc_next = pc_reg + 4
+      若 pc_reg=0x174 且 BTB 误预测 / 冷启动, pc_next = 0x178,
+      但 0x178 是 JAL 0x176 的第三字节 (假设 JAL 起始于 0x174)
+      或 JAL 0x176 的中间字节 (假设 JAL 起始于 0x176)。
+      0x178 非有效指令边界, 触发 illegal instruction 异常。
+      需添加 PC 对齐断言验证此假说。SA-CM-LD-002。
+      [GLM 第3轮审计修正] 假说被推翻: 当 pred_taken=1 时 FSM 使用
+      f1_pred_target_comb 而非 bytes_consumed, bytes_consumed 不影响 pc_next。
+      严重度从 critical 降为 low。0x178 根因重新判定为 P0 bug 级联效应 (80%)。
+    discovered_date: "2026-07-14"
+    discovered_by: qa-audit (logic-deduction audit)
+    affected_modules:
+      - "src/rtl/core/lumi_predecode.sv"
+      - "src/rtl/core/lumi_fetch.sv"
+    affected_versions: ["v0.2"]
+    severity: low
+    status: open
+    workaround: "修复 P0 bug (SA-CM-001/002/003) 后验证 0x178 是否消失"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/pc_alignment_test.S (Phase 0 待创建)"
+    related_risks: ["RISK-023"]
+    related_errata: ["ERR-042"]
+    audit_update: "GLM 第3轮审计推翻假说: 当 pred_taken=1 时 FSM 用 f1_pred_target_comb 不用 bytes_consumed。严重度从 critical 降为 low。0x178 根因重新判定为 P0 bug 级联效应 (80%)。"
+
+  - id: "ERR-106"
+    title: "BTB 反馈被误预测 slot 覆盖 — 非误预测 slot 的 BTB 学习丢失"
+    description: >
+      GLM 第3轮审计发现 lumi_execute.sv (lines 651-668) 的分支反馈逻辑:
+      当同批次 slot 0 非误预测 (else-if 分支) 设置 e1_branch_taken/target 后,
+      slot 1 误预测 (if 分支) 会覆盖这些值。结果 BTB 只学习 slot 1 的信息,
+      slot 0 的 BTB 反馈丢失。SA-CM-GLM-001 (low)。
+    discovered_date: "2026-07-14"
+    discovered_by: GLM (logic-deduction audit)
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: low
+    status: open
+    workaround: "N/A — BTB 学习不精确但不影响正确性"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: null
+
+  - id: "ERR-107"
+    title: "post_mispredict_bubble 对 JALR 可能不足 — ra 值尚未写回"
+    description: >
+      GLM 第3轮审计发现 lumi_core_top.sv (lines 559-563) 的 post_mispredict_bubble
+      机制在 JALR 场景可能不足。JALR 目标来自 rs1 (非 PC+imm),
+      若 rs1 是前一条 JAL 的 ra (PC+4), 需确保 ra 已写回或 bypass 可用。
+      1-cycle bubble 可能不够 (W→E1 bypass 有 1-cycle 延迟)。
+      SA-CM-GLM-002 (medium)。
+    discovered_date: "2026-07-14"
+    discovered_by: GLM (logic-deduction audit)
+    affected_modules: ["src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: medium
+    status: open
+    workaround: "编译器在 CALL 和 RET 之间插入其他指令可缓解"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/jalr_bubble_test.S"

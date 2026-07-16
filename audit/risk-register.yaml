@@ -606,5 +606,109 @@ risks:
       建议检查: (1) 分支预测返回地址计算; (2) 压缩指令边界跟踪;
       (3) E1 mispredict flush 后 PC 重定向逻辑。
       TB 超时机制也需检查 (cycle_count > 2B 未触发)。
+      Update (2026-07-14 第3轮静态分析 + 独立审计):
+      新增可能诱因: BTB Group Lookup 禁用 (SA-CM-005) 导致非 fetch-group
+      起点的 JAL (如 0x176) 不被预测, 误预测 flush 后重定向 PC 可能
+      计算错误; predecode bytes_consumed 与 pc_next 不一致;
+      RAS 返回地址未对齐。建议优先添加 PC 对齐断言和最小复现用例。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-027"
+    title: "独立审计发现 DIV 符号 bug 影响范围被低估"
+    severity: critical
+    status: open
+    reported_by: qa-audit
+    reported_date: "2026-07-14"
+    assigned_to: hw-design
+    description: >
+      原静态分析将 SA-CM-002 (DIV 余数符号) 判定为仅影响"除数为负、
+      被除数为正"场景。独立审计复核发现: div_dividend/div_divisor
+      在 DIV_IDLE 已被取绝对值, 因此 DIV_DONE 中的 XOR 判断几乎恒为 0,
+      导致所有异号有符号 DIV 结果未被取负, 且所有有符号 REM 结果符号错误。
+      同时 SA-CM-001 (DIVU/REMU 误判为有符号) 与 SA-CM-002 交互:
+      无符号被除数 >= 0x80000000 时会被错误取负。
+    mitigation: >
+      立即修正 SA-CM-002 影响范围描述, 同时修复 SA-CM-001 和 SA-CM-002。
+      增加 directed tests 覆盖所有 DIV/DIVU/REM/REMU 符号组合。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-028"
+    title: "TB 2B cycles 超时机制失效掩盖调试进度"
+    severity: high
+    status: open
+    reported_by: qa-audit
+    reported_date: "2026-07-14"
+    assigned_to: hw-ver
+    description: >
+      ERR-043 记录 V1 TB 的 2B cycles 超时条件在 CoreMark 仿真中未触发,
+      仿真运行到 2.2B+ cycles 仍在继续。独立审计确认此问题未在静态分析
+      报告中覆盖, 导致调试效率低下。
+    mitigation: >
+      修复 TB cycle_count 递增逻辑或 while 循环条件; 增加 PROGRESS 停滞
+      检测 (10M cycles 无进展则自动结束); 使用 Verilator 强制 timeout。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-030"
+    title: "CoreMark 调试缺乏指令级参考模型对比"
+    severity: medium
+    status: open
+    reported_by: qa-audit
+    reported_date: "2026-07-14"
+    assigned_to: hw-ver
+    description: >
+      Scoreboard 仅检测 ECALL/spin/PC-restart, 不与 ISS (如 Spike) 对比。
+      RTL 计算错误无法被早期发现, 调试时难以定位第一条错误指令。
+    mitigation: >
+      在 Scoreboard 中集成 ISS 参考模型, 或至少增加关键寄存器断言。
+      此项已 deferred 到 M3-S4 (T-MS3-S3-BF.3.6), 建议提前至 Phase 2
+      以加速 CoreMark 调试。
+    resolution: null
+    resolution_date: null
+
+  # ─── GLM 第3轮审计新增风险 (2026-07-14) ─────
+  - id: "RISK-031"
+    title: "SA-CM-LD-002 假说被推翻 — 0x178 根因仍需通过 P0 修复验证"
+    severity: medium
+    status: open
+    reported_by: GLM (logic-deduction audit)
+    reported_date: "2026-07-14"
+    assigned_to: hw-design
+    description: >
+      第2轮审计提出的 pred_branch_slot=0 假说被 GLM 推翻:
+      当 pred_taken=1 时, fetch FSM 使用 f1_pred_target_comb 而非 bytes_consumed,
+      bytes_consumed 不影响 pc_next。0x178 根因重新判定为 P0 bug 级联效应 (80%):
+      SA-CM-003 (MUL 结果串改) 或 SA-CM-001/002 (DIV 符号错误) 导致寄存器值错误,
+      JALR 使用错误目标地址跳到 0x178。若 Phase 1 修复 P0 bug 后 0x178 仍存在,
+      需重新评估根因。
+    mitigation: >
+      Phase 1 修复 SA-CM-001/002/003 后重新运行 CoreMark V1 I=1,
+      检查 0x178 PC RESTART 是否消失。若仍存在, 启动级联调试策略
+      (redirect target trace → JALR target trace → BTB dump → RAS trace →
+      二分法缩小代码区间)。Phase 0 简化为 Phase 1 前置 (PC 对齐断言, 0.5天)。
+    resolution: null
+    resolution_date: null
+
+  - id: "RISK-032"
+    title: "post_mispredict_bubble 对 JALR 可能不足 — ra 值尚未写回"
+    severity: medium
+    status: open
+    reported_by: GLM (logic-deduction audit)
+    reported_date: "2026-07-14"
+    assigned_to: hw-design
+    description: >
+      SA-CM-GLM-002: post_mispredict_bubble 在误预测后插入 1 cycle 气泡,
+      让 W bypass 有正确 ra 值。但 JALR 的目标来自 rs1 (不是 PC+imm),
+      若 rs1 是前一条 JAL 的 ra (PC+4), 需确保 ra 已写回到 regfile 或 bypass。
+      若 JAL 和 JALR 在连续 cycle, 1-cycle bubble 可能不够
+      (需要 W→E1 bypass, 但 bypass 有 1-cycle 延迟)。
+      CoreMark 有函数调用 (matrix_mul, crc, etc.), CALL/RET 密集,
+      但编译器通常在 CALL 和 RET 之间插入其他指令, 缓解此问题。
+    mitigation: >
+      (1) 验证 W→E1 bypass 对 ra 的覆盖; (2) 若不足, 增加
+      post_mispredict_bubble 到 2 cycle; (3) 或在 JALR 检测到 rs1
+      依赖前一条 JAL 时自动 stall。计划 Phase 3 处理。
     resolution: null
     resolution_date: null
