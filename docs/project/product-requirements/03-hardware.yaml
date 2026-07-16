@@ -489,7 +489,7 @@ categories:
         ref_doc: ""
         acceptance: "WFI 和 WRS 指令正确进入低功耗状态"
         change_date: "2026-06-29"
-        note: "本需求定义 ISA 层面的 WFI/WRS 指令行为（指令解码、状态转换触发），不含功耗状态规格（见 LUMI-PWR-003）和外部系统接口（见 LUMI-SYS-008）"
+        note: "本需求定义 ISA 层面的 WFI/WRS 指令行为（指令解码、状态转换触发），不含功耗状态规格（见 LUMI-PPA-009）和外部系统接口（见 LUMI-SYS-008）"
       - req_id: LUMI-SYS-005
         name: "多时钟域多电压域管理"
         priority: Must
@@ -509,7 +509,7 @@ categories:
         ref_doc: ""
         acceptance: "可配置 CPU 进入睡眠或深度睡眠状态，进行系统功率管理"
         change_date: "2026-06-29"
-        note: "本需求定义外部系统接口层面的功耗控制信号（如 sys_sleep_req/ack、sys_wake_event），不含功耗状态规格（见 LUMI-PWR-003）和 ISA 入口（见 LUMI-SYS-004）"
+        note: "本需求定义外部系统接口层面的功耗控制信号（如 sys_sleep_req/ack、sys_wake_event），不含功耗状态规格（见 LUMI-PPA-009）和 ISA 入口（见 LUMI-SYS-004）"
       - req_id: LUMI-FEAT-005
         name: "自定义协处理器接口"
         priority: Could
@@ -643,7 +643,7 @@ categories:
         ref_doc: ""
         acceptance: "细粒度 ICG (Integrated Clock Gating) + WFI 触发门控，WFI 唤醒后首条指令到执行 <=8 cycle，手动 core_clk_gate_req 信号支持"
         change_date: "2026-07-02"
-        note: "对应低功耗设计，与 LUMI-PWR-003 联动"
+        note: "对应低功耗设计，与 LUMI-PPA-009 联动"
       - req_id: LUMI-CLK-003
         name: "复位域划分"
         priority: Must

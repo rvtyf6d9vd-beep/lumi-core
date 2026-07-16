@@ -441,8 +441,8 @@ function downloadTemplate(){
     var h=CSV_HEADERS.join(',');
     var rows=[
         'LUMI-ISA-001,RV32I \u57fa\u7840\u6574\u6570\u6307\u4ee4\u96c6,Must,Approved,v1.0,,RISC-V Spec,--,\u5168\u90e8 40 \u6761 RV32I \u6307\u4ee4\u901a\u8fc7\u5408\u89c4\u6d4b\u8bd5,2026-06-26,--',
-        'LUMI-PIPE-001,5\u7ea7\u987a\u5e8f\u6267\u884c\u6d41\u6c34\u7ebf,Must,Draft,v0.1,,\u67b6\u6784\u8bbe\u8ba1,--,\u6d41\u6c34\u7ebf\u6df1\u5ea6\u4e3a 5 \u7ea7,,--',
-        'LUMI-FREQ-001,\u76ee\u6807\u4e3b\u9891 >=500MHz,Must,Draft,v0.1,,\u5ba2\u6237\u9700\u6c42,--,"TSMC 28nm \u4e0b\u8fbe\u5230 >=500MHz",,--',
+        'LUMI-PPA-001,8\u7ea7\u6d41\u6c34\u7ebf\u67b6\u6784,Must,Approved,v0.1,Lumi\u539f\u59cb\u9700\u6c42,--,\u6d41\u6c34\u7ebf\u7ea7\u6570\u4e3a 8 \u7ea7,2026-06-29,--',
+        'LUMI-PPA-002,TSMC 28HPC 主频>=1.0GHz,Must,Approved,v0.1,Lumi原始需求,--,TSMC 28HPC 工艺下达到 >=1.0GHz,2026-06-29,--',
         'LUMI-SAFE-001,PMP \u7269\u7406\u5185\u5b58\u4fdd\u62a4,Must,Proposed,v1.0,,RT-Europa,--,PMP \u8d8a\u754c\u8bbf\u95ee\u89e6\u53d1\u5f02\u5e38,,--',
         'LUMI-DEL-001,RTL \u6e90\u7801 (Verilog),Must,Draft,v0.1,,\u5ba2\u6237\u8981\u6c42,--,lint \u68c0\u67e5\u65e0 warning,,--',
         'LUMI-TOOL-001,GCC 14+ \u652f\u6301,Must,Draft,v0.1,,\u5ba2\u6237\u8981\u6c42,--,\u53ef\u7f16\u8bd1\u5e76\u8fd0\u884c\u88f8\u673a\u7a0b\u5e8f,,--'
