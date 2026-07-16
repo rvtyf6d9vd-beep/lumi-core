@@ -317,11 +317,16 @@ module lumi_fetch #(
     logic        grp_is_ret;
     logic        grp_is_branch;
 
+    // SA-CM-005 FIX: PC's slot position within 16-byte fetch group
+    // Used to avoid matching stale BTB entries before current PC
+    logic [3:0]  pc_slot_in_grp;
+
     // ERR-BTB-FIX: grp_base_idx 使用 16-byte 对齐基地址 (与 8192 条目 BTB 匹配)
     // BTB 写入索引 = instruction_pc[13:1], 读取 group base = aligned_pc[13:1]
     // 同 16-byte block 内的地址具有相同的 group base, 通过位置偏移查找
     assign grp_base_idx = {pc_reg[31:4], 4'h0}[BTB_IDX_W:1];
     assign grp_tag      = pc_reg[31 : BTB_IDX_W+1];
+    assign pc_slot_in_grp = 4'(pc_reg[3:1]); // PC's 2-byte slot within the group (0-7)
 
     always_comb begin
         f1_pred_taken_comb  = 1'b0;
@@ -370,9 +375,11 @@ module lumi_fetch #(
         grp_is_ret  = 1'b0;
         grp_is_branch = 1'b0;
 
-        // ERR-BTB-FIX: grp_base_idx = pc_reg[BTB_IDX_W:1], 所以位置 p 对应
-        // pc_reg + p*2 的 BTB 条目. 只搜索 p >= 1 (p=0 由 slot-0 查找处理).
-        for (int p = 1; p < 8; p++) begin
+        // SA-CM-005 FIX: start search after PC's own slot to avoid stale entries
+        // grp_base_idx + p corresponds to address (group_base + p*2).
+        // pc_slot_in_grp = PC's position within the group.
+        // Only search p > pc_slot_in_grp (positions after current PC).
+        for (int p = int'(pc_slot_in_grp) + 1; p < 8; p++) begin
             if (!grp_found) begin
                 // 检查位置 p 的 BTB 条目 (tag 应与 pc_reg 相同)
                 if (btb_mem[grp_base_idx + BTB_IDX_W'(p)].valid &&
@@ -387,13 +394,35 @@ module lumi_fetch #(
             end
         end
 
-        // 组级别预测: 已禁用 (ERR-GRP-FIX)
-        // carry fetch 导致 pc_reg 跳过某些地址, 使 group lookup 无法区分
-        // 已执行和未执行的分支. RAS push/pop 通过 slot-0 BTB + execute 级
-        // 误预测反馈实现. 每个 CALL/RET 有一次误预测惩罚 (flush 2 cycles).
-        // grp_found 仍然计算但不用於预测决策.
-        begin
-            // 不应用 group 级预测, 仅依赖 slot-0 BTB
+        // SA-CM-005 FIX: Re-enable group-level BTB prediction
+        // pc_slot_in_grp ensures we only match entries AFTER current PC,
+        // avoiding the carry-fetch stale entry problem.
+        if (grp_found) begin
+            pred_branch_slot = grp_slot;
+
+            if (grp_is_ret) begin
+                f1_pred_taken_comb  = 1'b1;
+                f1_pred_target_comb = ras_peek;
+                ras_pop             = 1'b1;
+
+            end else if (grp_is_call) begin
+                ras_push            = 1'b1;
+                if (grp_is_branch) begin
+                    f1_pred_taken_comb  = ltage_pred;
+                    f1_pred_target_comb = ltage_pred ? grp_target : (pc_reg + {28'h0, grp_slot, 1'b0});
+                end else begin
+                    f1_pred_taken_comb  = 1'b1;
+                    f1_pred_target_comb = grp_target;
+                end
+
+            end else if (grp_is_branch) begin
+                f1_pred_taken_comb  = ltage_pred;
+                f1_pred_target_comb = ltage_pred ? grp_target : (pc_reg + {28'h0, grp_slot, 1'b0});
+
+            end else begin
+                f1_pred_taken_comb  = 1'b1;
+                f1_pred_target_comb = grp_target;
+            end
         end
     end
 
@@ -543,11 +572,9 @@ module lumi_fetch #(
                         end
                     end
                 end
-            end else begin
-                // 无更新时仍然移位历史 (fetch 到分支时)
-                if (state_reg == ST_FETCH && f1_pred_taken_comb && f1_btb_hit_comb)
-                    branch_history <= {branch_history[LTAGE_HIST_MAX-2:0], 1'b1};
             end
+            // SA-CM-004 FIX: removed speculative history shift
+            // Branch history is now ONLY updated by execute-level actual results
         end
     end
 
@@ -738,7 +765,8 @@ module lumi_fetch #(
         // 如果不忽略这些信号, pc_reg 会被反复覆盖, flush 无法正常完成.
         // BUG-FIX2: 必须设置 flush_cnt_next = 2'd2, 否则 override 覆盖 case 语句
         // 中已设置的 flush_cnt_next, 导致 flush 延迟为 0 cycle, 流水线冲刷不充分.
-        if (branch_redirect_valid && state_reg != ST_FLUSH) begin
+        // SA-CM-007 FIX: trap takes priority over branch redirect
+        if (branch_redirect_valid && !trap_redirect_valid && state_reg != ST_FLUSH) begin
             pc_next        = branch_redirect_pc;
             f1_pc_out      = branch_redirect_pc;
             flush_cnt_next = 2'd2;

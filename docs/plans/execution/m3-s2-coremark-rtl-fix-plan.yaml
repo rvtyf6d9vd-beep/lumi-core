@@ -1,0 +1,579 @@
+# ═══════════════════════════════════════════════════════════════
+# M3-S2 CoreMark 调试通路 RTL 修复执行计划 (v1.0)
+# ═══════════════════════════════════════════════════════════════
+# 计划 ID: PLN-0006
+# 创建日期: 2026-07-14
+# 基于三轮独立审计综合修正:
+#   第1轮 (Kimi/qa-audit): 新增 SA-CM-AUDIT-001/002/003, 修正影响范围
+#   第2轮 (MiniMax/logic-deduction): 新增 SA-CM-LD-001/002, 深化 P0 场景推演
+#   第3轮 (GLM/carry-verification): 推翻 SA-CM-LD-002, 验证 carry 正确,
+#          新增 SA-CM-GLM-001/002, 简化 Phase 0
+# 关联文件:
+#   - audit/compliance-reports/coremark-rtl-static-analysis-20260714.yaml
+#   - audit/compliance-reports/coremark-rtl-static-analysis-audit-20260714.yaml
+#   - audit/compliance-reports/coremark-rtl-logic-deduction-audit-20260714.yaml
+#   - audit/compliance-reports/coremark-rtl-glm-audit-20260714.yaml
+# 关联 Errata: ERR-042, ERR-043, ERR-098~107
+# 关联 Risk: RISK-023, RISK-027~028, RISK-030~032
+# ═══════════════════════════════════════════════════════════════
+
+plan_id: "PLN-0006"
+title: "M3-S2 CoreMark 调试通路 RTL 修复执行计划"
+version: "1.0"
+created: "2026-07-14"
+status: "pending_approval"
+milestone: "M3"
+stage: "M3-S2"
+phase: "implementation"
+
+# ──────────────────────────────────────────────
+# 概述
+# ──────────────────────────────────────────────
+overview: >
+  本计划修复 CoreMark 调试通路 RTL 静态分析及三轮独立审计发现的 24 个问题。
+  核心策略: 先修复 P0 算术 bug (DIV 符号 + MUL 单槽 + LTAGE 历史),
+  验证 0x178 PC 非对齐是否为级联效应消失; 再修复取指控制和写回逻辑;
+  最后处理验证环境和可选问题。
+  Phase 0 (根因定位) 经 GLM 第3轮审计简化为 Phase 1 前置断言 (0.5 天)。
+
+# ──────────────────────────────────────────────
+# 问题总表 (24 个, 三轮审计综合判定)
+# ──────────────────────────────────────────────
+issues_summary:
+  total: 24
+  by_severity:
+    critical: 6   # SA-CM-001, 002, 003, 004, AUDIT-001, AUDIT-003
+    high: 4       # SA-CM-005, 007, LD-001, AUDIT-002
+    medium: 6     # SA-CM-008, 009, 010, 011, 012, GLM-002
+    low: 8        # SA-CM-006, 013~017, LD-002, GLM-001
+  by_priority:
+    P0: 6         # 必须立即修复
+    P1: 4         # 尽快修复
+    P2: 5         # 计划修复
+    P3: 9         # 有空修复
+
+# ──────────────────────────────────────────────
+# 问题清单 (按优先级排列)
+# ──────────────────────────────────────────────
+issues:
+
+  # ═══ P0 — 必须立即修复 (6 个) ═══
+
+  - id: "SA-CM-001"
+    errata: "ERR-098"
+    title: "DIVU/REMU 有符号判断逻辑错误"
+    severity: critical
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "260-261"
+    description: "div_signed = funct3[0] ^ (funct3==MUL_DIV || funct3==MUL_REM), DIVU(funct3=101)得1(有符号), 应为0"
+    fix: "改为 div_signed <= (funct3 == MUL_DIV || funct3 == MUL_REM)"
+    phase: "Phase 1"
+
+  - id: "SA-CM-002"
+    errata: "ERR-099"
+    title: "DIV 余数符号计算错误 — 所有有符号 REM 和异号 DIV 结果错误"
+    severity: critical
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "307-313"
+    description: "div_dividend/div_divisor 已取绝对值, bit[31]恒0, XOR恒0, 符号修正永不触发"
+    fix: "保存原始符号位; 商符号=orig_dividend_sign^orig_divisor_sign; 余数符号=orig_dividend_sign"
+    phase: "Phase 1"
+
+  - id: "SA-CM-003"
+    errata: "ERR-100"
+    title: "MUL 单槽限制未在发射端强制执行 — 第二条 MUL 写入第一条结果 (结果串改)"
+    severity: critical
+    module: "src/rtl/core/lumi_decode_issue.sv + lumi_execute.sv"
+    lines: "decode:539-541; execute:174-211; core_top:656-674"
+    description: "fu_busy[FU_MUL]恒0, 同批次可发射两条MUL; E2仅保存第一条结果, core_top将同一e2_mul_result替换两条MUL的m_result_r"
+    fix: "方案1(推荐): decode_issue增加同批次MUL互斥检测; 方案2: 连接MUL E2 busy到fu_busy[FU_MUL]"
+    phase: "Phase 1"
+
+  - id: "SA-CM-004"
+    errata: "ERR-101"
+    title: "LTAGE 分支历史双移位 — 推测值污染实际历史"
+    severity: critical
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "517-556"
+    description: "else分支(lines 552-556)在无实际更新时仍移入推测值1, 污染历史"
+    fix: "移除else分支的历史移位逻辑, 仅由execute级实际结果更新"
+    phase: "Phase 2"
+
+  - id: "SA-CM-AUDIT-001"
+    errata: "ERR-042"
+    title: "CoreMark V1 实际失败根因 — fetch PC 非对齐 0x178"
+    severity: critical
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "TBD (需验证)"
+    description: "PC在0x178(JAL中间字节)反复跳回0x0形成trap循环; GLM判定80%为P0 bug级联效应"
+    fix: "修复P0 bug后验证0x178消失; 添加PC对齐断言; 若仍存在启动级联调试"
+    phase: "Phase 1 (前置验证)"
+
+  - id: "SA-CM-AUDIT-003"
+    errata: "ERR-098+099交互"
+    title: "SA-CM-001 与 SA-CM-002 交互 — 无符号高地址值被错误取负"
+    severity: critical
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "260-313"
+    description: "DIVU的div_signed=1触发有符号修正路径, 若被除数>=0x80000000, div_dividend[31]=1, 结果被错误取负"
+    fix: "同时修复SA-CM-001和SA-CM-002 (必须成对修复)"
+    phase: "Phase 1"
+
+  # ═══ P1 — 尽快修复 (4 个) ═══
+
+  - id: "SA-CM-005"
+    errata: null
+    title: "BTB Group Lookup 已禁用 — 非 fetch group 起点的分支无法预测"
+    severity: high
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "309-398"
+    description: "仅slot-0 BTB查找, 非起点分支每次触发误预测(2-cycle flush)"
+    fix: "重新启用group-level BTB查找, 修复carry fetch导致的PC跳过问题"
+    phase: "Phase 2"
+
+  - id: "SA-CM-007"
+    errata: "ERR-102"
+    title: "Fetch FSM 覆盖逻辑 — branch_redirect 优先级高于 trap"
+    severity: high
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "750-755"
+    description: "覆盖块无条件覆盖pc_next, trap_redirect_valid和branch_redirect_valid同时有效时trap被跳过"
+    fix: "增加trap优先级: if (branch_redirect_valid && !trap_redirect_valid && state_reg != ST_FLUSH)"
+    phase: "Phase 2"
+
+  - id: "SA-CM-LD-001"
+    errata: "ERR-104"
+    title: "W 阶段 E2 抢占槽 1 — 槽 1 写回被丢失"
+    severity: high
+    module: "src/rtl/core/lumi_writeback.sv"
+    lines: "140-155"
+    description: "E2 MUL/DIV有效时端口1写e2结果, 槽1(ALU等)写回被完全丢弃"
+    fix: "为slot2_pending机制扩展, 或为E2结果分配独立写回端口"
+    phase: "Phase 3"
+
+  - id: "SA-CM-AUDIT-002"
+    errata: "ERR-043"
+    title: "TB 2B cycles 超时机制失效"
+    severity: high
+    module: "src/tb/top/lumi_v1_tb_top.sv"
+    lines: "433-440"
+    description: "cycle_count > 2B超时条件未触发, 仿真运行到2.2B+仍在继续"
+    fix: "检查cycle_count递增逻辑; 增加PROGRESS停滞检测(10M cycles无进展则结束)"
+    phase: "Phase 2"
+
+  # ═══ P2 — 计划修复 (5 个) ═══
+
+  - id: "SA-CM-008"
+    title: "RAS 检查点机制为死代码"
+    severity: medium
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "153-155, 426-430"
+    fix: "删除死代码或实现检查点保存/恢复逻辑"
+    phase: "Phase 4"
+
+  - id: "SA-CM-009"
+    title: "DIV FSM 双重赋值 — 时序块和组合块同时赋值 div_state_reg"
+    severity: medium
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "252, 275, 285, 303, 316"
+    fix: "移除always_ff中的直接状态赋值, 统一在always_comb中实现"
+    phase: "Phase 4"
+
+  - id: "SA-CM-010"
+    title: "DIV 除零未显式处理 — 依赖算法副作用"
+    severity: medium
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "255-322"
+    fix: "在DIV_IDLE中检查除数为0, 显式返回RISC-V规范值"
+    phase: "Phase 4"
+
+  - id: "SA-CM-011"
+    title: "Scoreboard 无 tohost 检测 — CoreMark 标准退出机制缺失"
+    severity: medium
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "82-123"
+    fix: "增加tohost地址写入监控, 或在V1 SRAM中监控0x3FFE0写入"
+    phase: "Phase 3"
+
+  - id: "SA-CM-012"
+    title: "Scoreboard 无指令级正确性检查 — 仅有结构检测"
+    severity: medium
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "82-123"
+    fix: "集成ISS参考模型逐指令对比, 或增加关键寄存器断言"
+    phase: "Phase 3"
+
+  # ═══ P3 — 有空修复 (9 个) ═══
+
+  - id: "SA-CM-006"
+    errata: "ERR-103"
+    title: "LSU 端口分配使用地址 0 判断空闲 — 地址 0 冲突"
+    severity: low
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "731-754"
+    fix: "使用独立occupied标志替代地址0判断"
+    phase: "Phase 4"
+
+  - id: "SA-CM-013"
+    title: "tmp_inst 变量使用先于声明"
+    severity: low
+    module: "src/rtl/core/lumi_decode_issue.sv"
+    lines: "280(使用), 491(声明)"
+    fix: "将声明移至always_comb之前"
+    phase: "Phase 4"
+
+  - id: "SA-CM-014"
+    title: "ECC IRQ 信号声明顺序"
+    severity: low
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "269(使用), 274(声明)"
+    fix: "将声明移至regfile实例化之前"
+    phase: "Phase 4"
+
+  - id: "SA-CM-015"
+    title: "Exception mtvec_in 三元运算符无意义"
+    severity: low
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "503"
+    fix: "简化为 .mtvec_in(mtvec_out)"
+    phase: "Phase 4"
+
+  - id: "SA-CM-016"
+    title: "PLIC ext_irq_in 未连接 — 外部中断不可用"
+    severity: low
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "474"
+    fix: "连接ext_irq到PLIC, local_irq到CLIC"
+    phase: "Phase 4"
+
+  - id: "SA-CM-017"
+    title: "Spin loop 检测假阳性风险"
+    severity: low
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "112-122"
+    fix: "增加offset检查: commit_inst[0][31:12] == 20'h0"
+    phase: "Phase 4"
+
+  - id: "SA-CM-LD-002"
+    errata: "ERR-105"
+    title: "0x178 PC 非对齐 — pred_branch_slot=0 候选根因 (假说已推翻)"
+    severity: low
+    module: "src/rtl/core/lumi_predecode.sv"
+    lines: "202-205"
+    description: "GLM第3轮审计推翻: pred_taken=1时FSM用f1_pred_target_comb, bytes_consumed不影响pc_next"
+    fix: "无需修复 (假说不成立). 保留为Low以记录审计轨迹"
+    phase: "Phase 4"
+
+  - id: "SA-CM-GLM-001"
+    errata: "ERR-106"
+    title: "BTB 反馈被误预测 slot 覆盖 — 非误预测 slot 的 BTB 学习丢失"
+    severity: low
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "651-668"
+    fix: "为每个slot维护独立BTB反馈, 或用PC匹配确定更新entry"
+    phase: "Phase 4"
+
+  - id: "SA-CM-GLM-002"
+    errata: "ERR-107"
+    title: "post_mispredict_bubble 对 JALR 可能不足 — ra 值尚未写回"
+    severity: medium
+    module: "src/rtl/core/lumi_core_top.sv"
+    lines: "559-563"
+    fix: "验证W→E1 bypass覆盖; 若不足增加bubble到2cycle; 或JALR检测rs1依赖时自动stall"
+    phase: "Phase 3"
+
+# ──────────────────────────────────────────────
+# 修复阶段 (GLM 修正版)
+# ──────────────────────────────────────────────
+phases:
+
+  - id: "Phase 1"
+    title: "核心算术修复 + 前置断言 (P0)"
+    pre_step:
+      title: "PC 对齐断言和复现准备 (0.5 天)"
+      deliverables:
+        - "fetch.sv FSM末尾添加 PC对齐断言: assert(pc_next[0]==1'b0)"
+        - "predecode.sv添加 bytes_consumed范围断言: assert(inside {0,2,4,...,16})"
+        - "execute.sv添加 DIV结果符号断言 (验证修复正确性)"
+      rationale: "GLM建议: 0x178最可能是P0级联效应(80%), 不需独立Phase 0定位"
+    issues: ["SA-CM-001", "SA-CM-002", "SA-CM-003", "SA-CM-AUDIT-003", "SA-CM-AUDIT-001(验证)"]
+    tasks:
+      - id: "P1-T1"
+        title: "修复 SA-CM-001 — DIVU/REMU div_signed 逻辑"
+        files: ["src/rtl/core/lumi_execute.sv"]
+        lines: "260-261"
+        verification: "DIVU/REMU结果与无符号一致"
+      - id: "P1-T2"
+        title: "修复 SA-CM-002 — DIV 余数/商符号分别处理"
+        files: ["src/rtl/core/lumi_execute.sv"]
+        lines: "255-322"
+        verification: "REM符号=被除数符号, DIV商符号=被除数^除数"
+      - id: "P1-T3"
+        title: "修复 SA-CM-003 — MUL 单槽互斥 (decode_issue)"
+        files: ["src/rtl/core/lumi_decode_issue.sv"]
+        lines: "539-541"
+        verification: "同批次两条MUL第二条stall到下一周期"
+      - id: "P1-T4"
+        title: "验证 SA-CM-AUDIT-001 — 0x178 PC非对齐是否消失"
+        files: []
+        verification: "CoreMark V1 I=1无PC RESTART"
+        note: "若0x178仍存在, 启动级联调试策略 (见下文)"
+    post_step:
+      title: "P0 修复后验证 (0.5 天)"
+      deliverables:
+        - "运行 rv32m_div_all_signs directed test"
+        - "运行 rv32m_dual_mul directed test"
+        - "运行 CoreMark V1 ITERATIONS=1, 检查0x178是否消失"
+        - "git checkpoint tag: checkpoint/post-p1-fix"
+    estimated_effort: "2-3 天 (含验证)"
+    gate: "人类 Sign-off (规则 10)"
+
+  - id: "Phase 2"
+    title: "取指控制 + TB 修复 (P0/P1)"
+    issues: ["SA-CM-004", "SA-CM-005", "SA-CM-007", "SA-CM-AUDIT-002"]
+    tasks:
+      - id: "P2-T1"
+        title: "修复 SA-CM-004 — LTAGE 历史双移位"
+        files: ["src/rtl/core/lumi_fetch.sv"]
+        lines: "552-556"
+        verification: "分支历史仅由execute级实际结果更新"
+      - id: "P2-T2"
+        title: "修复 SA-CM-007 — FSM trap优先级"
+        files: ["src/rtl/core/lumi_fetch.sv"]
+        lines: "750-755"
+        verification: "trap_redirect_valid时不受branch_redirect覆盖"
+      - id: "P2-T3"
+        title: "修复 SA-CM-AUDIT-002 — TB超时机制"
+        files: ["src/tb/top/lumi_v1_tb_top.sv"]
+        lines: "433-440"
+        verification: "CoreMark卡死时10M cycles内自动终止"
+      - id: "P2-T4"
+        title: "修复 SA-CM-005 — BTB Group Lookup 重新启用"
+        files: ["src/rtl/core/lumi_fetch.sv"]
+        lines: "309-398"
+        verification: "非起点分支可被预测, 误预测率下降"
+        note: "需修复carry fetch导致的PC跳过问题"
+    post_step:
+      deliverables:
+        - "重新运行 CoreMark V1 I=1, 验证性能改善"
+        - "git checkpoint tag: checkpoint/post-p2-fix"
+    estimated_effort: "2-3 天"
+    gate: "人类 Sign-off"
+
+  - id: "Phase 3"
+    title: "写回与验证环境 (P1/P2)"
+    issues: ["SA-CM-LD-001", "SA-CM-GLM-002", "SA-CM-011", "SA-CM-012"]
+    tasks:
+      - id: "P3-T1"
+        title: "修复 SA-CM-LD-001 — W阶段E2抢占写回"
+        files: ["src/rtl/core/lumi_writeback.sv"]
+        lines: "140-155"
+        verification: "E2有效时slot1写回不被丢弃 (延迟到下一周期)"
+      - id: "P3-T2"
+        title: "修复 SA-CM-GLM-002 — JALR bubble验证/增加"
+        files: ["src/rtl/core/lumi_core_top.sv"]
+        lines: "559-563"
+        verification: "JALR连续CALL/RET场景ra值正确"
+      - id: "P3-T3"
+        title: "修复 SA-CM-011 — Scoreboard tohost检测"
+        files: ["src/tb/env/lumi_scoreboard.sv"]
+        lines: "82-123"
+        verification: "tohost写入触发test_done"
+      - id: "P3-T4"
+        title: "修复 SA-CM-012 — Scoreboard ISS对比 (可选)"
+        files: ["src/tb/env/lumi_scoreboard.sv"]
+        lines: "82-123"
+        verification: "关键寄存器断言或ISS逐指令对比"
+        note: "若ISS集成工作量过大, 先实现关键寄存器断言"
+    post_step:
+      deliverables:
+        - "完整运行 CoreMark V1 I=1 到 ECALL退出"
+        - "检查 0x3FFE0 benchmark 结果 magic=0xDEADBEEF"
+        - "git checkpoint tag: checkpoint/post-p3-fix"
+    estimated_effort: "2-3 天"
+    gate: "人类 Sign-off"
+
+  - id: "Phase 4"
+    title: "可选修复 (P2/P3)"
+    issues: ["SA-CM-006", "SA-CM-008", "SA-CM-009", "SA-CM-010", "SA-CM-013", "SA-CM-014", "SA-CM-015", "SA-CM-016", "SA-CM-017", "SA-CM-LD-002", "SA-CM-GLM-001"]
+    estimated_effort: "1-2 天"
+    note: "SA-CM-LD-002 假说已推翻, 无需修复, 保留记录"
+
+# ──────────────────────────────────────────────
+# 分层断言策略 (Phase 1 前置)
+# ──────────────────────────────────────────────
+assertion_strategy:
+  pc_alignment:
+    location: "lumi_fetch.sv, FSM always_comb 末尾"
+    code: |
+      // synthesis translate_off
+      assert(pc_next[0] == 1'b0) else $error("PC not 2-byte aligned: 0x%08h", pc_next);
+      // synthesis translate_on
+  bytes_consumed_range:
+    location: "lumi_predecode.sv, bytes_consumed 赋值后"
+    code: |
+      // synthesis translate_off
+      assert(bytes_consumed inside {0, 2, 4, 6, 8, 10, 12, 14, 16})
+        else $error("invalid bytes_consumed: %0d", bytes_consumed);
+      // synthesis translate_on
+  div_sign_verification:
+    location: "lumi_execute.sv, DIV_DONE 状态"
+    code: |
+      // synthesis translate_off
+      if (div_signed) begin
+        logic exp_quot_sign, exp_rem_sign;
+        exp_quot_sign = orig_dividend_sign ^ orig_divisor_sign;
+        exp_rem_sign = orig_dividend_sign;
+        assert(div_is_rem ? (div_result_r[31] == exp_rem_sign) : (div_result_r[31] == exp_quot_sign))
+          else $error("DIV sign mismatch");
+      end
+      // synthesis translate_on
+
+# ──────────────────────────────────────────────
+# 级联调试策略 (若 Phase 1 后 0x178 仍存在)
+# ──────────────────────────────────────────────
+cascade_debugging:
+  trigger: "Phase 1 修复P0后重新运行CoreMark V1 I=1, 若0x178 PC RESTART仍存在"
+  steps:
+    - step: 1
+      action: "添加 redirect target trace: 打印每次 branch_redirect_pc 和 trap_redirect_pc"
+    - step: 2
+      action: "添加 JALR target trace: 打印每次JALR的rs1值和计算目标"
+    - step: 3
+      action: "添加 BTB content dump: 在0x178出现前dump BTB内容"
+    - step: 4
+      action: "添加 RAS trace: 打印每次push/pop和peek值"
+    - step: 5
+      action: "缩小范围: 二分法注释掉CoreMark代码段, 找到触发0x178的代码区间"
+  escalation: "若5步均无法定位, 考虑RISK-031升级为critical, 启动ISS逐指令对比"
+
+# ──────────────────────────────────────────────
+# 回归测试计划 (Phase 1 后)
+# ──────────────────────────────────────────────
+regression_tests:
+  - name: "rv32m_div_all_signs"
+    target: "SA-CM-001, SA-CM-002, SA-CM-AUDIT-003"
+    coverage: "DIV/DIVU/REM/REMU × 正正/正负/负正/负负/零被除数/零除数"
+    file: "tests/directed/rv32m_div_all_signs.S"
+    rule_21: true  # 规则21: Bug回归测试用例
+
+  - name: "rv32m_dual_mul"
+    target: "SA-CM-003"
+    coverage: "同批次两条MUL, 验证各自结果正确"
+    file: "tests/directed/rv32m_dual_mul.S"
+    rule_21: true
+
+  - name: "pc_alignment_jal"
+    target: "ERR-042, SA-CM-AUDIT-001"
+    coverage: "JAL at 2-byte aligned but not 4-byte aligned PC, 验证PC不落入指令中间"
+    file: "tests/directed/pc_alignment_test.S"
+    rule_21: true
+
+  - name: "coremark_v1_i1"
+    target: "ERR-042, RISK-023"
+    coverage: "CoreMark V1 ITERATIONS=1, 验证无PC RESTART和ECALL到达"
+    file: "perf/benchmarks/coremark/"
+    rule_21: true
+
+  - name: "jalr_bubble_test"
+    target: "SA-CM-GLM-002, ERR-107"
+    coverage: "连续CALL/RET场景, 验证ra值正确"
+    file: "tests/directed/jalr_bubble_test.S"
+    rule_21: true
+
+# ──────────────────────────────────────────────
+# 风险管理
+# ──────────────────────────────────────────────
+risks:
+  - id: "RISK-023"
+    severity: critical
+    status: open
+    mitigation: "Phase 1 修复P0后验证0x178消失; 若仍存在启动级联调试策略"
+  
+  - id: "RISK-027"
+    severity: critical
+    status: open
+    mitigation: "SA-CM-001/002影响范围已修正, Phase 1修复"
+  
+  - id: "RISK-028"
+    severity: high
+    status: open
+    mitigation: "Phase 2修复TB超时机制 (SA-CM-AUDIT-002)"
+  
+  - id: "RISK-030"
+    severity: medium
+    status: open
+    mitigation: "Phase 3增加ISS对比或关键寄存器断言 (SA-CM-012)"
+  
+  - id: "RISK-031"
+    severity: medium
+    status: open
+    description: "SA-CM-LD-002假说被推翻, 0x178根因需通过P0修复验证"
+    mitigation: "Phase 1修复后验证; 若0x178仍存在, 启动级联调试策略"
+  
+  - id: "RISK-032"
+    severity: medium
+    status: open
+    description: "post_mispredict_bubble对JALR可能不足"
+    mitigation: "Phase 3验证W→E1 bypass覆盖; 若不足增加bubble"
+
+# ──────────────────────────────────────────────
+# 合规性检查
+# ──────────────────────────────────────────────
+compliance:
+  rule_03_work_trace: "✅ 指令日志 T-MS3-S2-4.10~4.13 已记录"
+  rule_10_milestone_gate: "⚠️ 每个Phase边界需人类Sign-off"
+  rule_16_instruction_log: "✅ audit/instruction-log/2026-07-14.yaml"
+  rule_18_no_skip: "✅ 所有24个问题已登记, 无skipped"
+  rule_19_doc_check: "⚠️ Phase完成后需检查设计文档更新"
+  rule_20_errata: "✅ ERR-098~107已登记 (ERR-105降级为low)"
+  rule_21_bug_regression: "⚠️ 5个回归测试用例待创建 (Phase 1后)"
+  rule_22_skill_reuse: "✅ 已检查skills/目录"
+  rule_23_milestone_stage: "✅ M3-S2, Phase: implementation"
+
+# ──────────────────────────────────────────────
+# 时间估算
+# ──────────────────────────────────────────────
+effort:
+  phase_1: "2-3 天 (含前置断言0.5天 + 验证0.5天)"
+  phase_2: "2-3 天"
+  phase_3: "2-3 天"
+  phase_4: "1-2 天"
+  total: "7-11 天 (含验证)"
+  
+# ──────────────────────────────────────────────
+# Git Checkpoint 计划
+# ──────────────────────────────────────────────
+checkpoints:
+  - "checkpoint/pre-coremark-fix (Phase 1 开始前)"
+  - "checkpoint/post-p1-fix (Phase 1 验证后)"
+  - "checkpoint/post-p2-fix (Phase 2 验证后)"
+  - "checkpoint/post-p3-fix (Phase 3 验证后)"
+  - "checkpoint/post-coremark-fix (全部完成)"
+
+# ──────────────────────────────────────────────
+# 审计轨迹
+# ──────────────────────────────────────────────
+audit_trail:
+  - round: 1
+    auditor: "Kimi (qa-audit)"
+    report: "audit/compliance-reports/coremark-rtl-static-analysis-audit-20260714.yaml"
+    findings: "新增SA-CM-AUDIT-001/002/003, 修正SA-CM-002影响范围, 新增Phase 0"
+  
+  - round: 2
+    auditor: "MiniMax (logic-deduction)"
+    report: "audit/compliance-reports/coremark-rtl-logic-deduction-audit-20260714.yaml"
+    findings: "深化4个P0场景, 新增SA-CM-LD-001(W抢占)/LD-002(pred_branch_slot候选)"
+  
+  - round: 3
+    auditor: "GLM (carry-verification + deduction)"
+    report: "audit/compliance-reports/coremark-rtl-glm-audit-20260714.yaml"
+    findings: "推翻SA-CM-LD-002假说, 验证carry正确, 新增GLM-001/002, 简化Phase 0"
+
+# ──────────────────────────────────────────────
+# 人类 Sign-off
+# ──────────────────────────────────────────────
+human_sign_off:
+  required: true
+  status: "pending"
+  note: "本计划需经人类项目负责人批准后方可执行 (规则 10)"

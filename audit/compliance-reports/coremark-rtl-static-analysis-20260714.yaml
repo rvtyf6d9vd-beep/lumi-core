@@ -1,0 +1,524 @@
+# CoreMark 调试通路 RTL 静态分析报告
+# 日期: 2026-07-14
+# 分析者: hw-design (Qoder Agent)
+# 范围: lumi_fetch.sv, lumi_decode_issue.sv, lumi_execute.sv, lumi_soc_top.sv, lumi_scoreboard.sv
+# 参考: lumi_core_top.sv (流水线级联), lumi_v1_tb_top.sv (V1 测试环境)
+
+report_id: "SA-COREMARK-20260714"
+date: "2026-07-14"
+analyst: hw-design
+scope:
+  - "src/rtl/core/lumi_fetch.sv (794 lines)"
+  - "src/rtl/core/lumi_decode_issue.sv (824 lines)"
+  - "src/rtl/core/lumi_execute.sv (803 lines)"
+  - "src/rtl/top/lumi_soc_top.sv (668 lines)"
+  - "src/tb/env/lumi_scoreboard.sv (248 lines)"
+  - "src/rtl/core/lumi_core_top.sv (826 lines) — 流水线级联参考"
+
+# ============================================================
+# 问题汇总: 共发现 24 个问题
+#   Critical: 4 (可能导致 CoreMark 运行异常)
+#   High:     3 (可能影响正确性或性能)
+#   Medium:   5 (功能限制或边界条件)
+#   Low:      5 (代码质量或风格)
+# ============================================================
+
+issues:
+
+  # ════════════════════════════════════════════════════
+  # CRITICAL — 可能直接导致 CoreMark 结果错误或卡死
+  # ════════════════════════════════════════════════════
+
+  - id: "SA-CM-001"
+    title: "DIVU/REMU 有符号判断逻辑错误 — 无符号除法被当作有符号处理"
+    severity: critical
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "260-261"
+    description: >
+      div_signed 计算公式为 `funct3[0] ^ (funct3 == MUL_DIV || funct3 == MUL_REM)`。
+      对于 DIVU (funct3=3'b101): funct3[0]=1, 条件=false, 结果=1^0=1 (有符号)。
+      对于 REMU (funct3=3'b111): funct3[0]=1, 条件=false, 结果=1^0=1 (有符号)。
+      但 DIVU/REMU 应为无符号操作 (div_signed=0)。
+      正确公式应为 `(funct3 == MUL_DIV || funct3 == MUL_REM)` 或 `~funct3[0]`。
+    impact: >
+      DIVU/REMU 指令会对操作数取绝对值 (误判为负数时取反),
+      并在结果恢复阶段错误地应用符号修正。CoreMark 中若使用无符号除法,
+      结果将完全错误。
+    fix: >
+      将 line 260-261 改为:
+      `div_signed <= (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM);`
+    priority: P0
+
+  - id: "SA-CM-002"
+    title: "DIV 余数符号计算错误 — 被除数为正、除数为负时余数符号翻转"
+    severity: critical
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "307-313"
+    description: >
+      DIV_DONE 状态中使用 `div_dividend[31] ^ div_divisor[31]` 判断结果符号。
+      但 div_dividend 和 div_divisor 在 DIV_IDLE 阶段已被取绝对值,
+      所以它们的 bit[31] 应为 0 (除非溢出: -INT_MIN)。
+      实际效果: 当原始被除数为负且除数为正时 (如 -7/2), 符号判断为 1^0=1,
+      余数取负 → -1 ✓; 但当被除数为正且除数为负时 (如 7/-2),
+      符号判断为 0^1=1, 余数取负 → -1 ✗ (应为 1)。
+      RISC-V 规定余数符号与被除数相同, 而非 XOR。
+    impact: >
+      复核修正: 该 bug 影响范围比初判更大。
+      div_dividend/div_divisor 在 DIV_IDLE 阶段已被取绝对值,
+      因此 DIV_DONE 中 `div_dividend[31] ^ div_divisor[31]` 几乎恒为 0,
+      导致所有异号有符号 DIV 的商和余数均未被取负。
+      即使同号 (如 -7/-2), 余数也应与原始被除数同号 (-1), 但代码得到 +1。
+      结论: 影响所有有符号 REM 和异号有符号 DIV。
+      CoreMark 中的取模/循环计数/数组索引广泛使用 REM, 一旦错误会导致
+      数据访问越界或算法结果错误。
+    fix: >
+      分别处理商和余数的符号:
+      商符号: `original_dividend_sign ^ original_divisor_sign`
+      余数符号: `original_dividend_sign`
+      需要保存原始符号位 (在取绝对值之前)。
+    priority: P0
+    audit_note: "影响范围经独立审计扩展, 见 coremark-rtl-static-analysis-audit-20260714.yaml"
+
+  - id: "SA-CM-003"
+    title: "MUL 单槽限制未在发射端强制执行 — 同批次两条 MUL 指令结果丢失"
+    severity: critical
+    category: 指令分发
+    module: "src/rtl/core/lumi_decode_issue.sv + src/rtl/core/lumi_execute.sv"
+    lines: "decode: 539-541; execute: 174-211"
+    description: >
+      execute 模块中 MUL 单元 (always_comb, lines 182-211) 使用 for 循环
+      查找第一条 FU_MUL 指令并计算结果, 后续 MUL 指令被忽略。
+      但 decode_issue 中 fu_busy[FU_MUL] 始终为 0 (core_top.sv line 216-219
+      仅连接 mem_busy 到 bit[3]), 未连接 MUL FU busy 信号。
+      因此同一批次中可以发射两条 MUL 指令, 第二条结果丢失。
+    impact: >
+      CoreMark 大量使用 MUL 指令 (矩阵乘法、CRC 等), 若同一 fetch batch
+      中包含两条 MUL 指令, 第二条的结果不会写入寄存器, 导致后续计算全部错误。
+    fix: >
+      方案1: 在 decode_issue 中增加同批次 MUL 互斥检测
+      (类似 branch 的 stop_issue 机制)。
+      方案2: 在 core_top.sv 中将 MUL E2 busy 信号连接到 fu_busy[FU_MUL]。
+      方案3: 在 execute 中为每条 MUL 指令分配独立乘法器 (面积代价大)。
+    priority: P0
+
+  - id: "SA-CM-004"
+    title: "LTAGE 分支历史双移位 — 推测值污染实际历史"
+    severity: critical
+    category: 分支预测
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "517-556"
+    description: >
+      当 tage_update_valid 为 true 时, line 519 移入实际结果。
+      当 tage_update_valid 为 false 时 (else 分支, lines 552-556),
+      若当前周期有 BTB 命中且预测 taken, 历史也移入 bit=1。
+      这导致: (1) 实际分支结果和推测预测值可能同时移入 (两周期内),
+      历史长度被错误拉伸; (2) 推测值始终为 1 (taken), 即使实际结果
+      可能为 not-taken, 历史被污染。
+    impact: >
+      CoreMark 有大量条件分支, LTAGE 历史污染导致预测准确率下降,
+      误预测频繁触发 2-cycle flush, 严重降低性能, 并增加时序敏感
+      路径上的冒险窗口。
+    fix: >
+      移除 else 分支中的历史移位逻辑 (lines 552-556)。
+      分支历史应仅由 execute 级的实际分支结果更新。
+    priority: P0
+
+  # ════════════════════════════════════════════════════
+  # HIGH — 可能影响 CoreMark 正确性或显著影响性能
+  # ════════════════════════════════════════════════════
+
+  - id: "SA-CM-005"
+    title: "BTB Group Lookup 已禁用 — 非 fetch group 起点的分支无法预测"
+    severity: high
+    category: 分支预测
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "309-398"
+    description: >
+      ERR-GRP-FIX 显式禁用了 group-level BTB 查找 (lines 390-397)。
+      仅保留 slot-0 BTB 查找 (pc_reg 处)。当分支指令不在 fetch group
+      起始位置 (PC[3:0] != 0) 时, BTB 永远 miss, 分支不被预测。
+      CoreMark 使用 RV32C 压缩指令, 分支可在任意 2-byte 边界,
+      大量分支不在 16-byte 对齐的 fetch group 起点。
+    impact: >
+      非起点分支每次执行都触发误预测 (2-cycle flush), 严重降低 IPC。
+      更重要的是: 每次 CALL/RET 都有误预测惩罚, RAS 只能通过
+      execute 级反馈更新, 预测路径上的 RAS push/pop 失效。
+    fix: >
+      重新启用 group-level BTB 查找, 但需修复 carry fetch 导致的
+      PC 跳过问题 (ERR-GRP-FIX 注释中提到的原因)。可考虑:
+      (1) 在 predecode 阶段做 BTB 多位置查找;
+      (2) 使用 PC[3:1] 而非 PC[3:0] 作为 group 索引;
+      (3) 为每个 2-byte 位置维护独立 BTB 条目。
+    priority: P1
+
+  - id: "SA-CM-006"
+    title: "LSU 端口分配使用地址 0 判断空闲 — 地址 0 冲突"
+    severity: high
+    category: 内存管理
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "731-754"
+    description: >
+      LSU 端口分配逻辑 (line 743): `if (e1_mem_addr[0] == 32'h0)`
+      使用地址值 0 判断端口是否空闲。但地址 0x0 是有效地址
+      (V1 SRAM 起始地址为 0x0)。若同批次中第一条 MEM 指令访问
+      地址 0x0, 第二条 MEM 指令会误判端口 0 空闲, 覆盖第一条数据。
+    impact: >
+      地址 0x0 附近的内存访问 (如向量表、启动代码) 可能被覆盖。
+      虽然概率较低, 但属于正确性缺陷。CoreMark 不太可能访问 0x0,
+      但需修复以确保鲁棒性。
+    fix: >
+      使用独立 occupied 标志:
+      `logic lsu0_occupied;`
+      在循环中: `if (!lsu0_occupied)` 分配端口 0, 置 `lsu0_occupied = 1`。
+    priority: P1
+
+  - id: "SA-CM-007"
+    title: "Fetch FSM 覆盖逻辑 — branch_redirect 优先级高于 trap"
+    severity: high
+    category: 取指控制
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "750-755"
+    description: >
+      FSM 覆盖块在 case 语句之后执行, 无条件覆盖 pc_next。
+      当 trap_redirect_valid 和 branch_redirect_valid 同时为 true 时,
+      case 语句先处理 trap (line 655-659), 设置 pc_next = trap_redirect_pc,
+      但覆盖块 (line 750-755) 将 pc_next 改为 branch_redirect_pc。
+      导致 branch redirect 优先级高于 trap, 违反 RISC-V 异常优先级。
+    impact: >
+      当 ECALL/EBREAK 和误预测同周期发生时, CPU 可能跳转到
+      branch_redirect_pc 而非 mtvec, 跳过异常处理。
+      CoreMark 末尾的 ECALL 退出可能与残留分支误预测冲突。
+    fix: >
+      在覆盖块中增加 trap 优先级检查:
+      `if (branch_redirect_valid && !trap_redirect_valid && state_reg != ST_FLUSH)`
+    priority: P1
+
+  # ════════════════════════════════════════════════════
+  # MEDIUM — 功能限制或边界条件处理不当
+  # ════════════════════════════════════════════════════
+
+  - id: "SA-CM-008"
+    title: "RAS 检查点机制为死代码 — 声明但从未使用"
+    severity: medium
+    category: 分支预测
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "153-155, 426-430"
+    description: >
+      ras_top_ckpt 和 ras_stack_ckpt 在 line 153-155 声明,
+      line 426-430 复位, 但在正常运行中从未写入或读取。
+      注释说 "flush 时恢复", 但 flush 恢复代码不存在。
+      虽然 RAS 仅由 execute 级反馈更新 (非推测式), 检查点
+      机制仍是预留的安全网, 当前为死代码。
+    impact: >
+      当前不直接影响功能 (RAS 非推测式更新)。但若未来引入
+      推测式 RAS (fetch 级 push/pop), 缺少检查点恢复将导致
+      误预测后 RAS 状态不正确。
+    fix: >
+      要么删除死代码, 要么实现检查点保存/恢复逻辑。
+      建议保留并实现, 作为未来推测式 RAS 的基础。
+    priority: P2
+
+  - id: "SA-CM-009"
+    title: "DIV FSM 双重赋值 — 时序块和组合块同时赋值 div_state_reg"
+    severity: medium
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "252, 275, 285, 303, 316"
+    description: >
+      always_ff 中 line 252 赋值 `div_state_reg <= div_state_next`,
+      同时在 case 各分支中直接赋值 (line 275: DIV_INIT, 285: DIV_RUNNING 等)。
+      SystemVerilog 中后赋值覆盖前赋值, 因此直接赋值生效,
+      div_state_next 被忽略。当前两种路径状态一致, 但属于脆弱设计。
+    impact: >
+      当前无功能错误 (两路径一致), 但维护风险高: 修改 always_comb
+      而未同步修改 always_ff (或反之) 会导致状态机不一致。
+    fix: >
+      移除 always_ff 中的直接状态赋值, 仅保留 `div_state_reg <= div_state_next`。
+      所有状态转移逻辑统一在 always_comb 中实现。
+    priority: P2
+
+  - id: "SA-CM-010"
+    title: "DIV 除零未显式处理 — 依赖算法副作用"
+    severity: medium
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "255-322"
+    description: >
+      RISC-V 规定除零不触发异常: DIV 结果=-1, DIVU 结果=0xFFFFFFFF,
+      REM 结果=被除数, REMU 结果=被除数。当前恢复除法算法在除数为 0 时,
+      每次减法结果为正 (减0), 商全1 (0xFFFFFFFF), 余数=被除数。
+      这恰好匹配 RISC-V 规范, 但属于巧合而非显式设计。
+    impact: >
+      当前功能正确 (算法副作用恰好正确), 但若修改除法算法,
+      可能破坏除零行为。建议显式处理。
+    fix: >
+      在 DIV_IDLE 状态中检查除数为 0:
+      `if (div_divisor == 32'h0) begin div_result_r <= div_is_rem ? div_dividend : 32'hFFFFFFFF; div_valid_r <= 1; div_busy_r <= 0; div_state_reg <= DIV_IDLE; end`
+    priority: P2
+
+  - id: "SA-CM-011"
+    title: "Scoreboard 无 tohost 检测 — CoreMark 标准退出机制缺失"
+    severity: medium
+    category: 验证环境
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "82-123"
+    description: >
+      Scoreboard 仅检测 ECALL (opcode 0x73, funct12=0) 和 JAL spin loop。
+      CoreMark 标准退出通常通过 tohost 机制 (memory-mapped 写入) 或
+      ECALL 实现。若 CoreMark 使用 tohost 而非 ECALL, 测试将超时。
+      V1 TB (line 476-503) 在测试结束后检查 0x3FFE0 的 benchmark 结果,
+      但这依赖测试正常结束。
+    impact: >
+      若 CoreMark 退出方式与当前检测不匹配, 测试超时,
+      无法区分是 RTL bug 还是退出机制不匹配。
+    fix: >
+      在 Scoreboard 中增加 tohost 检测:
+      监控 commit_valid 的 store 操作, 若写入 tohost 地址
+      (需从链接脚本获取), 则触发 test_done。
+      或在 V1 SRAM 中监控 tohost 地址的写入。
+    priority: P2
+
+  - id: "SA-CM-012"
+    title: "Scoreboard 无指令级正确性检查 — 仅有结构检测"
+    severity: medium
+    category: 验证环境
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "82-123"
+    description: >
+      Scoreboard 维护寄存器快照 (reg_file[0:31]) 但不与参考模型对比。
+      仅检测 ECALL/spin/PC-restart 等结构性事件。RTL 计算错误
+      不会被发现, 直到最终 exit_code 检查。调试时难以定位错误指令。
+    impact: >
+      CoreMark 结果错误时, 无法从 Scoreboard 获得第一条错误指令的
+      位置, 需要人工对比 trace, 调试效率低。
+    fix: >
+      集成 ISS (如 Spike/riscv-isa-sim) 作为参考模型,
+      逐指令对比寄存器状态。或至少增加关键寄存器 (sp, a0, a1)
+      的断言检查。
+    priority: P2
+
+  # ════════════════════════════════════════════════════
+  # LOW — 代码质量、风格或不影响 CoreMark 的功能限制
+  # ════════════════════════════════════════════════════
+
+  - id: "SA-CM-013"
+    title: "tmp_inst 变量使用先于声明 — 模块级合法但风格不佳"
+    severity: low
+    category: 代码质量
+    module: "src/rtl/core/lumi_decode_issue.sv"
+    lines: "280 (使用), 491 (声明)"
+    description: >
+      tmp_inst 在 always_comb (line 280) 中使用, 但在 line 491 声明。
+      SystemVerilog 模块级声明在全文可见, 功能正确, 但可读性差。
+    fix: >
+      将 tmp_inst 声明移至 always_comb 之前 (与其他临时变量一起)。
+    priority: P3
+
+  - id: "SA-CM-014"
+    title: "ECC IRQ 信号声明顺序 — 使用先于声明"
+    severity: low
+    category: 代码质量
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "269 (使用), 274 (声明)"
+    description: >
+      rf_ecc_ce_irq 在 regfile 实例化 (line 269) 中使用, 但在
+      line 274 声明。SystemVerilog 合法, 但可能导致工具告警。
+    fix: >
+      将 `logic rf_ecc_ce_irq, rf_ecc_ded_irq;` 声明移至
+      regfile 实例化之前。
+    priority: P3
+
+  - id: "SA-CM-015"
+    title: "Exception mtvec_in 三元运算符无意义"
+    severity: low
+    category: 代码质量
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "503"
+    description: >
+      `.mtvec_in(mstatus_out ? mtvec_out : mtvec_out)` —
+      两个分支相同, 等价于 `.mtvec_in(mtvec_out)`。
+      疑似预留的多特权级切换占位符。
+    fix: >
+      简化为 `.mtvec_in(mtvec_out)`, 或实现基于特权级的 mtvec/stvec 切换。
+    priority: P3
+
+  - id: "SA-CM-016"
+    title: "PLIC ext_irq_in 未连接 — 外部中断不可用"
+    severity: low
+    category: SoC 集成
+    module: "src/rtl/top/lumi_soc_top.sv"
+    lines: "474"
+    description: >
+      PLIC 实例化中 `.ext_irq_in(32'h0)`, SoC 顶层 input ext_irq
+      未连接到 PLIC。CLIC 的 local_irq 也为 16'h0 (line 448)。
+      所有外部中断源均未连接。
+    impact: >
+      CoreMark 不依赖中断, 不影响功能。但中断相关测试无法进行。
+    fix: >
+      连接 ext_irq 到 PLIC: `.ext_irq_in(ext_irq)`。
+      连接 local_irq 到 CLIC: `.irq_local(local_irq)`。
+    priority: P3
+
+  - id: "SA-CM-017"
+    title: "Spin loop 检测假阳性风险 — 合法紧凑循环可能误判"
+    severity: low
+    category: 验证环境
+    module: "src/tb/env/lumi_scoreboard.sv"
+    lines: "112-122"
+    description: >
+      Spin loop 检测条件: 同一 PC 出现 3+ 次 且指令为 JAL (opcode 0x6F)。
+      JAL 的 offset 为 0 时 (j .) 为无限自循环, 判定正确。
+      但若 JAL 的 offset 不为 0 (如 `j 1f` 跳到附近), 检测不会触发
+      (因为 PC 会变化)。因此假阳性风险实际很低。
+    fix: >
+      可增加 offset 检查: `commit_inst[0][31:12] == 20'h0` (offset=0)
+      以进一步降低假阳性。
+    priority: P3
+
+  # ════════════════════════════════════════════════════
+  # 独立审计补充 — 原报告遗漏的关键问题
+  # ════════════════════════════════════════════════════
+
+  - id: "SA-CM-AUDIT-001"
+    title: "CoreMark V1 实际失败根因 — fetch PC 非对齐 (ERR-042 / RISK-023)"
+    severity: critical
+    category: 取指控制
+    module: "src/rtl/core/lumi_fetch.sv"
+    lines: "TBD (需定位)"
+    description: >
+      历史记录 (ERR-042, RISK-023) 显示 CoreMark V1 Phase A 仿真中
+      PC 在 0x178 处反复跳回 0x0, 0x178 是 JAL 0x176 的中间字节,
+      非有效指令边界。原静态分析报告未直接识别此根因。
+      可能诱因: BTB Group Lookup 禁用 (SA-CM-005) 导致 JAL 0x176
+      不被预测, 误预测 flush 后重定向 PC 计算错误; 或 predecode
+      bytes_consumed 与 pc_next 不一致; 或 RAS 返回地址未对齐。
+    impact: >
+      这是当前 CoreMark V1 无法完成的直接原因, 优先级应高于所有其他问题。
+      不定位并修复此根因, 其他修复无法有效验证。
+    fix: >
+      (1) 在 fetch.sv 增加 PC 对齐断言: `assert(pc_next[0] == 1'b0)`;
+      (2) 对 JAL/JALR/BRANCH 目标增加 2-byte 对齐强制;
+      (3) 通过 trace 定位第一次 0x178 出现前最后一条分支指令;
+      (4) 建立最小复现用例: JAL 0x176 → 子程序 → RET。
+    priority: P0-首项
+    related_errata: ["ERR-042"]
+    related_risks: ["RISK-023"]
+
+  - id: "SA-CM-AUDIT-002"
+    title: "TB 2B cycles 超时机制失效 (ERR-043)"
+    severity: high
+    category: 验证环境
+    module: "src/tb/top/lumi_v1_tb_top.sv"
+    lines: "433-440"
+    description: >
+      ERR-043 记录 V1 TB 的 `cycle_count > 2_000_000_000` 超时条件
+      在 CoreMark 仿真中未触发, 仿真运行到 2.2B+ cycles 仍在继续。
+      可能原因: cycle_count 递增逻辑或 while 循环条件在 --timing 模式下
+      调度异常。
+    impact: >
+      调试效率严重下降, CoreMark 卡死时无法及时终止, 浪费仿真资源。
+    fix: >
+      检查 `cycle_count` 递增逻辑; 增加 PROGRESS 停滞检测
+      (10M cycles 无进展则结束); 使用 Verilator 强制 timeout。
+    priority: P1
+    related_errata: ["ERR-043"]
+
+  - id: "SA-CM-AUDIT-003"
+    title: "SA-CM-001 与 SA-CM-002 交互 — 无符号高地址值被错误取负"
+    severity: critical
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    lines: "260-313"
+    description: >
+      SA-CM-001 使 DIVU/REMU 的 div_signed=1, 导致进入 SA-CM-002 的
+      有符号结果修正路径。此时 div_dividend/div_divisor 保存原始
+      无符号值 (未取绝对值)。若被除数 >= 0x80000000,
+      `div_dividend[31]=1`, 触发结果取负, 无符号除法结果错误。
+    impact: >
+      即使 CoreMark 不直接使用 DIVU/REMU, 若编译器生成且操作数
+      高位为 1 (如地址运算), 结果必然错误。
+    fix: >
+      同时修复 SA-CM-001 (div_signed 正确) 和 SA-CM-002 (结果符号分别处理)。
+    priority: P0
+
+# ============================================================
+# 问题分类统计
+# ============================================================
+
+summary:
+  by_severity:
+    critical: 6
+    high: 4
+    medium: 5
+    low: 5
+    total: 20
+  by_category:
+    分支预测: 4
+    执行单元: 5
+    指令分发: 2
+    内存管理: 1
+    取指控制: 2
+    验证环境: 3
+    SoC集成: 1
+    代码质量: 4
+  by_priority:
+    P0: 5  # 必须立即修复 (含根因定位)
+    P1: 4  # 尽快修复
+    P2: 5  # 计划修复
+    P3: 5  # 有空修复
+
+# ============================================================
+# 修复优先级建议
+# ============================================================
+
+fix_order:
+  - phase: "Phase 0 — 根因定位 (blocker)"
+    issues: ["SA-CM-AUDIT-001"]
+    rationale: >
+      当前 CoreMark 无法完成的直接原因是 fetch PC 非对齐 (ERR-042/RISK-023)。
+      不定位并修复此问题, 其他修复无法有效验证。
+      交付物: 最小复现用例、PC 对齐断言、导致 0x178 的具体分支定位。
+
+  - phase: "Phase 1 — 立即修复 (P0)"
+    issues: ["SA-CM-001", "SA-CM-002", "SA-CM-003", "SA-CM-004", "SA-CM-AUDIT-003"]
+    rationale: >
+      这四个问题直接影响 CoreMark 计算正确性:
+      DIVU/REMU 符号错误 (SA-CM-001) 影响无符号除法;
+      DIV 余数符号错误 (SA-CM-002) 影响所有有符号 REM;
+      MUL 单槽限制 (SA-CM-003) 导致乘法结果丢失;
+      LTAGE 历史污染 (SA-CM-004) 影响分支预测准确率。
+      SA-CM-001 和 SA-CM-002 需同时修复, 否则交互导致无符号高地址值错误。
+
+  - phase: "Phase 2 — 尽快修复 (P1)"
+    issues: ["SA-CM-AUDIT-002", "SA-CM-005", "SA-CM-007", "SA-CM-012"]
+    rationale: >
+      TB 超时失效 (SA-CM-AUDIT-002) 是调试基础设施问题;
+      BTB Group Lookup (SA-CM-005) 和 FSM 优先级 (SA-CM-007)
+      是 fetch 控制隐患, 可能与 PC 非对齐相关;
+      Scoreboard ISS 集成 (SA-CM-012) 提升调试效率。
+
+  - phase: "Phase 3 — 计划修复 (P2)"
+    issues: ["SA-CM-008", "SA-CM-009", "SA-CM-010", "SA-CM-011"]
+    rationale: >
+      代码健壮性和验证环境改进, 不影响 CoreMark 基本功能。
+
+  - phase: "Phase 4 — 有空修复 (P3)"
+    issues: ["SA-CM-006", "SA-CM-013", "SA-CM-014", "SA-CM-015", "SA-CM-016", "SA-CM-017"]
+    rationale: >
+      代码质量和非关键功能, 可在后续迭代中处理。
+
+# ============================================================
+# CoreMark 调试建议路径 (修正版)
+# ============================================================
+
+debugging_path:
+  step_1: "定位 fetch PC 非对齐根因 (SA-CM-AUDIT-001): 添加 PC 对齐断言, 复现 JAL 0x176 → 0x178"
+  step_2: "修复 SA-CM-001/002 (DIV 符号) + SA-CM-AUDIT-003 交互检查"
+  step_3: "修复 SA-CM-003 (MUL 互斥)"
+  step_4: "修复 SA-CM-004 (LTAGE 历史)"
+  step_5: "修复 SA-CM-AUDIT-002 (TB 超时失效)"
+  step_6: "重新运行 CoreMark ITERATIONS=1, 检查是否仍有 PC RESTART 和 0x3FFE0 结果"
+  step_7: "若仍异常, 启用 ISS 对比 (SA-CM-012) 和 tohost 检测 (SA-CM-011)"
+  step_8: "性能优化: 修复 SA-CM-005 (BTB Group Lookup)"

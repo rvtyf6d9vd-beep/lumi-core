@@ -1,53 +1,74 @@
 # ═══════════════ 计划注册表：全球唯一计划编码索引 ═══════════════
-# 所有项目计划文档在此注册全局编码（PLN-xxxx），序号递增永不重置。
-# 规则 26 要求每个计划必须先注册后使用。
+# 两级体系（规则 26）:
+#   注册级 — 仅里程碑级别计划注册 PLN-xxxx，序号递增永不重置
+#   备案级 — 细颗粒度执行计划存档于 docs/plans/，不占用全局序号
+#
+# 说明：PLN-0001~0006 为历史追溯注册，序号已发放不回收。
+# 新注册从 PLN-0007 开始。
+# 注意：master-plan.html、Lumi_Deployment_Plan 等属于行动纲领
+# 而非具体计划文档，不纳入 plan_id 注册体系，不迁移。
+# 搜索到的 Qoder cache 历史任务计划列为 legacy/ 备案。
 
 plan_registry:
-  # ---- 已有计划（追溯注册） ----
-  - plan_id: "PLN-0001"
-    title: "M2-S1 详细设计执行计划"
-    file: "docs/design/m2-s1-execution-plan.yaml"
-    status: completed
-    created: "2026-06-10"
-    updated: "2026-06-15"
+  # ================================================================
+  # 注册级（Milestone 级别计划）
+  # ================================================================
 
   - plan_id: "PLN-0002"
     title: "里程碑计划定义"
-    file: "docs/project/milestone-plan.yaml"
+    file: "docs/plans/milestone/milestone-plan.yaml"
     status: active
     created: "2026-06-24"
-    updated: "2026-06-24"
+    updated: "2026-07-15"
 
   - plan_id: "PLN-0003"
     title: "覆盖率计划"
-    file: "docs/verification/coverage-plan.yaml"
+    file: "docs/plans/verification/coverage-plan.yaml"
     status: active
     created: "2026-07-01"
+    updated: "2026-07-08"
+
+  - plan_id: "PLN-0009"
+    title: "GEM5 性能建模全周期计划（Phase 1-11 合并）"
+    file: "docs/plans/gem5/gem5-modeling-full-cycle-plan.md"
+    status: active
+    level: registered
+    created: "2026-06-24"
     updated: "2026-07-01"
 
-  # ---- 新增计划在此追加 ----
+  # ================================================================
+  # 备案级（历史追溯，序号已发放不再使用）
+  # 已迁移至 docs/plans/，不占用后续全局序号
+  # ================================================================
+
+  - plan_id: "PLN-0001"
+    title: "M2-S1 详细设计执行计划（已完成）"
+    file: "docs/plans/execution/m2-s1-execution-plan.md"
+    status: completed
+    level: filed
+    created: "2026-06-10"
+    updated: "2026-07-07"
+
   - plan_id: "PLN-0004"
     title: "M3 RTL 冻结详细执行计划 (v2.0)"
-    file: "docs/project/M3_RTL冻结详细执行计划.md"
+    file: "docs/plans/execution/m3-rtl-freeze-detailed-plan.md"
     status: active
+    level: filed
     created: "2026-07-07"
     updated: "2026-07-11"
 
   - plan_id: "PLN-0005"
     title: "M3 RTL 冻结 — 详细长执行计划"
-    file: "docs/project/M3_RTL冻结_详细长执行计划.md"
+    file: "docs/plans/execution/m3-rtl-freeze-long-plan.md"
     status: active
+    level: filed
     created: "2026-07-11"
     updated: "2026-07-11"
 
   - plan_id: "PLN-0006"
     title: "M3-S2 CoreMark 调试通路 RTL 修复执行计划 (v1.0)"
-    file: "docs/project/M3-S2_CoreMark_RTL修复执行计划_v1.yaml"
+    file: "docs/plans/execution/m3-s2-coremark-rtl-fix-plan.yaml"
     status: pending_approval
+    level: filed
     created: "2026-07-14"
     updated: "2026-07-14"
-    based_on:
-      - "coremark-rtl-static-analysis-20260714.yaml (hw-design)"
-      - "coremark-rtl-static-analysis-audit-20260714.yaml (Kimi 第1轮)"
-      - "coremark-rtl-logic-deduction-audit-20260714.yaml (MiniMax 第2轮)"
-      - "coremark-rtl-glm-audit-20260714.yaml (GLM 第3轮)"

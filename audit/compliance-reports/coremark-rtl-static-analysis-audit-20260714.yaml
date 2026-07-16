@@ -1,0 +1,323 @@
+# CoreMark 调试通路 RTL 静态分析 — 独立审计报告
+# 审计对象: coremark-rtl-static-analysis-20260714.yaml (hw-design 第3轮分析)
+# 审计者: qa-audit / hw-ver 交叉审查
+# 日期: 2026-07-14
+# 审计方法: 代码走查 + 历史 errata/risk 交叉核对 + Forge 调试经验映射
+
+report_id: "SA-AUDIT-COREMARK-20260714"
+date: "2026-07-14"
+auditor: "qa-audit (independent)"
+audited_report: "audit/compliance-reports/coremark-rtl-static-analysis-20260714.yaml"
+
+# ============================================================
+# 审计结论
+# ============================================================
+
+conclusion:
+  overall: "原报告技术正确, 发现的问题大多为真实缺陷, 但存在 1 个关键遗漏和 2 处影响范围低估。"
+  verdict: "需要修正和补充后重新发布"
+  key_gaps:
+    - "未关联当前 CoreMark V1 实际失败根因 (ERR-042/RISK-023: fetch PC 非对齐 0x178)"
+    - "SA-CM-002 (DIV 余数符号) 影响范围被低估: 实际影响所有有符号 REM, 而非仅混合符号"
+    - "未提及 SA-CM-001 与 SA-CM-002 的交互作用"
+    - "未覆盖测试平台缺陷 ERR-043 (TB 2B 超时机制失效)"
+  recommendations:
+    - "立即修正原报告并补充实际失败根因分析"
+    - "调整 SA-CM-002 严重度/影响描述 (保持 critical, 但扩大影响范围)"
+    - "新增 2 个 High/Medium 问题: ERR-042 根因待定位、ERR-043 TB 超时失效"
+    - "修正修复优先级: 将 fetch PC 非对齐根因定位置于 P0 之首"
+    - "补充 directed tests: PC 对齐断言、JAL 返回地址、RAS/BTB 边界条件"
+    - "增加人类 Sign-off 检查点 (规则 10)"
+
+# ============================================================
+# 逐项复核
+# ============================================================
+
+issue_reviews:
+
+  - id: "SA-CM-001"
+    title: "DIVU/REMU 有符号判断逻辑错误"
+    status: "CONFIRMED"
+    severity_check: "critical 合理"
+    correctness: >
+      复核正确。funct3=101(DIVU) 和 111(REMU) 时:
+      `1 ^ 0 = 1`, div_signed=1 (有符号), 但应为 0 (无符号)。
+      注释 "funct3[0] = DIVU/REMU 无符号" 与代码 XOR 逻辑矛盾,
+      属实现错误。
+    impact_assessment: "原评估准确"
+    coremark_relevance: >
+      CoreMark 以有符号运算为主, 但不排除编译器生成 DIVU/REMU
+      (指针运算、循环计数器)。一旦触发, 结果错误。
+    action: "保持 P0, 建议作为 Phase 1 第二项修复"
+
+  - id: "SA-CM-002"
+    title: "DIV 余数符号计算错误"
+    status: "CONFIRMED, 影响范围需修正"
+    severity_check: "critical 合理, 但描述需扩展"
+    correctness: >
+      复核发现影响比原报告更大:
+      (1) div_dividend/div_divisor 在 DIV_IDLE 已被取绝对值,
+          因此 DIV_DONE 中检查 `div_dividend[31] ^ div_divisor[31]`
+          几乎恒为 0, 导致所有异号有符号除法结果均未被取负。
+      (2) 即使同号 (如 -7/-2), 余数也应与原始被除数同号 (-1),
+          但 XOR=0 使余数不被取负, 得到 +1, 违反 RISC-V 规范。
+      结论: 该 bug 影响所有有符号 REM 和异号有符号 DIV。
+    impact_assessment: " underestimated — 需扩大为 "所有有符号 REM + 异号 DIV""
+    coremark_relevance: >
+      CoreMark 中的取模/循环计数/数组索引广泛使用 REM。
+      任何有符号取模错误都会导致数据访问越界或算法结果错误。
+    action: "保持 P0, 更新影响描述, 列为 Phase 1 第一项修复"
+
+  - id: "SA-CM-003"
+    title: "MUL 单槽限制未在发射端强制执行"
+    status: "CONFIRMED"
+    severity_check: "critical 合理"
+    correctness: >
+      复核正确。execute 的 MUL 逻辑仅处理第一条 FU_MUL;
+      core_top.fu_busy_combined[FU_MUL] 恒为 0 (仅 bit[3]=mem_busy 被连接);
+      decode_issue 中 `tmp_fu_available = !fu_busy[FU_MUL]` 无法阻止
+      同批次两条 MUL 发射。
+    impact_assessment: "原评估准确"
+    coremark_relevance: >
+      CoreMark 矩阵乘法、CRC 计算密集。同批次两条 MUL 的概率
+      不低 (尤其 6-wide fetch + 3-wide issue 下)。
+    action: "保持 P0, 建议作为 Phase 1 第三项修复"
+
+  - id: "SA-CM-004"
+    title: "LTAGE 分支历史双移位"
+    status: "CONFIRMED"
+    severity_check: "critical 合理"
+    correctness: >
+      复核正确。else 分支 (lines 552-556) 在预测 taken 时向历史
+      移入 bit=1, 且为推测值而非实际结果。这会污染历史寄存器。
+    impact_assessment: "原评估准确"
+    coremark_relevance: >
+      直接降低分支预测准确率, 增加 flush 频率, 降低 IPC。
+      但与 ERR-042 的 PC 非对齐相比, 这是性能问题而非当前
+      失败根因。
+    action: "保持 P0, 但置于 fetch PC 非对齐根因定位之后"
+
+  - id: "SA-CM-005"
+    title: "BTB Group Lookup 已禁用"
+    status: "CONFIRMED"
+    severity_check: "high 合理, 但与 ERR-042 关联需补充"
+    correctness: >
+      复核正确。lines 390-397 明确禁用 group-level BTB。
+    impact_assessment: "原评估准确"
+    coremark_relevance: >
+      非 fetch-group 起点的分支 (如 JAL 0x176) 不被预测,
+      首次执行时触发误预测 flush。flush 后的重定向 PC
+      若计算错误, 可能落到指令中间 (如 0x178), 直接触发
+      ERR-042。
+    action: "保持 P1, 强烈建议作为 ERR-042 根因排查的一部分"
+
+  - id: "SA-CM-006"
+    title: "LSU 端口分配地址 0 冲突"
+    status: "CONFIRMED, 建议降严重度"
+    severity_check: "建议从 high 降至 medium"
+    correctness: >
+      复核正确。`e1_mem_addr[0] == 32'h0` 判断端口空闲存在
+      地址 0 冲突。
+    impact_assessment: "实际触发概率极低"
+    coremark_relevance: >
+      CoreMark 不会访问地址 0x0。该 bug 对当前 CoreMark
+      调试无直接影响。
+    action: "建议降 medium, 推迟到 Phase 2 之后"
+
+  - id: "SA-CM-007"
+    title: "Fetch FSM branch redirect 优先级高于 trap"
+    status: "CONFIRMED"
+    severity_check: "high 合理"
+    correctness: >
+      复核正确。lines 750-755 覆盖块无条件覆盖 pc_next,
+      当 trap 与 branch 同周期发生时, branch 优先级反超。
+    impact_assessment: "原评估准确"
+    coremark_relevance: >
+      CoreMark 末尾 ECALL 若与分支误预测同周期, 可能跳错地址。
+      但当前主要失败模式是 PC 非对齐, 该 bug 是潜在诱因之一。
+    action: "保持 P1"
+
+  - id: "SA-CM-008 ~ SA-CM-017"
+    title: "Medium/Low 问题集合"
+    status: "大部分确认, 个别建议调整"
+    notes: >
+      SA-CM-008 (RAS 检查点死代码): 确认, 但当前非推测式 RAS,
+      影响有限, medium 合理。
+      SA-CM-009 (DIV FSM 双重赋值): 确认, medium 合理。
+      SA-CM-010 (DIV 除零): 确认算法副作用正确, medium 合理。
+      SA-CM-011 (Scoreboard tohost): 确认, medium 合理。
+      SA-CM-012 (Scoreboard 无 ISS): 确认, 建议提升为 high
+      (对调试效率影响大)。
+      SA-CM-013~017: 代码质量/低影响, low 合理。
+
+# ============================================================
+# 原报告遗漏的关键问题
+# ============================================================
+
+missing_issues:
+
+  - id: "SA-CM-AUDIT-001"
+    title: "CoreMark V1 实际失败根因 — fetch PC 非对齐 (ERR-042 / RISK-023)"
+    severity: critical
+    category: 取指控制
+    module: "src/rtl/core/lumi_fetch.sv"
+    description: >
+      历史记录 (ERR-042, RISK-023) 显示 CoreMark V1 Phase A 仿真中
+      PC 在 0x178 处反复跳回 0x0, 0x178 是 JAL 0x176 的中间字节,
+      非有效指令边界。原静态分析报告未直接识别此根因, 也未将
+      发现的问题与 ERR-042 关联。
+    likely_root_causes:
+      - "BTB Group Lookup 禁用 (SA-CM-005): JAL 0x176 不在 fetch group 起点,
+         BTB miss 导致误预测, flush 后重定向 PC 计算错误"
+      - "分支目标地址计算错误: JAL 目标或 RAS 返回地址未对齐到 2-byte 边界"
+      - "predecode bytes_consumed 与 pc_next 不一致, 导致下一 PC 落在指令中间"
+      - "mispredict flush 与 F2 捕获门控交互, 重定向 PC 被旧 f2_pc_r 污染"
+    impact: >
+      这是当前 CoreMark 无法完成的直接原因, 优先级应高于所有其他问题。
+    fix_approach: >
+      (1) 在 fetch.sv 增加 PC 对齐断言: pc_next[0] == 0;
+      (2) 在 predecode 阶段增加指令边界检查;
+      (3) 对 JAL/JALR/BRANCH 的目标地址增加 2-byte 对齐强制;
+      (4) 通过 trace 定位第一次 0x178 出现前最后一条分支指令;
+      (5) 建立最小复现用例: 定向测试 JAL 到 0x176 后返回/前跳。
+    priority: P0-首项
+
+  - id: "SA-CM-AUDIT-002"
+    title: "TB 2B cycles 超时机制失效 (ERR-043)"
+    severity: high
+    category: 验证环境
+    module: "src/tb/top/lumi_v1_tb_top.sv"
+    description: >
+      ERR-043 记录 V1 TB 的 `cycle_count > 2_000_000_000` 超时条件
+      在 CoreMark 仿真中未触发, 仿真运行到 2.2B+ cycles 仍在继续。
+      这会掩盖调试进度, 浪费仿真资源。
+    impact: >
+      调试效率严重下降, 无法及时知道 CoreMark 已卡死。
+    fix_approach: >
+      检查 `cycle_count` 递增逻辑和 while 循环条件;
+      考虑使用 Verilator `$finish` 或强制 timeout;
+      增加 PROGRESS 检测: 若 10M cycles 内 max PC 无变化则自动结束。
+    priority: P1
+
+  - id: "SA-CM-AUDIT-003"
+    title: "SA-CM-001 与 SA-CM-002 交互 — 无符号高地址值被错误取负"
+    severity: critical
+    category: 执行单元
+    module: "src/rtl/core/lumi_execute.sv"
+    description: >
+      由于 SA-CM-001 使 DIVU/REMU 的 div_signed=1, 进入 SA-CM-002 的
+      有符号结果修正路径。此时 div_dividend/div_divisor 保存的是
+      原始无符号值 (未取绝对值)。若被除数 >= 0x80000000,
+      `div_dividend[31]=1`, 触发结果取负, 导致无符号除法结果错误。
+    impact: >
+      即使 CoreMark 不直接使用 DIVU/REMU, 但若编译器生成 DIVU
+      且操作数高位为 1 (如指针/地址运算), 结果必然错误。
+    fix_approach: >
+      先修复 SA-CM-001 (使 div_signed 正确), 再修复 SA-CM-002
+      (分别处理商和余数符号)。
+    priority: P0
+
+# ============================================================
+# 修正后的修复优先级
+# ============================================================
+
+revised_fix_order:
+  - phase: "Phase 0 — 根因定位 ( blocker )"
+    issues: ["SA-CM-AUDIT-001"]
+    rationale: >
+      当前 CoreMark 无法完成的直接原因是 fetch PC 非对齐。
+      不定位并修复此问题, 其他修复无法验证。
+    deliverables:
+      - "最小复现用例 (directed test)"
+      - "fetch PC 对齐断言"
+      - "导致 0x178 的具体分支指令定位"
+
+  - phase: "Phase 1 — 立即修复 (P0)"
+    issues: ["SA-CM-002", "SA-CM-001", "SA-CM-003", "SA-CM-004"]
+    rationale: >
+      DIV 符号问题 (SA-CM-001/002) 和 MUL 互斥 (SA-CM-003) 直接影响
+      CoreMark 计算结果; LTAGE 历史 (SA-CM-004) 影响性能。
+      注意: SA-CM-002 应先于 SA-CM-001 修复的说法不成立,
+      因为必须先有正确的 div_signed 才能有正确的符号处理。
+      实际应同时修复两者。
+    deliverables:
+      - "rv32m_div/divu/rem/remu 定向测试全部 PASS"
+      - "同批次双 MUL 定向测试 PASS"
+      - "LTAGE 历史不再受推测值污染"
+
+  - phase: "Phase 2 — 尽快修复 (P1)"
+    issues: ["SA-CM-AUDIT-002", "SA-CM-005", "SA-CM-007", "SA-CM-012"]
+    rationale: >
+      TB 超时失效 (SA-CM-AUDIT-002) 是调试基础设施问题;
+      BTB Group Lookup (SA-CM-005) 和 FSM 优先级 (SA-CM-007)
+      是 fetch 控制隐患; Scoreboard ISS 集成 (SA-CM-012) 提升
+      调试效率。
+
+  - phase: "Phase 3 — 计划修复 (P2)"
+    issues: ["SA-CM-008", "SA-CM-009", "SA-CM-010", "SA-CM-011"]
+
+  - phase: "Phase 4 — 有空修复 (P3)"
+    issues: ["SA-CM-006", "SA-CM-013", "SA-CM-014", "SA-CM-015", "SA-CM-016", "SA-CM-017"]
+
+# ============================================================
+# 建议补充的验证/调试措施
+# ============================================================
+
+additional_measures:
+  - measure: "fetch PC 对齐断言"
+    implementation: >
+      在 lumi_fetch.sv 的 always_comb FSM 末尾增加:
+      `assert(pc_next[0] == 1'b0)` 和 `assert(f1_pc_out[0] == 1'b0)`
+    purpose: "第一时间捕获 PC 非对齐"
+
+  - measure: "分支目标地址断言"
+    implementation: >
+      在 lumi_execute.sv 的 branch_target 计算后增加:
+      `assert(branch_target[i][0] == 1'b0)`
+    purpose: "确保 JAL/JALR/BRANCH 目标 2-byte 对齐"
+
+  - measure: "JAL 返回/前跳最小复现"
+    implementation: >
+      编写 directed test: 0x176 处 JAL 到子程序, 子程序 RET,
+      验证返回地址正确。
+    purpose: "复现 ERR-042 场景"
+
+  - measure: "ISS 参考模型对比"
+    implementation: >
+      在 Scoreboard 中集成 Spike 或 riscv-isa-sim,
+      每周期对比寄存器文件。
+    purpose: "快速定位第一条错误指令"
+
+  - measure: "TB 超时修复"
+    implementation: >
+      修复 cycle_count 递增逻辑, 增加 PROGRESS 停滞检测。
+    purpose: "避免无效长仿真"
+
+# ============================================================
+# 合规性检查
+# ============================================================
+
+compliance_check:
+  errata_updated: true
+  instruction_log_updated: true
+  risk_register_updated: false  # 需补充本次审计发现的 RISK
+  human_sign_off: false          # 规则 10 要求, 需人类项目负责人确认
+  checkpoint_tag: false          # 建议创建 checkpoint/pre-coremark-fix
+  regression_tests_defined: partial  # 部分测试文件尚未创建
+
+compliance_gaps:
+  - "risk-register 未登记 SA-CM-AUDIT-001/002/003 风险"
+  - "缺少人类 Sign-off 记录"
+  - "缺少 checkpoint tag (建议创建 checkpoint/pre-coremark-fix)"
+  - "部分 regression_test 指向不存在的 .S 文件"
+
+# ============================================================
+# 最终建议
+# ============================================================
+
+final_recommendations:
+  - "修正原静态分析报告: 补充 ERR-042 根因分析、修正 SA-CM-002 影响范围、增加 SA-CM-AUDIT-001/002/003"
+  - "更新 risk-register: 新增 RISK-027 (PC 非对齐根因待定位), RISK-028 (TB 超时失效)"
+  - "创建 git checkpoint tag: checkpoint/pre-coremark-fix"
+  - "召开人类 Sign-off 会议, 确认 Phase 0 根因定位方案"
+  - "在修复任何 P0 问题前, 先建立最小复现用例和断言"

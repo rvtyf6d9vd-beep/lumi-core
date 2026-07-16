@@ -1,4 +1,4 @@
-# Lumi 通用项目规则（26 条）
+# Lumi 通用项目规则（27 条）
 # 源自 Top Rules_Optimized.md 第三章
 
 rules:
@@ -362,7 +362,7 @@ rules:
       - "建议内容明确提及'多模型交叉审查'或'交叉验证'"
     audit_role: true
 
-  # ── 3.12 计划编码 ──
+ # ── 3.12 计划编码（两级体系）──
   - id: "26"
     title: "计划统一编码"
     category: general
@@ -370,16 +370,48 @@ rules:
     applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
     applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
     description: >
-      所有项目计划文档必须使用统一的全局编码体系，不得在每个计划内
-      从 Task 1 / Batch 1 等局部编号重新开始。计划编码格式为
-      PLN-{4位全局序号}（如 PLN-0001、PLN-0002），序号全局递增、
-      永不重置。每个计划文档必须在标题下方标注 plan_id，文件名
-      建议包含 plan_id 以方便检索。计划编码需在 docs/project/plan-registry.yaml
-      中注册，确保无重复、无遗漏，便于事后整理和复盘。
+      计划文档采用两级管理：
+
+      **注册级（plan_id）** —— 仅限里程碑级别的计划文档（如 milestone-plan.yaml、
+      master-plan.html、部署计划等）注册全局 PLN-{4位序号}，序号递增永不重置。
+      注册级计划需在 docs/project/plan-registry.yaml 中登记，标题下方标注 plan_id。
+
+      **备案级（归档）** —— 细颗粒度的执行计划、阶段计划、专项计划等，
+      统一存档到 docs/plans/ 对应子目录即可，不注册 plan_id，不占用全局序号。
+      备案级计划使用"父级 plan_id + 内部编号"自描述（如 M3-S2-Task01），
+      避免在每个计划内部从 Task 1 / Batch 1 等局部编号重新开始。
     check_type: automated
     check_criteria:
-      - "docs/project/plan-registry.yaml 存在且所有计划已注册"
-      - "每个计划文档在标题醒目位置标注 plan_id（PLN-xxxx）"
-      - "计划文档内部不再使用局部 Task 1 / Batch 1 等重复起始编号"
+      - "docs/project/plan-registry.yaml 存在且所有注册级计划已登记"
+      - "注册级计划文档在标题醒目位置标注 plan_id（PLN-xxxx）"
+      - "备案级计划统一存放在 docs/plans/ 子目录"
+      - "备案级计划使用'父计划+内部序号'编号体系，无重复起始"
       - "全局序号无跳号、无重复"
+    audit_role: true
+
+  # ── 3.13 计划存档 ──
+  - id: "27"
+    title: "计划文档统一存档"
+    category: general
+    severity: high
+    applicable_roles: [pm-infra, hw-design, hw-ver, qa-audit]
+    applicable_phases: [setup, requirements, architecture, design, implementation, verification, delivery]
+    description: >
+      所有计划文档（包括注册级和备案级）必须统一归档到 docs/plans/ 目录下，
+      按计划类别分门别类放入子目录（如 milestone/、execution/、verification/、
+      gem5/、deployment/）。
+
+      注册级计划（有 plan_id）：文件名建议包含 plan_id 以方便检索。
+      备案级计划（无 plan_id）：按所属大类归入子目录，文件名保持描述性即可。
+
+      创建计划时，原始文档存入对应子目录；执行过程中的变更记录
+      （checkpoint tag、修改纪要、复盘记录）以子目录或附注文件形式同步保存。
+      已有计划应渐进迁移至 docs/plans/，并在原位置保留软链接或跳转说明。
+    check_type: automated
+    check_criteria:
+      - "docs/plans/ 目录存在且含子目录分类"
+      - "注册级计划在对应子目录下有文档，文件名含 plan_id"
+      - "备案级计划在对应子目录下存档"
+      - "plan-registry.yaml 中注册级 plan 的 file 字段指向 docs/plans/ 下的文件"
+      - "已迁移计划的原位置有跳转说明"
     audit_role: true

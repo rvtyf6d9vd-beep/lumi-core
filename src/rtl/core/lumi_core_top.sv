@@ -118,6 +118,16 @@ module lumi_core_top #(
     logic [15:0]   pd_carry_hw_out;
     logic          pd_carry_valid_out;
 
+    // ── ERR-PDREG: 寄存 predecode 输出到 F2 级 ──
+    // predecode 是组合逻辑, 总是反映当前 pc_reg 的数据.
+    // 但 f2_valid_r 是寄存器, 表示上一个 fetch 的块.
+    // 寄存 predecode 输出使其与 f2_valid_r 对齐, 消除时序不匹配.
+    logic [31:0]   f2r_pd_inst [FETCH_WIDTH-1:0];
+    logic [31:0]   f2r_pd_inst_pc [FETCH_WIDTH-1:0];
+    logic [FETCH_WIDTH-1:0] f2r_pd_inst_valid;
+    logic [FETCH_WIDTH-1:0] f2r_pd_inst_compressed;
+    logic [15:0]   f2r_pd_inst_raw [FETCH_WIDTH-1:0];
+
     // ── ERR-044: Execute call/ret 信号 ──
     logic          e1_br_is_call;
     logic          e1_br_is_ret;
@@ -311,13 +321,40 @@ module lumi_core_top #(
         .carry_valid_out    (pd_carry_valid_out)
     );
 
-    // ERR-042: valid mask 使用 predecode 输出
+    // ERR-042 + ERR-PDREG: valid mask 使用寄存后的 predecode 输出
     always_comb begin
         f2_inst_valid_mask = '0;
         if (f2_valid) begin
             for (int i = 0; i < FETCH_WIDTH; i++) begin
-                if (pd_inst_valid[i])
+                if (f2r_pd_inst_valid[i])
                     f2_inst_valid_mask[i] = 1'b1;
+            end
+        end
+    end
+
+    // ERR-PDREG: 寄存 predecode 输出 — 与 F2 流水线寄存器对齐
+    // 原理: predecode 是组合逻辑, 总是反映当前 pc_reg 的数据.
+    // f2_valid_r 是寄存器, 表示上一个 fetch 的块 (pc_reg - 当前块).
+    // 解决方案: 每个周期都捕获 predecode. 前一拍的值自然对应 decode 当前块.
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            f2r_pd_inst_valid      <= '0;
+            f2r_pd_inst_compressed <= '0;
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                f2r_pd_inst[i]            <= 32'h0;
+                f2r_pd_inst_pc[i]         <= 32'h0;
+                f2r_pd_inst_raw[i]        <= 16'h0;
+            end
+        end else begin
+            // 每拍捕获当前 predecode (组合逻辑, 反映当前 pc_reg 的块).
+            // 前一拍的值 = 当前 pc_reg 前一个块的 predecode,
+            // 正好对应 decode 当前正在处理的块 (f2_valid_r 对应的块).
+            f2r_pd_inst_valid      <= pd_inst_valid;
+            f2r_pd_inst_compressed <= pd_inst_compressed;
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                f2r_pd_inst[i]     <= pd_inst[i];
+                f2r_pd_inst_pc[i]  <= pd_inst_pc[i];
+                f2r_pd_inst_raw[i] <= pd_inst_raw[i];
             end
         end
     end
@@ -331,14 +368,14 @@ module lumi_core_top #(
     ) u_decode_issue (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .d_instructions        (pd_inst),          // ERR-042: predecode 展开后的指令
+        .d_instructions        (f2r_pd_inst),      // ERR-PDREG: 寄存后的 predecode 指令
         .d_inst_valid          (f2_inst_valid_mask),
         .d_pc                  (f2_pc),
         .d_valid               (f2_valid),
-        // ERR-042: per-instruction PC + 压缩标志
-        .d_inst_pc             (pd_inst_pc),
-        .d_inst_compressed     (pd_inst_compressed),
-        .d_inst_raw            (pd_inst_raw),
+        // ERR-042 + ERR-PDREG: per-instruction PC + 压缩标志 (寄存后)
+        .d_inst_pc             (f2r_pd_inst_pc),
+        .d_inst_compressed     (f2r_pd_inst_compressed),
+        .d_inst_raw            (f2r_pd_inst_raw),
         .d_rs1_data            (i_rs1_data),
         .d_rs2_data            (i_rs2_data),
         .regfile_rs1_addr      (rf_rs1_addr),

@@ -16,6 +16,8 @@
 - 新增规则 24: 门禁不可自解释或降低
 - 新增规则 25: 复杂计划交叉审查建议 — 高风险计划须建议多模型交叉验证
 - 新增规则 26: 计划统一编码 — PLN-xxxx 全局编码体系，禁止局部重复起始编号
+- 新增规则 27: 计划文档统一存档 — 所有计划集中归档至 docs/plans/
+- 计划迁移: docs/project/ + docs/verification/ + Qoder cache → docs/plans/ 各子目录
 - 创建 audit/errata/known-issues.yaml 模板
 - 创建 docs/project/milestone-plan.yaml 里程碑计划定义文件
 - role-mapping.yaml 更新: 为相关角色添加新规则引用和文件权限

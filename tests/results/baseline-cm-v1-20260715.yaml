@@ -1,0 +1,33 @@
+# CoreMark V1 Baseline Snapshot
+# Generated: 2026-07-15
+# Plan: PLN-0006 Phase 0 Task 0.4
+# Git tag: checkpoint/pre-coremark-fix
+
+environment:
+  verilator_version: "5.048"
+  build_options: "--binary --trace --coverage"
+  gcc_version: "riscv64-unknown-elf-gcc 16.1.0"
+  hex_file: "perf/benchmarks/coremark-v1/coremark-v1_32.hex"
+  max_cycles: 500000
+
+results:
+  status: "TIMEOUT"
+  v1_result: "PASS=0 FAIL=1"
+  test_result: "INCOMPLETE (no ECALL/spin detected)"
+  retired_v1: 356957
+  retired_total: 927848
+  total_traps: 8
+  total_irqs: 0
+  sram_write_count: 14
+  benchmark_magic: "0x00000000 (INVALID)"
+  benchmark_ticks: 94208
+
+regression_baseline:
+  smoke: "PASS=1 FAIL=0"
+  rv32i_full: "PASS=0 FAIL=1 (39/80 checks)"
+
+notes: |
+  CoreMark V1 fails to complete within 500K cycles.
+  8 traps detected, ECALL never reached.
+  Benchmark result area (0x3FFE0) not written.
+  This is the known pre-fix state. Phase 1-3 RTL fixes are expected to resolve these issues.

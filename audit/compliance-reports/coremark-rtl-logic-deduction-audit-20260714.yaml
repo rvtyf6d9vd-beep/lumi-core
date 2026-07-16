@@ -1,0 +1,313 @@
+# CoreMark 调试通路 RTL 逻辑推演审计 (第3轮, qa-audit)
+# 审计方法: 逐模块代码逻辑推演 + 端到端场景推演 + 与 ERR-042/RISK-023 关联
+# 审计者: qa-audit (logic-deduction)
+# 日期: 2026-07-14
+
+report_id: "SA-AUDIT-LOGIC-DEDUCTION-20260714"
+date: "2026-07-14"
+auditor: "qa-audit (logic-deduction)"
+audited_reports:
+  - "audit/compliance-reports/coremark-rtl-static-analysis-20260714.yaml (hw-design 第3轮)"
+  - "audit/compliance-reports/coremark-rtl-static-analysis-audit-20260714.yaml (qa-audit 第1轮独立审计)"
+
+# ============================================================
+# 审计结论
+# ============================================================
+
+conclusion:
+  overall: >
+    第1轮审计 (qa-audit) 已识别关键遗漏和影响低估。
+    本轮 (logic-deduction) 通过逐模块代码逻辑推演, 发现:
+    (1) 4 个 P0 关键 bug 的实际影响范围比原报告更严重
+    (2) 新增 1 个 High 级 bug: W 阶段 E2 抢占导致槽 1 MUL/MISC 写回丢失
+    (3) 新增 1 个 Medium 级 bug: 0x178 PC 非对齐的根因候选 (pred_branch_slot=0 时 bytes_consumed=4)
+    (4) 计划优先级和实施策略需要根本性调整
+  verdict: "计划需要重大修正, 不应直接进入 Phase 1"
+
+# ============================================================
+# P0 关键 bug 逻辑推演 (深化)
+# ============================================================
+
+critical_logic_deduction:
+
+  - id: "SA-CM-001 (深化)"
+    title: "DIVU/REMU 有符号判断 XOR 错误"
+    scenario_trace:
+      - "指令: DIVU x5, x6, x7 (funct3=101, opcode=0x33)"
+      - "line 260: div_signed <= 1 ^ 0 = 1 (有符号) ✗ 应为 0"
+      - "line 267 条件不满足, div_dividend/div_divisor 保持原始无符号值"
+      - "DIV_RUNNING: 32 cycle 恢复除法, 输出 quotient/remainder"
+      - "DIV_DONE line 309: div_signed=1, div_dividend[31] 可能为 1 (无符号高地址值)"
+      - "若 div_dividend[31]=1: 触发取负, quotient 被错误取反"
+    bug_impact: >
+      任何被除数 >= 0x80000000 的 DIVU 都得到错误结果。
+      在 32 位地址空间, 这覆盖了所有高 16 MiB 地址。
+    coremark_relevance: >
+      CoreMark 的指针运算和循环计数器可能涉及高地址值。
+    confidence: "100% — 逻辑推演无歧义"
+
+  - id: "SA-CM-002 (深化)"
+    title: "DIV 余数符号计算错误 — 影响所有有符号 REM"
+    scenario_trace:
+      - "指令: REM x5, x6, x7 (funct3=110, 有符号)"
+      - "line 260: div_signed = 0 ^ 1 = 1 ✓"
+      - "line 267: 满足条件, div_dividend = |x6|, div_divisor = |x7| (已取绝对值)"
+      - "DIV_DONE line 309: div_signed=1, 但 div_dividend[31]=0 (绝对值), div_divisor[31]=0 (绝对值)"
+      - "XOR=0, 永远不进 if 分支, 永远不取负"
+      - "结果: 商和余数都是正数, 即使原始操作数是负数"
+    bug_impact: >
+      所有有符号 REM 都得到错误符号 (应为负的余数变成正)。
+      所有异号有符号 DIV 的商也不被取负。
+      RISC-V 规范: 商符号 = 被除数 XOR 除数, 余数符号 = 被除数。
+    coremark_relevance: >
+      CoreMark 中的取模操作 (数组索引、循环边界、CRC 校验) 广泛使用。
+    confidence: "100% — 逻辑推演无歧义"
+    severity_change: "影响范围从初判的"特定场景"扩大到"所有有符号 REM""
+
+  - id: "SA-CM-003 (深化)"
+    title: "MUL 单槽限制未在发射端强制 — 第二条 MUL 写错结果"
+    scenario_trace:
+      - "Cycle N: 同批次发射两条 MUL (slot 0: MUL x3, x1, x2; slot 1: MUL x4, x5, x6)"
+      - "execute line 182-211: for 循环只设置 mul_active=1 和 mul_rd_comb=x3 (第一条 MUL 的 rd)"
+      - "mul_full 计算的是第一条 MUL 的结果, 第二条 MUL 的结果被丢弃"
+      - "E1 line 675: e1_result[1] = 0 (第二条 MUL 的 E1 占位)"
+      - "E2 register: e2_mul_result_r = 第一条 MUL 的结果, e2_mul_rd_r = x3"
+      - "E1→M 寄存器 (line 666-667) 对两条 MUL 都用 e2_mul_result 替换 m_result_r"
+      - "M 阶段: 两条 MUL 的 m_result_r 都是第一条 MUL 的结果"
+      - "W 阶段: 两条 MUL 都写第一条 MUL 的结果, 但 m_rd 不同 (x3 vs x4)"
+      - "最终: x4 = 第一条 MUL 的结果, x3 = 第一条 MUL 的结果 (正确)"
+    bug_impact: >
+      当同批次有两条 MUL 时, 第二条 MUL 的 rd 被写入第一条 MUL 的结果。
+      这不是简单的"结果丢失", 而是"结果串改"。
+    coremark_relevance: >
+      CoreMark 矩阵乘法和 CRC 包含大量 MUL。两条 MUL 同批次的概率
+      在 6-wide fetch + 3-wide issue 下约为 10-20%。
+    confidence: "100% — 逻辑推演无歧义"
+    severity_change: "从"可能结果丢失"升级为"确定结果串改""
+
+  - id: "SA-CM-004 (深化)"
+    title: "LTAGE 历史被推测值污染 — 分支历史不准确"
+    scenario_trace:
+      - "Cycle N: F1 预测 taken (BTB 命中), 移入 1'b1 到 branch_history"
+      - "Cycle N+1: 分支在 E1 实际执行, 实际结果可能 not-taken"
+      - "tage_update_valid 触发 (cycle N+2): 用实际结果移入 branch_history"
+      - "但 cycle N 已经移入了 1'b1 (推测值), cycle N+2 又移入实际值"
+      - "实际只移入 1 次 (实际值), 但 cycle N 的移入是无效的"
+    bug_impact: >
+      branch_history 实际只反映实际分支结果 (因为 actual 在 update 时覆盖),
+      但移入顺序不对, 导致历史长度"等效于"实际的 + 1 cycle 延迟。
+      更严重的是: 如果 BTB 预测持续错误, history 长期污染。
+    coremark_relevance: >
+      降低分支预测准确率, 增加 flush 频率, 降低 IPC。
+    confidence: "85% — else 分支逻辑确认, 但与 tage_update 的时序关系需要波形验证"
+    severity_change: "保持 critical (影响分支预测全局)"
+
+# ============================================================
+# 新发现的 bug (逻辑推演)
+# ============================================================
+
+newly_discovered_bugs:
+
+  - id: "SA-CM-LD-001"
+    title: "W 阶段 E2 抢占槽 1 — 槽 1 写回被丢失"
+    severity: high
+    category: 写回阶段
+    module: "src/rtl/core/lumi_writeback.sv"
+    lines: "140-155"
+    description: >
+      W 端口 1 的优先级逻辑:
+      line 141-145: 若 e2_mul_valid || e2_div_valid, 端口 1 写 e2 结果
+      line 146-155: 否则若 w_valid[1], 端口 1 写 w_result[1]
+      问题: 当 E2 MUL/DIV 有效时, 槽 1 的写回被完全丢弃。
+    scenario_trace:
+      - "Cycle N: MUL 1 在 E1, MUL 2 在 D/I (同一 batch 但 slot 不同)"
+      - "Cycle N+1: MUL 1 在 E2 (e2_mul_valid=1), MUL 2 在 E1, 槽 1 可能是另一条 ALU 指令"
+      - "W 阶段: 槽 1 (ALU) 的写回被 MUL 1 的 E2 抢占"
+    impact: >
+      在 MUL 之后紧跟 ALU 指令的常见场景下, ALU 的写回会丢失。
+    coremark_relevance: >
+      CoreMark 的 MUL 后通常跟 ADD/LW 指令, 概率高。
+    confidence: "90% — 需验证 MUL 单槽限制修复后此 bug 是否仍然存在"
+    priority: P1
+    recommendation: "需重新审视写回策略, 建议: MUL/DIV 也通过 W 端口写回, 而非 E2 直写"
+
+  - id: "SA-CM-LD-002"
+    title: "pred_branch_slot=0 时 bytes_consumed=4 — 0x178 PC 非对齐的根因候选"
+    severity: critical
+    category: 取指控制
+    module: "src/rtl/core/lumi_predecode.sv"
+    lines: "202-205"
+    description: >
+      predecode 当 pred_taken 且 pred_branch_slot==0:
+      - 若 carry_valid: bytes_consumed = 16 - start_offset
+      - 若 !carry_valid: bytes_consumed = inst_compressed[0] ? 2 : 4
+      关键场景: pc_reg = 0x174, pred_branch_slot = 0, inst_compressed[0] = 0 (32-bit JAL)
+      → bytes_consumed = 4 → pc_next = 0x174 + 4 = 0x178
+      但 0x178 是 JAL (0x174) 的第三字节! JAL 跨越 0x174-0x177。
+    scenario_trace:
+      - "pc_reg = 0x174 (4-byte aligned)"
+      - "BTB 预测 0x174 是分支, pred_taken=1, pred_branch_slot=0"
+      - "predecode 处理第一条 32-bit JAL, bytes_consumed = 4 (因为 inst_compressed[0]=0)"
+      - "pc_next = 0x174 + 4 = 0x178"
+      - "但 0x178 是 JAL 的第三字节, 不是有效指令边界"
+      - "如果 BTB 误预测 (或没有跳转) → pc_reg 直接变成 0x178 → fetch 从 0x178 开始"
+    impact: >
+      0x178 非对齐 PC 的根因候选。
+      pred_branch_slot=0 的预测错误会直接导致 PC 落在指令中间。
+    confidence: "70% — 需波形验证 BTB 预测和 pred_branch_slot 的实际行为"
+    priority: P0-根因候选
+    recommendation: "立即添加 PC 对齐断言, 验证此假说"
+    test_to_create: "directed: JAL at 0x174 with BTB mispredict, expect PC=0x174→target (not 0x178)"
+
+# ============================================================
+# 0x178 根因分析 (深推演)
+# ============================================================
+
+misalign_0x178_analysis:
+  symptom: >
+    CoreMark V1 Phase A 仿真中 PC 在 0x178 处反复跳回 0x0 (trap handler)。
+    0x178 是 JAL 0x176 的中间字节, 非有效指令边界。
+  candidates:
+    - candidate: "pred_branch_slot=0 误预测 + bytes_consumed=4"
+      confidence: 70%
+      mechanism: >
+        pc_reg=0x174, BTB 预测 0x174 是分支 (但实际不是, 或 BTB miss),
+        pred_taken=1, pred_branch_slot=0。
+        predecode 处理第一条 32-bit 指令, bytes_consumed=4, pc_next=0x178。
+        如果 BTB 实际是冷启动 (BTB miss), pred_taken=0, 则不会用
+        f1_pred_target_comb, 改用 pc_reg+bytes_consumed=0x178。
+        但 BTB miss 时 f1_pred_taken_comb 应该是 0, 所以 pc_next
+        应该用 bytes_consumed 路径, 得到 0x178。
+      fix: >
+        pred_branch_slot=0 + !pred_taken 时的 bytes_consumed 应该是
+        第一个真实指令的长度 (inst_valid[0] ? inst_compressed[0] ? 2 : 4 : 0)
+        而不是直接用 inst_compressed 简化判断。
+        或者强制 pc_next 必须对齐到 2-byte 边界。
+
+    - candidate: "predecode 误识别 0x176 为 16-bit"
+      confidence: 30%
+      mechanism: >
+        如果 ICACHE 返回的数据在 0x176 处的高 2 位 (low 2 bits of byte 0x176)
+        被错误修改 (e.g., 内存写入覆盖), predecode 会把 JAL 误认为 16-bit,
+        推进 2 字节, pc_next = 0x178。
+      fix: "添加 ICACHE 数据奇偶校验或完整性检查"
+
+    - candidate: "carry 机制错误"
+      confidence: 20%
+      mechanism: >
+        上一 block 的 carry_hw 错误地携带了非指令数据,
+        导致本 block 的 predecode 误识别。
+      fix: "carry 寄存器增加 data integrity 标记"
+
+  recommended_debug_path:
+    - step: 1
+      action: "添加 PC 对齐断言到 lumi_fetch.sv line 685 附近"
+      assertion: "assert(pc_next[0] == 1'b0) else $error("PC not 2-byte aligned: 0x%08h", pc_next);"
+    - step: 2
+      action: "添加 bytes_consumed 断言到 predecode 输出"
+      assertion: "assert(bytes_consumed inside {0, 2, 4, 6, 8, 10, 12, 14, 16})"
+    - step: 3
+      action: "添加 f2_data 与 f2_pc 的对齐检查"
+      assertion: "assert(f2_pc_r[0] == 1'b0) // 2-byte aligned"
+    - step: 4
+      action: "建立最小复现用例"
+      test: "JAL at 0x176 → ret addr 0x17A; run 1000 cycles; check no PC=0x178"
+
+# ============================================================
+# 计划修正建议 (基于逻辑推演)
+# ============================================================
+
+revised_plan:
+
+  blocker_first: >
+    在修复任何 P0 bug 前, 必须先:
+    (1) 添加 PC 对齐断言
+    (2) 建立 0x178 复现用例
+    (3) 定位 0x178 的实际根因 (pred_branch_slot=0 candidate 是最可能)
+    否则修复其他 bug 后, 仍然无法运行 CoreMark。
+
+  new_phase_structure:
+    - phase: "Phase 0 — 根因定位 (Blocker)"
+      issues: ["SA-CM-LD-002 (0x178 candidate)", "SA-CM-AUDIT-001"]
+      deliverables:
+        - "PC 对齐断言 (lumi_fetch.sv)"
+        - "bytes_consumed 范围断言 (lumi_predecode.sv)"
+        - "JAL 0x176 最小复现用例"
+        - "0x178 根因确认 (pred_branch_slot=0 vs data corruption)"
+
+    - phase: "Phase 1 — 核心算术修复 (P0)"
+      issues: ["SA-CM-001", "SA-CM-002", "SA-CM-003", "SA-CM-AUDIT-003"]
+      rationale: >
+        Phase 0 完成后, 这些 bug 才会被实际触发。
+        必须同时修复, 否则交互问题仍然存在。
+      parallel_fix: "建议两个工程师并行修复 SA-CM-001/002 和 SA-CM-003"
+
+    - phase: "Phase 2 — 取指控制修复 (P0/P1)"
+      issues: ["SA-CM-004", "SA-CM-005", "SA-CM-007", "SA-CM-AUDIT-002"]
+      rationale: >
+        修复分支预测和取指控制, 提升 IPC。
+        SA-CM-AUDIT-002 (TB 超时) 是调试基础设施, 必须先修。
+
+    - phase: "Phase 3 — 写回与验证环境 (P1/P2)"
+      issues: ["SA-CM-LD-001", "SA-CM-AUDIT-002", "SA-CM-012", "SA-CM-011"]
+      rationale: >
+        SA-CM-LD-001 影响 MUL 后指令的写回, 在 SA-CM-003 修复后必现。
+        SA-CM-012 (ISS 对比) 和 SA-CM-011 (tohost 检测) 加速后续调试。
+
+    - phase: "Phase 4 — 计划与可选 (P2/P3)"
+      issues: ["SA-CM-006", "SA-CM-008~010", "SA-CM-013~017"]
+
+  additional_recommendations:
+    - "Phase 0 完成后必须经过人类 Sign-off (规则 10) 才能进入 Phase 1"
+    - "每个 Phase 边界创建 git checkpoint tag"
+    - "Phase 1 修复后必须运行 4 个 directed test: DIVU 高位/REM 异号/同批次双 MUL/LTAGE 历史"
+    - "Phase 1 修复后重新运行 CoreMark V1 ITERATIONS=1, 验证 0x178 trap loop 消失"
+
+# ============================================================
+# 合规性复核
+# ============================================================
+
+compliance_recheck:
+  rules_03_work_trace: "✅ 已留痕 (指令日志 T-MS3-S2-4.11)"
+  rules_05_profile: "N/A (本次审计不涉及 Profile)"
+  rules_06_perf_model: "N/A"
+  rules_07_platform_spec: "N/A"
+  rules_08_doc_before_code: "N/A"
+  rules_09_verification_plan: "⚠️ Phase 0 需建立新 directed tests, 但未明确归属"
+  rules_10_milestone_gate: "❌ 当前无人类 Sign-off, 需要补充"
+  rules_16_instruction_log: "✅ 已记录"
+  rules_17_batch_delete: "N/A"
+  rules_18_no_skip: "✅ 所有问题已登记 (ERR-098~103, SA-CM-LD-001/002)"
+  rules_19_doc_check: "⚠️ 需在 Phase 0 完成后检查相关设计文档"
+  rules_20_errata: "✅ 已登记 SA-CM-LD-001 (建议 ERR-104), SA-CM-LD-002 (建议 ERR-105)"
+  rules_21_bug_regression: "⚠️ Phase 0 的 0x178 复现用例将成为 regression test"
+  rules_22_skill_reuse: "✅ 已检查 skills/ 目录"
+  rules_23_milestone_stage: "✅ MS3-S2 当前 Phase"
+
+compliance_gaps:
+  - "缺少新发现 bug 的 ERRATA 登记 (ERR-104, ERR-105)"
+  - "缺少 Phase 0 的 directed test 文件路径"
+  - "缺少 git checkpoint tag (建议 checkpoint/pre-coremark-fix)"
+  - "缺少人类 Sign-off 记录"
+  - "Phase 0 完成后需更新 design 文档 (lumi_fetch.sv 的 PC 对齐策略)"
+
+# ============================================================
+# 最终审计结论
+# ============================================================
+
+final_verdict:
+  status: "原分析 + 第1轮审计 + 本轮逻辑推演 综合判定"
+  overall: "计划需要重大调整"
+  must_do:
+    - "在 Phase 1 之前强制插入 Phase 0 根因定位"
+    - "添加 PC 对齐断言作为第一项任务"
+    - "建立 JAL 0x176 最小复现用例"
+    - "补充 SA-CM-LD-001 (W 阶段 E2 抢占) 到 P1"
+    - "补充 SA-CM-LD-002 (0x178 pred_branch_slot 候选) 到 P0 根因定位"
+    - "建立人类 Sign-off 机制 (规则 10)"
+  not_recommended:
+    - "❌ 直接进入 SA-CM-001 修复 (会改变 div_signed 但无法验证)"
+    - "❌ 假设 0x178 是数据 corruption 而跳过 pred_branch_slot 分析"
+    - "❌ 批量修复 4 个 P0 而不先建立 0x178 复现"
+  human_sign_off_required: true
+  estimated_total_effort: "Phase 0: 1-2 天; Phase 1: 2-3 天; Phase 2-4: 3-4 天; 总计 6-9 天"

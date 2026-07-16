@@ -307,6 +307,10 @@ module lumi_v1_tb_top;
                u_dut.v1_sram[16384], u_dut.v1_sram[16385]);
       $display("[V1-DEBUG] v1_sram[0x4002]=0x%08h v1_sram[0x4003]=0x%08h",
                u_dut.v1_sram[16386], u_dut.v1_sram[16387]);
+      $display("[V1-DEBUG] v1_sram[6]=0x%08h v1_sram[7]=0x%08h v1_sram[8]=0x%08h v1_sram[9]=0x%08h",
+               u_dut.v1_sram[6], u_dut.v1_sram[7], u_dut.v1_sram[8], u_dut.v1_sram[9]);
+      $display("[V1-DEBUG] v1_sram[10]=0x%08h v1_sram[11]=0x%08h v1_sram[12]=0x%08h v1_sram[13]=0x%08h",
+               u_dut.v1_sram[10], u_dut.v1_sram[11], u_dut.v1_sram[12], u_dut.v1_sram[13]);
       // ERR-RAS-DBG: 验证 0x3010-0x3020 区域 SRAM 内容
       $display("[V1-DEBUG] v1_sram[0xC04]=0x%08h v1_sram[0xC05]=0x%08h v1_sram[0xC06]=0x%08h v1_sram[0xC07]=0x%08h",
                u_dut.v1_sram[3076], u_dut.v1_sram[3077], u_dut.v1_sram[3078], u_dut.v1_sram[3079]);
@@ -389,12 +393,21 @@ module lumi_v1_tb_top;
   int unsigned pass_count;
   int unsigned fail_count;
 
-  // ─── ERR-027 调试: 进度监控器 (每 2M 周期打印) ─────────────
+  // ─── ERR-027 调试: 进度监控器 (每 2M 周期) ─────────────
+  // SA-CM-AUDIT-002 FIX: 增加停滞检测 (STALL_TIMEOUT cycles 无 commit 则终止)
   wire [31:0] mon_total_retired = u_sb.total_retired;
   wire [31:0] mon_pc_0 = u_dut.gen_single_core.u_core.m_result_r[0];
   wire        mon_mem_busy = u_dut.gen_single_core.u_core.mem_busy;
 
+  // SA-CM-AUDIT-002: stall detection signals
+  int unsigned stall_timeout;    // stall detection window (cycles)
+  int unsigned last_progress_cyc; // cycle count at last retired instruction
+  bit          stall_detected;
+
   initial begin
+    stall_timeout    = 2_000_000; // 2M cycles without commit = stall
+    last_progress_cyc = 0;
+    stall_detected   = 1'b0;
     wait(reset_n);
     forever begin
       #(CLK_PERIOD_CORE * 2_000_000);  // 每 2M 周期
@@ -405,6 +418,21 @@ module lumi_v1_tb_top;
         $display("[PROGRESS] SAFETY TIMEOUT at %0d cycles", cycle_count);
         $finish;
       end
+    end
+  end
+
+  // SA-CM-AUDIT-002: per-cycle stall detection monitor
+  always_ff @(posedge clk_core or negedge reset_n) begin
+    if (!reset_n) begin
+      last_progress_cyc <= 0;
+      stall_detected    <= 1'b0;
+    end else begin
+      // Any commit resets the stall timer
+      if (|commit_valid_all)
+        last_progress_cyc <= cycle_count;
+      // If no commit for stall_timeout cycles, flag stall
+      else if ((cycle_count - last_progress_cyc) > stall_timeout)
+        stall_detected <= 1'b1;
     end
   end
 
@@ -426,16 +454,17 @@ module lumi_v1_tb_top;
       u_mon.enable_realtime_trace("tests/results/v1-realtime-trace.dat");
     end
 
-    // 等待 scoreboard 检测结束 或 超时
+    // 等待 scoreboard 检测结束 或 超时 或 停滞
     // ERR-043 修复: Verilator --timing 模式下 wait(level-sensitive) 调度不可靠,
     // 改用 edge-triggered 循环确保超时条件被及时评估
+    // SA-CM-AUDIT-002: 增加 stall_detected 条件, 卡死时自动终止
     begin
       int unsigned max_cyc;
       max_cyc = 10_000_000; // 默认 10M 周期
       if ($value$plusargs("max_cycles=%d", max_cyc))
         $display("[V1] max_cycles = %0d", max_cyc);
       @(posedge clk_core);
-      while (!(u_sb.test_done || cycle_count > max_cyc))
+      while (!(u_sb.test_done || cycle_count > max_cyc || stall_detected))
         @(posedge clk_core);
     end
     if (u_sb.test_done) begin
@@ -447,6 +476,10 @@ module lumi_v1_tb_top;
         fail_count++;
         $display("[V1] TEST FAIL (exit_code=0x%08h)", u_sb.exit_code);
       end
+    end else if (stall_detected) begin
+      fail_count++;
+      $display("[V1] TEST STALL (%0d cycles, no commit for 2M cycles, pc0=0x%08h)",
+               cycle_count, commit_pc_0);
     end else begin
       fail_count++;
       $display("[V1] TEST TIMEOUT (%0d cycles)", cycle_count);

@@ -1,0 +1,541 @@
+# ═══════════════ Lumi-Core 覆盖率计划 ═══════════════
+# 文档编号: LUMI-VER-002
+# 版本: 1.0
+# 创建日期: 2026-07-01
+# 状态: 定版 (M2)
+
+meta:
+  doc_id: LUMI-VER-002
+  version: "1.0"
+  created: "2026-07-01"
+  last_updated: "2026-07-07"
+  status: final
+  baseline_ref: BL-1.1
+  total_requirements: 99
+
+# ── 验证用例命名规范 ──
+naming_convention:
+  format: "tc_{module}_{feature}_{seq}"
+  examples:
+    - tc_fetch_bpred_ltage_001
+    - tc_decode_rv32i_alu_001
+    - tc_clic_priority_preempt_001
+    - tc_pmp_napot_access_001
+    - tc_axi_burst_write_001
+
+# ── 代码覆盖率目标 ──
+code_coverage:
+  line:
+    target: 95
+    unit: percent
+    exclusion: "Dead Code (经 Waiver 审批)"
+  toggle:
+    target: 90
+    unit: percent
+    exclusion: "Reserved Bits, Unused Ports"
+  branch:
+    target: 95
+    unit: percent
+    exclusion: "不可达分支 (经 Formal 证明)"
+  condition:
+    target: 90
+    unit: percent
+  fsm:
+    target: 100
+    unit: percent
+    exclusion: "全部状态和转换必须覆盖"
+
+# ── 功能覆盖目标矩阵 (需求 → 覆盖组) ──
+functional_coverage:
+  # ISA 覆盖
+  - cover_group: cg_isa_rv32i
+    description: "RV32I 基础整数指令全覆盖"
+    requirements: [LUMI-ISA-001]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_m_ext
+    description: "M 扩展乘除法指令覆盖"
+    requirements: [LUMI-ISA-002]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_a_ext
+    description: "A 扩展原子操作覆盖"
+    requirements: [LUMI-ISA-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_fd_ext
+    description: "F/D 浮点指令覆盖"
+    requirements: [LUMI-ISA-004]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_c_ext
+    description: "C 压缩指令覆盖"
+    requirements: [LUMI-ISA-005]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_b_ext
+    description: "B 位操作指令覆盖"
+    requirements: [LUMI-ISA-006]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_v_ext
+    description: "V 向量指令 + zvfh/zvfbf 覆盖"
+    requirements: [LUMI-ISA-007]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_zce
+    description: "Zce 代码压缩扩展覆盖"
+    requirements: [LUMI-ISA-008]
+    target: 100
+    status: pending
+
+  - cover_group: cg_isa_mandatory
+    description: "Profile Mandatory 扩展覆盖 (Zicsr/Zicntr 等)"
+    requirements: [LUMI-ISA-011]
+    target: 100
+    status: pending
+
+  # PMP 覆盖
+  - cover_group: cg_pmp_regions
+    description: "PMP Region x 匹配模式 x 权限组合"
+    requirements: [LUMI-MEM-001, LUMI-SEC-004]
+    target: 100
+    status: pending
+
+  # 中断覆盖
+  - cover_group: cg_interrupt_clic
+    description: "CLIC 中断优先级 x 嵌套 x 类型组合"
+    requirements: [LUMI-SYS-002, LUMI-SYS-003]
+    target: 95
+    status: pending
+
+  - cover_group: cg_interrupt_plic
+    description: "PLIC 中断源 x 优先级 x 路由组合"
+    requirements: [LUMI-SYS-001]
+    target: 95
+    status: pending
+
+  # 总线覆盖
+  - cover_group: cg_axi_transactions
+    description: "AXI4 Burst 类型 x 长度 x 位宽组合"
+    requirements: [LUMI-IF-001, LUMI-IF-002]
+    target: 95
+    status: pending
+
+  - cover_group: cg_axi_tcm_slave
+    description: "TCM DMA 从接口读写覆盖"
+    requirements: [LUMI-IF-003]
+    target: 95
+    status: pending
+
+  # 内存系统覆盖
+  - cover_group: cg_tcm_access
+    description: "TCM 容量 x 延迟模式 x 区域组合"
+    requirements: [LUMI-MEM-002, LUMI-MEM-003, LUMI-MEM-004]
+    target: 95
+    status: pending
+
+  - cover_group: cg_cache_config
+    description: "L1 Cache 容量配置 x 命中/缺失模式"
+    requirements: [LUMI-MEM-006]
+    target: 95
+    status: pending
+
+  - cover_group: cg_ecc_scenarios
+    description: "ECC 单 bit 纠正 x 双 bit 检测 x 多 bit 错误"
+    requirements: [LUMI-MEM-005, LUMI-MEM-007, LUMI-SAFE-001]
+    target: 100
+    status: pending
+
+  # 功耗覆盖
+  - cover_group: cg_power_states
+    description: "Active/Sleep/DeepSleep x 转换路径组合"
+    requirements: [LUMI-PWR-003, LUMI-SYS-004, LUMI-SYS-008]
+    target: 100
+    status: pending
+
+  # 调试覆盖
+  - cover_group: cg_debug_operations
+    description: "Halt/Resume/Step/Breakpoint/Abstract Command"
+    requirements: [LUMI-FEAT-001, LUMI-FEAT-004]
+    target: 95
+    status: pending
+
+  - cover_group: cg_trace_output
+    description: "Trace 编码 x AXI4 写出场景"
+    requirements: [LUMI-FEAT-002, LUMI-FEAT-003]
+    target: 95
+    status: pending
+
+  # 安全覆盖
+  - cover_group: cg_security_debug_lock
+    description: "Debug Lock/Unlock x 安全等级组合"
+    requirements: [LUMI-SEC-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_security_boot
+    description: "安全启动签名验证场景"
+    requirements: [LUMI-SEC-001, LUMI-BOOT-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_security_bus_parity
+    description: "总线 Parity 错误注入与检测"
+    requirements: [LUMI-SEC-005, LUMI-SAFE-003]
+    target: 100
+    status: pending
+
+  # 多核覆盖
+  - cover_group: cg_lockstep
+    description: "双核锁步错误注入与检测"
+    requirements: [LUMI-MCORE-002, LUMI-SAFE-002]
+    target: 100
+    status: pending
+
+  # 复位覆盖
+  - cover_group: cg_reset_types
+    description: "冷/暖/软复位 x 状态保持验证"
+    requirements: [LUMI-BOOT-001, LUMI-BOOT-002]
+    target: 100
+    status: pending
+
+  # ── M1 补强新增需求 Cover Group (REC-003, 2026-07-06) ──
+  - cover_group: cg_pma_attr
+    description: "PMA 区域属性 x 访问类型组合覆盖"
+    requirements: [LUMI-MEM-009]
+    target: 100
+    status: pending
+
+  - cover_group: cg_clock_architecture
+    description: "时钟域 x 频率配置 x 切换场景覆盖"
+    requirements: [LUMI-CLK-001, LUMI-CLK-002, LUMI-CLK-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_power_management
+    description: "DVFS x 电压域 x 功耗状态转换覆盖"
+    requirements: [LUMI-PWR-004, LUMI-PWR-005]
+    target: 100
+    status: pending
+
+  - cover_group: cg_deliverable_prm
+    description: "PRM 文档模板完整性 + riscv-arch-test 集成覆盖"
+    requirements: [LUMI-DEL-011, LUMI-DEL-012]
+    target: 100
+    status: pending
+
+  # ── M2-S2 定版新增 Cover Groups (2026-07-07) ──
+  - cover_group: cg_timer_mtime
+    description: "MTIME/MTIMECMP 定时器中断触发与比较"
+    requirements: [LUMI-SYS-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_dft_scan
+    description: "DFT scan chain 移位 + BIST 启动/完成/错误检测"
+    requirements: [LUMI-DFT-001, LUMI-DFT-002, LUMI-DFT-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_multicore_topology
+    description: "多核互联拓扑 (1~4 Hart) + 仲裁 + 一致性"
+    requirements: [LUMI-MCORE-001]
+    target: 95
+    status: pending
+
+  - cover_group: cg_boot_sequence
+    description: "冷/暖/软复位 + 启动序列 + Boot ROM 跳转"
+    requirements: [LUMI-BOOT-001, LUMI-BOOT-002, LUMI-BOOT-003]
+    target: 100
+    status: pending
+
+  - cover_group: cg_clock_timing
+    description: "时钟域切换 + 频率配置 + 时序约束验证"
+    requirements: [LUMI-CLK-001, LUMI-CLK-002, LUMI-CLK-003, LUMI-TIMING-001, LUMI-TIMING-002]
+    target: 100
+    status: pending
+
+  - cover_group: cg_performance
+    description: "CoreMark/Dhrystone/Crypto 性能达标验证"
+    requirements: [LUMI-IPC-001, LUMI-IPC-002, LUMI-IPC-003, LUMI-FREQ-001, LUMI-AREA-001]
+    target: 100
+    status: pending
+
+# ── 需求追溯矩阵 (M2-S2 定版, BL-1.1 99 条) ──
+# 每条需求至少映射到一个 Cover Group, 非硬件需求标注 N/A (软件/交付类)
+traceability_matrix:
+  # PPA 需求 (7 条)
+  - req_id: LUMI-PIPE-001
+    cover_groups: [cg_isa_rv32i]
+    note: "流水线架构通过 ISA 覆盖 + 性能基准间接验证"
+  - req_id: LUMI-FREQ-001
+    cover_groups: [cg_performance]
+    note: "TSMC 28HPC >=1GHz 由综合 + STA 验证"
+  - req_id: LUMI-IPC-001
+    cover_groups: [cg_performance]
+  - req_id: LUMI-IPC-002
+    cover_groups: [cg_performance]
+    note: "RISK-006 追踪 (目标保持 3.8 DMIPS/MHz)"
+  - req_id: LUMI-IPC-003
+    cover_groups: [cg_performance]
+  - req_id: LUMI-AREA-001
+    cover_groups: [cg_performance]
+    note: "综合面积报告验证 (RISK-012 追踪)"
+  - req_id: LUMI-PWR-001
+    cover_groups: [cg_power_states, cg_power_management]
+  - req_id: LUMI-PWR-002
+    cover_groups: [cg_power_states, cg_power_management]
+  - req_id: LUMI-PWR-003
+    cover_groups: [cg_power_states]
+  - req_id: LUMI-PWR-004
+    cover_groups: [cg_power_management]
+    note: "DVFS 电压域管理"
+  - req_id: LUMI-PWR-005
+    cover_groups: [cg_power_management]
+    note: "电压域配置"
+
+  # ISA 需求 (11 条)
+  - req_id: LUMI-ISA-001
+    cover_groups: [cg_isa_rv32i]
+  - req_id: LUMI-ISA-002
+    cover_groups: [cg_isa_m_ext]
+  - req_id: LUMI-ISA-003
+    cover_groups: [cg_isa_a_ext]
+  - req_id: LUMI-ISA-004
+    cover_groups: [cg_isa_fd_ext]
+  - req_id: LUMI-ISA-005
+    cover_groups: [cg_isa_c_ext]
+  - req_id: LUMI-ISA-006
+    cover_groups: [cg_isa_b_ext]
+  - req_id: LUMI-ISA-007
+    cover_groups: [cg_isa_v_ext]
+  - req_id: LUMI-ISA-008
+    cover_groups: [cg_isa_zce]
+  - req_id: LUMI-ISA-009
+    cover_groups: [cg_isa_rv32i]
+    note: "Zihintpause pause 指令"
+  - req_id: LUMI-ISA-010
+    cover_groups: [cg_isa_rv32i]
+    note: "Zicboz cache block zero"
+  - req_id: LUMI-ISA-011
+    cover_groups: [cg_isa_mandatory]
+
+  # 内存需求 (11 条)
+  - req_id: LUMI-MEM-001
+    cover_groups: [cg_pmp_regions]
+  - req_id: LUMI-MEM-002
+    cover_groups: [cg_tcm_access]
+  - req_id: LUMI-MEM-003
+    cover_groups: [cg_tcm_access]
+  - req_id: LUMI-MEM-004
+    cover_groups: [cg_tcm_access]
+  - req_id: LUMI-MEM-005
+    cover_groups: [cg_ecc_scenarios]
+  - req_id: LUMI-MEM-006
+    cover_groups: [cg_cache_config]
+  - req_id: LUMI-MEM-007
+    cover_groups: [cg_ecc_scenarios]
+  - req_id: LUMI-MEM-008
+    cover_groups: [cg_cache_config]
+    note: "Cache 写策略 (write-back/write-through)"
+  - req_id: LUMI-MEM-009
+    cover_groups: [cg_pma_attr]
+
+  # 接口需求 (6 条)
+  - req_id: LUMI-IF-001
+    cover_groups: [cg_axi_transactions]
+  - req_id: LUMI-IF-002
+    cover_groups: [cg_axi_transactions]
+  - req_id: LUMI-IF-003
+    cover_groups: [cg_axi_tcm_slave]
+  - req_id: LUMI-IF-004
+    cover_groups: [cg_axi_transactions]
+    note: "AXI4-Lite Debug/CSR 接口"
+
+  # 功能需求 (5 条)
+  - req_id: LUMI-FEAT-001
+    cover_groups: [cg_debug_operations]
+  - req_id: LUMI-FEAT-002
+    cover_groups: [cg_trace_output]
+  - req_id: LUMI-FEAT-003
+    cover_groups: [cg_trace_output]
+  - req_id: LUMI-FEAT-004
+    cover_groups: [cg_debug_operations]
+    note: "Hardware Breakpoint"
+  - req_id: LUMI-FEAT-005
+    cover_groups: [cg_dft_scan]
+    note: "DFT Scan/BIST 功能"
+
+  # 系统/中断需求 (9 条)
+  - req_id: LUMI-SYS-001
+    cover_groups: [cg_interrupt_plic]
+  - req_id: LUMI-SYS-002
+    cover_groups: [cg_interrupt_clic]
+  - req_id: LUMI-SYS-003
+    cover_groups: [cg_interrupt_clic, cg_timer_mtime]
+  - req_id: LUMI-SYS-004
+    cover_groups: [cg_power_states]
+  - req_id: LUMI-SYS-005
+    cover_groups: [cg_pma_attr]
+    note: "PMA 区域属性系统级验证"
+  - req_id: LUMI-SYS-006
+    cover_groups: [cg_tcm_access, cg_cache_config]
+    note: "内存映射系统级验证"
+  - req_id: LUMI-SYS-007
+    cover_groups: [cg_cache_config]
+    note: "Cache 一致性/CMO"
+  - req_id: LUMI-SYS-008
+    cover_groups: [cg_power_states, cg_power_management]
+
+  # 安全需求 (5 条)
+  - req_id: LUMI-SEC-001
+    cover_groups: [cg_security_boot]
+  - req_id: LUMI-SEC-002
+    cover_groups: [cg_security_boot]
+  - req_id: LUMI-SEC-003
+    cover_groups: [cg_security_debug_lock]
+  - req_id: LUMI-SEC-004
+    cover_groups: [cg_pmp_regions]
+  - req_id: LUMI-SEC-005
+    cover_groups: [cg_security_bus_parity]
+
+  # 安全需求 (功能安全, 3 条)
+  - req_id: LUMI-SAFE-001
+    cover_groups: [cg_ecc_scenarios]
+  - req_id: LUMI-SAFE-002
+    cover_groups: [cg_lockstep]
+  - req_id: LUMI-SAFE-003
+    cover_groups: [cg_security_bus_parity]
+
+  # Profile/多核/时钟/DFT/启动/质量/时序 (18 条)
+  - req_id: LUMI-PROF-001
+    cover_groups: [cg_isa_mandatory]
+  - req_id: LUMI-PROF-002
+    cover_groups: [cg_isa_mandatory]
+  - req_id: LUMI-MCORE-001
+    cover_groups: [cg_multicore_topology]
+  - req_id: LUMI-MCORE-002
+    cover_groups: [cg_lockstep]
+  - req_id: LUMI-CLK-001
+    cover_groups: [cg_clock_timing]
+  - req_id: LUMI-CLK-002
+    cover_groups: [cg_clock_timing]
+  - req_id: LUMI-CLK-003
+    cover_groups: [cg_clock_timing]
+  - req_id: LUMI-DFT-001
+    cover_groups: [cg_dft_scan]
+  - req_id: LUMI-DFT-002
+    cover_groups: [cg_dft_scan]
+  - req_id: LUMI-DFT-003
+    cover_groups: [cg_dft_scan]
+  - req_id: LUMI-BOOT-001
+    cover_groups: [cg_boot_sequence, cg_reset_types]
+  - req_id: LUMI-BOOT-002
+    cover_groups: [cg_boot_sequence, cg_reset_types]
+  - req_id: LUMI-BOOT-003
+    cover_groups: [cg_security_boot, cg_boot_sequence]
+  - req_id: LUMI-QUAL-001
+    cover_groups: [cg_isa_rv32i]
+    note: "RTL 质量通过代码覆盖率 + 回归测试保障"
+  - req_id: LUMI-QUAL-002
+    cover_groups: [cg_isa_rv32i]
+    note: "代码质量规范通过 lint + CDC 检查"
+  - req_id: LUMI-QUAL-003
+    cover_groups: [cg_isa_rv32i]
+    note: "设计规则检查通过综合 DRC"
+  - req_id: LUMI-TIMING-001
+    cover_groups: [cg_clock_timing]
+  - req_id: LUMI-TIMING-002
+    cover_groups: [cg_clock_timing]
+
+  # 软件/工具/交付类需求 (24 条) — 非硬件验证范畴, 标注 N/A
+  - req_id: LUMI-TOOL-001
+    cover_groups: []
+    note: "N/A — 工具链需求, 由 CI/CD 流程保障"
+  - req_id: LUMI-TOOL-002
+    cover_groups: []
+    note: "N/A — 工具链需求"
+  - req_id: LUMI-SDK-001
+    cover_groups: []
+    note: "N/A — SDK 需求"
+  - req_id: LUMI-SDK-002
+    cover_groups: []
+    note: "N/A — SDK 需求"
+  - req_id: LUMI-FW-001
+    cover_groups: []
+    note: "N/A — 固件需求"
+  - req_id: LUMI-FW-002
+    cover_groups: []
+    note: "N/A — 固件需求"
+  - req_id: LUMI-IDE-001
+    cover_groups: []
+    note: "N/A — IDE 需求"
+  - req_id: LUMI-SIM-001
+    cover_groups: []
+    note: "N/A — 仿真模型需求"
+  - req_id: LUMI-SIM-002
+    cover_groups: []
+    note: "N/A — 仿真模型需求"
+  - req_id: LUMI-DBG-001
+    cover_groups: []
+    note: "N/A — 调试工具需求"
+  - req_id: LUMI-DBG-002
+    cover_groups: []
+    note: "N/A — 调试工具需求"
+  - req_id: LUMI-PERF-001
+    cover_groups: []
+    note: "N/A — 性能分析工具需求"
+  - req_id: LUMI-PERF-002
+    cover_groups: []
+    note: "N/A — 性能分析工具需求"
+  - req_id: LUMI-DEL-001
+    cover_groups: []
+    note: "N/A — RTL 交付物需求"
+  - req_id: LUMI-DEL-002
+    cover_groups: []
+    note: "N/A — RTL 交付物需求"
+  - req_id: LUMI-DEL-003
+    cover_groups: []
+    note: "N/A — 集成文档需求"
+  - req_id: LUMI-DEL-004
+    cover_groups: []
+    note: "N/A — 集成文档需求"
+  - req_id: LUMI-DEL-005
+    cover_groups: []
+    note: "N/A — 集成文档需求"
+  - req_id: LUMI-DEL-006
+    cover_groups: []
+    note: "N/A — 集成文档需求"
+  - req_id: LUMI-DEL-007
+    cover_groups: []
+    note: "N/A — 文档交付需求"
+  - req_id: LUMI-DEL-008
+    cover_groups: []
+    note: "N/A — 文档交付需求"
+  - req_id: LUMI-DEL-009
+    cover_groups: []
+    note: "N/A — 文档交付需求"
+  - req_id: LUMI-DEL-010
+    cover_groups: []
+    note: "N/A — 文档交付需求"
+  - req_id: LUMI-DEL-011
+    cover_groups: [cg_deliverable_prm]
+  - req_id: LUMI-DEL-012
+    cover_groups: [cg_deliverable_prm]
+
+# ── 覆盖统计 (M2-S2 定版) ──
+coverage_summary:
+  total_cover_groups: 35  # 9 ISA + 1 PMP + 2 INT + 2 AXI + 3 MEM + 1 PWR + 2 DBG + 3 SEC + 1 LCK + 1 RST + 4 M1补强 + 6 M2-S2
+  total_requirements: 99
+  hw_requirements_covered: 76       # 硬件/ISA/系统/交付需求, 有 Cover Group 映射 (含 DEL-011/012)
+  sw_delivery_requirements: 23      # 软件/工具类, N/A (无 Cover Group)
+  coverage_rate: "100% (可验证需求)"
+  note: "M2-S2 定版: 76 条需求至少映射到一个 Cover Group; 23 条软件/工具类需求标注 N/A"
