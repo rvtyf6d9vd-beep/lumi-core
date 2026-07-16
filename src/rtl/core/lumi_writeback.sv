@@ -107,6 +107,22 @@ module lumi_writeback #(
     logic                    slot2_is_csr_r;      // slot 2 是否 CSR 指令
     logic [31:0]             slot2_csr_rdata_r;   // slot 2 的 CSR 读取值
 
+    // ── SA-CM-LD-001: Slot 1 延迟寄存器 (E2 抢占时保存) ──
+    logic                    slot1_pending;       // slot 1 被 E2 抢占, 有待写回
+    logic [4:0]              slot1_rd_r;          // slot 1 的目标寄存器
+    logic [31:0]             slot1_data_r;        // slot 1 的数据
+    logic [31:0]             slot1_pc_r;          // slot 1 的 PC
+    logic [31:0]             slot1_inst_r;        // slot 1 的指令字
+    logic                    slot1_is_csr_r;      // slot 1 是否 CSR 指令
+    logic [31:0]             slot1_csr_rdata_r;   // slot 1 的 CSR 读取值
+
+    // ── SA-CM-LD-001: 检测 slot 1 是否被 E2 抢占 ──
+    logic slot1_preempted;
+    always_comb begin
+        slot1_preempted = (e2_mul_valid || e2_div_valid) &&
+                          w_valid[1] && w_rd[1] != 5'h0 && !w_exception[1];
+    end
+
     // ── SA-5: 检测槽 2 是否需要延迟 ──
     logic slot2_need_stall;
     always_comb begin
@@ -179,6 +195,22 @@ module lumi_writeback #(
             wr_select[2]        = 1'b1;
         end
 
+        // ── SA-CM-LD-001: Slot 1 延迟数据写回 (E2 抢占后) ──
+        // 上周期被 E2 抢占的 slot 1, 本周期尝试写回 (优先级高于 slot2_pending)
+        if (slot1_pending && !e2_mul_valid && !e2_div_valid) begin
+            if (!regfile_wr_en[1]) begin
+                // 端口 1 空闲: 使用端口 1
+                regfile_wr_en[1]    = 1'b1;
+                regfile_wr_addr[1]  = slot1_rd_r;
+                regfile_wr_data[1]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
+            end else if (!regfile_wr_en[0]) begin
+                // 端口 0 空闲: 使用端口 0
+                regfile_wr_en[0]    = 1'b1;
+                regfile_wr_addr[0]  = slot1_rd_r;
+                regfile_wr_data[0]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
+            end
+        end
+
         // ── SA-5: Slot 2 延迟数据抢占 (槽 0/1 都忙且无 E2 抢占) ──
         // 上周期被stall的slot 2, 本周期尝试写回 (优先级最低)
         if (slot2_pending && !regfile_wr_en[0] && !regfile_wr_en[1] &&
@@ -211,6 +243,33 @@ module lumi_writeback #(
         end else begin
             // 本周期成功写回 slot 2, 或本周期slot 2不存在, 清除pending
             slot2_pending     <= 1'b0;
+        end
+    end
+
+    // ── SA-CM-LD-001: 寄存被 E2 抢占的 slot 1 数据 ──
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            slot1_pending     <= 1'b0;
+            slot1_rd_r        <= 5'h0;
+            slot1_data_r      <= 32'h0;
+            slot1_pc_r        <= 32'h0;
+            slot1_inst_r      <= 32'h0;
+            slot1_is_csr_r    <= 1'b0;
+            slot1_csr_rdata_r <= 32'h0;
+        end else if (slot1_preempted) begin
+            // 本周期 slot 1 被 E2 抢占, 保存数据
+            slot1_pending     <= 1'b1;
+            slot1_rd_r        <= w_rd[1];
+            slot1_data_r      <= w_result[1];
+            slot1_pc_r        <= w_pc[1];
+            slot1_inst_r      <= w_inst[1].inst;
+            slot1_is_csr_r    <= (w_inst[1].fu_type == FU_MISC && w_inst[1].funct3 != FN_ECALL);
+            slot1_csr_rdata_r <= csr_rdata;
+        end else begin
+            // 本周期成功写回 slot 1 (或无需写回), 清除pending
+            // 但仅在 slot1 未被新的 preempt 覆盖时清除
+            if (!slot1_preempted)
+                slot1_pending <= 1'b0;
         end
     end
 

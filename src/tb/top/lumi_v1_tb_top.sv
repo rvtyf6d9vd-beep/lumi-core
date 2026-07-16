@@ -227,18 +227,40 @@ module lumi_v1_tb_top;
   //   end
   // end
 
-  // ─── DEBUG: 提交指令追踪 ────────────────────────────────
+  // ─── DEBUG: 提交指令追踪 + 无效 PC 检测 ──────────────────────
+  // SA-CM-011: extend to detect first invalid PC transition
   initial begin
+    logic first_invalid_reported;
+    int  last_valid_pc;
     wait(reset_n);
-    for (int d = 0; d < 200; d++) begin
+    first_invalid_reported = 0;
+    last_valid_pc = 0;
+    forever begin
       @(posedge clk_core);
       if (|commit_valid_all) begin
-        for (int s = 0; s < 3; s++) begin
-          if (commit_valid_all[s]) begin
-            $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h raw=0x%04h comp=%b op=0x%02h",
-                     d, s, commit_pc_packed[s], commit_inst_packed[s], commit_inst_raw_packed[s],
-                     (commit_inst_raw_packed[s][1:0] != 2'b11), commit_inst_packed[s][6:0]);
+        // Print first 200 cycles (existing debug)
+        if (cycle_count < 200) begin
+          for (int s = 0; s < 3; s++) begin
+            if (commit_valid_all[s]) begin
+              $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h raw=0x%04h comp=%b op=0x%02h",
+                       cycle_count, s, commit_pc_packed[s], commit_inst_packed[s], commit_inst_raw_packed[s],
+                       (commit_inst_raw_packed[s][1:0] != 2'b11), commit_inst_packed[s][6:0]);
+            end
           end
+        end
+        // SA-CM-011: detect first transition to invalid PC
+        if (!first_invalid_reported && commit_valid_all[0]) begin
+          if (commit_pc_packed[0] > 32'h0008_0000) begin
+            first_invalid_reported = 1;
+            $display("[INVALID-PC] cyc=%0d: PC jumped to 0x%08h (last valid: 0x%08h)",
+                     cycle_count, commit_pc_packed[0], last_valid_pc);
+            // Print last 10 PCs from scoreboard
+            $display("[INVALID-PC] Last 10 PCs from scoreboard:");
+            for (int i = 0; i < 10; i++)
+              $display("  [%0d] pc=0x%08h", i, u_sb.last_10_pc[i]);
+          end
+          if (commit_pc_packed[0] <= 32'h0008_0000)
+            last_valid_pc = commit_pc_packed[0];
         end
       end
     end
@@ -413,6 +435,21 @@ module lumi_v1_tb_top;
       #(CLK_PERIOD_CORE * 2_000_000);  // 每 2M 周期
       $display("[PROGRESS] cycle=%0d retired=%0d we_count=%0d mem_busy=%0b pc0=0x%08h",
                cycle_count, mon_total_retired, v1_we_count, mon_mem_busy, commit_pc_0);
+      // SA-CM-011: tohost 检测 — 检查 0x3FFE0 magic 值
+      if (u_dut.v1_sram[65528] == 32'hDEADBEEF) begin
+        $display("[PROGRESS] tohost: magic=0xDEADBEEF detected at 0x3FFE0");
+        $display("[PROGRESS] bench_id=%0d iters=%0d ticks=%0d metric=%0d checks=%0d",
+                 u_dut.v1_sram[65529], u_dut.v1_sram[65530], u_dut.v1_sram[65531],
+                 u_dut.v1_sram[65532], u_dut.v1_sram[65533]);
+      end
+      if (u_dut.v1_sram[65528] == 32'hDEAD0001) begin
+        $display("[PROGRESS] TRAP detected: magic=0xDEAD0001 mcause=0x%08h mepc=0x%08h",
+                 u_dut.v1_sram[65529], u_dut.v1_sram[65530]);
+      end
+      // SA-CM-011: 无效 PC 检测 — PC 超出程序范围时报警
+      if (commit_pc_0 > 32'h0010_0000 && commit_pc_0 < 32'hFFF0_0000) begin
+        $display("[PROGRESS] WARNING: PC in suspicious range 0x%08h", commit_pc_0);
+      end
       // ERR-043: 安全超时 (防止 Verilator wait() 未触发)
       if (cycle_count > 32'd4_000_000_000) begin
         $display("[PROGRESS] SAFETY TIMEOUT at %0d cycles", cycle_count);
