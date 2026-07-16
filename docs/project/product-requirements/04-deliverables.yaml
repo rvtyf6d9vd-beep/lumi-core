@@ -28,16 +28,7 @@ categories:
         acceptance: "回归测试 100% 通过，测试用例覆盖所有 Must 需求"
         change_date: ""
         note: ""
-      - req_id: LUMI-DEL-003
-        name: "Cycle Accurate Model"
-        priority: Must
-        status: Approved
-        version: v0.1
-        source: Lumi Req
-        ref_doc: ""
-        acceptance: "提供可用的 Cycle Accurate Model，支持软件性能评估"
-        change_date: "2026-06-26"
-        note: ""
+      # Cycle Accurate Model — 详见 LUMI-SIM-002 (去重)
 
   - id: DEL-INT
     title: "集成与物理交付"
@@ -60,19 +51,10 @@ categories:
         version: v1.0
         source: IP 产品标准
         ref_doc: ""
-        acceptance: "交付 .lib (Liberty) 和 .lef (LEF) 文件，覆盖所有角落条件"
+        acceptance: "交付内容清单: .lib/.lef 文件, 覆盖 corner 条件, 目标工艺库。详细规格在 M3 细化"
         change_date: "2026-07-02"
         note: ""
-      - req_id: LUMI-DEL-006
-        name: "综合约束文件 (SDC)"
-        priority: Must
-        status: Approved
-        version: v1.0
-        source: IP 产品标准
-        ref_doc: ""
-        acceptance: "交付完整 SDC 文件，覆盖所有工作模式和角落条件"
-        change_date: "2026-07-02"
-        note: ""
+      # 综合约束文件 (SDC) — 详见 LUMI-TIMING-001 (去重)
       - req_id: LUMI-DEL-007
         name: "Formality 等价性验证网表"
         priority: Should
@@ -80,7 +62,7 @@ categories:
         version: v1.0
         source: IP 产品标准
         ref_doc: ""
-        acceptance: "提供综合后网表的等价性验证脚本和参考结果"
+        acceptance: "交付内容清单: Tcl 脚本、golden RTL 快照、参考 pass log。详细脚本在 M3 编写"
         change_date: "2026-07-02"
         note: ""
 
@@ -115,9 +97,9 @@ categories:
         version: v1.0
         source: IP 产品标准
         ref_doc: "IEEE 1149.1"
-        acceptance: "提供完整的 BSDL 边界扫描描述文件"
+        acceptance: "提供完整的 BSDL 边界扫描描述文件 (.bsdl) + 引脚定义表 (CSV/PDF)。功能需求见 LUMI-DFT-003"
         change_date: "2026-07-02"
-        note: "对应 LUMI-DFT-003"
+        note: "对应 LUMI-DFT-003，本条定位为交付物规格"
       - req_id: LUMI-DEL-011
         name: "程序员参考手册 (PRM)"
         priority: Must

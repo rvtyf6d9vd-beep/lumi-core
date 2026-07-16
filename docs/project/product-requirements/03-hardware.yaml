@@ -126,15 +126,15 @@ categories:
         change_date: "2026-06-29"
         note: ""
       - req_id: LUMI-PROF-002
-        name: "特权级配置支持 (CoreM/CoreS/CoreU)"
+        name: "特权级配置支持 (M-only / M+U / M+S+U)"
         priority: Must
         status: Approved
         version: v1.0
         source: Lumi-Core Profile
         ref_doc: "Lumi-Core Profile A2.3/A2.4"
-        acceptance: "三种特权级配置可独立配置，对应 Mandatory 扩展全部实现（S/Sstvecd/Ssstrict/Sstc/Ssclic + Sm/Smpmp/Smepmp/Smrnmi/Smclic）"
+        acceptance: "三种组合可独立配置: M-only / M+U / M+S+U，各组合对应 Mandatory 扩展全部实现"
         change_date: "2026-07-02"
-        note: "明确 Lumi-Core 的默认配置级别为 CoreM（Machine-only）"
+        note: "不支持 M+S (无 User)。默认 M-only"
 
   - id: RTL-ISA
     title: "3.2.2 ISA 扩展"
@@ -379,7 +379,7 @@ categories:
         ref_doc: ""
         acceptance: "AXI4 协议合规，128bit 位宽"
         change_date: "2026-06-29"
-        note: ""
+        note: "选择 AXI4 (AMBA 4)。车规安全特性 (Parity Protection) 已由 LUMI-SAFE-003 覆盖，无需 AXI5。接口文档中说明协议层可升级到 AXI5"
       - req_id: LUMI-IF-002
         name: "FFP 外设接口 (AXI 32bit)"
         priority: Must
@@ -389,7 +389,7 @@ categories:
         ref_doc: ""
         acceptance: "FFP 接口 AXI 协议合规，32bit 位宽"
         change_date: "2026-06-29"
-        note: ""
+        note: "同 LUMI-IF-001，选择 AXI4 协议"
       - req_id: LUMI-IF-003
         name: "TCM 从接口 (DMA 数据导入导出)"
         priority: Must
@@ -517,9 +517,9 @@ categories:
         version: v0.1
         source: Lumi原始需求
         ref_doc: ""
-        acceptance: "协处理器接口功能正确，可扩展自定义标量/矢量协处理器"
+        acceptance: "协处理器接口能力边界: 支持标量和矢量指令级协处理; 请求-应答握手协议; 接口预留确保未来可扩展; 典型场景: 自定义标量/矢量加速、密码学协处理器"
         change_date: "2026-06-29"
-        note: "可配置选项"
+        note: "详细接口信号规格在 M2 详细设计文档中定义。设计需在 RTL 架构中预留扩展接口"
 
   # ── 3.2.7 DFT (可测试性设计) ──
   - id: RTL-DFT

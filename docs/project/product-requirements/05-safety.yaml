@@ -52,6 +52,17 @@ categories:
         change_date: "2026-06-29"
         note: "信息安全视角引用见 LUMI-SEC-005"
 
+      - req_id: LUMI-SAFE-006
+        name: "TCM/L1 ECC 内存保护 (引用 LUMI-MEM-005/007)"
+        priority: Must
+        status: Approved
+        version: v1.0
+        source: 审查意见
+        ref_doc: "LUMI-MEM-005/LUMI-MEM-007"
+        acceptance: "当安全模式启用时，TCM ECC 和 L1 Cache ECC 必须启用。与双核锁步配合形成完整安全链路"
+        change_date: "2026-07-08"
+        note: "从硬件可选配置提升为安全模式强制配置"
+
   - id: SAFE-V2
     title: "功能安全 (第二阶段 车规版本 v2.0 规划)"
     description: |

@@ -261,25 +261,32 @@ module lumi_execute #(
                     // 检测 DIV 指令
                     for (int i = 0; i < ISSUE_WIDTH; i++) begin
                         if (e1_valid[i] && e1_inst[i].fu_type == FU_DIV) begin
-                            // SA-CM-001 FIX: DIVU/REMU should be unsigned
-                            // Bug: funct3[0]^(...) makes DIVU/REMU incorrectly signed
-                            div_signed <= (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM);
-                            div_is_rem <= (e1_inst[i].funct3 == MUL_REM || e1_inst[i].funct3 == MUL_REMU);
                             div_rd_reg <= e1_inst[i].rd;
                             div_busy_r <= 1'b1;
+                            div_signed <= (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM);
+                            div_is_rem <= (e1_inst[i].funct3 == MUL_REM || e1_inst[i].funct3 == MUL_REMU);
 
-                            // 有符号: 取绝对值
-                            if (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM) begin
-                                div_dividend <= e1_rs1_data[i][31] ? -e1_rs1_data[i] : e1_rs1_data[i];
-                                div_divisor  <= e1_rs2_data[i][31] ? -e1_rs2_data[i] : e1_rs2_data[i];
-                                // SA-CM-002 FIX: save original signs for result sign correction
-                                div_quot_negate   <= e1_rs1_data[i][31] ^ e1_rs2_data[i][31];
-                                div_remain_negate <= e1_rs1_data[i][31];
-                            end else begin
-                                div_dividend <= e1_rs1_data[i];
-                                div_divisor  <= e1_rs2_data[i];
+                            // SA-CM-010: 除零快速路径
+                            if (e1_rs2_data[i] == 32'h0) begin
+                                // 除零: 捕获原始操作数 (非绝对值), 跳过符号修正
+                                div_dividend     <= e1_rs1_data[i];  // 原始被除数, 供 REM/REMU 返回
+                                div_divisor      <= e1_rs2_data[i];  // 0, 供 DIV_DONE 检测
                                 div_quot_negate   <= 1'b0;
                                 div_remain_negate <= 1'b0;
+                            end else begin
+                                // 正常路径: 有符号取绝对值
+                                if (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM) begin
+                                    div_dividend <= e1_rs1_data[i][31] ? -e1_rs1_data[i] : e1_rs1_data[i];
+                                    div_divisor  <= e1_rs2_data[i][31] ? -e1_rs2_data[i] : e1_rs2_data[i];
+                                    // SA-CM-002 FIX: save original signs for result sign correction
+                                    div_quot_negate   <= e1_rs1_data[i][31] ^ e1_rs2_data[i][31];
+                                    div_remain_negate <= e1_rs1_data[i][31];
+                                end else begin
+                                    div_dividend <= e1_rs1_data[i];
+                                    div_divisor  <= e1_rs2_data[i];
+                                    div_quot_negate   <= 1'b0;
+                                    div_remain_negate <= 1'b0;
+                                end
                             end
 
                             // SA-CM-009: div_state transition handled by always_comb (div_state_next)
@@ -324,6 +331,10 @@ module lumi_execute #(
                         div_result_r <= (div_signed && div_remain_negate) ? -div_remainder : div_remainder;
                     else
                         div_result_r <= (div_signed && div_quot_negate) ? -div_quotient : div_quotient;
+                    // SA-CM-010: 除零覆盖 — RISC-V 规范定义:
+                    // DIV/DIVU 除零 = -1/0xFFFFFFFF, REM/REMU 除零 = 被除数
+                    if (div_divisor == 32'h0)
+                        div_result_r <= div_is_rem ? div_dividend : 32'hFFFFFFFF;
                     div_valid_r   <= 1'b1;
                     div_busy_r    <= 1'b0;
                     // SA-CM-009: div_state transition handled by always_comb (div_state_next)
@@ -341,7 +352,11 @@ module lumi_execute #(
             DIV_IDLE: begin
                 for (int i = 0; i < ISSUE_WIDTH; i++) begin
                     if (e1_valid[i] && e1_inst[i].fu_type == FU_DIV) begin
-                        div_state_next = DIV_INIT;
+                        // SA-CM-010: 除零快速路径 — 跳过 INIT/RUNNING, 直接 DONE
+                        if (e1_rs2_data[i] == 32'h0)
+                            div_state_next = DIV_DONE;
+                        else
+                            div_state_next = DIV_INIT;
                         break;
                     end
                 end

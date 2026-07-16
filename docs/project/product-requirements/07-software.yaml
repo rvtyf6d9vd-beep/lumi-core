@@ -109,10 +109,10 @@ categories:
         status: Approved
         version: v1.0
         source: Lumi Req
-        ref_doc: "LUMI-DEL-003"
+        ref_doc: ""
         acceptance: "gem5 模型支持 Lumi-Core 微架构参数配置，性能评估误差 <=10%"
         change_date: "2026-07-02"
-        note: "对应交付物 LUMI-DEL-003"
+        note: "Cycle Accurate Model 交付物，原 LUMI-DEL-003 已去重合并"
 
   - id: SW-DBG
     title: "7.6 调试工具"
