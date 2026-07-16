@@ -136,6 +136,7 @@ module lumi_predecode #(
                     if (hw[1:0] != 2'b11) begin
                         // 压缩指令 (16-bit)
                         inst[i]            = lumi_pkg::c_ext_expand(hw);
+                        // $display("[CEXT-DBG] ...) -- debug print removed
                         inst_compressed[i] = 1'b1;
                         inst_valid[i]      = 1'b1;
                         cnt                = cnt + 4'd1;
@@ -218,16 +219,11 @@ module lumi_predecode #(
                 bytes_consumed = inst_valid[0] ? (inst_compressed[0] ? 5'd2 : 5'd4) : 5'd0;
         end
 
-        // DEBUG: trace predecode for 0x3CA0 block
-        if ((base_pc >= 32'h3a80 && base_pc <= 32'h3b00) || (base_pc >= 32'h3ca0 && base_pc <= 32'h3cb0)) begin
-            $display("[PREDEC] base_pc=0x%08h start_off=%0d carry=%b pred_taken=%b pred_slot=0x%h cnt=%0d bytes=%0d",
-                     base_pc, start_offset, carry_valid, pred_taken, pred_branch_slot, inst_count, bytes_consumed);
-            for (int d = 0; d < FETCH_WIDTH; d++) begin
-                if (inst_valid[d])
-                    $display("  [%0d] pc=0x%08h inst=0x%08h raw=0x%04h comp=%b",
-                             d, inst_pc[d], inst[d], inst_raw[d], inst_compressed[d]);
-            end
-        end
+        // DEBUG: trace predecode -- disabled for clean simulation
+        // if (base_pc == 32'h20 || ...) begin
+        //     $display("[PREDEC] ...");
+        //     for (...) $display("  [%0d] ...");
+        // end
 
     end
 

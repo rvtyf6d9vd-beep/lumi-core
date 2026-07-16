@@ -193,6 +193,7 @@ package lumi_pkg;
               case (inst[15:13])
                   3'b000: begin
                       imm = {{26{inst[12]}}, inst[12], inst[6:2]};
+                      // $display("[CEXT-FN] ...) -- debug print removed
                       return {imm[11:0], rd_rs1, 3'b000, rd_rs1, 7'b0010011};
                   end
                   3'b001: begin

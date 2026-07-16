@@ -424,7 +424,7 @@ module lumi_csr_unit #(
                     12'h304: mie_r        <= csr_write_val;
                     12'h305: begin
                         mtvec_r      <= csr_write_val;
-                        $display("[CSR-DBG] mtvec WRITE: old=0x%08h new=0x%08h", mtvec_r, csr_write_val);
+                        // $display("[CSR-DBG] mtvec WRITE") -- debug print removed
                     end
                     12'h306: mcounteren_r <= csr_write_val;
                     12'h340: mscratch_r   <= csr_write_val;

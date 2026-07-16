@@ -381,6 +381,7 @@ module lumi_execute #(
                         if (e1_inst[i].inst[6:0] == 7'b0010111) begin
                             // ERR-023: AUIPC
                             e1_result[i] = e1_inst[i].pc + {e1_inst[i].inst[31:12], 12'h000};
+                            // $display("[AUIPC-DBG] ...) -- debug print removed
                         end else if (e1_inst[i].inst[6:0] == 7'b0110111) begin
                             // ERR-023: LUI
                             e1_result[i] = {e1_inst[i].inst[31:12], 12'h000};
@@ -389,7 +390,10 @@ module lumi_execute #(
                             // OPIMM 的 inst[31:25] 实际是 imm 的高 7 位, 不能用作 funct7.
                             // SRAI 通过 inst[30]=1 区分 (而 SRLI inst[30]=0).
                             case (e1_inst[i].funct3)
-                                FN_ADD:  e1_result[i] = e1_rs1_data[i] + e1_inst[i].imm;        // ADDI
+                                FN_ADD: begin
+                                    e1_result[i] = e1_rs1_data[i] + e1_inst[i].imm;        // ADDI
+                                    // $display("[ADDI-DBG] ...) -- debug print removed
+                                end
                                 FN_SLT:  e1_result[i] = {31'h0, $signed(e1_rs1_data[i]) < $signed(e1_inst[i].imm)};  // SLTI
                                 FN_SLTU: e1_result[i] = {31'h0, e1_rs1_data[i] < e1_inst[i].imm};  // SLTIU
                                 FN_XOR:  e1_result[i] = e1_rs1_data[i] ^ e1_inst[i].imm;        // XORI
@@ -616,13 +620,7 @@ module lumi_execute #(
                             end
                         end
 
-                        // 调试: 打印分支taken事件 (含 _exit/init 区域)
-                        if (branch_taken[i] && (e1_inst[i].pc < 32'h200 || e1_inst[i].pc == 32'h2ed8 || e1_inst[i].pc == 32'h3018 || e1_inst[i].pc == 32'h2ed2 || (e1_inst[i].pc >= 32'h3a80 && e1_inst[i].pc <= 32'h3b00))) begin
-                            $display("[DIAG-BR] slot=%0d pc=0x%08h inst=0x%08h target=0x%08h mis=%b pred=0x%08h pred_taken=%b is_call=%b is_ret=%b",
-                                     i, e1_inst[i].pc, e1_inst[i].inst,
-                                     branch_target[i], e1_mispredict, e1_pred_target, e1_pred_taken,
-                                     e1_br_is_call, e1_br_is_ret);
-                        end
+                        // debug print removed: [DIAG-BR]
 
                         // ERR-019 修复: 始终更新分支反馈, 不受 mispredict 门控
                         // 原代码: if (!e1_mispredict) — 导致 taken 分支的 target 不传递,
@@ -647,9 +645,7 @@ module lumi_execute #(
                             e1_branch_pc     = e1_inst[i].pc;
                             e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
-                            // DIAG: print all misprediction redirects (unconditional range)
-                            $display("[DIAG-MIS] slot=%0d pc=0x%08h inst=0x%08h target=0x%08h pred_target=0x%08h imm=0x%08h",
-                                     i, e1_inst[i].pc, e1_inst[i].inst, branch_target[i], e1_pred_target, e1_inst[i].imm);
+                            // DIAG: misprediction redirect -- debug print removed
                         end else if (!e1_mispredict && !already_redirected) begin
                             // 非误预测但仍需更新分支反馈 (BTB 学习)
                             e1_branch_taken  = branch_taken[i];

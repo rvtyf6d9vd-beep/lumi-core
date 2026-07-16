@@ -494,16 +494,10 @@ module lumi_fetch #(
             if (tage_update_valid && state_reg != ST_FLUSH && br_update_is_call) begin
                 ras_stack[ras_top] <= tage_update_pc + (br_update_is_compressed ? 32'd2 : 32'd4);
                 ras_top <= (ras_top == RAS_PTR_W'(RAS_DEPTH - 1)) ? '0 : ras_top + 1'b1;
-                if (tage_update_pc >= 32'h3ca0 && tage_update_pc <= 32'h3cc0)
-                    $display("[RAS-PUSH] pc=0x%08h compressed=%b ret_addr=0x%08h top=%0d->%0d",
-                             tage_update_pc, br_update_is_compressed,
-                             tage_update_pc + (br_update_is_compressed ? 32'd2 : 32'd4),
-                             ras_top, (ras_top == RAS_PTR_W'(RAS_DEPTH-1)) ? 0 : ras_top+1);
+                // $display("[RAS-PUSH] ...) -- debug print removed
             end else if (tage_update_valid && state_reg != ST_FLUSH && br_update_is_ret) begin
                 ras_top <= (ras_top == '0) ? RAS_PTR_W'(RAS_DEPTH - 1) : ras_top - 1'b1;
-                $display("[RAS-POP] pc=0x%08h peek=0x%08h top=%0d->%0d",
-                         tage_update_pc, ras_peek, ras_top,
-                         (ras_top == '0) ? RAS_DEPTH-1 : ras_top-1);
+                // $display("[RAS-POP] ...) -- debug print removed
             end
 
             // ── BTB 更新 (分支反馈, fetch-bpred.html §3.1) ──
@@ -680,10 +674,7 @@ module lumi_fetch #(
                         // bytes_consumed 对应旧 block, 从 f2_pc_r 前进会重复处理.
                         pc_next = pc_reg + {27'h0, predecode_bytes_consumed};
                     end
-                    if (pc_reg >= 32'h3a80 && pc_reg <= 32'h3c00)
-                        $display("[FETCH-ADV] pc_reg=0x%08h f2_pc_r=0x%08h f2v=%b bytes=%0d pred=%b pc_next=0x%08h",
-                                 pc_reg, f2_pc_r, f2_valid_r, predecode_bytes_consumed,
-                                 f1_pred_taken_comb, pc_next);
+                    // $display("[FETCH-ADV] ...) -- debug print removed
                     state_next = ST_FETCH;  // 保持取指
                 end else begin
                     // ICache 未就绪: stall
@@ -754,40 +745,30 @@ module lumi_fetch #(
             state_next     = ST_FLUSH;
         end
 
-        // DIAG-PC: trace pc_reg in critical range + any redirect
-        if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00 || (branch_redirect_valid && state_reg != ST_FLUSH))
-            $display("[PC-TRACE] pc_reg=0x%08h pc_next=0x%08h st=%0d f2v=%b pred=%b redir=%b redir_pc=0x%08h",
-                     pc_reg, pc_next, state_reg, f2_icache_valid, f1_pred_taken_comb,
-                     branch_redirect_valid, branch_redirect_pc);
-        // DIAG-JUMP: detect non-sequential PC jumps (>16 bytes away, excluding normal prediction targets)
-        if (state_reg == ST_FETCH && f2_icache_valid && !branch_redirect_valid && !trap_redirect_valid &&
-            !dec_stall && dec_all_issued &&
-            (pc_next > pc_reg + 32'd16 || (pc_next < pc_reg && pc_reg - pc_next > 32'd16)))
-            $display("[JUMP] pc_reg=0x%08h pc_next=0x%08h pred=%b pred_target=0x%08h bytes=%0d",
-                     pc_reg, pc_next, f1_pred_taken_comb, f1_pred_target_comb, predecode_bytes_consumed);
+        // DIAG-PC: trace disabled for clean simulation
+        // if (pc_reg >= 32'h3a00 ...) $display("[PC-TRACE] ...")
+        // DIAG-JUMP: disabled for clean simulation
+        // if (...) $display("[JUMP] ...")
     end
 
-    // DIAG-PC: separate block for PC tracing (always @* for Verilator)
-    always @(pc_reg or state_reg) begin
-        if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00)
-            $display("[PC-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
-        if (state_reg != ST_IDLE && pc_reg < 32'h40)
-            $display("[FSM-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
-    end
+    // DIAG-PC: separate block for PC tracing -- disabled for clean simulation
+    // always @(pc_reg or state_reg) begin
+    //     if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00)
+    //         $display("[PC-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
+    //     if (state_reg != ST_IDLE && pc_reg < 32'h40)
+    //         $display("[FSM-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
+    // end
 
-    // DIAG-CYC: per-cycle PC sampler (always_ff) - only for first 100 cycles
-    int cyc_cnt;
-    always_ff @(posedge clk_core or negedge reset_n) begin
-        if (!reset_n) begin
-            cyc_cnt <= 0;
-        end else begin
-            cyc_cnt <= cyc_cnt + 1;
-            if (cyc_cnt < 100)
-                $display("[CYC-DBG] cyc=%0d pc=0x%08h st=%0d f2v=%b redir=%b redir_pc=0x%08h trap=%b trap_pc=0x%08h",
-                         cyc_cnt, pc_reg, state_reg, f2_valid_r,
-                         branch_redirect_valid, branch_redirect_pc,
-                         trap_redirect_valid, trap_redirect_pc);
-        end
-    end
+    // DIAG-CYC: per-cycle PC sampler -- disabled for clean simulation
+    // int cyc_cnt;
+    // always_ff @(posedge clk_core or negedge reset_n) begin
+    //     if (!reset_n) begin
+    //         cyc_cnt <= 0;
+    //     end else begin
+    //         cyc_cnt <= cyc_cnt + 1;
+    //         if (cyc_cnt < 100)
+    //             $display("[CYC-DBG] ...")
+    //     end
+    // end
 
 endmodule
