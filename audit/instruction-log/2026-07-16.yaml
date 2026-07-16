@@ -1,0 +1,42 @@
+# Lumi 指令日志 — 2026-07-16
+
+date: "2026-07-16"
+entries:
+  # ──────────────────────────────────────────────
+  # 指令 1：PRD 残留问题修复 + 平台架构说明书同步
+  # ──────────────────────────────────────────────
+  - timestamp: "2026-07-16"
+    role: pm-infra
+    session_mode: main
+    action: docs_sync
+    details:
+      description: "修复 PRD 源文件中的旧 REQ-ID 引用问题，清理 generate_baseline_html.py 中废弃的 CAT_NAMES 映射，同步平台架构说明书中 9 处旧 REQ-ID 为 PPA 统一前缀。"
+      user_request: "先看了 PRD 残留问题修复计划，执行修复，然后分析 PRD 变更是否影响平台架构说明书，确认有影响后纳入计划执行同步更新。"
+      options_and_decisions:
+        - topic: "FEAT-005 note 多余语句"
+          options: ["删除多余语句", "保留（语义合理）"]
+          decision: "保留"
+        - topic: "AMBA 目录为空"
+          options: ["标记为已知问题", "创建占位文件"]
+          decision: "标记为已知，需人工获取 AMBA 规范文档"
+        - topic: "平台架构说明书 REQ-ID 同步"
+          options: ["纳入当前计划统一处理", "单独建立新计划"]
+          decision: "纳入当前计划"
+      steps:
+        - "step 1: generate_baseline_html.py — 删除 6 个废弃 PPA 子分类映射 + cat_order 条目"
+        - "step 2: 03-hardware.yaml — 更新 3 处 LUMI-PWR-003 -> LUMI-PPA-009"
+        - "step 3: generate_prd.py — 更新 2 条 CSV 示例旧 ID"
+        - "step 4: 重新生成 PRD HTML、BL-1.2 YAML、BL-1.2 HTML"
+        - "step 5: 提交并推送 (commit d52853a)"
+        - "step 6: 分析 PRD 变更对平台架构说明书的影响，发现 9 处 REQ-ID 未同步"
+        - "step 7: platform-spec.html — 更新 11 处旧 REQ-ID、版本号 v1.0.3->v1.0.4、更新日期"
+        - "step 8: 提交并推送 (commit 88360b5)"
+      files_changed:
+        - "docs/project/baselines/generate_baseline_html.py"
+        - "docs/project/product-requirements/03-hardware.yaml"
+        - "docs/project/generate_prd.py"
+        - "docs/project/product-requirements.html"
+        - "docs/project/baselines/baseline-BL-1.2.yaml"
+        - "docs/project/baselines/baseline-BL-1.2.html"
+        - "docs/architecture/platform-spec.html"
+      related_rules: [16, 22]
