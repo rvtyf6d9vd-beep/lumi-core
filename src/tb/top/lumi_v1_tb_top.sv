@@ -436,15 +436,16 @@ module lumi_v1_tb_top;
       $display("[PROGRESS] cycle=%0d retired=%0d we_count=%0d mem_busy=%0b pc0=0x%08h",
                cycle_count, mon_total_retired, v1_we_count, mon_mem_busy, commit_pc_0);
       // SA-CM-011: tohost 检测 — 检查 0x3FFE0 magic 值
-      if (u_dut.v1_sram[65528] == 32'hDEADBEEF) begin
+      // 0x3FFE0 / 4 = 65504
+      if (u_dut.v1_sram[65504] == 32'hDEADBEEF) begin
         $display("[PROGRESS] tohost: magic=0xDEADBEEF detected at 0x3FFE0");
         $display("[PROGRESS] bench_id=%0d iters=%0d ticks=%0d metric=%0d checks=%0d",
-                 u_dut.v1_sram[65529], u_dut.v1_sram[65530], u_dut.v1_sram[65531],
-                 u_dut.v1_sram[65532], u_dut.v1_sram[65533]);
+                 u_dut.v1_sram[65505], u_dut.v1_sram[65506], u_dut.v1_sram[65507],
+                 u_dut.v1_sram[65508], u_dut.v1_sram[65509]);
       end
-      if (u_dut.v1_sram[65528] == 32'hDEAD0001) begin
+      if (u_dut.v1_sram[65504] == 32'hDEAD0001) begin
         $display("[PROGRESS] TRAP detected: magic=0xDEAD0001 mcause=0x%08h mepc=0x%08h",
-                 u_dut.v1_sram[65529], u_dut.v1_sram[65530]);
+                 u_dut.v1_sram[65505], u_dut.v1_sram[65506]);
       end
       // SA-CM-011: 无效 PC 检测 — PC 超出程序范围时报警
       if (commit_pc_0 > 32'h0010_0000 && commit_pc_0 < 32'hFFF0_0000) begin
@@ -545,14 +546,14 @@ module lumi_v1_tb_top;
 
     // ─── V1 Benchmark Result Dump (0x3FFE0) ─────────────────────
     begin
-      // 0x3FFE0 / 4 = 65528 = 0xFFF8
+      // 0x3FFE0 / 4 = 65504
       logic [31:0] r_magic, r_bench_id, r_iters, r_ticks, r_metric, r_checks;
-      r_magic    = u_dut.v1_sram[65528]; // 0x3FFE0
-      r_bench_id = u_dut.v1_sram[65529]; // 0x3FFE4
-      r_iters    = u_dut.v1_sram[65530]; // 0x3FFE8
-      r_ticks    = u_dut.v1_sram[65531]; // 0x3FFEC
-      r_metric   = u_dut.v1_sram[65532]; // 0x3FFF0
-      r_checks   = u_dut.v1_sram[65533]; // 0x3FFF4
+      r_magic    = u_dut.v1_sram[65504]; // 0x3FFE0
+      r_bench_id = u_dut.v1_sram[65505]; // 0x3FFE4
+      r_iters    = u_dut.v1_sram[65506]; // 0x3FFE8
+      r_ticks    = u_dut.v1_sram[65507]; // 0x3FFEC
+      r_metric   = u_dut.v1_sram[65508]; // 0x3FFF0
+      r_checks   = u_dut.v1_sram[65509]; // 0x3FFF4
       $display("\n============================================");
       $display(" V1 Benchmark Results (0x3FFE0)");
       $display("============================================");
@@ -566,10 +567,10 @@ module lumi_v1_tb_top;
       $display(" checks     = %0d %s", r_checks, (r_checks == 0) ? "(PASS)" : "(FAIL)");
       $display("============================================");
       $display(" [ERR-026-DBG] SRAM write count: %0d", v1_we_count);
-      $display(" [ERR-026-DBG] v1_sram[65528]=0x%08h (should be 0xDEADBEEF if written)",
-               u_dut.v1_sram[65528]);
-      $display(" [ERR-026-DBG] v1_sram[65529]=0x%08h (should be 1 for CoreMark)",
-               u_dut.v1_sram[65529]);
+      $display(" [ERR-026-DBG] v1_sram[65504]=0x%08h (should be 0xDEADBEEF if written)",
+               u_dut.v1_sram[65504]);
+      $display(" [ERR-026-DBG] v1_sram[65505]=0x%08h (should be 1 for CoreMark)",
+               u_dut.v1_sram[65505]);
       $display("============================================\n");
     end
 

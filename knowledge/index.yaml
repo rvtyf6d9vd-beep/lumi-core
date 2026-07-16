@@ -5,7 +5,14 @@ version: "1.0"
 max_entries: 256
 warning_threshold: 240
 
-entries: []
+entries:
+  - id: "LL-p001"
+    title: "调试方法论：由易到难，逐级递增复杂度"
+    category: personal-experience
+    source: "CoreMark V1 调试实践, T-MS3-S1-7"
+    date: "2026-07-16"
+    file: "lessons-learned/personal/2026-07-16_debug-methodology-gradual-complexity.md"
+
 # 示例条目格式:
 # - id: "LL-001"
 #   title: "AHB burst wrap 计算需要考虑 unaligned 起始地址"

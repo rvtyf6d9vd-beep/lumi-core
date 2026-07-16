@@ -12,7 +12,7 @@
 CROSS   ?= riscv64-unknown-elf-
 CC       = $(CROSS)gcc
 
-ARCH    ?= rv32imac
+ARCH    ?= rv32im
 ABI     ?= ilp32
 
 OPT      = -O2 -funroll-loops

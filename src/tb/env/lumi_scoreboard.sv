@@ -163,8 +163,8 @@ module lumi_scoreboard #(
           // 追踪最大 PC
           if (commit_pc[s] > max_commit_pc)
             max_commit_pc <= commit_pc[s];
-          // _exit 范围: 0x3a8a-0x3aba
-          if (commit_pc[s] >= 32'h3a8a && commit_pc[s] <= 32'h3aba) begin
+          // _exit 范围: 0x4700-0x6b00 (覆盖 _exit=0x4728 和 v1_write_result=0x6ab8)
+          if (commit_pc[s] >= 32'h4700 && commit_pc[s] <= 32'h6b00) begin
             if (!exit_reached) begin
               $display("[SB-DBG] _exit reached! cyc=%0d pc=0x%08h inst=0x%08h",
                        cycle_cnt, commit_pc[s], commit_inst[s]);
