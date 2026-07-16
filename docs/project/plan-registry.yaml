@@ -39,3 +39,15 @@ plan_registry:
     status: active
     created: "2026-07-11"
     updated: "2026-07-11"
+
+  - plan_id: "PLN-0006"
+    title: "M3-S2 CoreMark 调试通路 RTL 修复执行计划 (v1.0)"
+    file: "docs/project/M3-S2_CoreMark_RTL修复执行计划_v1.yaml"
+    status: pending_approval
+    created: "2026-07-14"
+    updated: "2026-07-14"
+    based_on:
+      - "coremark-rtl-static-analysis-20260714.yaml (hw-design)"
+      - "coremark-rtl-static-analysis-audit-20260714.yaml (Kimi 第1轮)"
+      - "coremark-rtl-logic-deduction-audit-20260714.yaml (MiniMax 第2轮)"
+      - "coremark-rtl-glm-audit-20260714.yaml (GLM 第3轮)"

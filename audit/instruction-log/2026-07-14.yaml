@@ -540,3 +540,28 @@ rtl_bugfix_plan:
       - "audit/errata/known-issues.yaml"
       - "audit/risk-register.yaml"
       - "audit/instruction-log/2026-07-14.yaml"
+
+  - id: "T-MS3-S2-4.14"
+    title: "创建 CoreMark RTL 修复执行计划 (PLN-0006)"
+    status: COMPLETE
+    date: "2026-07-14"
+    details:
+      - "基于三轮独立审计综合结论创建修正版执行计划"
+      - "计划 ID: PLN-0006"
+      - "计划文件: docs/project/M3-S2_CoreMark_RTL修复执行计划_v1.yaml"
+      - "已注册到 docs/project/plan-registry.yaml"
+      - "计划内容:"
+      - "  24 个问题 (6 Critical, 4 High, 6 Medium, 8 Low)"
+      - "  4 个修复阶段 (Phase 1-4), 总计 7-11 天"
+      - "  Phase 0 经 GLM 审计简化为 Phase 1 前置断言 (0.5 天)"
+      - “  分层断言策略 (PC对齐/bytes_consumed/DIV符号)"
+      - “  级联调试策略 (5步, 若0x178仍存在)"
+      - “  回归测试计划 (5个测试, 规则21)"
+      - “  风险管理 (RISK-023/027/028/030/031/032)"
+      - "  合规性检查 (规则 03/10/16/18~23)"
+      - "  审计轨迹 (三轮审计报告索引)"
+      - "状态: pending_approval (待人类 Sign-off)"
+    files_changed:
+      - "docs/project/M3-S2_CoreMark_RTL修复执行计划_v1.yaml"
+      - "docs/project/plan-registry.yaml"
+      - "audit/instruction-log/2026-07-14.yaml"
