@@ -225,6 +225,12 @@ module lumi_predecode #(
         //     for (...) $display("  [%0d] ...");
         // end
 
+        // PLN-0006 assertion_strategy: bytes_consumed range assertion
+        // synthesis translate_off
+        assert (bytes_consumed inside {5'd0, 5'd2, 5'd4, 5'd6, 5'd8, 5'd10, 5'd12, 5'd14, 5'd16})
+            else $error("[ASSERT] invalid bytes_consumed: %0d", bytes_consumed);
+        // synthesis translate_on
+
     end
 
 endmodule

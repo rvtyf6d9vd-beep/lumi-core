@@ -539,6 +539,14 @@ module lumi_decode_issue #(
                             tmp_fu_available = !fu_busy[dec[qi].fu_type];
                             if (dec[qi].fu_type == FU_DIV)
                                 tmp_fu_available = tmp_fu_available && !div_busy;
+                            // SA-CM-003 FIX: MUL single slot mutual exclusion
+                            // Prevent two MUL instructions from being issued in same batch
+                            if (dec[qi].fu_type == FU_MUL) begin
+                                for (int p = 0; p < s; p++) begin
+                                    if (issue_ready[p] && dec[issue_sel[p]].fu_type == FU_MUL)
+                                        tmp_fu_available = 1'b0;
+                                end
+                            end
 
                             // 检查批次内 RAW 冒险
                             tmp_batch_raw = 1'b0;

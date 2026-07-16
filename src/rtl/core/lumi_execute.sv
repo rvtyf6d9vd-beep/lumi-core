@@ -232,6 +232,8 @@ module lumi_execute #(
     logic [31:0] div_result_r;
     logic        div_valid_r;
     logic        div_busy_r;
+    logic        div_quot_negate;   // SA-CM-002: sign for quotient = dividend_sign XOR divisor_sign
+    logic        div_remain_negate; // SA-CM-002: sign for remainder = dividend_sign
 
     // DIV FSM 时序逻辑
     always_ff @(posedge clk_core or negedge reset_n) begin
@@ -248,6 +250,8 @@ module lumi_execute #(
             div_result_r   <= 32'h0;
             div_valid_r    <= 1'b0;
             div_busy_r     <= 1'b0;
+            div_quot_negate  <= 1'b0;
+            div_remain_negate <= 1'b0;
         end else begin
             div_state_reg <= div_state_next;
             div_valid_r   <= 1'b0;
@@ -257,8 +261,9 @@ module lumi_execute #(
                     // 检测 DIV 指令
                     for (int i = 0; i < ISSUE_WIDTH; i++) begin
                         if (e1_valid[i] && e1_inst[i].fu_type == FU_DIV) begin
-                            div_signed <= e1_inst[i].funct3[0] ^  // DIVU/REMU 无符号
-                                          (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM);
+                            // SA-CM-001 FIX: DIVU/REMU should be unsigned
+                            // Bug: funct3[0]^(...) makes DIVU/REMU incorrectly signed
+                            div_signed <= (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM);
                             div_is_rem <= (e1_inst[i].funct3 == MUL_REM || e1_inst[i].funct3 == MUL_REMU);
                             div_rd_reg <= e1_inst[i].rd;
                             div_busy_r <= 1'b1;
@@ -267,9 +272,14 @@ module lumi_execute #(
                             if (e1_inst[i].funct3 == MUL_DIV || e1_inst[i].funct3 == MUL_REM) begin
                                 div_dividend <= e1_rs1_data[i][31] ? -e1_rs1_data[i] : e1_rs1_data[i];
                                 div_divisor  <= e1_rs2_data[i][31] ? -e1_rs2_data[i] : e1_rs2_data[i];
+                                // SA-CM-002 FIX: save original signs for result sign correction
+                                div_quot_negate   <= e1_rs1_data[i][31] ^ e1_rs2_data[i][31];
+                                div_remain_negate <= e1_rs1_data[i][31];
                             end else begin
                                 div_dividend <= e1_rs1_data[i];
                                 div_divisor  <= e1_rs2_data[i];
+                                div_quot_negate   <= 1'b0;
+                                div_remain_negate <= 1'b0;
                             end
 
                             div_state_reg <= DIV_INIT;
@@ -305,12 +315,11 @@ module lumi_execute #(
                 end
 
                 DIV_DONE: begin
-                    // 恢复符号
-                    if (div_signed && (div_dividend[31] ^ div_divisor[31])) begin
-                        div_result_r <= div_is_rem ? -div_remainder : -div_quotient;
-                    end else begin
-                        div_result_r <= div_is_rem ? div_remainder : div_quotient;
-                    end
+                    // SA-CM-002 FIX: use saved original signs instead of abs-value bit[31]
+                    if (div_is_rem)
+                        div_result_r <= (div_signed && div_remain_negate) ? -div_remainder : div_remainder;
+                    else
+                        div_result_r <= (div_signed && div_quot_negate) ? -div_quotient : div_quotient;
                     div_valid_r   <= 1'b1;
                     div_busy_r    <= 1'b0;
                     div_state_reg <= DIV_IDLE;

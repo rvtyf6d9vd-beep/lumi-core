@@ -749,6 +749,12 @@ module lumi_fetch #(
         // if (pc_reg >= 32'h3a00 ...) $display("[PC-TRACE] ...")
         // DIAG-JUMP: disabled for clean simulation
         // if (...) $display("[JUMP] ...")
+
+        // PLN-0006 assertion_strategy: PC alignment assertion
+        // synthesis translate_off
+        assert (pc_next[0] == 1'b0)
+            else $error("[ASSERT] PC not 2-byte aligned: 0x%08h", pc_next);
+        // synthesis translate_on
     end
 
     // DIAG-PC: separate block for PC tracing -- disabled for clean simulation
