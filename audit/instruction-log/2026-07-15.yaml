@@ -270,3 +270,96 @@ legacy_fix_plan:
   git_commits_legacy: 6
   tests_created:
     - "tests/directed/test_zicbom_zicbop_nop.S"
+
+# ============================================================
+# Phase 4 SA-CM Fix Plan — 遗留 SA-CM 缺陷修复 (7 Tasks)
+# 执行日期: 2026-07-15
+# 计划: Phase_4_SA-CM_修复计划_task-078.md (GLM 审计修正版)
+# ============================================================
+
+phase4_sacm_plan:
+  task_id: "T-phase4-sacm"
+
+  tasks:
+    - id: "P4-TASK-1"
+      title: "预解码器 carry 验证 (SA-CM-CARRY-001)"
+      status: COMPLETE
+      result: "INCONCLUSIVE"
+      details: >
+        恢复 rv32imac 编译 CoreMark, 确认 2679 条压缩指令。
+        仿真 2M 周期: IPC~0.11, Max PC=0x4358 (进入 main), 未达 ECALL。
+        PC 持续前进无停滞, carry 修复初步有效, 但受 fetch-issue 耦合瓶颈无法完成。
+        回退 ARCH=rv32im, carry 修复状态待确认。
+
+    - id: "P4-TASK-2"
+      title: "DIV FSM 双重赋值修复 (SA-CM-009)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_execute.sv"
+      commit: "4268b05"
+      details: >
+        移除 always_ff 中 case 分支的 div_state_reg <= 赋值 (lines 285/295/313/325),
+        状态转移仅由 always_comb (div_state_next) 处理。
+        添加 always_comb/always_ff 条件等价性注释。
+        验证: v1-smoke PASS, v1-rv32m PASS=1 FAIL=0
+
+    - id: "P4-TASK-3"
+      title: "DIV 除零显式处理 (SA-CM-010)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_execute.sv"
+      commit: "671e432"
+      details: >
+        always_comb: 检测除零时 div_state_next=DONE (跳过 INIT/RUNNING)。
+        always_ff: 除零快速路径捕获 rd/dividend/divisor, 保持 div_busy_r 管线协议。
+        DIV_DONE: 除零覆盖结果 (DIV/DIVU=-1/0xFFFFFFFF, REM/REMU=被除数)。
+        验证: v1-smoke PASS, v1-rv32m PASS=1 FAIL=0
+
+    - id: "P4-TASK-4"
+      title: "LSU 端口地址 0 冲突修复 (SA-CM-006)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_execute.sv"
+      commit: "392a174"
+      details: >
+        引入 lsu0_occupied 标志替代 e1_mem_addr[0]==0 判断。
+        地址 0x0 是有效 V1 SRAM 地址, 不能作为空闲指示。
+        验证: v1-smoke PASS=1 FAIL=0
+
+    - id: "P4-TASK-5"
+      title: "RAS 检查点死代码处理 (SA-CM-008)"
+      status: COMPLETE
+      files_changed:
+        - "src/rtl/core/lumi_fetch.sv"
+      commit: "f2bd177"
+      details: >
+        移除 ras_top_ckpt 和 ras_stack_ckpt 声明及 reset 初始化。
+        当前 RAS 非推测式更新, flush 时无需恢复。
+        验证: v1-smoke PASS=1 FAIL=0
+
+    - id: "P4-TASK-6"
+      title: "Spin loop 假阳性修复 (SA-CM-017)"
+      status: COMPLETE
+      files_changed:
+        - "src/tb/env/lumi_scoreboard.sv"
+      commit: "b42e3de"
+      details: >
+        增加 commit_inst[0][31:12]==20'h0 检查, 验证 JAL offset=0。
+        避免 'j nearby_label' 紧凑循环触发假阳性。
+        验证: v1-smoke PASS=1 FAIL=0
+
+    - id: "P4-TASK-7"
+      title: "回归测试 + Git checkpoint"
+      status: COMPLETE
+      details:
+        - "v1-smoke: PASS=1 FAIL=0"
+        - "v1-rv32i-full: PASS=1 FAIL=0"
+        - "v1-rv32m: PASS=1 FAIL=0"
+        - "Git commits: 5 (每 Task 独立 commit)"
+        - "Checkpoint tag: checkpoint/post-phase4-fix"
+
+  git_commits_phase4: 5
+  regression_results:
+    v1_smoke: "PASS=1 FAIL=0"
+    v1_rv32i_full: "PASS=1 FAIL=0"
+    v1_rv32m: "PASS=1 FAIL=0"

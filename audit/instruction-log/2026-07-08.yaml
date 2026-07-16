@@ -1,0 +1,83 @@
+# Lumi 指令日志 — 2026-07-08
+
+date: "2026-07-08"
+entries:
+  # ──────────────────────────────────────────────
+  # 指令 1：PRD 审查意见处理 + 文档去重
+  # ──────────────────────────────────────────────
+  - timestamp: "14:00:00"
+    role: pm-infra
+    session_mode: main
+    action: prd_review_and_dedup
+    details:
+      description: "处理用户对 PRD 的 15 条审查意见，并执行文档去重工作。"
+      user_request: >
+        审查 PRD 需求文档后提出 15 条意见，要求逐条讨论是否应该修改，
+        确认后执行修改并生成新基线。同时消除 PRD 中的内容重复。
+      options_and_decisions:
+        - topic: "Comment 1 (AMBA 参考文档)"
+          decision: "新增 REF-07 AMBA AXI and ACE Protocol Specification, 下载完整规范到 docs/standards/amba/, 术语表补充 AXI4/AHB5/APB5/AXI-Stream"
+        - topic: "Comment 2 (IEEE 754 标准)"
+          decision: "不添加到参考文档列表，修改 LUMI-ISA-004 ref_doc 标注 IEEE 754-2008 via Ch.14/15。用户已下载到 docs/standards/ieee/"
+        - topic: "Comment 3 (依赖产品)"
+          decision: "§2.5 替换为'独立处理器 IP，无外部产品依赖'"
+        - topic: "Comment 4 (RT-Europa)"
+          decision: "移除 RT-Europa 行，新增 riscv-arch-test 合规测试套件"
+        - topic: "Comment 5 (PPA ID 统一)"
+          decision: "合并 6 个 PPA 子分类为单一 PPA 分类，ID 统一为 LUMI-PPA-{NNN}，同步更新 10-traceability.yaml 和 07-software.yaml"
+        - topic: "Comment 6 (TSMC 28HPC 备选)"
+          decision: "LUMI-PPA-002 note 补充备选工艺 (TSMC 28HPC+ / Samsung 28FDS / SMIC 28nm)"
+        - topic: "Comment 7 (Dhrystone 3.8)"
+          decision: "acceptance 改为 >=3.2 (保底) 目标 >=3.8, note 标注 3.8 为 stretch goal"
+        - topic: "Comment 8 (特权级配置)"
+          decision: "CoreM/CoreS/CoreU 改为 M-only / M+U / M+S+U，明确不支持 M+S"
+        - topic: "Comment 9 (协处理器接口)"
+          decision: "acceptance 细化接口能力边界，note 补充 M2 详细设计定义"
+        - topic: "Comment 10 (BSDL)"
+          decision: "DEL-010 acceptance 补充附带引脚定义表，明确定位为交付物规格"
+        - topic: "Comment 11 (时序模型)"
+          decision: "DEL-005 acceptance 改为交付内容清单，详细规格 M3 细化"
+        - topic: "Comment 12 (等价性验证)"
+          decision: "DEL-007 acceptance 改为交付内容清单，详细脚本 M3 编写"
+        - topic: "Comment 13 (ECC 安全索引)"
+          decision: "新增 LUMI-SAFE-006 索引 TCM/L1 ECC 到功能安全，安全模式启用时强制启用 ECC"
+        - topic: "Comment 14 (三方软件厂商)"
+          decision: "暂时移除，不纳入当前版本"
+        - topic: "Comment 15 (AXI4 vs AXI5)"
+          decision: "选择 AXI4，车规安全特性已由 LUMI-SAFE-003 覆盖，note 说明可升级到 AXI5"
+        - topic: "文档去重"
+          decision: "删除 DEL-003 (与 SIM-002 重复) 和 DEL-006 (与 TIMING-001 重复)，§8/§9 改为引用化"
+      steps:
+        - "step 1: 01-about.yaml 新增 REF-07 AMBA 参考文档，术语表补充 AXI4/AHB5/APB5/AXI-Stream"
+        - "step 2: 02-overview.yaml §2.5 替换为无外部依赖，§2.6 移除 RT-Europa 新增 riscv-arch-test"
+        - "step 3: 03-hardware.yaml PPA 6 子分类合并为单一 PPA 分类 (10 条需求重编号)"
+        - "step 4: 03-hardware.yaml LUMI-ISA-004 ref_doc 标注 IEEE 754-2008"
+        - "step 5: 03-hardware.yaml PROF-002 特权级改为 M-only/M+U/M+S+U"
+        - "step 6: 03-hardware.yaml FEAT-005 协处理器 acceptance 细化"
+        - "step 7: 03-hardware.yaml IF-001/IF-002 note 补充 AXI4 选定理由"
+        - "step 8: 04-deliverables.yaml 删除 DEL-003/DEL-006，细化 DEL-005/007/010"
+        - "step 9: 05-safety.yaml 新增 LUMI-SAFE-006 ECC 安全引用"
+        - "step 10: 07-software.yaml LUMI-PERF-001/SIM-002 交叉引用更新"
+        - "step 11: 08-milestones.yaml / 09-baseline.yaml 改为引用化"
+        - "step 12: 10-traceability.yaml 全量 PPA ID 替换 + §10.7 依赖更新 + §10.8 统计更新"
+        - "step 13: generate_baseline_html.py CAT_NAMES 新增 PPA 映射"
+        - "step 14: 运行 generate_prd.py 重新生成 product-requirements.html"
+        - "step 15: 运行 gen_baseline.py BL-1.2 生成基线快照 (98 条 Approved 需求)"
+        - "step 16: 运行 generate_baseline_html.py 生成 BL-1.2.html"
+        - "step 17: 更新 docs/index.html 基线链接 (BL-1.2 当前, BL-1.1 历史)"
+      files_modified:
+        - docs/project/product-requirements/01-about.yaml
+        - docs/project/product-requirements/02-overview.yaml
+        - docs/project/product-requirements/03-hardware.yaml
+        - docs/project/product-requirements/04-deliverables.yaml
+        - docs/project/product-requirements/05-safety.yaml
+        - docs/project/product-requirements/07-software.yaml
+        - docs/project/product-requirements/08-milestones.yaml
+        - docs/project/product-requirements/09-baseline.yaml
+        - docs/project/product-requirements/10-traceability.yaml
+        - docs/project/baselines/generate_baseline_html.py
+        - docs/project/baselines/baseline-BL-1.2.yaml
+        - docs/project/baselines/baseline-BL-1.2.html
+        - docs/project/product-requirements.html
+        - docs/index.html
+      result: "BL-1.2 基线生成 (98 条 Approved 需求: Must 83 + Should 12 + Could 3)"
