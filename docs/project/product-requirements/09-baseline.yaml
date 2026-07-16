@@ -21,7 +21,7 @@ change_management:
   approval_required: true
   archive_policy: "旧基线移入 baselines/archive/ 保留不删除"
 
-baselines:
-  # 基线列表详见 baselines/ 目录（权威数据源），此处仅保留规则说明。
-  # 最新基线: baseline-BL-1.2.yaml (BL-1.2)
+baselines: []
+  # 基线列表详见 baselines/ 目录（权威数据源）。
+  # 最新基线: baseline-BL-1.2.yaml
   # 历史基线: baselines/archive/

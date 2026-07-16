@@ -20,6 +20,7 @@ from html import escape
 # ── 分类名称映射 ──
 CAT_NAMES = {
     # PPA 类
+    'PPA': 'PPA 目标',
     'PPA-PIPE': '流水线架构需求',
     'PPA-FREQ': '主频需求',
     'PPA-IPC': '性能指标需求',
@@ -187,7 +188,7 @@ def generate_html(filepath, baseline, statistics, requirements):
 
     # Build category tables HTML
     cat_tables = ''
-    cat_order = ['PPA-PIPE', 'PPA-FREQ', 'PPA-IPC', 'PPA-AREA', 'PPA-PWR', 'PPA-INT',
+    cat_order = ['PPA', 'PPA-PIPE', 'PPA-FREQ', 'PPA-IPC', 'PPA-AREA', 'PPA-PWR', 'PPA-INT',
                   'RTL-PROF', 'RTL-ISA', 'RTL-MEM', 'RTL-IF', 'RTL-FEAT', 'RTL-OTHER',
                   'RTL-DFT', 'RTL-MCORE', 'RTL-BOOT', 'RTL-CLK', 'RTL-TIMING', 'RTL-QUAL',
                   'DEL-RTL', 'DEL-INT', 'DEL-DOC',

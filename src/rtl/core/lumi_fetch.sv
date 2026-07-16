@@ -150,9 +150,9 @@ module lumi_fetch #(
     logic                      ras_pop;
     logic [31:0]               ras_peek;                   // 栈顶值
 
-    // ERR-RAS: RAS 检查点 (flush 时恢复, 防止重复 push 导致 RAS 溢出)
-    logic [RAS_PTR_W-1:0]      ras_top_ckpt;
-    logic [31:0]               ras_stack_ckpt [RAS_DEPTH-1:0];
+    // SA-CM-008: RAS 检查点死代码已移除
+    // 当前 RAS 仅由 execute 级反馈更新 (非推测式), flush 时无需恢复
+    // 若未来引入推测式 RAS, 需重新实现检查点机制
 
     // ═══════════════════════════════════════════════════════════
     // LTAGE — TAGE 分支预测器, 12 表 (fetch-bpred.html §3.3)
@@ -468,10 +468,8 @@ module lumi_fetch #(
             carry_valid_r   <= 1'b0;
             // RAS
             ras_top         <= {RAS_PTR_W{1'b0}};
-            ras_top_ckpt    <= {RAS_PTR_W{1'b0}};
             for (int i = 0; i < RAS_DEPTH; i++) begin
                 ras_stack[i]      <= 32'h0;
-                ras_stack_ckpt[i] <= 32'h0;
             end
             // BTB
             for (int i = 0; i < BTB_ENTRIES; i++)
