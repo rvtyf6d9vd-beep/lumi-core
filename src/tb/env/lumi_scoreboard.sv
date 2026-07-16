@@ -110,9 +110,13 @@ module lumi_scoreboard #(
     end
 
     // Spin loop 检测: 仅检测 JAL (opcode=0x6F) 类 spin: j . (无条件跳转到自身)
+    // SA-CM-017: 增加 offset=0 检查, 避免 j nearby_label 假阳性
+    // JAL imm[20|10:1|11|19:12] 分布在 inst[31:12], offset=0 时全为 0
     if (!found_ecall && commit_valid[0] && !test_done &&
         commit_pc[0] == last_commit_pc && commit_pc[0] != 32'h0) begin
-      if (commit_inst[0][6:0] == 7'h6F && spin_count >= 3) begin
+      if (commit_inst[0][6:0] == 7'h6F &&
+          commit_inst[0][31:12] == 20'h0 &&   // imm[20:1]=0 -> offset=0
+          spin_count >= 3) begin
         found_ecall   = 1'b1;
         ecall_a0_comb = 32'h0;        // spin = PASS
         ecall_pc_comb = commit_pc[0];
