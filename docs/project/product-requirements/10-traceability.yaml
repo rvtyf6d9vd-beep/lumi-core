@@ -109,6 +109,7 @@ sub_sections:
       - [LUMI-SAFE-001, PMP 安全保护 (Smepmp), "§3.2", "docs/design/pmp/", "tc_pmp_smepmp_*", "Pending"]
       - [LUMI-SAFE-002, 双核异步互锁, "—", "docs/design/multicore/lockstep.html", "tc_lockstep_*", "Pending"]
       - [LUMI-SAFE-003, 总线 Parity 保护, "§7.5", "docs/design/bus/parity.html", "tc_bus_parity_*", "Pending"]
+      - [LUMI-SAFE-006, TCM/L1 ECC 内存保护, "§7.2/7.3", "docs/design/tcm/ecc.html", "tc_ecc_safety_*", "Pending"]
       - [LUMI-SAFE-004, FMEDA 故障模式分析, "—", "—", "—", "Proposed (v2.0)"]
       - [LUMI-SAFE-005, 安全手册, "—", "—", "—", "Proposed (v2.0)"]
 
@@ -200,7 +201,7 @@ sub_sections:
     rows:
       - [硬件需求总数, 66, "§3 硬件需求 (PPA 10 + RTL 56, 含 DFT/多核/复位/时序/质量/时钟架构/PMA)"]
       - [交付物需求, 10, "§4 交付物需求 (RTL 2 + INT 3 + DOC 5, DEL-003/006 去重合并)"]
-      - [功能安全需求, 3, "§5 v1.0 Must 需求 (另 2 条 LUMI-SAFE-004/005 为 Proposed v2.0)"]
+      - [功能安全需求, 4, "§5 v1.0 Must 需求 (SAFE-001~003 + SAFE-006 新增, 另 2 条 Proposed v2.0)"]
       - [信息安全需求, 5, "§6 信息安全需求"]
       - [软件需求, 13, "§7 依赖软件需求 (TOOL/SDK/FW/IDE/SIM/DBG/PERF)"]
       - [需求总数, 98, "全部章节汇总 (BL-1.2 校准, DEL-003/006 去重 + SAFE-006 新增)"]

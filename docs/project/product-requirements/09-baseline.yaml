@@ -1,7 +1,7 @@
 # ═══════════════ 9. 需求基线管理 ═══════════════
 section: "9. 需求基线管理"
 id: sec-baseline
-description: "需求基线 (Baseline) 是整批需求的快照定版，用于版本锁定和发布追溯。"
+description: "需求基线 (Baseline) 是整批需求的快照定版，用于版本锁定和发布追溯。基线列表详见 baselines/ 目录（权威数据源）。"
 
 rules:
   - "需求集有独立的基线版本号 BL-{主版本}.{次版本}，与每条需求自身版本号分开维护。"
@@ -22,16 +22,6 @@ change_management:
   archive_policy: "旧基线移入 baselines/archive/ 保留不删除"
 
 baselines:
-  - version: BL-1.0
-    date: "2026-07-01"
-    count: 91
-    yaml: "baselines/baseline-BL-1.0.yaml"
-    html: "baselines/baseline-BL-1.0.html"
-    note: "M1 里程碑需求基线 — 全部已评审需求定版快照（Must:77, Should:11, Could:3）"
-
-  - version: BL-EXAMPLE
-    date: "2026-06-26"
-    count: 5
-    yaml: "baselines/baseline-BL-EXAMPLE.yaml"
-    html: "baselines/baseline-BL-EXAMPLE.html"
-    note: "示例基线"
+  # 基线列表详见 baselines/ 目录（权威数据源），此处仅保留规则说明。
+  # 最新基线: baseline-BL-1.2.yaml (BL-1.2)
+  # 历史基线: baselines/archive/

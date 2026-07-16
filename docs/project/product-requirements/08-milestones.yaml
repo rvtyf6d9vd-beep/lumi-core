@@ -1,7 +1,7 @@
 # ═══════════════ 8. 项目里程碑 ═══════════════
 section: "8. 项目里程碑"
 id: sec-milestone
-description: "定义项目关键时间节点，包括评审点、交付点和发布点。"
+description: "定义项目关键时间节点，包括评审点、交付点和发布点。详见 master-plan.html（权威数据源）。"
 
 sub_sections:
   - title: ""

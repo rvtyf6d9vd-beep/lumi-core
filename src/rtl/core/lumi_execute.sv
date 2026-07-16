@@ -745,6 +745,10 @@ module lumi_execute #(
     // LSU 地址输出 (2x LSU, 组合逻辑)
     // ═══════════════════════════════════════════════════════════
     always_comb begin
+        // SA-CM-006: 使用 lsu0_occupied 标志替代地址 0 判断
+        // 原代码用 e1_mem_addr[0]==0 判断端口空闲，但地址 0x0 是有效 SRAM 地址
+        logic lsu0_occupied;
+        lsu0_occupied = 1'b0;
         e1_mem_addr[0]  = 32'h0;
         e1_mem_we[0]    = 1'b0;
         e1_mem_wdata[0] = 32'h0;
@@ -755,12 +759,14 @@ module lumi_execute #(
         // 从发射槽中分配 MEM 类型指令到 LSU 端口
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             if (e1_valid[i] && e1_inst[i].fu_type == FU_MEM) begin
-                // LSU 0: 优先使用第一个 MEM 槽
-                if (e1_mem_addr[0] == 32'h0) begin
+                if (!lsu0_occupied) begin
+                    // LSU 端口 0: 第一个 MEM 指令
                     e1_mem_addr[0]  = e1_rs1_data[i] + e1_inst[i].imm;
                     e1_mem_we[0]    = e1_inst[i].inst[5]; // STORE bit (opcode[5])
                     e1_mem_wdata[0] = e1_rs2_data[i];
+                    lsu0_occupied   = 1'b1;
                 end else begin
+                    // LSU 端口 1: 第二个 MEM 指令
                     e1_mem_addr[1]  = e1_rs1_data[i] + e1_inst[i].imm;
                     e1_mem_we[1]    = e1_inst[i].inst[5];
                     e1_mem_wdata[1] = e1_rs2_data[i];
