@@ -37,11 +37,11 @@ sub_sections:
     table_type: data
     headers: [依赖产品, 类型, 版本要求, 接口方式, 说明]
     rows:
-      - [暂无, "--", "--", "--", "暂无依赖产品"]
+      - [本项目为独立处理器 IP, "--", "--", "--", "无外部产品依赖。工具链和 EDA 工具需求见 §7 和 §3.2.12"]
 
   - title: "2.6 标准合规"
     table_type: data
     headers: [标准/规范, 版本, 合规级别, 认证机构, 说明]
     rows:
-      - [RISC-V Profile RT-Europa, v1.0, Mandatory, RISC-V Intl, 嵌入式实时 Profile]
+      - [RISC-V Architecture Test, latest, Mandatory, RISC-V International, "riscv-arch-test 合规测试套件"]
       - [ISO 26262, "2018", ASIL-B, 第三方, 汽车功能安全]

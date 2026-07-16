@@ -282,7 +282,7 @@ module lumi_execute #(
                                 div_remain_negate <= 1'b0;
                             end
 
-                            div_state_reg <= DIV_INIT;
+                            // SA-CM-009: div_state transition handled by always_comb (div_state_next)
                             break;
                         end
                     end
@@ -292,7 +292,7 @@ module lumi_execute #(
                     div_quotient  <= 32'h0;
                     div_remainder <= 32'h0;
                     div_cnt       <= 6'd32;
-                    div_state_reg <= DIV_RUNNING;
+                    // SA-CM-009: div_state transition handled by always_comb (div_state_next)
                 end
 
                 DIV_RUNNING: begin
@@ -309,9 +309,13 @@ module lumi_execute #(
                             div_quotient  <= {div_quotient[30:0], 1'b0};
                         end
                         div_cnt <= div_cnt - 1'b1;
-                    end else begin
-                        div_state_reg <= DIV_DONE;
                     end
+                    // SA-CM-009: div_state transition handled by always_comb:
+                    // - div_cnt > 1: stay in DIV_RUNNING
+                    // - div_cnt == 1: transition to DIV_DONE (last bit processed)
+                    // Note: always_comb uses (div_cnt <= 6'd1), always_ff uses (div_cnt > 6'd0)
+                    // Both equivalent: when div_cnt==1, always_comb triggers transition,
+                    // always_ff processes last bit then decrements to 0
                 end
 
                 DIV_DONE: begin
@@ -322,7 +326,7 @@ module lumi_execute #(
                         div_result_r <= (div_signed && div_quot_negate) ? -div_quotient : div_quotient;
                     div_valid_r   <= 1'b1;
                     div_busy_r    <= 1'b0;
-                    div_state_reg <= DIV_IDLE;
+                    // SA-CM-009: div_state transition handled by always_comb (div_state_next)
                 end
 
                 DIV_STALL: ;

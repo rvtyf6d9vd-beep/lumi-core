@@ -147,7 +147,7 @@ categories:
         status: Approved
         version: v1.0
         source: Lumi Req
-        ref_doc: "LUMI-IPC-001/002/003"
+        ref_doc: "LUMI-PPA-003/004/005"
         acceptance: "提供 CoreMark、Dhrystone、Crypto 基准测试的可编译源码和运行脚本"
         change_date: "2026-07-02"
         note: "对应 perf/benchmarks/ 目录"

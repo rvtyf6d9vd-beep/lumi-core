@@ -14,6 +14,7 @@ sub_sections:
       - [REF-04, RISC-V Debug Spec, V1.0.0, "docs/standards/riscv-specs/extensions/riscv-debug-specification.pdf", RISC-V 调试规范]
       - [REF-05, RISC-V Nexus Trace Spec, V1.0.0, "docs/standards/riscv-specs/extensions/riscv-nexus-trace.pdf", RISC-V 跟踪规范]
       - [REF-06, Packed SIMD Spec, v0.9.4, "docs/standards/riscv-specs/extensions/riscv-packed-simd.pdf", Packed SIMD 扩展规范]
+      - [REF-07, "AMBA AXI and ACE Protocol Specification", ARM IHI0022, "docs/standards/amba/", AMBA 总线协议规范 (AXI4/AHB5/APB5/AXI-Stream/ATB)]
 
   - title: "1.2 术语与缩写"
     table_type: data
@@ -32,3 +33,7 @@ sub_sections:
       - [WRS, Wait for Reservation Set, RISC-V 等待预约集指令]
       - [SIMD, "Single Instruction, Multiple Data", 单指令多数据]
       - [AXI, Advanced eXtensible Interface, AMBA 高性能总线协议]
+      - [AXI4, "AMBA AXI4 Protocol", AXI 协议第四版 (AMBA 4)]
+      - [AHB5, "AMBA AHB5 Protocol", AHB 协议第五版]
+      - [APB5, "AMBA APB5 Protocol", APB 协议第五版]
+      - [AXI-Stream, "AMBA AXI-Stream Protocol", AXI 流式数据传输协议]

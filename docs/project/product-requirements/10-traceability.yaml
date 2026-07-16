@@ -13,16 +13,16 @@ sub_sections:
     table_type: data
     headers: [REQ-ID, 需求名称, 架构章节, 设计文档, 验证用例, 覆盖状态]
     rows:
-      - [LUMI-PIPE-001, 8级流水线架构, "§4 微架构定义", "docs/design/pipeline/", "tc_pipe_*", "Pending"]
-      - [LUMI-FREQ-001, TSMC 28HPC 主频≥1.0GHz, "—", "docs/design/physical/", "tc_synth_*", "Pending"]
-      - [LUMI-IPC-001, CoreMark ≥5.5 CM/MHz, "§4.1", "—", "perf/benchmarks/coremark/", Covered]
-      - [LUMI-IPC-002, Dhrystone ≥3.8 DMIPS/MHz, "§4.1", "—", "perf/benchmarks/dhrystone/", Covered]
-      - [LUMI-IPC-003, 售前售后基准测试覆盖, "§4.1", "—", "perf/benchmarks/", Covered]
-      - [LUMI-AREA-001, STDCELL 面积 ≤0.32 mm², "—", "docs/design/physical/", "tc_area_*", "Pending"]
-      - [LUMI-PWR-001, 单核动态功耗 ≤100mW/GHz, "—", "docs/design/physical/", "tc_power_*", "Pending"]
-      - [LUMI-PWR-002, 单核泄漏功耗 ≤32mW, "—", "docs/design/physical/", "tc_leakage_*", "Pending"]
-      - [LUMI-PWR-003, 功耗状态定义与切换, "§8.2", "docs/design/power/", "tc_power_state_*", "Pending"]
-      - [LUMI-SYS-003, 快速中断延时 ≤16 周期, "§5.3.3", "docs/design/clic/", "tc_irq_latency_*", "Pending"]
+      - [LUMI-PPA-001, 8级流水线架构, "§4 微架构定义", "docs/design/pipeline/", "tc_pipe_*", "Pending"]
+      - [LUMI-PPA-002, TSMC 28HPC 主频≥1.0GHz, "—", "docs/design/physical/", "tc_synth_*", "Pending"]
+      - [LUMI-PPA-003, CoreMark ≥5.5 CM/MHz, "§4.1", "—", "perf/benchmarks/coremark/", Covered]
+      - [LUMI-PPA-004, Dhrystone ≥3.8 DMIPS/MHz, "§4.1", "—", "perf/benchmarks/dhrystone/", Covered]
+      - [LUMI-PPA-005, 售前售后基准测试覆盖, "§4.1", "—", "perf/benchmarks/", Covered]
+      - [LUMI-PPA-006, STDCELL 面积 ≤0.32 mm², "—", "docs/design/physical/", "tc_area_*", "Pending"]
+      - [LUMI-PPA-007, 单核动态功耗 ≤100mW/GHz, "—", "docs/design/physical/", "tc_power_*", "Pending"]
+      - [LUMI-PPA-008, 单核泄漏功耗 ≤32mW, "—", "docs/design/physical/", "tc_leakage_*", "Pending"]
+      - [LUMI-PPA-009, 功耗状态定义与切换, "§8.2", "docs/design/power/", "tc_power_state_*", "Pending"]
+      - [LUMI-PPA-010, 快速中断延时 ≤16 周期, "§5.3.3", "docs/design/clic/", "tc_irq_latency_*", "Pending"]
 
   - title: "10.2 RTL 功能需求追溯"
     table_type: data
@@ -149,20 +149,20 @@ sub_sections:
         table_type: data
         headers: [依赖方, 被依赖方, 依赖类型, 说明]
         rows:
-          - ["LUMI-IPC-001/002 (性能基准)", "LUMI-PIPE-001 (流水线) + 分支预测", "性能依赖", "流水线架构和分支预测精度决定 IPC 上限"]
-          - ["LUMI-SYS-003 (中断延时 ≤16c)", "LUMI-SYS-002 (CLIC)", "功能依赖", "快速中断路径依赖 CLIC 硬件实现"]
+          - ["LUMI-PPA-003/004 (性能基准)", "LUMI-PPA-001 (流水线) + 分支预测", "性能依赖", "流水线架构和分支预测精度决定 IPC 上限"]
+          - ["LUMI-PPA-010 (中断延时 ≤16c)", "LUMI-SYS-002 (CLIC)", "功能依赖", "快速中断路径依赖 CLIC 硬件实现"]
           - ["LUMI-MCORE-002 (锁步)", "LUMI-MCORE-001 (多核互联)", "功能依赖", "锁步需多核拓扑支撑"]
           - ["LUMI-MEM-005 (TCM ECC)", "LUMI-MEM-002 (TCM)", "功能依赖", "ECC 依附于 TCM 存储子系统"]
           - ["LUMI-MEM-007 (Cache ECC)", "LUMI-MEM-006 (L1 Cache)", "功能依赖", "ECC 依附于 Cache 存储子系统"]
           - ["LUMI-FEAT-003 (Trace AXI)", "LUMI-IF-001 (AXI 总线)", "接口依赖", "Trace 输出复用 AXI 接口"]
-          - ["LUMI-FREQ-001 (≥1.0GHz)", "LUMI-TIMING-001/002 (时序)", "物理依赖", "频率目标依赖时序收敛"]
-          - ["LUMI-PWR-001/002 (功耗)", "LUMI-FREQ-001 (频率)", "物理依赖", "功耗指标与频率绑定（mW/GHz）"]
+          - ["LUMI-PPA-002 (≥1.0GHz)", "LUMI-TIMING-001/002 (时序)", "物理依赖", "频率目标依赖时序收敛"]
+          - ["LUMI-PPA-007/008 (功耗)", "LUMI-PPA-002 (频率)", "物理依赖", "功耗指标与频率绑定（mW/GHz）"]
           - ["LUMI-BOOT-003 (Boot ROM)", "LUMI-MEM-002 (TCM)", "资源依赖", "Boot ROM 可复用 TCM 地址空间"]
           - ["LUMI-IF-004 (中断信号线)", "LUMI-SYS-001/002 (PLIC/CLIC)", "接口依赖", "中断信号线规格由中断控制器定义"]
           - ["LUMI-FEAT-004 (JTAG)", "LUMI-FEAT-001 (Debug)", "接口依赖", "JTAG 物理接口服务于 Debug Module"]
           - ["LUMI-DFT-003 (边界扫描)", "LUMI-FEAT-004 (JTAG)", "接口依赖", "DFT 边界扫描复用 JTAG 物理接口"]
-          - ["LUMI-PWR-003 (功耗状态)", "LUMI-SYS-004 (WFI/WRS)", "行为依赖", "功耗状态转换由 WFI/WRS 指令触发"]
-          - ["LUMI-SYS-008 (功耗接口)", "LUMI-PWR-003 (功耗状态)", "接口依赖", "外部接口控制已定义的功耗状态"]
+          - ["LUMI-PPA-009 (功耗状态)", "LUMI-SYS-004 (WFI/WRS)", "行为依赖", "功耗状态转换由 WFI/WRS 指令触发"]
+          - ["LUMI-SYS-008 (功耗接口)", "LUMI-PPA-009 (功耗状态)", "接口依赖", "外部接口控制已定义的功耗状态"]
 
       - title: "10.7.2 软硬件协同依赖"
         table_type: data
@@ -171,13 +171,13 @@ sub_sections:
           - ["LUMI-TOOL-001 (GCC)", "LUMI-ISA-* (全部 ISA 扩展)", "编译依赖", "编译器需支持全部已实现 ISA 扩展"]
           - ["LUMI-TOOL-002 (LLVM)", "LUMI-ISA-* (全部 ISA 扩展)", "编译依赖", "LLVM 后端需支持全部已实现 ISA 扩展"]
           - ["LUMI-SIM-001 (ISS)", "LUMI-ISA-* (全部 ISA 扩展)", "模型依赖", "ISS 需模拟全部 ISA 行为"]
-          - ["LUMI-SIM-002 (gem5)", "LUMI-PIPE-001 + 微架构", "模型依赖", "gem5 需建模流水线参数和 Cache 层次"]
+          - ["LUMI-SIM-002 (gem5)", "LUMI-PPA-001 + 微架构", "模型依赖", "gem5 需建模流水线参数和 Cache 层次"]
           - ["LUMI-DBG-001 (GDB+OpenOCD)", "LUMI-FEAT-001 (Debug Module)", "协议依赖", "调试工具依赖 Debug Module 协议"]
           - ["LUMI-DBG-002 (Trace 解码)", "LUMI-FEAT-002/003 (Trace+AXI)", "协议依赖", "Trace 解码依赖 Trace 数据格式定义"]
           - ["LUMI-FW-001 (Boot FW)", "LUMI-BOOT-001/002/003", "功能依赖", "Boot 固件依赖 Boot ROM 硬件和复位向量"]
           - ["LUMI-FW-002 (RTOS BSP)", "LUMI-SYS-002 (CLIC) + LUMI-SYS-004 (WFI)", "功能依赖", "RTOS 调度依赖中断管理和低功耗指令"]
           - ["LUMI-SDK-001 (HAL/BSP)", "LUMI-SYS-001/002 + LUMI-IF-*", "功能依赖", "HAL 需覆盖中断控制器和总线接口寄存器"]
-          - ["LUMI-PERF-001 (基准测试)", "LUMI-SIM-001/002 + LUMI-IPC-*", "运行依赖", "基准测试需在模拟器或 FPGA 上运行"]
+          - ["LUMI-PERF-001 (基准测试)", "LUMI-SIM-001/002 + LUMI-PPA-003/004/005", "运行依赖", "基准测试需在模拟器或 FPGA 上运行"]
           - ["LUMI-PERF-002 (性能计数器)", "LUMI-ISA-011 (Zihpm/Zicntr)", "功能依赖", "性能计数器工具依赖硬件 HPM 实现"]
           - ["LUMI-IDE-001 (IDE 调试)", "LUMI-DBG-001 (GDB+OpenOCD)", "工具依赖", "IDE 调试功能依赖 GDB/OpenOCD 底层支持"]
 
