@@ -63,7 +63,7 @@
     <h1>Lumi-Core 平台架构说明书</h1>
     <p class="subtitle">Platform Architecture Specification</p>
     <div class="meta">
-        <p><strong>文档编号:</strong> LUMI-ARCH-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0.3</p>
+        <p><strong>文档编号:</strong> LUMI-ARCH-001 &nbsp;|&nbsp; <strong>版本:</strong> 1.0.4</p>
         <p><strong>创建日期:</strong> 2026-07-01 &nbsp;|&nbsp; <strong>状态:</strong> 定版</p>
         <p><strong>负责人:</strong> 架构组 (hw-design)</p>
     </div>
@@ -267,7 +267,7 @@
 <h1 id="ch4">4. 微架构定义 (Micro-architecture)</h1>
 
 <h2>4.1 流水线概述</h2>
-<p>Lumi-Core 采用 <strong>8 级顺序执行超标量流水线</strong> <span class="req-tag">LUMI-PIPE-001</span>，设计目标是在 RV32 架构上达到 CoreMark &ge;5.5 CM/MHz <span class="req-tag">LUMI-IPC-001</span>。</p>
+<p>Lumi-Core 采用 <strong>8 级顺序执行超标量流水线</strong> <span class="req-tag">LUMI-PPA-001</span>，设计目标是在 RV32 架构上达到 CoreMark &ge;5.5 CM/MHz <span class="req-tag">LUMI-PPA-003</span>。</p>
 
 <blockquote><strong>性能基线 (gem5 MinorCPU 实测):</strong> CoreMark Triple 5.54 CM/MHz (目标 5.5 已达成), IPC 约 1.80。编译器: GCC -O2 -funroll-loops。</blockquote>
 
@@ -1009,16 +1009,16 @@
 <h2>9.1 PPA 目标</h2>
 <table>
     <tr><th>REQ-ID</th><th>需求名称</th><th>优先级</th><th>架构章节</th><th>验收标准</th></tr>
-    <tr><td>LUMI-PIPE-001</td><td>8 级流水线架构</td><td>Must</td><td>&sect;4.2</td><td>流水线级数为 8 级</td></tr>
-    <tr><td>LUMI-FREQ-001</td><td>TSMC 28HPC 主频 &ge;1.0GHz</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &ge;1.0GHz</td></tr>
-    <tr><td>LUMI-IPC-001</td><td>CoreMark &ge;5.5 CM/MHz</td><td>Must</td><td>&sect;4.1</td><td>CoreMark &ge;5.5 CM/MHz</td></tr>
-    <tr><td>LUMI-IPC-002</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td><td>Must</td><td>&sect;4.1</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td></tr>
-    <tr><td>LUMI-IPC-003</td><td>售前售后基准测试覆盖</td><td>Must</td><td>&sect;4.1</td><td>CoreMark/Dhrystone/Crypto 可运行</td></tr>
-    <tr><td>LUMI-AREA-001</td><td>STDCELL 面积 &le;0.32 mm&sup2;</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &le;0.32 mm&sup2;</td></tr>
-    <tr><td>LUMI-PWR-001</td><td>单核动态功耗 &le;100mW/GHz</td><td>Must</td><td>&sect;4.1</td><td>Dynamic &le;100mW/GHz</td></tr>
-    <tr><td>LUMI-PWR-002</td><td>单核泄漏功耗 &le;32mW</td><td>Must</td><td>&sect;4.1</td><td>Leakage &le;32mW</td></tr>
+    <tr><td>LUMI-PPA-001</td><td>8 级流水线架构</td><td>Must</td><td>&sect;4.2</td><td>流水线级数为 8 级</td></tr>
+    <tr><td>LUMI-PPA-002</td><td>TSMC 28HPC 主频 &ge;1.0GHz</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &ge;1.0GHz</td></tr>
+    <tr><td>LUMI-PPA-003</td><td>CoreMark &ge;5.5 CM/MHz</td><td>Must</td><td>&sect;4.1</td><td>CoreMark &ge;5.5 CM/MHz</td></tr>
+    <tr><td>LUMI-PPA-004</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td><td>Must</td><td>&sect;4.1</td><td>Dhrystone &ge;3.8 DMIPS/MHz</td></tr>
+    <tr><td>LUMI-PPA-005</td><td>售前售后基准测试覆盖</td><td>Must</td><td>&sect;4.1</td><td>CoreMark/Dhrystone/Crypto 可运行</td></tr>
+    <tr><td>LUMI-PPA-006</td><td>STDCELL 面积 &le;0.32 mm&sup2;</td><td>Must</td><td>&sect;4.1</td><td>TSMC 28HPC 下 &le;0.32 mm&sup2;</td></tr>
+    <tr><td>LUMI-PPA-007</td><td>单核动态功耗 &le;100mW/GHz</td><td>Must</td><td>&sect;4.1</td><td>Dynamic &le;100mW/GHz</td></tr>
+    <tr><td>LUMI-PPA-008</td><td>单核泄漏功耗 &le;32mW</td><td>Must</td><td>&sect;4.1</td><td>Leakage &le;32mW</td></tr>
     <tr><td>LUMI-SYS-003</td><td>快速中断延时 &le;16 周期</td><td>Must</td><td>&sect;5.3.3</td><td>中断信号到首条指令 &le;16 cycle</td></tr>
-    <tr><td>LUMI-PWR-003</td><td>功耗状态定义与切换</td><td>Must</td><td>&sect;8.2</td><td>Active/Sleep/Deep Sleep 三态，切换延时可配</td></tr>
+    <tr><td>LUMI-PPA-009</td><td>功耗状态定义与切换</td><td>Must</td><td>&sect;8.2</td><td>Active/Sleep/Deep Sleep 三态，切换延时可配</td></tr>
 </table>
 
 <h2>9.2 RTL 功能需求</h2>
@@ -1143,7 +1143,7 @@
 <div class="footer">
     <p><a href="../index.html" style="display:inline-block;margin-bottom:0.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500;">&larr; 返回文档地图</a></p>
     <p>Lumi-Core Platform Architecture Specification &mdash; CONFIDENTIAL<br>
-    文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0.3 &nbsp;|&nbsp; 更新: 2026-07-07<br>
+    文档编号: LUMI-ARCH-001 &nbsp;|&nbsp; 版本: 1.0.4 &nbsp;|&nbsp; 更新: 2026-07-16<br>
     承接: <a href="../project/product-requirements.html">PRD (product-requirements.html)</a> &nbsp;|&nbsp;
     引用: <a href="../profile/Lumi-Core-Profile.html">Profile (Lumi-Core-Profile.html)</a></p>
 </div>
