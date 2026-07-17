@@ -31,7 +31,7 @@ TB_SRCS := $(TB_DIR)/lib/lumi_tb_pkg.sv \
 ALL_SRCS := $(RTL_SRCS) $(TB_SRCS)
 
 # Include 路径
-INC_DIRS := -I$(RTL_DIR)/include
+INC_DIRS := -I$(RTL_DIR)/include -I$(TB_DIR)
 
 # ═══════════════════════════════════════════════
 # Lint (Verilator)
@@ -191,6 +191,34 @@ v1-rv32m: v1-build
 	@echo "[V1-RV32M] Running..."
 	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32m_basic_32.hex
 	@echo "[V1-RV32M] Done"
+
+# RV32I 未对齐内存访问定向测试 (BUG-009/BUG-010)
+.PHONY: v1-rv32i-misalign
+v1-rv32i-misalign: v1-build
+	@echo "[V1-MISALIGN] Compiling rv32i_misalign.S..."
+	$(RV32I_CC) -march=rv32im -mabi=$(RV32I_ABI) -nostdlib \
+		-T $(RV32I_LD) -o $(TESTS_DIR)/results/rv32i_misalign.elf \
+		$(TESTS_DIR)/directed/rv32i_misalign.S
+	$(ELF2HEX) $(TESTS_DIR)/results/rv32i_misalign.elf \
+		$(TESTS_DIR)/results/rv32i_misalign_32.hex \
+		--base-addr 0x0 --mem-size 0x40000 --word-width 32
+	@echo "[V1-MISALIGN] Running..."
+	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_misalign_32.hex
+	@echo "[V1-MISALIGN] Done"
+
+# Loop Debug Test (core_list_init 最小复现)
+.PHONY: v1-loop-debug
+v1-loop-debug: v1-build
+	@echo "[V1-LOOP-DBG] Compiling rv32im_loop_debug.S..."
+	$(RV32I_CC) -march=rv32im -mabi=ilp32 -nostdlib \
+		-T $(RV32I_LD) -o $(TESTS_DIR)/results/rv32im_loop_debug.elf \
+		$(TESTS_DIR)/directed/rv32im_loop_debug.S
+	$(ELF2HEX) $(TESTS_DIR)/results/rv32im_loop_debug.elf \
+		$(TESTS_DIR)/results/rv32im_loop_debug_32.hex \
+		--base-addr 0x0 --mem-size 0x40000 --word-width 32
+	@echo "[V1-LOOP-DBG] Running..."
+	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32im_loop_debug_32.hex
+	@echo "[V1-LOOP-DBG] Done"
 
 # RV32B 扩展测试
 .PHONY: v1-rv32b

@@ -15,16 +15,14 @@ module lumi_decode_issue #(
     input  logic                    clk_core,
     input  logic                    reset_n,
 
-    // ── D 级输入 (← F2, FETCH_WIDTH wide) ─────────────────────
-    input  logic [31:0]             d_instructions [FETCH_WIDTH-1:0],
-    input  logic [FETCH_WIDTH-1:0]  d_inst_valid,
-    input  logic [31:0]             d_pc,
-    input  logic                    d_valid,
-
-    // ERR-042: per-instruction PC + 压缩标志 (← predecode)
-    input  logic [31:0]             d_inst_pc [FETCH_WIDTH-1:0],
-    input  logic [FETCH_WIDTH-1:0]  d_inst_compressed,
-    input  logic [15:0]             d_inst_raw [FETCH_WIDTH-1:0],
+    // ── Predecode 输入 (← lumi_core_top, 组合逻辑输出) ────────
+    input  logic [31:0]             pd_inst      [FETCH_WIDTH-1:0],
+    input  logic [FETCH_WIDTH-1:0]  pd_inst_valid,
+    input  logic [31:0]             pd_inst_pc   [FETCH_WIDTH-1:0],
+    input  logic [FETCH_WIDTH-1:0]  pd_inst_compressed,
+    input  logic [15:0]             pd_inst_raw  [FETCH_WIDTH-1:0],
+    input  logic [3:0]              pd_inst_count,  // BUG-009-DIB: predecode 指令计数 (用于 dib_can_accept)
+    input  logic                    f2_valid,  // 上一周期 F2 数据有效
 
     // ── D 级输出 (→ RegFile 读端口) ───────────────────────────
     output logic [31:0]             d_rs1_data [ISSUE_WIDTH-1:0],
@@ -52,9 +50,15 @@ module lumi_decode_issue #(
 
     // ── 控制 ─────────────────────────────────────────────────
     output logic                    stall_out,
-        output logic                    all_issued,  // ERR-019: 当前批次全部已发射
+    output logic                    dib_not_full,  // DIB 有空间 (替代 all_issued)
+    output logic                    dib_can_accept, // BUG-009-DIB: 当前 predecode 批次可放入 DIB (考虑 issue 排空)
     input  logic                    flush,
-    input  logic                    div_busy
+    input  logic                    div_busy,
+
+    // ── Bug#5: E1→M Load-Use 冒险检测输入 ────────────────
+    // 当 E1→M 有未完成 load 时, 依赖其结果的指令不能发射
+    input  logic [ISSUE_WIDTH-1:0]  e1m_load_pending,
+    input  logic [4:0]              e1m_rd [ISSUE_WIDTH-1:0]
 );
 
     import lumi_pkg::*;
@@ -100,6 +104,167 @@ module lumi_decode_issue #(
     } decode_t;
 
     decode_t dec [FETCH_WIDTH-1:0];
+
+    // ═══════════════════════════════════════════════════════════
+    // DIB (Decoded Instruction Buffer) — 32-entry FIFO
+    // 替换 f2r_pd_inst 单 batch 寄存器, 解耦 Fetch 和 Issue
+    // ═══════════════════════════════════════════════════════════
+    typedef struct packed {
+        logic        valid;
+        logic [31:0] inst;           // 展开后的 32-bit 指令
+        logic [31:0] pc;             // 指令 PC
+        logic        compressed;     // 压缩标志
+        logic [15:0] inst_raw;       // 原始 16-bit (用于调试/trace)
+    } dib_entry_t;
+
+    localparam int DIB_DEPTH  = 32;
+    localparam int DIB_PTR_W  = $clog2(DIB_DEPTH);  // 5 bits
+
+    dib_entry_t dib [DIB_DEPTH-1:0];
+    logic [DIB_PTR_W-1:0]   dib_wr_ptr, dib_rd_ptr;
+    logic [DIB_PTR_W:0]     dib_count;  // 6 bits, 0~32
+
+    logic dib_full, dib_empty;
+    assign dib_full     = (dib_count == DIB_DEPTH[DIB_PTR_W:0]);
+    assign dib_empty    = (dib_count == 0);
+    // 保守 not_full: 预留一个完整 batch 空间, 防止部分写入丢失
+    assign dib_not_full = (dib_count <= (DIB_DEPTH - FETCH_WIDTH));
+
+    // BUG-009-DIB: dib_can_accept — 考虑当前周期 issue 排空后的有效空间
+    // 解决 dib_not_full 过于保守导致的死锁: DIB 持续排空但 PC 永不前进
+    // dib_can_accept = 当前 predecode 批次在 issue 排空后可放入 DIB
+    logic [5:0] dib_count_after_issue; // 预测 issue 后的 DIB 占用
+    logic       dib_underflow;         // issue 导致下溢
+    assign dib_underflow = (issue_count[5:0] > {1'b0, dib_count});
+    assign dib_count_after_issue = dib_underflow ? 6'h0 : ({1'b0, dib_count} - issue_count[5:0]);
+    assign dib_can_accept = (dib_count_after_issue + {2'b0, pd_inst_count}) <= DIB_DEPTH[5:0];
+
+    // ── pd_inst_r: 每周期捕获 predecode 输出 (替代原 f2r_pd_inst) ──
+    logic [31:0]        pd_inst_r [FETCH_WIDTH-1:0];
+    logic [FETCH_WIDTH-1:0] pd_inst_valid_r;
+    logic [31:0]        pd_inst_pc_r [FETCH_WIDTH-1:0];
+    logic [FETCH_WIDTH-1:0] pd_inst_compressed_r;
+    logic [15:0]        pd_inst_raw_r [FETCH_WIDTH-1:0];
+
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            pd_inst_valid_r <= '0;
+            pd_inst_compressed_r <= '0;
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                pd_inst_r[i]            <= 32'h0;
+                pd_inst_pc_r[i]         <= 32'h0;
+                pd_inst_raw_r[i]        <= 16'h0;
+            end
+        end else begin
+            pd_inst_valid_r      <= pd_inst_valid;
+            pd_inst_compressed_r <= pd_inst_compressed;
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                pd_inst_r[i]     <= pd_inst[i];
+                pd_inst_pc_r[i]  <= pd_inst_pc[i];
+                pd_inst_raw_r[i] <= pd_inst_raw[i];
+            end
+        end
+    end
+
+    // ── DIB 写入偏移量计算 (组合逻辑) ──
+    logic [DIB_PTR_W-1:0] dib_wr_offset;
+
+    always_comb begin
+        dib_wr_offset = '0;
+        for (int i = 0; i < FETCH_WIDTH; i++) begin
+            // 保守检查: 确保当前及后续所有可能 valid 的 entry 都能写入
+            if (pd_inst_valid_r[i] && (dib_count + dib_wr_offset + (FETCH_WIDTH - 1 - i) < DIB_DEPTH))
+                dib_wr_offset = dib_wr_offset + 1'b1;
+        end
+    end
+
+    // ── DIB 写入/读取统一 always_ff ──
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) begin
+            dib_wr_ptr <= '0;
+            dib_rd_ptr <= '0;
+            dib_count  <= '0;
+            for (int i = 0; i < DIB_DEPTH; i++)
+                dib[i] <= '{default: '0};
+        end else if (flush) begin
+            dib_wr_ptr <= '0;
+            dib_rd_ptr <= '0;
+            dib_count  <= '0;
+        end else begin
+            // ── 写入: predecode → DIB (使用 pd_inst_r, 不是 pd_inst) ──
+            if (f2_valid && dib_wr_offset > 0) begin
+                for (int i = 0; i < FETCH_WIDTH; i++) begin
+                    if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].valid      <= 1'b1;
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst       <= pd_inst_r[i];
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pc         <= pd_inst_pc_r[i];
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
+                    end
+                end
+                dib_wr_ptr <= dib_wr_ptr + dib_wr_offset;
+            end
+
+            // ── 读取: issue 消耗 ──
+            if (issue_count > 0) begin
+                dib_rd_ptr <= dib_rd_ptr + DIB_PTR_W'(issue_count);
+            end
+
+            // ── count 统一更新 ──
+            // 修复: 仅当 f2_valid=1 时才加 dib_wr_offset, 防止 f2_valid=0 时
+            // pd_inst_valid_r 中的残留 valid 条目虚增 dib_count
+            dib_count <= dib_count + (f2_valid ? dib_wr_offset : '0) - issue_count;
+        end
+    end
+
+    // ── DIB 读取 (组合逻辑, 从 DIB 头部读取 FETCH_WIDTH 条) ──
+    // 包含 write-through bypass: DIB 写入和读取在同一周期时,
+    // 直接转发写入数据, 消除 1 周期读延迟
+    logic [31:0]        dib_read_inst [FETCH_WIDTH-1:0];
+    logic [31:0]        dib_read_pc [FETCH_WIDTH-1:0];
+    logic [FETCH_WIDTH-1:0] dib_read_compressed;
+    logic [15:0]        dib_read_raw [FETCH_WIDTH-1:0];
+    logic [FETCH_WIDTH-1:0] dib_read_valid;
+
+    // bypass 变量 (模块级声明, Verilator 兼容)
+    logic [DIB_PTR_W-1:0] dib_rd_addr;
+    logic                 dib_bp_hit;
+    int                   dib_bp_idx;
+
+    always_comb begin
+        for (int s = 0; s < FETCH_WIDTH; s++) begin
+            dib_rd_addr = dib_rd_ptr + s[DIB_PTR_W-1:0];
+            dib_bp_hit  = 1'b0;
+            dib_bp_idx  = 0;
+
+            // Write-through bypass: 检查读取位置是否正在被写入
+            if (f2_valid) begin
+                for (int i = 0; i < FETCH_WIDTH; i++) begin
+                    if (!dib_bp_hit && pd_inst_valid_r[i] && (i < dib_wr_offset) &&
+                        ((dib_wr_ptr + i[DIB_PTR_W-1:0]) == dib_rd_addr)) begin
+                        dib_bp_hit = 1'b1;
+                        dib_bp_idx = i;
+                    end
+                end
+            end
+
+            if (dib_bp_hit) begin
+                // 转发: 直接使用本周期写入数据
+                dib_read_inst[s]       = pd_inst_r[dib_bp_idx];
+                dib_read_pc[s]         = pd_inst_pc_r[dib_bp_idx];
+                dib_read_compressed[s] = pd_inst_compressed_r[dib_bp_idx];
+                dib_read_raw[s]        = pd_inst_raw_r[dib_bp_idx];
+                dib_read_valid[s]      = 1'b1;
+            end else begin
+                // 存储数据: 从 DIB 寄存器读取
+                dib_read_inst[s]       = dib[dib_rd_addr].inst;
+                dib_read_pc[s]         = dib[dib_rd_addr].pc;
+                dib_read_compressed[s] = dib[dib_rd_addr].compressed;
+                dib_read_raw[s]        = dib[dib_rd_addr].inst_raw;
+                dib_read_valid[s]      = (s < dib_count) && dib[dib_rd_addr].valid;
+            end
+        end
+    end
 
     // ═══════════════════════════════════════════════════════════
     // RV32C 压缩指令展开器 (decode-issue.html §3.1.1)
@@ -275,13 +440,13 @@ module lumi_decode_issue #(
     always_comb begin
         for (int i = 0; i < FETCH_WIDTH; i++) begin
             // RV32C: 压缩指令展开
-            if (d_inst_valid[i] && d_instructions[i][1:0] != 2'b11) begin
+            if (dib_read_valid[i] && dib_read_inst[i][1:0] != 2'b11) begin
                 // 16-bit compressed → expand to 32-bit
-                tmp_inst = c_ext_expand(d_instructions[i][15:0]);
+                tmp_inst = c_ext_expand(dib_read_inst[i][15:0]);
             end else begin
-                tmp_inst = d_instructions[i];
+                tmp_inst = dib_read_inst[i];
             end
-            dec[i].valid   = d_inst_valid[i] && d_valid;
+            dec[i].valid   = dib_read_valid[i];
             dec[i].opcode  = tmp_inst[6:0];
             dec[i].rd      = tmp_inst[11:7];
             dec[i].funct3  = tmp_inst[14:12];
@@ -477,15 +642,10 @@ module lumi_decode_issue #(
     logic       issue_ready [ISSUE_WIDTH-1:0]; // 是否可发射
     logic [$clog2(FETCH_WIDTH):0] issue_count; // 实际发射数
 
-    // ── issued_mask: 跟踪已发射指令 (ERR-014 修复) ────
-    logic [FETCH_WIDTH-1:0] issued_mask_r, issued_mask_next;
-    logic [31:0] batch_pc_r, batch_pc_next;
-
     // 临时变量 (避免 automatic inside always_comb, Verilator 兼容)
     logic       tmp_already_selected;
     logic       tmp_fu_available;
     logic       tmp_batch_raw;
-    logic       tmp_selected;
 
     decode_t    tmp_prev;
     logic [31:0] tmp_inst;
@@ -526,7 +686,7 @@ module lumi_decode_issue #(
             if (!stop_issue) begin
                 found_for_slot = 1'b0;
                 for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
-                    if (!found_for_slot && dec[qi].valid && !issued_mask_r[qi] && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
+                    if (!found_for_slot && dec[qi].valid && issue_count < ISSUE_WIDTH[$clog2(FETCH_WIDTH):0]) begin
                         // 检查该解码槽是否已被选中
                         tmp_already_selected = 1'b0;
                         for (int p = 0; p < s; p++) begin
@@ -563,6 +723,21 @@ module lumi_decode_issue #(
                                 end
                             end
 
+                            // Bug#5: 检查跨批次 Load-Use 冒险
+                            // E1→M 有未完成 load 时, 依赖其 rd 的指令不能发射
+                            // (load 结果在 M 级才能产生, 此时发射会导致依赖指令
+                            //  进入 E1 读到旧寄存器值)
+                            if (!tmp_batch_raw) begin
+                                for (int m = 0; m < ISSUE_WIDTH; m++) begin
+                                    if (e1m_load_pending[m] && e1m_rd[m] != 5'h0) begin
+                                        if ((dec[qi].has_rs1 && dec[qi].rs1 == e1m_rd[m]) ||
+                                            (dec[qi].has_rs2 && dec[qi].rs2 == e1m_rd[m])) begin
+                                            tmp_batch_raw = 1'b1;
+                                        end
+                                    end
+                                end
+                            end
+
                             if (tmp_fu_available && !tmp_batch_raw && !issue_ready[s]) begin
                                 issue_sel[s]   = qi[2:0];
                                 issue_ready[s] = 1'b1;
@@ -584,28 +759,11 @@ module lumi_decode_issue #(
         end
         end // ERR-019: close if (!post_flush_block_r)
 
-        // 如果队列中有有效指令但无法全部发射, stall
-        if (d_valid) begin
-            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
-                if (dec[qi].valid && !issued_mask_r[qi]) begin
-                    tmp_selected = 1'b0;
-                    for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                        if (issue_ready[s] && issue_sel[s] == qi[2:0])
-                            tmp_selected = 1'b1;
-                    end
-                    if (!tmp_selected) stall_out = 1'b1;
-                end
-            end
-        end
-
-        // ERR-019: 检查当前批次是否全部已发射
-        // 用于 F2 流水线门控: 仅当 all_issued 时才允许 F2 前进
-        all_issued = 1'b1;
-        if (d_valid) begin
-            for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
-                if (dec[qi].valid && !issued_mask_r[qi])
-                    all_issued = 1'b0;
-            end
+        // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue)
+        if (!dib_empty && !post_flush_block_r) begin
+            // DIB 有有效指令但 issue_count == 0, 说明被阻塞
+            if (dib_count > 0 && issue_count == 0)
+                stall_out = 1'b1;
         end
 
     end
@@ -635,12 +793,12 @@ module lumi_decode_issue #(
             if (issue_ready[s]) begin
                 tmp_dec_d = dec[issue_sel[s]];
 
-                i_issue[s].pc       = d_inst_pc[issue_sel[s]];  // ERR-042: per-instruction PC
-                // ERR-042: 指令已由 predecode 展开为 32-bit, 无需再次展开
-                i_issue[s].inst = d_instructions[issue_sel[s]];
-                // ERR-042: inst_raw 来自 predecode (原始 16-bit halfword)
-                i_issue[s].inst_raw = d_inst_raw[issue_sel[s]];
-                i_issue[s].is_compressed = d_inst_compressed[issue_sel[s]];  // ERR-042
+                i_issue[s].pc       = dib_read_pc[issue_sel[s]];  // per-instruction PC from DIB
+                // 指令已由 predecode 展开为 32-bit, 无需再次展开
+                i_issue[s].inst = dib_read_inst[issue_sel[s]];
+                // inst_raw 来自 predecode (原始 16-bit halfword)
+                i_issue[s].inst_raw = dib_read_raw[issue_sel[s]];
+                i_issue[s].is_compressed = dib_read_compressed[issue_sel[s]];
                 i_issue[s].rd       = tmp_dec_d.has_rd ? tmp_dec_d.rd : 5'h0;
                 i_issue[s].rs1      = tmp_dec_d.rs1;
                 i_issue[s].rs2      = tmp_dec_d.rs2;
@@ -654,7 +812,7 @@ module lumi_decode_issue #(
                 i_issue[s].exc_cause = 4'h0;
 
                 // 检查非法指令
-                if (tmp_dec_d.opcode == 7'b0 && !d_inst_valid[issue_sel[s]]) begin
+                if (tmp_dec_d.opcode == 7'b0 && !dib_read_valid[issue_sel[s]]) begin
                     i_issue[s].exc_valid = 1'b1;
                     i_issue[s].exc_cause = EXC_ILLEGAL_INST[3:0];
                 end
@@ -750,82 +908,59 @@ module lumi_decode_issue #(
     end
 
     // ═══════════════════════════════════════════════════════════
-    // issued_mask 寄存器: 跨周期跟踪已发射指令 (ERR-014 修复)
+    // post_flush_block: flush 后阻止发射, 直到 DIB 有正确路径数据
     // ═══════════════════════════════════════════════════════════
-    // ERR-019: post_flush_block — flush 后阻止发射, 直到新批次 (正确路径) 到达.
-    // 原理: flush 时 batch_pc_r = 当前 d_pc (错误路径), flush 后 F2 被清空
-    // (f2_valid_r <= 0), d_valid=0. ST_FLUSH 结束后 F2 捕获新批次 (来自
-    // 重定向 PC), d_valid 转 1, 此时可解除 block 继续发射.
-    //
-    // ERR-025 修复: 不再要求 d_pc != batch_pc_r, 因为:
-    // (1) 循环结构 (如 crt0 BSS 清零循环 j 1b) 重定向到与原 PC 相同位置,
-    //     旧条件会导致 post_flush_block_r 永远不清, 死锁.
-    // (2) F2 在 flush 周期已清空 (f2_valid_r <= 0), 新批次必然来自重定向路径,
-    //     d_valid 上升沿即为"正确路径批次到达"信号, 无需 PC 比较.
     logic post_flush_block_r;
 
-    always_comb begin
-        issued_mask_next = issued_mask_r;
-        batch_pc_next    = batch_pc_r;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n)
+            post_flush_block_r <= 1'b0;
+        else if (flush)
+            post_flush_block_r <= 1'b1;
+        else if (dib_count > 0 && !flush)  // DIB 有正确路径数据
+            post_flush_block_r <= 1'b0;
+    end
 
-        if (flush) begin
-            // ERR-019: flush 时清除 mask, 启用 post_flush_block
-            issued_mask_next = '0;
-            batch_pc_next    = d_pc;
-        end else if (post_flush_block_r && d_valid) begin
-            // ERR-025 修复: 新批次到达 (d_valid 上升沿) 即解除 block.
-            // 旧条件 `&& d_pc != batch_pc_r` 在循环回 PC 自重定向时死锁
-            // (crt0_v1.S 的 j 1b 跳回 BGEU 的 PC, 新旧 F2 PC 相同).
-            // F2 在 flush 周期已清空, 新 d_valid=1 必然来自重定向路径, 安全.
-            issued_mask_next = '0;
-            batch_pc_next    = d_pc;
-        end else if (post_flush_block_r) begin
-            // ERR-019: post_flush_block 期间, 不允许发射
-            issued_mask_next = '0;
-        end else if (d_valid && d_pc != batch_pc_r) begin
-            // 新批次到达 (PC 变化): 清除 mask
-            issued_mask_next = '0;
-            batch_pc_next    = d_pc;
-        end else if (d_valid) begin
-            // ERR-019: 检查是否所有有效指令都已发射 (batch 已完全消费)
-            // 对于自循环 JAL (j .), 每次迭代 fetch 重新取相同 PC 的批次,
-            // 必须清除 mask 以允许重新发射.
-            begin
-                logic all_valid_issued;
-                all_valid_issued = 1'b1;
-                for (int qi = 0; qi < FETCH_WIDTH; qi++) begin
-                    if (dec[qi].valid && !issued_mask_r[qi])
-                        all_valid_issued = 1'b0;
-                end
-                if (all_valid_issued && |issued_mask_r) begin
-                    // 所有有效指令已发射 → 清除 mask, 允许下一迭代重新发射
-                    issued_mask_next = '0;
-                end else begin
-                    // always-record: 每周期都记录已发射指令
-                    // 确保 carry-over 指令不被丢失
-                    for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                        if (issue_ready[s])
-                            issued_mask_next[issue_sel[s]] = 1'b1;
+    // ── Phase 2 诊断 trace: 追踪 addi@0x2c 命运 ──
+    // synopsys translate_off
+    `ifdef VERILATOR
+    logic [31:0] di_cyc_cnt;
+    always_ff @(posedge clk_core or negedge reset_n)
+        if (!reset_n) di_cyc_cnt <= '0; else di_cyc_cnt <= di_cyc_cnt + 1;
+
+    initial begin
+        forever begin
+            @(posedge clk_core);
+            // 追踪 DIB 写入 (PC=0x2c addi)
+            if (f2_valid && dib_wr_offset > 0) begin
+                for (int i = 0; i < FETCH_WIDTH; i++) begin
+                    if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
+                        if (pd_inst_pc_r[i] >= 32'h28 && pd_inst_pc_r[i] <= 32'h3c)
+                            $display("[DI-WR] cyc=%0d dib_idx=%0d pc=0x%04h inst=0x%08h",
+                                di_cyc_cnt, (dib_wr_ptr + i[DIB_PTR_W-1:0]),
+                                pd_inst_pc_r[i], pd_inst_raw_r[i]);
                     end
                 end
             end
+            // 追踪 DIB 读取/issue (PC=0x28-0x3c)
+            for (int s = 0; s < ISSUE_WIDTH; s++) begin
+                if (issue_ready[s]) begin
+                    if (dib_read_pc[issue_sel[s]] >= 32'h20 && dib_read_pc[issue_sel[s]] <= 32'h3c)
+                        $display("[DI-IS] cyc=%0d slot=%0d pc=0x%04h raw=0x%04h inst=0x%08h fu=%0d rd=%0d rs1=%0d rs2=%0d stop=%0b",
+                            di_cyc_cnt, s, dib_read_pc[issue_sel[s]], dib_read_raw[issue_sel[s]],
+                            dib_read_inst[issue_sel[s]],
+                            dec[issue_sel[s]].fu_type, dec[issue_sel[s]].rd,
+                            dec[issue_sel[s]].rs1, dec[issue_sel[s]].rs2, stop_issue);
+                end
+            end
+            // 追踪 e1m_load_pending 和 stall
+            if (e1m_load_pending[0] || e1m_load_pending[1] || stall_out)
+                $display("[DI-STALL] cyc=%0d e1m_lp=[%0b,%0b] e1m_rd=[%0d,%0d] stall=%0b dib_cnt=%0d",
+                    di_cyc_cnt, e1m_load_pending[0], e1m_load_pending[1],
+                    e1m_rd[0], e1m_rd[1], stall_out, dib_count);
         end
     end
-
-    always_ff @(posedge clk_core or negedge reset_n) begin
-        if (!reset_n) begin
-            issued_mask_r <= '0;
-            batch_pc_r    <= 32'h0;
-            post_flush_block_r <= 1'b0;
-        end else begin
-            issued_mask_r <= issued_mask_next;
-            batch_pc_r    <= batch_pc_next;
-            // ERR-019: post_flush_block 逻辑
-            if (flush)
-                post_flush_block_r <= 1'b1;
-            else if (post_flush_block_r && d_valid)
-                post_flush_block_r <= 1'b0;  // 新正确路径批次到达 (ERR-025)
-        end
-    end
+    `endif
+    // synopsys translate_on
 
 endmodule

@@ -186,6 +186,38 @@ module lumi_v1_tb_top;
   wire [31:0] v1_dc_addr   = u_dut.dc_addr;
   // ERR-026 调试: 暴露 SRAM 写入跟踪
   wire [31:0] v1_we_count      = u_dut.sram_we_count;
+  wire [31:0] v1_dc_wdata      = u_dut.dc_wdata;
+  wire [3:0]  v1_dc_be         = u_dut.dc_be;
+
+  // ─── SRAM Write Trace: 记录所有 SRAM 写入 ──────────────────
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (v1_dc_valid && v1_dc_we) begin
+        $display("[SRAM-WR] cyc=%0d addr=0x%08h idx=%0d data=0x%08h be=%04b",
+                 cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_wdata, v1_dc_be);
+        if (v1_dc_addr[17:2] >= 65528 && v1_dc_addr[17:2] <= 65533)
+          $display("[SRAM-WR] *** BENCHMARK RESULT AREA WRITE! ***");
+      end
+    end
+  end
+
+  // ─── Trap Diagnostic: 记录所有 trap 事件 ──────────────────
+  wire w_trap_req  = u_dut.gen_single_core.u_core.trap_request;
+  wire [31:0] w_trap_pc = u_dut.gen_single_core.u_core.trap_pc;
+  wire [31:0] w_csr_mcause = u_dut.gen_single_core.u_core.u_writeback.trap_cause;
+  wire [31:0] w_csr_mepc   = u_dut.u_csr.mepc_r;
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (w_trap_req) begin
+        $display("[TRAP] cyc=%0d trap_pc=0x%08h cause=%0d mepc=0x%08h",
+                 cycle_count, w_trap_pc, w_csr_mcause, w_csr_mepc);
+      end
+    end
+  end
 
   // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
   // wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
@@ -239,7 +271,7 @@ module lumi_v1_tb_top;
       @(posedge clk_core);
       if (|commit_valid_all) begin
         // Print first 200 cycles (existing debug)
-        if (cycle_count < 200) begin
+        if (cycle_count < 500) begin
           for (int s = 0; s < 3; s++) begin
             if (commit_valid_all[s]) begin
               $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h raw=0x%04h comp=%b op=0x%02h",
@@ -261,6 +293,113 @@ module lumi_v1_tb_top;
           end
           if (commit_pc_packed[0] <= 32'h0008_0000)
             last_valid_pc = commit_pc_packed[0];
+        end
+      end
+    end
+  end
+
+  // ── CoreMark Debug: 追踪 core_list_init 内循环关键寄存器 ──
+  // 记录 core_list_init 函数范围 (PC 0xbb8-0xef8) 内所有写寄存器操作
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (|commit_valid_all) begin
+        for (int s = 0; s < 3; s++) begin
+          if (commit_valid_all[s]) begin
+            if (commit_pc_packed[s] >= 32'hbb8 && commit_pc_packed[s] <= 32'hef8) begin
+              if (commit_rd_packed[s] != 5'h0) begin
+                $display("[LIST-DBG] cyc=%0d pc=0x%08h rd=x%0d data=0x%08h",
+                         cycle_count, commit_pc_packed[s],
+                         commit_rd_packed[s], commit_rd_data_packed[s]);
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  // ── Bug#5 Debug: 追踪 load 写寄存器 + beq 操作数 ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      // 追踪 W 级写寄存器 (前 30 周期)
+      if (cycle_count < 30) begin
+        for (int w = 0; w < 2; w++) begin
+          if (u_dut.gen_single_core.u_core.rf_wr_en[w] &&
+              u_dut.gen_single_core.u_core.rf_wr_addr[w] != 5'h0) begin
+            $display("[RF-WR] cyc=%0d port=%0d rd=x%0d data=0x%08h",
+                     cycle_count, w,
+                     u_dut.gen_single_core.u_core.rf_wr_addr[w],
+                     u_dut.gen_single_core.u_core.rf_wr_data[w]);
+          end
+        end
+        // 追踪 commit 的 branch 指令
+        for (int s = 0; s < 3; s++) begin
+          if (commit_valid_all[s] && commit_pc_packed[s] == 32'h30) begin
+            $display("[BEQ-CMT] cyc=%0d pc=0x%08h inst=0x%08h",
+                     cycle_count, commit_pc_packed[s], commit_inst_packed[s]);
+          end
+        end
+      end
+    end
+  end
+
+  // ── BUG-009 Debug: 未对齐拆分事件 trace ──
+  wire        w_ma_active   = u_dut.gen_single_core.u_core.u_memory.ma_active_r;
+  wire [1:0]  w_ma_slot     = u_dut.gen_single_core.u_core.u_memory.ma_slot_r;
+  wire        w_ma_is_load  = u_dut.gen_single_core.u_core.u_memory.ma_is_load_r;
+  wire [2:0]  w_ma_funct3   = u_dut.gen_single_core.u_core.u_memory.ma_funct3_r;
+  wire [31:0] w_ma_wdata    = u_dut.gen_single_core.u_core.u_memory.ma_wdata_r;
+  wire [31:0] w_ma_load_lo  = u_dut.gen_single_core.u_core.u_memory.ma_load_lo_r;
+  wire [31:0] w_ma_orig_addr = u_dut.gen_single_core.u_core.u_memory.m1_mem_addr[w_ma_slot];
+  wire [31:0] w_ma_ovr_addr  = u_dut.gen_single_core.u_core.u_memory.lsu_addr[w_ma_slot];
+  wire [3:0]  w_ma_be        = u_dut.gen_single_core.u_core.u_memory.lsu_be[w_ma_slot];
+  wire [31:0] w_ma_aligned   = u_dut.gen_single_core.u_core.u_memory.lsu_aligned_data[w_ma_slot];
+  wire [31:0] w_ma_rdata     = u_dut.gen_single_core.u_core.u_memory.mem_rdata_in;
+
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (w_ma_active && cycle_count < 500000) begin
+        $display("[MA-SPLIT] cyc=%0d slot=%0d load=%0b funct3=%03b orig_addr=0x%08h ovr_addr=0x%08h be=%04b wdata=0x%08h aligned=0x%08h rdata=0x%08h lo_r=0x%08h",
+                 cycle_count, w_ma_slot, w_ma_is_load, w_ma_funct3,
+                 w_ma_orig_addr, w_ma_ovr_addr, w_ma_be, w_ma_wdata,
+                 w_ma_aligned, w_ma_rdata, w_ma_load_lo);
+      end
+    end
+  end
+
+  // ── Phase 2: 6级流水线 PC 对齐 trace (PC=0x28-0x3c) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 30) begin
+        // E1 级 (all slots)
+        for (int s = 0; s < 3; s++) begin
+          if (u_dut.gen_single_core.u_core.e1_valid_r[s])
+            $display("[E1] cyc=%0d s=%0d pc=0x%04h fu=%0d rd=%0d v=%0b mem_busy=%0b",
+                     cycle_count, s,
+                     u_dut.gen_single_core.u_core.e1_inst_r[s].pc,
+                     u_dut.gen_single_core.u_core.e1_inst_r[s].fu_type,
+                     u_dut.gen_single_core.u_core.e1_inst_r[s].rd,
+                     u_dut.gen_single_core.u_core.e1_valid_r[s],
+                     u_dut.gen_single_core.u_core.mem_busy);
+        end
+        // M 级
+        for (int s = 0; s < 3; s++) begin
+          if (u_dut.gen_single_core.u_core.m_valid_r[s])
+            $display("[M ] cyc=%0d s=%0d pc=0x%04h fu=%0d rd=%0d result=0x%08h mem_busy=%0b",
+                     cycle_count, s,
+                     u_dut.gen_single_core.u_core.m_inst_r[s].pc,
+                     u_dut.gen_single_core.u_core.m_inst_r[s].fu_type,
+                     u_dut.gen_single_core.u_core.m_inst_r[s].rd,
+                     u_dut.gen_single_core.u_core.m_result_r[s],
+                     u_dut.gen_single_core.u_core.mem_busy);
         end
       end
     end
@@ -436,16 +575,16 @@ module lumi_v1_tb_top;
       $display("[PROGRESS] cycle=%0d retired=%0d we_count=%0d mem_busy=%0b pc0=0x%08h",
                cycle_count, mon_total_retired, v1_we_count, mon_mem_busy, commit_pc_0);
       // SA-CM-011: tohost 检测 — 检查 0x3FFE0 magic 值
-      // 0x3FFE0 / 4 = 65504
-      if (u_dut.v1_sram[65504] == 32'hDEADBEEF) begin
+      // 0x3FFE0 / 4 = 65528
+      if (u_dut.v1_sram[65528] == 32'hDEADBEEF) begin
         $display("[PROGRESS] tohost: magic=0xDEADBEEF detected at 0x3FFE0");
         $display("[PROGRESS] bench_id=%0d iters=%0d ticks=%0d metric=%0d checks=%0d",
-                 u_dut.v1_sram[65505], u_dut.v1_sram[65506], u_dut.v1_sram[65507],
-                 u_dut.v1_sram[65508], u_dut.v1_sram[65509]);
+                 u_dut.v1_sram[65529], u_dut.v1_sram[65530], u_dut.v1_sram[65531],
+                 u_dut.v1_sram[65532], u_dut.v1_sram[65533]);
       end
-      if (u_dut.v1_sram[65504] == 32'hDEAD0001) begin
+      if (u_dut.v1_sram[65528] == 32'hDEAD0001) begin
         $display("[PROGRESS] TRAP detected: magic=0xDEAD0001 mcause=0x%08h mepc=0x%08h",
-                 u_dut.v1_sram[65505], u_dut.v1_sram[65506]);
+                 u_dut.v1_sram[65529], u_dut.v1_sram[65530]);
       end
       // SA-CM-011: 无效 PC 检测 — PC 超出程序范围时报警
       if (commit_pc_0 > 32'h0010_0000 && commit_pc_0 < 32'hFFF0_0000) begin
@@ -546,14 +685,14 @@ module lumi_v1_tb_top;
 
     // ─── V1 Benchmark Result Dump (0x3FFE0) ─────────────────────
     begin
-      // 0x3FFE0 / 4 = 65504
+      // 0x3FFE0 / 4 = 65528
       logic [31:0] r_magic, r_bench_id, r_iters, r_ticks, r_metric, r_checks;
-      r_magic    = u_dut.v1_sram[65504]; // 0x3FFE0
-      r_bench_id = u_dut.v1_sram[65505]; // 0x3FFE4
-      r_iters    = u_dut.v1_sram[65506]; // 0x3FFE8
-      r_ticks    = u_dut.v1_sram[65507]; // 0x3FFEC
-      r_metric   = u_dut.v1_sram[65508]; // 0x3FFF0
-      r_checks   = u_dut.v1_sram[65509]; // 0x3FFF4
+      r_magic    = u_dut.v1_sram[65528]; // 0x3FFE0
+      r_bench_id = u_dut.v1_sram[65529]; // 0x3FFE4
+      r_iters    = u_dut.v1_sram[65530]; // 0x3FFE8
+      r_ticks    = u_dut.v1_sram[65531]; // 0x3FFEC
+      r_metric   = u_dut.v1_sram[65532]; // 0x3FFF0
+      r_checks   = u_dut.v1_sram[65533]; // 0x3FFF4
       $display("\n============================================");
       $display(" V1 Benchmark Results (0x3FFE0)");
       $display("============================================");
@@ -567,10 +706,10 @@ module lumi_v1_tb_top;
       $display(" checks     = %0d %s", r_checks, (r_checks == 0) ? "(PASS)" : "(FAIL)");
       $display("============================================");
       $display(" [ERR-026-DBG] SRAM write count: %0d", v1_we_count);
-      $display(" [ERR-026-DBG] v1_sram[65504]=0x%08h (should be 0xDEADBEEF if written)",
-               u_dut.v1_sram[65504]);
-      $display(" [ERR-026-DBG] v1_sram[65505]=0x%08h (should be 1 for CoreMark)",
-               u_dut.v1_sram[65505]);
+      $display(" [ERR-026-DBG] v1_sram[65528]=0x%08h (should be 0xDEADBEEF if written)",
+               u_dut.v1_sram[65528]);
+      $display(" [ERR-026-DBG] v1_sram[65529]=0x%08h (should be 1 for CoreMark)",
+               u_dut.v1_sram[65529]);
       $display("============================================\n");
     end
 

@@ -363,3 +363,221 @@ phase4_sacm_plan:
     v1_smoke: "PASS=1 FAIL=0"
     v1_rv32i_full: "PASS=1 FAIL=0"
     v1_rv32m: "PASS=1 FAIL=0"
+
+# ═══════════════════════════════════════════════════════
+# CoreMark V1 今晚长执行计划 (Bug#5 修复 + CoreMark 验证)
+# ═══════════════════════════════════════════════════════
+- timestamp: "2026-07-15T23:00:00+08:00"
+  phase: "M3-S3 CoreMark V1 调试"
+  instruction: "执行 CoreMark V1 今晚长执行计划 (6 phases)"
+  type: execution
+  actions:
+    - id: "phase1"
+      desc: "撤销 pending_port1_r 无条件 mem_busy fix, 恢复条件性 mem_busy"
+      files_changed: ["src/rtl/core/lumi_memory_stage.sv"]
+      result: "活锁消除, 但 v1-loop-debug 仍然 FAIL"
+
+    - id: "phase2"
+      desc: "深度诊断: 添加 decode_issue DI-WR/DI-IS trace + E1/M 级 PC trace"
+      files_changed: ["src/rtl/core/lumi_decode_issue.sv", "src/tb/top/lumi_v1_tb_top.sv"]
+      result: "发现 addi@0x2c 在 E1 后消失 — I→E1 寄存器无 mem_busy 门控"
+      root_cause: |
+        mem_busy=1 冻结 E1→M 时, decode_issue stall 导致 i_valid=0,
+        下一个 posedge 将 E1 寄存器清空。已在 E1 的指令永久丢失。
+
+    - id: "phase3"
+      desc: "修复 I→E1 mem_busy 门控: 添加 else if (mem_busy) 分支"
+      files_changed: ["src/rtl/core/lumi_core_top.sv"]
+      result: "Test 1 PASS (addi 正确提交, beq 比较相等)"
+
+    - id: "phase4"
+      desc: "回归验证: v1-smoke + v1-rv32i-full + v1-rv32m"
+      result: "全部 PASS (smoke=PASS, rv32i=PASS, rv32m=PASS)"
+
+    - id: "phase5"
+      desc: "CoreMark V1 快速验证 (ITERATIONS=1, 200M cycles)"
+      result: |
+        程序正常退出 (exit_code=0, 325 cycles, 179 retired)。
+        但 magic=0x00000000 — v1_write_result 未执行。
+        发现 TB SRAM 地址映射错误: 0x3FFE0/4=65504 应为 65528。
+        修复后仍无 magic — JAL 目标偏移 2 字节 (BUG-007)。
+
+    - id: "bug-fix"
+      desc: "修复 TB SRAM 地址: 65504-65509 → 65528-65533"
+      files_changed: ["src/tb/top/lumi_v1_tb_top.sv"]
+      result: "SRAM 地址映射正确, 但 CoreMark 仍未写入 magic"
+
+  errata_entries: ["BUG-006", "BUG-007", "BUG-008"]
+  status: "部分完成 — Bug#5 修复有效, CoreMark 待 BUG-007 解决"
+
+# ═════════════════════════════════════════════════════════
+# CoreMark V1 深度诊断 (续)
+# ═════════════════════════════════════════════════════════
+- phase: "CoreMark V1 深度诊断"
+  timestamp: "2026-07-15T23:30:00+08:00"
+  steps:
+    - id: "diag-jal-verify"
+      desc: "Python 解码 JAL 指令确认编码正确"
+      result: |
+        0xD68FF0EF @ PC=0x51C0 → target=0x4728 (正确)
+        0xD54FF0EF @ PC=0x51D4 → target=0x4728 (正确)
+        JAL 偏移假说不成立。
+
+    - id: "diag-sram-trace"
+      desc: "添加 SRAM 写入追踪 + trap 诊断到 TB"
+      files_changed: ["src/tb/top/lumi_v1_tb_top.sv"]
+      result: |
+        发现 [TRAP] cyc=288 cause=6 (Store/AMO address misaligned)
+        trap_pc=0x6AE8 (trap handler)
+        SRAM 写入错误地址 0xFFFFFFF2/0xFFFFFFF6 (链表指针损坏)
+
+    - id: "diag-root-cause"
+      desc: "根因分析: sh 指令写入奇数地址 0x7FFF"
+      result: |
+        core_list_init 链表遍历时，sh 指令目标地址为奇数 (0x7FFF)。
+        Lumi V1 不支持未对齐 store，触发 trap cause=6。
+        Trap handler 写 crash marker 后 ecall 退出。
+        v1_write_result 从未执行，magic=0x00000000。
+        根本原因: benchmark 与核心能力不兼容 (非 RTL bug)。
+
+    - id: "diag-dhrystone"
+      desc: "尝试 Dhrystone V1 作为替代 benchmark"
+      result: |
+        Dhrystone V1 (NUMBER_OF_RUNS=100, rv32ima):
+        运行 34,999,970 SRAM writes (462s 墙上时间)。
+        结果: PASS=0 FAIL=1, magic=0x00000000。
+        也未能在 V1 上正常完成。
+
+  conclusion: |
+    Phase 1-4 全部完成 (Bug#5 I→E1 mem_busy fix + 回归 PASS)。
+    Phase 5/6 阻塞于 benchmark 兼容性问题 (BUG-007):
+    - CoreMark V1: store misalignment trap (cause=6)
+    - Dhrystone V1: 也未完成 (FAIL=1)
+    RTL 基本功能正确 (smoke/rv32i/rv32m 全部 PASS)。
+    需要后续解决 benchmark 移植问题或增强核心未对齐访问支持。
+
+  errata_entries: ["BUG-007 (updated)"]
+  status: "Phase 1-4 完成, Phase 5/6 阻塞于 BUG-007 (benchmark 兼容性)"
+
+# ═══════════════════════════════════════════════════════════
+# 未对齐 sh 合理性分析 + RTL 修正计划
+# ═══════════════════════════════════════════════════════════
+
+- timestamp: "2026-07-15T22:30:00+08:00"
+  instruction: "分析未对齐 sh 指令是否合理，记录 error，制定 RTL 修正计划"
+  context: |
+    用户要求分析 CoreMark V1 产生的未对齐 sh 指令是否合理。
+    如果合理，记录 error 并制定 RTL 修正计划。
+  analysis:
+    question: "未对齐 sh 是否合理？"
+    answer: "是，合理的编译器行为"
+    reasoning: |
+      1. CoreMark core_main.c:209 执行 results[0].size = TOTAL_DATA_SIZE / num_algorithms
+         当 TOTAL_DATA_SIZE=2000, num_algorithms=3 → size=666 (非 8 字节对齐)
+      2. core_list_init 用 size 做偏移计算链表节点地址
+         产生奇数地址 (如 0x7FFF)
+      3. GCC -O2 对 ee_s16 (short) 生成 sh 是标准行为
+         编译器假定 short 自然对齐 (2 字节边界)
+      4. RISC-V 规范允许实现透明处理未对齐访问
+         商业核心 (SiFive, Andes) 普遍支持
+    conclusion: |
+      未对齐 sh 是合理的软件假设。Lumi V1 应添加硬件支持。
+  actions:
+    - "更新 BUG-007 errata: 添加详细根因分析和结论"
+    - "创建 RTL 修正计划: .qoder/specs/rtl-misalign-fix-plan.md"
+    - "方案: Memory Stage 增加 ST_MISALIGN_SPLIT 状态，两周期拆分未对齐访问"
+  files_modified:
+    - "audit/errata/known-issues.yaml (BUG-007 更新)"
+    - ".qoder/specs/rtl-misalign-fix-plan.md (新建)"
+  status: "完成"
+
+# ═══════════════════════════════════════════════════════════
+# RTL 未对齐修复执行 + 新 Error 记录
+# ═══════════════════════════════════════════════════════════
+
+- timestamp: "2026-07-15T23:15:00+08:00"
+  instruction: "执行 RTL 未对齐访问修正计划，记录新发现的 error，检查测试覆盖"
+  actions:
+    - desc: "RTL 修改 lumi_memory_stage.sv: 未对齐访问透明处理"
+      detail: |
+        - 移除 misalign 异常生成 (不再触发 trap cause=4/6)
+        - 添加 ma_active_r 寄存器，控制两周期拆分
+        - Cycle 1: 覆盖地址为 addr & ~3，发低部分，mem_busy=1
+        - Cycle 2: 发高部分 (addr & ~3 + 4)，合并结果
+        - Load: 高低部分拼接 + 符号扩展
+        - Store: byte enable + 数据对齐覆盖
+        - m_bypass_valid 在拆分期间屏蔽
+    - desc: "Verilator 编译: 成功"
+    - desc: "回归测试: 全部通过"
+      results:
+        - "v1-smoke: PASS"
+        - "v1-rv32i-full: PASS"
+        - "v1-rv32m: PASS"
+    - desc: "CoreMark V1 验证: 仍然失败"
+      results: |
+        magic=0x00000000, checks=2147483647
+        SRAM write count=20 (修复前为 0)，程序执行更远
+        无 TRAP 输出，说明未对齐 trap 已消除
+        但数据合并/对齐逻辑可能存在问题
+  new_errors:
+    - id: BUG-009
+      title: "RTL 未对齐访问透明处理修复后 CoreMark V1 仍失败"
+      severity: high
+      possible_causes:
+        - "未对齐 load 数据合并逻辑有误"
+        - "未对齐 store byte enable/数据对齐不正确"
+        - "mem_busy 与 pipeline stall 配合问题"
+    - id: BUG-010
+      title: "缺少未对齐 load/store 定向测试用例"
+      severity: high
+      detail: |
+        tests/directed/ 中无任何未对齐内存访问测试。
+        rv32i_full.S 中的 sh/lh 使用对齐地址。
+        exception_precise.S 中无 misalign 相关测试。
+        tcm_basic_rw.S 中所有访问对齐。
+  test_coverage_analysis: |
+    现有测试对未对齐访问的覆盖:
+    - rv32i_full.S: sh/lh/lhu/sw/lw 全部使用对齐地址 (sp+0, sp+4)
+    - exception_precise.S: 无 misalign 异常测试
+    - tcm_basic_rw.S: 所有访问对齐到 DTCM
+    结论: 0% 未对齐访问覆盖
+  files_modified:
+    - "src/rtl/core/lumi_memory_stage.sv (BUG-007 修复)"
+    - "audit/errata/known-issues.yaml (BUG-009, BUG-010 新增)"
+  status: "BUG-009 调试中，BUG-010 待创建定向测试"
+
+# ═══════════════════════════════════════════════════════════
+# BUG-009 迭代调试归档 (ERR-108~ERR-114)
+# ═══════════════════════════════════════════════════════════
+
+- timestamp: "2026-07-15T03:00:00+08:00"
+  phase: "M3-S3 BUG-009 迭代调试"
+  instruction: "BUG-009 未对齐访问修复后 CoreMark V1 仍失败，迭代调试发现 6 个 RTL 子修复 + 1 个未解决问题"
+  type: action
+  role: hw-design
+  actions:
+    - id: "INST-20260715-009"
+      type: action
+      role: hw-design
+      description: "BUG-009 迭代调试: 6 个 RTL 子修复 (ERR-108~113) + 1 个未解决 (ERR-114)"
+      errors_found:
+        - "ERR-108: gen_byte_enable 使用原始地址而非对齐地址"
+        - "ERR-109: align_store_data 使用原始地址而非对齐地址"
+        - "ERR-110: MA cycle 2 地址/WE 未寄存到 ma_c2_* 寄存器"
+        - "ERR-111: MA cycle 2 load 数据合并逻辑缺失"
+        - "ERR-112: MA cycle 2 高字 BE/data 未覆盖 (lsu_be/lsu_aligned_data)"
+        - "ERR-113: DIB 满导致 fetch PC 死锁 (dib_can_accept 修复)"
+        - "ERR-114: ECALL 未被提交到 commit 级 (未解决)"
+      files_modified:
+        - "src/rtl/core/lumi_memory_stage.sv (ERR-108~112: MA 未对齐拆分逻辑修复)"
+        - "src/rtl/core/lumi_decode_issue.sv (ERR-113: DIB FIFO 实现 + dib_can_accept)"
+        - "src/rtl/core/lumi_core_top.sv (ERR-113: 信号连线 + mem_busy 冻结 I→E1)"
+        - "src/rtl/core/lumi_fetch.sv (ERR-113: dib_not_full 端口连接)"
+      test_results:
+        - "min8 简单测试: PASS"
+        - "v1-smoke / v1-rv32i-full / v1-rv32m: PASS"
+        - "完整 rv32i_misalign.S: INCOMPLETE (ERR-114: ECALL 未提交)"
+      open_issue: "ERR-114: ECALL 指令从未被提交, SYSTEM insts=0, PC 落入 0x00f42xxx"
+      errata_created: ["ERR-108", "ERR-109", "ERR-110", "ERR-111", "ERR-112", "ERR-113", "ERR-114"]
+      errata_resolved: ["ERR-108", "ERR-109", "ERR-110", "ERR-111", "ERR-112", "ERR-113"]
+      status: "debugging"

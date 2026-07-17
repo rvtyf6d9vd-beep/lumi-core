@@ -13,6 +13,13 @@ entries:
     date: "2026-07-16"
     file: "lessons-learned/personal/2026-07-16_debug-methodology-gradual-complexity.md"
 
+  - id: "LL-p002"
+    title: "未对齐访问两周期拆分调试: 6 个 RTL 子修复 + FIFO 反压设计原则"
+    category: lessons-learned
+    source: "BUG-009 迭代调试, ERR-108~ERR-114"
+    date: "2026-07-15"
+    file: "lessons-learned/bug009-misalign-debug-summary-20260715.md"
+
 # 示例条目格式:
 # - id: "LL-001"
 #   title: "AHB burst wrap 计算需要考虑 unaligned 起始地址"

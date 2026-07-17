@@ -2300,3 +2300,239 @@ errata:
     resolved_by: null
     resolution: null
     regression_test: "tests/directed/jalr_bubble_test.S"
+
+  - id: BUG-006
+    title: "Bug#5: I→E1 流水线寄存器未受 mem_busy 门控"
+    description: |
+      当 memory stage 双端口串行化 (BYPASS_SB=1) 时，mem_busy=1 冻结 E1→M
+      寄存器，但 I→E1 寄存器未同步冻结。decode_issue 被 e1m_load_pending stall
+      后 i_valid=0，导致下一个 posedge 将 E1 寄存器清空。已在 E1 中的指令
+      （如 ALU addi）被永久丢失，永远不会进入 M 级和提交。
+      修复: 在 I→E1 寄存器添加 `else if (mem_busy)` 门控分支。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (pipeline trace analysis)
+    affected_modules: ["src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "添加 `else if (mem_busy)` 门控到 I→E1 流水线寄存器"
+    regression_test: "tests/directed/rv32im_loop_debug.S (Test 1)"
+
+  - id: BUG-007
+    title: "CoreMark V1 store halfword 未对齐导致 trap (cause=6)"
+    description: |
+      CoreMark V1 的 core_list_init 函数在链表遍历时，产生未对齐的
+      halfword store (sh 指令写入奇数地址 0x7FFF)。Lumi V1 核心不支持
+      未对齐 store，触发 trap cause=6 (Store/AMO address misaligned)。
+      
+      【根因分析 — 未对齐 sh 是合理的编译器行为】
+      1. core_main.c:209 执行 results[0].size = TOTAL_DATA_SIZE / num_algorithms
+         当 TOTAL_DATA_SIZE=2000, num_algorithms=3 → size=666 (非 8 字节对齐)
+      2. core_main.c:217-218 计算 memblock[1] = static_memblk + size*j
+         后续 core_list_init 内部用 size 做偏移，产生奇数地址
+      3. core_list_init 中 sh t1,0(t2) 存储 ee_s16 到链表节点
+         当 t2 计算结果为奇数 (如 0x7FFF)，sh 产生未对齐访问
+      4. GCC -O2 对 ee_s16 (short) 类型生成 sh 指令是标准行为，
+         编译器假定 short 自然对齐 (2 字节边界)，但 CoreMark 的
+         内存分配逻辑未保证这一点
+      
+      【结论】
+      未对齐 sh 是合理的编译器行为。RISC-V 规范允许实现选择:
+      (a) 硬件透明处理未对齐访问 (推荐，商业核心普遍支持)
+      (b) 触发 trap 由软件处理
+      Lumi V1 当前选择 (b)，导致 CoreMark 无法运行。
+      应升级为方案 (a) 以支持通用 RV32 软件。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (pipeline trace + SRAM write trace analysis)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv", "perf/benchmarks/coremark-v1"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: |
+      方案 A (推荐): RTL 添加未对齐 load/store 硬件透明处理
+        - 检测未对齐访问，拆分为两次对齐访问
+        - 对性能影响: 仅未对齐访问多 1 周期，对齐访问无影响
+      方案 B: 修改 CoreMark 使 TOTAL_DATA_SIZE 为 num_algorithms 的整数倍
+        - 临时方案，不解决根本问题
+      方案 C: trap handler 软件模拟未对齐访问
+        - 性能代价极大，不推荐
+    rtl_fix_plan: |
+      详见 .qoder/specs/ 下的 RTL 未对齐访问支持计划
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: null
+
+  - id: BUG-008
+    title: "TB SRAM 地址映射错误: 0x3FFE0 → word index 65504 (应为 65528)"
+    description: |
+      TB 中 0x3FFE0 / 4 计算为 65504，实际应为 65528。
+      0x3FFE0 = 262112 decimal, 262112 / 4 = 65528。
+      导致 benchmark 结果检查始终读取错误的 SRAM 位置。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (address calculation verification)
+    affected_modules: ["src/tb/top/lumi_v1_tb_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: medium
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "将 65504-65509 替换为 65528-65533"
+    regression_test: null
+
+  - id: "ERR-108"
+    title: "未对齐访问 gen_byte_enable 使用原始地址而非对齐地址"
+    description: |
+      lumi_memory_stage.sv 中 gen_byte_enable() 函数使用未对齐的原始地址
+      计算 byte enable，导致未对齐 store 的 BE 位错误。
+      修复: 使用对齐地址 (addr & ~3) 计算 BE。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "gen_byte_enable 改用对齐地址 (addr & ~3) 计算 byte enable"
+    regression_test: null
+
+  - id: "ERR-109"
+    title: "未对齐访问 align_store_data 使用原始地址而非对齐地址"
+    description: |
+      align_store_data() 函数使用未对齐地址做数据移位，
+      导致 store 数据写入错误位置。
+      修复: 使用对齐地址计算数据移位量。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "align_store_data 改用对齐地址计算数据移位量"
+    regression_test: null
+
+  - id: "ERR-110"
+    title: "未对齐访问 MA cycle 2 地址/WE 未寄存到 ma_c2_* 寄存器"
+    description: |
+      未对齐访问第二周期的地址和写使能信号未通过寄存器保持，
+      导致 cycle 2 输出组合逻辑毛刺。
+      修复: 添加 ma_c2_addr/ma_c2_we 寄存器。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "添加 ma_c2_addr/ma_c2_we 寄存器保持 cycle 2 信号"
+    regression_test: null
+
+  - id: "ERR-111"
+    title: "未对齐访问 MA cycle 2 load 数据合并逻辑缺失"
+    description: |
+      未对齐 load 的两周期数据合并 (低部分 + 高部分拼接 + 符号扩展)
+      逻辑不完整。
+      修复: 实现完整的 load 数据合并路径。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "实现完整的未对齐 load 两周期数据合并路径"
+    regression_test: null
+
+  - id: "ERR-112"
+    title: "未对齐访问 MA cycle 2 高字 BE/data 未覆盖 lsu_be/lsu_aligned_data"
+    description: |
+      Memory Stage cycle 2 路径中 lsu_be 和 lsu_aligned_data 未被
+      覆盖为高字部分的值，导致 store 高字写入错误。
+      修复: 在 ma_active_r==1 时覆盖 lsu_be/lsu_aligned_data。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "ma_active_r==1 时覆盖 lsu_be/lsu_aligned_data 为高字值"
+    regression_test: null
+
+  - id: "ERR-113"
+    title: "DIB 满导致 fetch PC 死锁 (dib_not_full 过于保守)"
+    description: |
+      dib_not_full 信号基于 all_issued 判断，未考虑当前周期 issue 排空
+      DIB 后的有效空间。当 DIB 满且 issue 排空时，fetch 被错误阻塞，
+      PC 停止前进，形成死锁。
+      修复: 新增 dib_can_accept 信号，计算 DIB 当前批次可放入数量:
+        dib_count_after_issue = dib_count - issue_count
+        dib_can_accept = (dib_count_after_issue + pd_inst_count) <= DIB_DEPTH
+      涉及 3 个文件: lumi_decode_issue.sv (DIB FIFO + dib_can_accept),
+      lumi_core_top.sv (信号连线), lumi_fetch.sv (端口连接)。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (BUG-009 迭代调试)
+    affected_modules:
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "src/rtl/core/lumi_core_top.sv"
+      - "src/rtl/core/lumi_fetch.sv"
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: null
+    resolved_date: "2026-07-15"
+    resolved_by: Qoder
+    resolution: "新增 dib_can_accept 信号替代 dib_not_full，正确计算 DIB 可用空间"
+    regression_test: null
+
+  - id: "ERR-114"
+    title: "未对齐访问修复后 CoreMark V1 仍失败 — ECALL 未提交"
+    description: |
+      背景: 为修复 BUG-007，在 lumi_memory_stage.sv 中实现了未对齐 load/store
+      透明处理 (两周期拆分)。回归测试全部通过，但 CoreMark V1 仍失败。
+      迭代调试发现 6 个子问题 (ERR-108~ERR-113) 均已修复。
+      
+      当前问题:
+      完整 rv32i_misalign.S 测试 INCOMPLETE: ECALL 从未被提交，
+      scoreboard 检测到 0 条 SYSTEM 指令。6M 指令被 retire 但 PC
+      最终落入 0x00f42xxx (未初始化内存区域)。
+      min8 简单测试 PASS，说明基本功能正确，问题仅在长测试中暴露。
+      可能原因: 长程序执行路径中存在其他未发现的兼容性问题，
+      或 PC 跳转到错误地址。
+      
+      测试覆盖缺口 (原 BUG-010):
+      调试前 tests/directed/ 中无任何未对齐内存访问测试，
+      无法通过定向测试隔离未对齐拆分逻辑的具体问题。
+      已创建 tests/directed/rv32i_misalign.S (1337 行, 14 场景 T1-T14)
+      覆盖: SH/LH/LHU/SW/LW 到奇数地址、跨 word 边界访问。
+    discovered_date: "2026-07-15"
+    discovered_by: Qoder (CoreMark V1 仿真验证 + BUG-009 迭代调试)
+    affected_modules:
+      - "src/rtl/core/lumi_memory_stage.sv"
+      - "src/rtl/core/lumi_decode_issue.sv"
+      - "src/rtl/core/lumi_core_top.sv"
+      - "src/rtl/core/lumi_fetch.sv"
+    affected_versions: ["v0.2"]
+    severity: high
+    status: open
+    workaround: "min8 简单测试 PASS，长测试需进一步调试"
+    resolved_date: null
+    resolved_by: null
+    resolution: null
+    regression_test: "tests/directed/rv32i_misalign.S"
+    related_errata: ["ERR-108", "ERR-109", "ERR-110", "ERR-111", "ERR-112", "ERR-113"]

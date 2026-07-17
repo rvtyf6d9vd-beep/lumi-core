@@ -605,16 +605,18 @@ module lumi_execute #(
                         is_branch[i] = 1'b1;
 
                         // JAL: opcode=1101111 (无条件跳转)
+                        // 修复: 压缩指令 (C.JAL/C.J) 返回地址 = PC+2, 标准指令 = PC+4
                         if (e1_inst[i].inst[6:0] == 7'b1101111) begin
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
-                            e1_result[i]     = e1_inst[i].pc + 32'd4; // rd = PC+4
+                            e1_result[i]     = e1_inst[i].pc + (e1_inst[i].is_compressed ? 32'd2 : 32'd4);
                         end
                         // JALR: opcode=1100111 (间接跳转)
+                        // 修复: 压缩指令 (C.JR/C.JALR/C.RET) 返回地址 = PC+2
                         else if (e1_inst[i].inst[6:0] == 7'b1100111) begin
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = (e1_rs1_data[i] + e1_inst[i].imm) & ~32'h1;
-                            e1_result[i]     = e1_inst[i].pc + 32'd4;
+                            e1_result[i]     = e1_inst[i].pc + (e1_inst[i].is_compressed ? 32'd2 : 32'd4);
                         end
                         // 条件分支: opcode=1100011
                         else begin

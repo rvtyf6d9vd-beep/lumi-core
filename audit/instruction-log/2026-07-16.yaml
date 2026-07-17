@@ -1,36 +1,13 @@
-# Lumi 指令日志 — 2026-07-16
-
 date: "2026-07-16"
-entries:
-  # ──────────────────────────────────────────────
-  # 指令 1：PRD 残留问题修复 + 平台架构说明书同步
-  # ──────────────────────────────────────────────
-  - timestamp: "2026-07-16"
+summary: "PRD 残留修复 + 平台架构说明书同步 + LLD 文档体系建设"
+
+instructions:
+  # ── 上午: PRD 残留问题修复 ──
+  - id: INST-20260716-000a
     role: pm-infra
-    session_mode: main
     action: docs_sync
     details:
-      description: "修复 PRD 源文件中的旧 REQ-ID 引用问题，清理 generate_baseline_html.py 中废弃的 CAT_NAMES 映射，同步平台架构说明书中 9 处旧 REQ-ID 为 PPA 统一前缀。"
-      user_request: "先看了 PRD 残留问题修复计划，执行修复，然后分析 PRD 变更是否影响平台架构说明书，确认有影响后纳入计划执行同步更新。"
-      options_and_decisions:
-        - topic: "FEAT-005 note 多余语句"
-          options: ["删除多余语句", "保留（语义合理）"]
-          decision: "保留"
-        - topic: "AMBA 目录为空"
-          options: ["标记为已知问题", "创建占位文件"]
-          decision: "标记为已知，需人工获取 AMBA 规范文档"
-        - topic: "平台架构说明书 REQ-ID 同步"
-          options: ["纳入当前计划统一处理", "单独建立新计划"]
-          decision: "纳入当前计划"
-      steps:
-        - "step 1: generate_baseline_html.py — 删除 6 个废弃 PPA 子分类映射 + cat_order 条目"
-        - "step 2: 03-hardware.yaml — 更新 3 处 LUMI-PWR-003 -> LUMI-PPA-009"
-        - "step 3: generate_prd.py — 更新 2 条 CSV 示例旧 ID"
-        - "step 4: 重新生成 PRD HTML、BL-1.2 YAML、BL-1.2 HTML"
-        - "step 5: 提交并推送 (commit d52853a)"
-        - "step 6: 分析 PRD 变更对平台架构说明书的影响，发现 9 处 REQ-ID 未同步"
-        - "step 7: platform-spec.html — 更新 11 处旧 REQ-ID、版本号 v1.0.3->v1.0.4、更新日期"
-        - "step 8: 提交并推送 (commit 88360b5)"
+      description: "修复 PRD 源文件中的旧 REQ-ID 引用问题，同步平台架构说明书中 9 处旧 REQ-ID 为 PPA 统一前缀。"
       files_changed:
         - "docs/project/baselines/generate_baseline_html.py"
         - "docs/project/product-requirements/03-hardware.yaml"
@@ -39,4 +16,188 @@ entries:
         - "docs/project/baselines/baseline-BL-1.2.yaml"
         - "docs/project/baselines/baseline-BL-1.2.html"
         - "docs/architecture/platform-spec.html"
-      related_rules: [16, 22]
+      commits: ["d52853a", "88360b5"]
+    status: complete
+
+  # ── 下午: LLD 文档体系建设 ──
+  - id: INST-20260716-001
+    type: action
+    description: "创建 LLD 文档标准模板 (10 章节结构 + CSS)"
+    output: docs/design/lld-template.html
+    status: complete
+
+  - id: INST-20260716-002
+    type: action
+    description: "创建模块间接口契约文档骨架 (8 章节 + 附录)"
+    output: docs/design/interface-contracts.html
+    status: complete
+
+  - id: INST-20260716-003
+    type: action
+    description: "创建 LLD 文档索引页"
+    output: docs/design/lld-index.html
+    status: complete
+
+  - id: INST-20260716-004
+    type: action
+    description: "编写 RTL 信号提取脚本 + 端口一致性检查脚本 + FSM 覆盖检查脚本 + 基线报告生成脚本"
+    output:
+      - scripts/lld-check/lld_signal_extract.py
+      - scripts/lld-check/lld_port_check.py
+      - scripts/lld-check/lld_fsm_check.py
+      - scripts/lld-check/generate_baseline_review.py
+    status: complete
+
+  - id: INST-20260716-005
+    type: action
+    description: "Phase 1: 全面 RTL 同步审查，自动提取基线 (25 模块/638 端口/26 枚举/54 状态)"
+    output:
+      - scripts/lld-check/rtl_baseline.json
+      - docs/design/lld-baseline-review.html
+    status: complete
+
+  - id: INST-20260716-006
+    type: action
+    description: "Phase 2: 核心流水线 LLD (6 份)"
+    output:
+      - docs/design/lld-fetch-bpred.html
+      - docs/design/lld-decode-issue.html
+      - docs/design/lld-execute-bypass.html
+      - docs/design/lld-memory-stage.html
+      - docs/design/lld-writeback.html
+      - docs/design/lld-csr-regfile.html
+    status: complete
+
+  - id: INST-20260716-007
+    type: action
+    description: "Phase 2: 接口契约 §2 流水线级间 (8 个接口 IC-2.1~IC-2.8)"
+    output: docs/design/interface-contracts.html (§2 填充)
+    status: complete
+
+  - id: INST-20260716-008
+    type: action
+    description: "Phase 3: 存储子系统 LLD (3 份)"
+    output:
+      - docs/design/lld-cache.html
+      - docs/design/lld-tcm.html
+      - docs/design/lld-pma-axi.html
+    status: complete
+
+  - id: INST-20260716-009
+    type: action
+    description: "Phase 4: 中断/异常 LLD (3 份)"
+    output:
+      - docs/design/lld-clic.html
+      - docs/design/lld-plic.html
+      - docs/design/lld-exception.html
+    status: complete
+
+  - id: INST-20260716-010
+    type: action
+    description: "Phase 5: 外围模块 LLD (5 份)"
+    output:
+      - docs/design/lld-debug-trace.html
+      - docs/design/lld-fpu-vector.html
+      - docs/design/lld-power.html
+      - docs/design/lld-multicore-lockstep.html
+      - docs/design/lld-dft.html
+    status: complete
+
+  - id: INST-20260716-011
+    type: action
+    description: "Phase 6: 顶层集成 LLD (3 份)"
+    output:
+      - docs/design/lld-core-top.html
+      - docs/design/lld-soc-top.html
+      - docs/design/lld-types-pkg.html
+    status: complete
+
+  - id: INST-20260716-012
+    type: action
+    description: "Phase 6: 接口契约 §3~§8 填充 + 全局信号传播矩阵"
+    output: docs/design/interface-contracts.html (§3~§8 + 附录填充)
+    status: complete
+
+  - id: INST-20260716-013
+    type: action
+    description: "Phase 7: CI 集成配置"
+    output: .github/workflows/lld-check.yaml
+    status: complete
+
+  - id: INST-20260716-014
+    type: action
+    description: "更新 HLD 索引页增加 LLD 分区链接"
+    output: docs/design/index.html (已编辑)
+    status: complete
+
+statistics:
+  lld_documents_created: 20
+  interface_contract_sections: 8
+  python_scripts: 4
+  ci_configs: 1
+  total_deliverables: 30
+  rtl_modules_analyzed: 25
+  rtl_ports_extracted: 638
+  rtl_enums_extracted: 26
+  rtl_states_extracted: 54
+
+notes:
+  - "LLD 文档采用 lld- 前缀命名，与现有 HLD 同目录共存"
+  - "接口契约文档从 v0.1 骨架更新至 v1.0 完整内容"
+  - "CI pipeline 在 RTL 或 LLD 文件变更时自动触发一致性检查"
+  - "后续 RTL 修改须遵循 doc-first 策略：先更新 LLD 再改代码"
+
+  # ── 晚间: LLD 文档独立审查 ──
+  - id: INST-20260716-015
+    type: action
+    description: "LLD 文档独立审查：自动化检查 + 接口契约核对 + 文档体系评估 + 核心模块抽样"
+    output:
+      - audit/lld-review-2026-07-16.html
+      - audit/lld-review-2026-07-16.yaml
+      - scripts/lld-check/port_check_results.json
+      - scripts/lld-check/fsm_check_results.json
+      - scripts/lld-check/rtl_review_baseline.json
+    status: complete
+    findings:
+      P0: 10
+      P1: 16
+      P2: 13
+      P3: 5
+      Info: 3
+      total: 47
+
+  # ── 深夜: LLD 审查问题修复 (v3 计划) ──
+  - id: INST-20260716-016
+    type: action
+    description: "LLD 审查问题修复：修正 5 份核心 LLD + 重写接口契约为 scalar v2.0 + 改进自动化脚本 + 修复 CI + 文档体系改进"
+    decisions:
+      - topic: "writeback FSM 条件 bug"
+        analysis: "state_reg 不驱动任何输出，ST_IRQ/ST_TRAP 行为一致，无功能影响"
+        decision: "降级为 P2，不修改 RTL，仅在 LLD 中如实描述"
+      - topic: "SV Interface 脱节"
+        options: ["重写契约为 scalar", "重构 RTL 使用 interface", "部分重构"]
+        decision: "重写契约为 scalar（0 RTL 风险）"
+      - topic: "未连接模块（PLIC/PMA/FPU/Vector）"
+        options: ["删除模块", "保留标预留"]
+        decision: "保留 RTL，在契约中标注预留/未连接"
+    output:
+      - docs/design/lld-memory-stage.html (§6 修正)
+      - docs/design/lld-fetch-bpred.html (§3.1 修正)
+      - docs/design/lld-cache.html (§5 参数化)
+      - docs/design/lld-decode-issue.html (§3.1/§6.2 修正)
+      - docs/design/lld-writeback.html (§4 FSM 描述)
+      - docs/design/interface-contracts.html (v2.0 scalar 重写)
+      - scripts/lld-check/lld_port_check.py (位宽严格化+数组名规范化)
+      - scripts/lld-check/lld_signal_extract.py (参数化位宽+interface识别)
+      - scripts/lld-check/lld_fsm_check.py (转移条件验证)
+      - scripts/lld-check/lld_contracts_check.py (新增：双向一致性检查)
+      - .github/workflows/lld-check.yaml (显式模块映射+FSM exit 1+PR paths)
+      - docs/design/lld-template.html (Mermaid JS+边界条件裁剪规则)
+      - docs/design/lld-index.html (数量修正+状态更新)
+    verification:
+      port_check_before: {errors: 71, warnings: 448}
+      port_check_after: {errors: 32, warnings: 384}
+      error_reduction: "55%"
+      warning_reduction: "14%"
+      rtl_modified: false
+    status: complete

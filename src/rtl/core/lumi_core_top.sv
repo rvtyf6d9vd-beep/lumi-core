@@ -105,7 +105,7 @@ module lumi_core_top #(
     logic [31:0]   f2_pred_target;
 
     // F2 valid mask 生成
-    logic [FETCH_WIDTH-1:0] f2_inst_valid_mask;
+
 
     // ── ERR-042: Predecode 信号 ──
     logic [31:0]   pd_inst [FETCH_WIDTH-1:0];
@@ -118,15 +118,7 @@ module lumi_core_top #(
     logic [15:0]   pd_carry_hw_out;
     logic          pd_carry_valid_out;
 
-    // ── ERR-PDREG: 寄存 predecode 输出到 F2 级 ──
-    // predecode 是组合逻辑, 总是反映当前 pc_reg 的数据.
-    // 但 f2_valid_r 是寄存器, 表示上一个 fetch 的块.
-    // 寄存 predecode 输出使其与 f2_valid_r 对齐, 消除时序不匹配.
-    logic [31:0]   f2r_pd_inst [FETCH_WIDTH-1:0];
-    logic [31:0]   f2r_pd_inst_pc [FETCH_WIDTH-1:0];
-    logic [FETCH_WIDTH-1:0] f2r_pd_inst_valid;
-    logic [FETCH_WIDTH-1:0] f2r_pd_inst_compressed;
-    logic [15:0]   f2r_pd_inst_raw [FETCH_WIDTH-1:0];
+
 
     // ── ERR-044: Execute call/ret 信号 ──
     logic          e1_br_is_call;
@@ -213,7 +205,8 @@ module lumi_core_top #(
 
     // ── Stall/Flush ──
     logic          dec_stall;
-        logic          all_issued;  // ERR-019
+        logic          dib_not_full;  // DIB 有空间 (替代 all_issued)
+        logic          dib_can_accept;  // BUG-009-DIB: 当前批次可放入 DIB
 
     // ── ERR-030 修复: Memory busy 信号 ──
     logic          mem_busy;
@@ -280,7 +273,7 @@ module lumi_core_top #(
         .f2_carry_valid_out    (f2_pd_carry_valid),
         .pred_branch_slot      (f2_pd_pred_branch_slot),  // ERR-BTB
         .dec_stall             (dec_stall),
-        .dec_all_issued        (all_issued),  // ERR-019
+        .dib_not_full          (dib_can_accept),  // BUG-009-DIB: 用 dib_can_accept 替代 dib_not_full, 解决 DIB 满死锁
         .debug_halt            (debug_halt)
     );
 
@@ -321,46 +314,8 @@ module lumi_core_top #(
         .carry_valid_out    (pd_carry_valid_out)
     );
 
-    // ERR-042 + ERR-PDREG: valid mask 使用寄存后的 predecode 输出
-    always_comb begin
-        f2_inst_valid_mask = '0;
-        if (f2_valid) begin
-            for (int i = 0; i < FETCH_WIDTH; i++) begin
-                if (f2r_pd_inst_valid[i])
-                    f2_inst_valid_mask[i] = 1'b1;
-            end
-        end
-    end
-
-    // ERR-PDREG: 寄存 predecode 输出 — 与 F2 流水线寄存器对齐
-    // 原理: predecode 是组合逻辑, 总是反映当前 pc_reg 的数据.
-    // f2_valid_r 是寄存器, 表示上一个 fetch 的块 (pc_reg - 当前块).
-    // 解决方案: 每个周期都捕获 predecode. 前一拍的值自然对应 decode 当前块.
-    always_ff @(posedge clk_core or negedge reset_n) begin
-        if (!reset_n) begin
-            f2r_pd_inst_valid      <= '0;
-            f2r_pd_inst_compressed <= '0;
-            for (int i = 0; i < FETCH_WIDTH; i++) begin
-                f2r_pd_inst[i]            <= 32'h0;
-                f2r_pd_inst_pc[i]         <= 32'h0;
-                f2r_pd_inst_raw[i]        <= 16'h0;
-            end
-        end else begin
-            // 每拍捕获当前 predecode (组合逻辑, 反映当前 pc_reg 的块).
-            // 前一拍的值 = 当前 pc_reg 前一个块的 predecode,
-            // 正好对应 decode 当前正在处理的块 (f2_valid_r 对应的块).
-            f2r_pd_inst_valid      <= pd_inst_valid;
-            f2r_pd_inst_compressed <= pd_inst_compressed;
-            for (int i = 0; i < FETCH_WIDTH; i++) begin
-                f2r_pd_inst[i]     <= pd_inst[i];
-                f2r_pd_inst_pc[i]  <= pd_inst_pc[i];
-                f2r_pd_inst_raw[i] <= pd_inst_raw[i];
-            end
-        end
-    end
-
     // ═══════════════════════════════════════════════════════════
-    // Decode + Issue (D/I)
+    // Decode + Issue (D/I) — DIB FIFO 在 decode_issue 内部实现
     // ═══════════════════════════════════════════════════════════
     lumi_decode_issue #(
         .ISSUE_WIDTH (ISSUE_WIDTH),
@@ -368,14 +323,14 @@ module lumi_core_top #(
     ) u_decode_issue (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
-        .d_instructions        (f2r_pd_inst),      // ERR-PDREG: 寄存后的 predecode 指令
-        .d_inst_valid          (f2_inst_valid_mask),
-        .d_pc                  (f2_pc),
-        .d_valid               (f2_valid),
-        // ERR-042 + ERR-PDREG: per-instruction PC + 压缩标志 (寄存后)
-        .d_inst_pc             (f2r_pd_inst_pc),
-        .d_inst_compressed     (f2r_pd_inst_compressed),
-        .d_inst_raw            (f2r_pd_inst_raw),
+        // Predecode 输入 (直接连接, DIB 在 decode_issue 内部)
+        .pd_inst               (pd_inst),
+        .pd_inst_valid         (pd_inst_valid),
+        .pd_inst_pc            (pd_inst_pc),
+        .pd_inst_compressed    (pd_inst_compressed),
+        .pd_inst_raw           (pd_inst_raw),
+        .pd_inst_count         (pd_inst_count),  // BUG-009-DIB
+        .f2_valid              (f2_valid),
         .d_rs1_data            (i_rs1_data),
         .d_rs2_data            (i_rs2_data),
         .regfile_rs1_addr      (rf_rs1_addr),
@@ -389,12 +344,31 @@ module lumi_core_top #(
         .bypass_rs2_hit        (bp_rs2_hit),
         .bypass_rs1_data       (bp_rs1_data),
         .bypass_rs2_data       (bp_rs2_data),
-        .fu_busy               (fu_busy_combined), // ERR-030 修复: 连接 mem_busy (bit[3])
+        .fu_busy               (fu_busy_combined),
         .stall_out             (dec_stall),
-        .all_issued            (all_issued),  // ERR-019
+        .dib_not_full          (dib_not_full),
+        .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
         .flush                 (e1_mispredict || trap_request),
-        .div_busy              (e2_div_busy)
+        .div_busy              (e2_div_busy),
+        // Bug#5: E1→M Load-Use 冒险检测
+        // 当 E1→M 有 load 指令时, 其结果在 M 级才能产生,
+        // 依赖指令不能在此 cycle 发射 (否则进入 E1 读到旧值)
+        .e1m_load_pending      (e1m_load_pending),
+        .e1m_rd                (e1m_rd_check)
     );
+
+    // Bug#5: E1→M load pending 信号生成
+    logic [ISSUE_WIDTH-1:0] e1m_load_pending;
+    logic [4:0]             e1m_rd_check [ISSUE_WIDTH-1:0];
+    always_comb begin
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            e1m_rd_check[i] = m_rd_r[i];
+            // E1→M 有有效 load 指令 (fu_type==FU_MEM && inst[5]==0 表示 load)
+            e1m_load_pending[i] = m_valid_r[i] &&
+                                  (m_inst_r[i].fu_type == FU_MEM) &&
+                                  !m_inst_r[i].inst[5];
+        end
+    end
 
     // ═══════════════════════════════════════════════════════════
     // Bypass Network
@@ -556,6 +530,9 @@ module lumi_core_top #(
                 e1_rs1_data_r[i] <= 32'h0;
                 e1_rs2_data_r[i] <= 32'h0;
             end
+        end else if (mem_busy) begin
+            // Bug#5 修复: mem_busy 时冻结 I→E1 (与 E1→M 同步)
+            // 防止 decode_issue stall 期间 E1 被清空导致指令丢失
         end else if (e1_has_branch || post_mispredict_bubble) begin
             // ERR-019: 分支气泡 — E1 有分支指令时, 不捕获 D/I 数据
             // ERR-022: 误预测后扩展气泡 — 额外 1 周期让 W bypass 有正确 ra 值

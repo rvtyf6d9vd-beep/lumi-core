@@ -69,7 +69,7 @@ module lumi_fetch #(
 
     // ── Decode back-pressure (← Decode/Issue) ──────────────────
     input  logic                    dec_stall,             // decode 阻塞: 保持 PC 不前进
-    input  logic                    dec_all_issued,        // ERR-019: 当前批次全部已发射
+    input  logic                    dib_not_full,         // DIB 有空间 (替代 dec_all_issued)
 
     // ── Debug ─────────────────────────────────────────────────
     input  logic                    debug_halt
@@ -213,7 +213,7 @@ module lumi_fetch #(
 
     // SA-CM-PCFIX: post-flush PC hold flag.
     // After redirect, F2 must capture data at the redirect target BEFORE the PC advances.
-    // Without this flag, all_issued=1 (empty queue after flush) causes PC to advance
+    // Without this flag, dib_not_full=1 (empty DIB after flush) causes PC to advance
     // in the same cycle F2 captures, so predecode uses the NEW pc_reg (wrong start_offset)
     // while F2 captured data for the OLD pc_reg. This skips the first fetch block.
     // With post_flush_hold_r, PC advance is blocked for 1 cycle after flush,
@@ -507,7 +507,9 @@ module lumi_fetch #(
             // 因此 f2_pc_r 必须捕获当前 pc_reg, 而非上一周期的 f1_pc_r.
             // ERR-019 修复: 仅当 decode 报告当前批次全部已发射时才捕获新 F2 数据
             // 这保证了有 carry-over 指令 (如被 RAW 阻塞的 BGEU) 时 F2 保持不变
-            if (state_reg == ST_FETCH && f2_icache_valid && dec_all_issued) begin
+            // DIB 修复: 添加 !dec_stall 条件, 防止 issue stall 时 F2 重复捕获
+            // 相同数据导致 DIB 重复写入 (PC 不前进但 f2_valid=1)
+            if (state_reg == ST_FETCH && f2_icache_valid && dib_not_full && !dec_stall) begin
                 f2_data_r        <= f2_icache_data;
                 f2_valid_r       <= 1'b1;
                 f2_pc_r          <= pc_reg;  // 当前 PC (与 ICache 数据匹配)
@@ -516,9 +518,10 @@ module lumi_fetch #(
                 f2_pred_taken_r  <= f1_pred_taken_comb;
                 f2_pred_target_r <= f1_pred_target_comb;
                 f2_pred_branch_slot_r <= pred_branch_slot;  // ERR-BTB
-            end else if (!dec_all_issued) begin
-                // ERR-019: carry-over 指令未发射完, F2 保持有效不变
+            end else if (!dib_not_full) begin
+                // DIB 满, F2 保持有效不变
             end else begin
+                // dec_stall 或其他情况: 清除 f2_valid 防止 DIB 重复写入
                 f2_valid_r <= 1'b0;
             end
 
@@ -526,11 +529,12 @@ module lumi_fetch #(
             if (branch_redirect_valid || trap_redirect_valid || state_next == ST_FLUSH) begin
                 carry_hw_r    <= 16'h0;
                 carry_valid_r <= 1'b0;
-            end else if (f2_icache_valid && dec_all_issued) begin
+            // DIB 修复: 同步 !dec_stall 条件, stall 时保持 carry 不变
+            end else if (f2_icache_valid && dib_not_full && !dec_stall) begin
                 carry_hw_r    <= predecode_carry_hw_out;
                 carry_valid_r <= predecode_carry_valid_out;
-            end else if (!dec_all_issued) begin
-                // F2 held → carry also held (no change)
+            end else if (!dib_not_full || dec_stall) begin
+                // F2 held (DIB 满 或 issue stall) → carry also held (no change)
             end else begin
                 carry_valid_r <= 1'b0;
             end
@@ -704,8 +708,8 @@ module lumi_fetch #(
                     state_next = ST_FLUSH;
                     flush_cnt_next  = 2'd2;
                     pc_next    = branch_redirect_pc;
-                end else if (dec_stall || !dec_all_issued) begin
-                    // ERR-019: decode back-pressure 或 carry-over 指令: 保持 PC
+                end else if (dec_stall || !dib_not_full) begin
+                    // decode back-pressure 或 DIB 满: 保持 PC
                     pc_next = pc_reg;
                     state_next = ST_FETCH;
                 end else if (f2_icache_valid) begin

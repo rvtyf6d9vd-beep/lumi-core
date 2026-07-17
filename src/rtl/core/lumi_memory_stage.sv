@@ -80,12 +80,21 @@ module lumi_memory_stage #(
                 endcase
             end
             2'b01: begin // Halfword
-                case (addr_offset[1])
-                    1'b0: return 4'b0011;
-                    1'b1: return 4'b1100;
+                case (addr_offset)
+                    2'b00: return 4'b0011;  // bytes[1:0]
+                    2'b01: return 4'b0110;  // bytes[2:1]
+                    2'b10: return 4'b1100;  // bytes[3:2]
+                    2'b11: return 4'b1000;  // byte[3] only (cross-word)
                 endcase
             end
-            2'b10: return 4'b1111; // Word
+            2'b10: begin // Word
+                case (addr_offset)
+                    2'b00: return 4'b1111;  // bytes[3:0]
+                    2'b01: return 4'b1110;  // bytes[3:1] (cross-word low)
+                    2'b10: return 4'b1100;  // bytes[3:2] (cross-word low)
+                    2'b11: return 4'b1000;  // byte[3]   (cross-word low)
+                endcase
+            end
             default: return 4'b1111;
         endcase
         return 4'b0000;
@@ -99,6 +108,19 @@ module lumi_memory_stage #(
             2'b00: return 1'b1;              // Byte: 任何对齐均可
             2'b01: return !addr_offset[0];    // Halfword: bit[0]==0
             2'b10: return (addr_offset == 2'b00); // Word: 4字节对齐
+            default: return 1'b0;
+        endcase
+    endfunction
+
+    // BUG-009: 仅检测真正跨 word 边界的访问
+    function automatic logic needs_cross_word_split(
+        input logic [1:0] addr_offset,
+        input logic [2:0] funct3
+    );
+        case (funct3[1:0])
+            2'b00: return 1'b0;                          // Byte: never crosses
+            2'b01: return (addr_offset == 2'b11);        // SH: only offset=3 crosses
+            2'b10: return (addr_offset != 2'b00);        // SW: any non-zero crosses
             default: return 1'b0;
         endcase
     endfunction
@@ -121,9 +143,11 @@ module lumi_memory_stage #(
                 endcase
             end
             3'b001: begin // LH: 符号扩展 halfword
-                case (addr_offset[1])
-                    1'b0: return {{16{raw_data[15]}}, raw_data[15:0]};
-                    1'b1: return {{16{raw_data[31]}}, raw_data[31:16]};
+                case (addr_offset)
+                    2'b00: return {{16{raw_data[15]}}, raw_data[15:0]};    // bytes[1:0]
+                    2'b01: return {{16{raw_data[23]}}, raw_data[23:8]};    // bytes[2:1]
+                    2'b10: return {{16{raw_data[31]}}, raw_data[31:16]};   // bytes[3:2]
+                    2'b11: return {{16{raw_data[31]}}, raw_data[31:16]};   // cross-word, merge 处理
                 endcase
             end
             3'b010: return raw_data;          // LW
@@ -136,9 +160,11 @@ module lumi_memory_stage #(
                 endcase
             end
             3'b101: begin // LHU: 零扩展 halfword
-                case (addr_offset[1])
-                    1'b0: return {16'h0, raw_data[15:0]};
-                    1'b1: return {16'h0, raw_data[31:16]};
+                case (addr_offset)
+                    2'b00: return {16'h0, raw_data[15:0]};
+                    2'b01: return {16'h0, raw_data[23:8]};
+                    2'b10: return {16'h0, raw_data[31:16]};
+                    2'b11: return {16'h0, raw_data[31:16]};   // cross-word, merge 处理
                 endcase
             end
             default: return raw_data;
@@ -164,12 +190,21 @@ module lumi_memory_stage #(
                 endcase
             end
             2'b01: begin // SH
-                case (addr_offset[1])
-                    1'b0: return {16'h0, wdata[15:0]};
-                    1'b1: return {wdata[15:0], 16'h0};
+                case (addr_offset)
+                    2'b00: return {16'h0, wdata[15:0]};
+                    2'b01: return {8'h0, wdata[15:8], wdata[7:0], 8'h0};  // bytes[2:1]
+                    2'b10: return {wdata[15:0], 16'h0};                    // bytes[3:2]
+                    2'b11: return {wdata[7:0], 24'h0};                     // byte[3] only (cross-word)
                 endcase
             end
-            2'b10: return wdata; // SW
+            2'b10: begin // SW
+                case (addr_offset)
+                    2'b00: return wdata;
+                    2'b01: return {wdata[23:0],  8'h0}; // bytes[3:1] in low word
+                    2'b10: return {wdata[15:0], 16'h0}; // bytes[3:2] in low word
+                    2'b11: return {wdata[7:0],  24'h0}; // byte[3]   in low word
+                endcase
+            end
             default: return wdata;
         endcase
         return wdata;
@@ -240,6 +275,7 @@ module lumi_memory_stage #(
     // 从 M 级指令中提取 LSU 信息
     // 修复 ERR-021: 每个 LSU 端口 l 映射到对应的 M-slot l
     // 修复 ERR-024: 使用 m1_mem_* (寄存一拍) 而非 e1_mem_*
+    // BUG-007: 未对齐访问时覆盖地址/BE/数据，拆分为两次对齐访问
     always_comb begin
         for (int l = 0; l < 2; l++) begin
             lsu_addr[l]   = m1_mem_addr[l];
@@ -254,17 +290,98 @@ module lumi_memory_stage #(
                 lsu_valid[l]  = 1'b1;
             end
 
-            // 地址对齐检查
-            lsu_misalign[l] = lsu_valid[l] && !check_alignment(lsu_addr[l][1:0], lsu_funct3[l]);
+            // 地址对齐检查 (基于原始地址，用于异常检测)
+            lsu_misalign[l] = lsu_valid[l] && !ma_skip_r && needs_cross_word_split(lsu_addr[l][1:0], lsu_funct3[l]);
 
-            // Byte enable 生成
+            // Byte enable 生成 (基于原始地址)
             lsu_be[l] = gen_byte_enable(lsu_addr[l][1:0], lsu_funct3[l]);
-
-            // Store 数据对齐
+            // Store 数据对齐 (基于原始地址)
             lsu_aligned_data[l] = align_store_data(lsu_wdata[l], lsu_addr[l][1:0], lsu_funct3[l]);
 
             // Load 符号扩展
             lsu_load_data[l] = sign_extend_load(mem_rdata_in, lsu_addr[l][1:0], lsu_funct3[l]);
+        end
+
+        // ── BUG-007/BUG-009: 未对齐访问拆分覆盖 ──────────────────────
+        // Cycle 1 (ma_active_r=0, lsu_misalign 检测到):
+        //   覆盖为低部分对齐访问 (addr & ~3)
+        // Cycle 2 (ma_active_r=1):
+        //   覆盖为高部分对齐访问 ((addr & ~3) + 4)
+        // BUG-009: cycle 2 使用专用寄存器 ma_c2_*, 与 m1_mem_* 解耦
+        if (ma_active_r) begin
+            // Cycle 2: 高部分，完全使用 ma_c2_* 寄存器
+            lsu_addr[ma_slot_r]   = ma_c2_addr_r;
+            lsu_funct3[ma_slot_r] = ma_funct3_r;
+            lsu_we[ma_slot_r]     = ma_c2_we_r;
+            lsu_wdata[ma_slot_r]  = ma_wdata_r;
+            lsu_valid[ma_slot_r]  = 1'b1;
+            lsu_be[ma_slot_r]     = ma_c2_be_r;
+            lsu_aligned_data[ma_slot_r] = ma_c2_data_r;
+        end else if (lsu_misalign[0] || lsu_misalign[1]) begin
+            // Cycle 1: 低部分 (addr & ~3)
+            // 使用已修复的 gen_byte_enable / align_store_data (基于原始 offset)
+            automatic int ma_slot = lsu_misalign[0] ? 0 : 1;
+            lsu_addr[ma_slot]   = {m1_mem_addr[ma_slot][31:2], 2'b00};
+            lsu_be[ma_slot]     = gen_byte_enable(m1_mem_addr[ma_slot][1:0], lsu_funct3[ma_slot]);
+            lsu_aligned_data[ma_slot] = align_store_data(lsu_wdata[ma_slot], m1_mem_addr[ma_slot][1:0], lsu_funct3[ma_slot]);
+        end
+    end
+
+    // ═══════════════════════════════════════════════════════════
+    // BUG-007 修复: 未对齐访问透明处理寄存器
+    // 检测到未对齐 load/store 时，拆分为两次对齐访问
+    // mem_busy 保持 m1_mem_* 不变，cycle 2 自然复用原始地址
+    // ═══════════════════════════════════════════════════════════
+    logic        ma_active_r;     // 未对齐拆分进行中
+    logic [1:0]  ma_slot_r;       // 未对齐访问所在 slot
+    logic        ma_is_load_r;    // 1=load, 0=store
+    logic [2:0]  ma_funct3_r;     // 保存 funct3
+    logic [31:0] ma_wdata_r;      // 保存原始写数据
+    logic [31:0] ma_load_lo_r;    // load 低部分数据 (cycle 1 捕获)
+    // BUG-009: cycle 2 专用寄存器 (与 m1_mem_* 解耦)
+    logic [31:0] ma_c2_addr_r;    // cycle 2 对齐地址
+    logic [3:0]  ma_c2_be_r;      // cycle 2 byte enable
+    logic [31:0] ma_c2_data_r;    // cycle 2 对齐数据
+    logic        ma_c2_we_r;      // cycle 2 write enable
+    logic        ma_skip_r;       // MA 完成后跳过一周期检测 (防重检测)
+
+    // ═══════════════════════════════════════════════════════════
+    // Bug#5 修复: Store-to-Load 同周期组合转发
+    // ═══════════════════════════════════════════════════════════
+    // V1 SRAM: 同步写 (always_ff) + 组合读 (dc_rdata = v1_sram[addr])
+    // 当 store 和 load 在同一 cycle 处理时:
+    //   - store 的 SRAM 写入在 NEXT clock edge 才生效
+    //   - load 的 SRAM 组合读返回的是 OLD 值 (store 之前的值)
+    // 修复: 组合转发 — 如果同一 cycle 有 store 到相同 word 地址,
+    //        将 store 数据直接转发给 load (覆盖 SRAM 读出的旧值)
+    logic [31:0] fwd_load_data [1:0];
+    always_comb begin
+        for (int l = 0; l < 2; l++) begin
+            automatic logic [31:0] merged;
+            merged = mem_rdata_in; // 默认: SRAM 读出值
+
+            // 检查 port 0 是否有 store 到相同 word 地址
+            if (lsu_valid[0] && lsu_we[0] &&
+                (lsu_addr[0][31:2] == lsu_addr[l][31:2])) begin
+                // 按 byte-enable 转发: store 写入的字节用 store data,
+                // 其余字节保持 SRAM 读出值 (对 byte/halfword load 安全)
+                for (int b = 0; b < 4; b++) begin
+                    if (lsu_be[0][b])
+                        merged[b*8 +: 8] = lsu_aligned_data[0][b*8 +: 8];
+                end
+            end
+
+            // 检查 port 1 是否有 store 到相同 word 地址 (罕见: 双 store)
+            if (lsu_valid[1] && lsu_we[1] &&
+                (lsu_addr[1][31:2] == lsu_addr[l][31:2])) begin
+                for (int b = 0; b < 4; b++) begin
+                    if (lsu_be[1][b])
+                        merged[b*8 +: 8] = lsu_aligned_data[1][b*8 +: 8];
+                end
+            end
+
+            // 对合并后的数据做符号扩展 (与 lsu_load_data 相同逻辑)
+            fwd_load_data[l] = sign_extend_load(merged, lsu_addr[l][1:0], lsu_funct3[l]);
         end
     end
 
@@ -280,7 +397,10 @@ module lumi_memory_stage #(
     always_comb begin
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             m_bypass_valid[i] = 1'b0;
-            if (m_valid[i]) begin
+            // BUG-007: 未对齐拆分期间屏蔽旁路 (结果还未就绪)
+            if (ma_active_r || (lsu_misalign[0] || lsu_misalign[1])) begin
+                m_bypass_valid[i] = 1'b0;
+            end else if (m_valid[i]) begin
                 if (m_inst[i].fu_type == FU_MEM && !m_inst[i].inst[5]) begin
                     // Load: 仅在 SRAM 读完成时旁路有效
                     m_bypass_valid[i] = mem_ready_in;
@@ -340,6 +460,19 @@ module lumi_memory_stage #(
             lsu_sel       <= 2'h0;
             pending_port1_r <= 1'b0;
             port0_done_r  <= 1'b0;
+            // BUG-007: 未对齐拆分寄存器复位
+            ma_active_r   <= 1'b0;
+            ma_slot_r     <= 2'b00;
+            ma_is_load_r  <= 1'b0;
+            ma_funct3_r   <= 3'b000;
+            ma_wdata_r    <= 32'h0;
+            ma_load_lo_r  <= 32'h0;
+            // BUG-009: cycle 2 寄存器复位
+            ma_c2_addr_r  <= 32'h0;
+            ma_c2_be_r    <= 4'b0000;
+            ma_c2_data_r  <= 32'h0;
+            ma_c2_we_r    <= 1'b0;
+            ma_skip_r     <= 1'b0;
             // Store Buffer
             sb_head       <= '0;
             sb_tail       <= '0;
@@ -347,6 +480,68 @@ module lumi_memory_stage #(
                 sb_mem[i] <= '0;
         end else begin
             state_reg <= state_next;
+
+            // ── BUG-007/BUG-009: 未对齐拆分寄存器更新 ──
+            if (ma_active_r) begin
+                // Cycle 2 完成 → 清除
+                if (mem_ready_in) begin
+                    ma_active_r <= 1'b0;
+                    ma_skip_r   <= 1'b1;     // 设置跳过标志，防止同一指令重检测
+                end
+            end else begin
+                ma_skip_r <= 1'b0;           // 清除跳过标志
+                if (!stall_port1) begin
+                    // 检测新的跨 word 未对齐访问
+                    if (lsu_misalign[0] || lsu_misalign[1]) begin
+                        automatic int det_slot = lsu_misalign[0] ? 0 : 1;
+                        ma_active_r  <= 1'b1;
+                        ma_slot_r    <= det_slot[1:0];
+                        ma_is_load_r <= !m_inst[det_slot].inst[5];
+                        ma_funct3_r  <= lsu_funct3[det_slot];
+                        ma_wdata_r   <= lsu_wdata[det_slot];
+
+                        // BUG-009: cycle 2 专用寄存器在 cycle 1 即保存好
+                        ma_c2_addr_r <= {m1_mem_addr[det_slot][31:2], 2'b00} + 32'd4;
+                        ma_c2_we_r   <= m_inst[det_slot].inst[5];
+
+                        // BUG-009: cycle 2 高 word 只接收溢出的字节，必须显式计算
+                        case (lsu_funct3[det_slot][1:0])
+                            2'b01: begin // SH (only offset=3 reaches here)
+                                ma_c2_be_r   <= 4'b0001;
+                                ma_c2_data_r <= {24'h0, lsu_wdata[det_slot][15:8]};
+                            end
+                            2'b10: begin // SW
+                                case (m1_mem_addr[det_slot][1:0])
+                                    2'b01: begin // bytes[3:1] in low, byte[0] in high
+                                        ma_c2_be_r   <= 4'b0001;
+                                        ma_c2_data_r <= {24'h0, lsu_wdata[det_slot][31:24]};
+                                    end
+                                    2'b10: begin // bytes[3:2] in low, bytes[1:0] in high
+                                        ma_c2_be_r   <= 4'b0011;
+                                        ma_c2_data_r <= {16'h0, lsu_wdata[det_slot][31:16]};
+                                    end
+                                    2'b11: begin // byte[3] in low, bytes[2:0] in high
+                                        ma_c2_be_r   <= 4'b0111;
+                                        ma_c2_data_r <= {8'h0, lsu_wdata[det_slot][31:8]};
+                                    end
+                                    default: begin
+                                        ma_c2_be_r   <= 4'b0000;
+                                        ma_c2_data_r <= 32'h0;
+                                    end
+                                endcase
+                            end
+                            default: begin
+                                ma_c2_be_r   <= 4'b0000;
+                                ma_c2_data_r <= 32'h0;
+                            end
+                        endcase
+
+                        // Load: 捕获 cycle 1 低部分数据
+                        if (!m_inst[det_slot].inst[5] && mem_ready_in)
+                            ma_load_lo_r <= mem_rdata_in;
+                    end
+                end
+            end
 
             // ERR-029 修复: 双 LSU 端口跟踪寄存器更新
             // FIX(stall-port1-deadlock): pending_port1_r 需独立于 stall_port1,
@@ -392,8 +587,44 @@ module lumi_memory_stage #(
                                 //   不相关数据 (ICache 预取/另一端口 Load), 不可捕获
                                 // mem_ready_in=1 表示当前 cycle mem_rdata_in 属于本 load
                                 // (双保险: m_bypass_valid 同步旁路 valid, 此处同步结果捕获)
-                                if (mem_ready_in) begin
-                                    m_pipe_result[i] <= (i < 2) ? lsu_load_data[i] : lsu_load_data[0];
+                                // Bug#5: 使用 fwd_load_data (含 store→load 转发)
+                                // 替代 lsu_load_data (仅 SRAM 读出, 同周期 store 未生效)
+                                // BUG-007: 未对齐拆分期间不捕获 cycle 1 结果
+                                if (mem_ready_in && !ma_active_r && !(lsu_misalign[0] || lsu_misalign[1])) begin
+                                    m_pipe_result[i] <= (i < 2) ? fwd_load_data[i] : fwd_load_data[0];
+                                end
+                                // BUG-007: 未对齐 load cycle 2 — 合并高低部分
+                                if (mem_ready_in && ma_active_r && ma_is_load_r && (i == ma_slot_r)) begin
+                                    automatic logic [31:0] ma_combined;
+                                    ma_combined = {mem_rdata_in, ma_load_lo_r};
+                                    // 根据 funct3 和原始地址偏移提取正确数据
+                                    case (ma_funct3_r)
+                                        3'b001: begin // LH: 合并后提取 halfword (符号扩展)
+                                            case (m1_mem_addr[ma_slot_r][1:0])
+                                                2'b01: m_pipe_result[i] <= {{16{ma_combined[23]}}, ma_combined[23:8]};
+                                                2'b10: m_pipe_result[i] <= {{16{ma_combined[31]}}, ma_combined[31:16]};
+                                                2'b11: m_pipe_result[i] <= {{16{mem_rdata_in[7]}},  mem_rdata_in[7:0], ma_load_lo_r[31:24]};
+                                                default: m_pipe_result[i] <= {{16{ma_combined[15]}}, ma_combined[15:0]};
+                                            endcase
+                                        end
+                                        3'b101: begin // LHU: 合并后提取 halfword (零扩展)
+                                            case (m1_mem_addr[ma_slot_r][1:0])
+                                                2'b01: m_pipe_result[i] <= {16'h0, ma_combined[23:8]};
+                                                2'b10: m_pipe_result[i] <= {16'h0, ma_combined[31:16]};
+                                                2'b11: m_pipe_result[i] <= {16'h0, mem_rdata_in[7:0], ma_load_lo_r[31:24]};
+                                                default: m_pipe_result[i] <= {16'h0, ma_combined[15:0]};
+                                            endcase
+                                        end
+                                        3'b010: begin // LW: 合并后提取 word
+                                            case (m1_mem_addr[ma_slot_r][1:0])
+                                                2'b01: m_pipe_result[i] <= {mem_rdata_in[7:0],  ma_load_lo_r[31:8]};
+                                                2'b10: m_pipe_result[i] <= {mem_rdata_in[15:0], ma_load_lo_r[31:16]};
+                                                2'b11: m_pipe_result[i] <= {mem_rdata_in[23:0], ma_load_lo_r[31:24]};
+                                                default: m_pipe_result[i] <= ma_combined;
+                                            endcase
+                                        end
+                                        default: m_pipe_result[i] <= ma_combined; // LB/LBU (should not reach here)
+                                    endcase
                                 end
                                 // 其他 cycle 保持 m_pipe_result 不变
                             end
@@ -404,17 +635,10 @@ module lumi_memory_stage #(
                         end
                     endcase
 
-                    // 对齐异常检测 — 修复 ERR-021: 使用 slot i 对应的 lsu_misalign[i]
+                    // 对齐异常检测 — BUG-007 修复: 不再触发异常，改为透明处理
+                    // 原逻辑: 检测到未对齐 → 设置 exception → trap
+                    // 新逻辑: 检测到未对齐 → 拆分为两次对齐访问 (见 ma_active_r 逻辑)
                     m_pipe_exception[i] <= 1'b0;
-                    if (m_inst[i].fu_type == FU_MEM) begin
-                        if (m_inst[i].inst[5] && lsu_misalign[i]) begin
-                            m_pipe_exception[i] <= 1'b1;
-                            m_pipe[i].exc_cause <= EXC_STORE_MISALIGN[3:0];
-                        end else if (!m_inst[i].inst[5] && lsu_misalign[i]) begin
-                            m_pipe_exception[i] <= 1'b1;
-                            m_pipe[i].exc_cause <= EXC_LOAD_MISALIGN[3:0];
-                        end
-                    end
                 end
             end
             end // if (!stall_port1)
@@ -469,8 +693,38 @@ module lumi_memory_stage #(
             // ERR-027/028/029/032 修复: BYPASS_SB=1 直写模式
             // Store 直写 SRAM, Load 直读 SRAM
             // ERR-029 修复: 双 LSU 端口串行化 (优先端口 0, 端口 1 延后)
+            // BUG-007 修复: 未对齐访问拆分 (优先级最高)
             // ═══════════════════════════════════════════════════════════
-            if (pending_port1_r) begin
+
+            // ── BUG-007: 未对齐访问拆分 (最高优先级) ──
+            // Cycle 1: lsu_misalign 检测到，发低部分，mem_busy=1
+            // Cycle 2: ma_active_r=1，发高部分，mem_busy 直到 mem_ready_in
+            if (ma_active_r) begin
+                // Cycle 2: 高部分，使用 ma_c2_* 寄存器
+                mem_addr_out  = ma_c2_addr_r;
+                mem_wdata_out = lsu_aligned_data[ma_slot_r];
+                mem_we_out    = lsu_we[ma_slot_r];
+                mem_be_out    = lsu_be[ma_slot_r];
+                mem_valid_out = 1'b1;
+                // BUG-009 FIX: MA cycle 2 必须阻塞流水线，防止下一条指令进入 M 级
+                // V1 SRAM 单端口组合读：cycle 2 占用 SRAM 地址总线，若下条指令进入 M 级会读到错误地址
+                mem_busy      = 1'b1;
+                if (mem_ready_in) begin
+                    state_next = ST_IDLE;
+                    batch_done = 1'b1;
+                end
+            end else if (lsu_misalign[0] || lsu_misalign[1]) begin
+                // Cycle 1: 低部分 (addr & ~3)
+                automatic int ma_slot = lsu_misalign[0] ? 0 : 1;
+                mem_addr_out  = {m1_mem_addr[ma_slot][31:2], 2'b00};
+                mem_wdata_out = lsu_aligned_data[ma_slot];
+                mem_we_out    = lsu_we[ma_slot];
+                mem_be_out    = lsu_be[ma_slot];
+                mem_valid_out = 1'b1;
+                mem_busy      = 1'b1;  // 强制 pipeline stall, 保持 m1_mem_*
+                // V1 SRAM 同步写: mem_ready_in=1 表示 SRAM 接受请求
+                // cycle 1 的写会在下个 clock edge 生效, cycle 2 发高部分
+            end else if (pending_port1_r) begin
                 // ── 处理延迟的 LSU Port 1 操作 ──
                 mem_addr_out  = lsu_addr[1];
                 mem_wdata_out = lsu_aligned_data[1];
