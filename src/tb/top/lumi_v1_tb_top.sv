@@ -203,6 +203,19 @@ module lumi_v1_tb_top;
     end
   end
 
+  // ─── SRAM Read Trace: 记录所有 SRAM 读 (load) ──────────────
+  wire [31:0] v1_dc_rdata = u_dut.dc_rdata;
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (v1_dc_valid && !v1_dc_we && cycle_count < 1000) begin
+        $display("[SRAM-RD] cyc=%0d addr=0x%08h idx=%0d rdata=0x%08h",
+                 cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_rdata);
+      end
+    end
+  end
+
   // ─── Trap Diagnostic: 记录所有 trap 事件 ──────────────────
   wire w_trap_req  = u_dut.gen_single_core.u_core.trap_request;
   wire [31:0] w_trap_pc = u_dut.gen_single_core.u_core.trap_pc;
@@ -270,13 +283,13 @@ module lumi_v1_tb_top;
     forever begin
       @(posedge clk_core);
       if (|commit_valid_all) begin
-        // Print first 200 cycles (existing debug)
-        if (cycle_count < 500) begin
+        // Print first 1000 cycles (T3 debug)
+        if (cycle_count < 1000) begin
           for (int s = 0; s < 3; s++) begin
             if (commit_valid_all[s]) begin
-              $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h raw=0x%04h comp=%b op=0x%02h",
-                       cycle_count, s, commit_pc_packed[s], commit_inst_packed[s], commit_inst_raw_packed[s],
-                       (commit_inst_raw_packed[s][1:0] != 2'b11), commit_inst_packed[s][6:0]);
+              $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h op=0x%02h",
+                       cycle_count, s, commit_pc_packed[s], commit_inst_packed[s],
+                       commit_rd_packed[s], commit_rd_data_packed[s], commit_inst_packed[s][6:0]);
             end
           end
         end

@@ -100,6 +100,7 @@ module lumi_core_top #(
     logic [31:0]   f2_insts [FETCH_WIDTH-1:0];
     logic [$clog2(FETCH_WIDTH):0] f2_count;
     logic          f2_valid;
+    logic          fetch_active;  // ERR-114: fetch FSM 正在取指
     logic [31:0]   f2_pc;
     logic          f2_pred_taken;
     logic [31:0]   f2_pred_target;
@@ -274,7 +275,8 @@ module lumi_core_top #(
         .pred_branch_slot      (f2_pd_pred_branch_slot),  // ERR-BTB
         .dec_stall             (dec_stall),
         .dib_not_full          (dib_can_accept),  // BUG-009-DIB: 用 dib_can_accept 替代 dib_not_full, 解决 DIB 满死锁
-        .debug_halt            (debug_halt)
+        .debug_halt            (debug_halt),
+        .fetch_active          (fetch_active)  // ERR-114: 门控 pd_advance
     );
 
     // ICache 接口
@@ -331,6 +333,7 @@ module lumi_core_top #(
         .pd_inst_raw           (pd_inst_raw),
         .pd_inst_count         (pd_inst_count),  // BUG-009-DIB
         .f2_valid              (f2_valid),
+        .fetch_active          (fetch_active),  // ERR-114: fetch FSM 状态
         .d_rs1_data            (i_rs1_data),
         .d_rs2_data            (i_rs2_data),
         .regfile_rs1_addr      (rf_rs1_addr),
@@ -350,6 +353,7 @@ module lumi_core_top #(
         .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
         .flush                 (e1_mispredict || trap_request),
         .div_busy              (e2_div_busy),
+        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测
         // 当 E1→M 有 load 指令时, 其结果在 M 级才能产生,
         // 依赖指令不能在此 cycle 发射 (否则进入 E1 读到旧值)

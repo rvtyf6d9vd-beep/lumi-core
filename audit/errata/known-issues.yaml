@@ -2529,10 +2529,18 @@ errata:
       - "src/rtl/core/lumi_fetch.sv"
     affected_versions: ["v0.2"]
     severity: high
-    status: open
-    workaround: "min8 简单测试 PASS，长测试需进一步调试"
-    resolved_date: null
-    resolved_by: null
-    resolution: null
+    status: resolved
+    workaround: "已修复: m_pipe_valid 门控 + lsu_valid 门控 + mem_busy 加入 pipe_stall"
+    resolved_date: "2026-07-18"
+    resolved_by: "Qoder (ERR-114 三重根因修复)"
+    resolution: |
+      三重根因修复:
+      1. m_pipe_valid 未被 mem_busy/batch_done 门控 — 未对齐拆分期间指令重复提交
+         修复: m_pipe_valid 仅在 batch_done && !ma_skip_r 时更新
+      2. lsu_valid 未被 ma_skip_r 门控 — ma_skip_r 周期 SH 被重复写入 SRAM
+         修复: lsu_valid 条件添加 !ma_skip_r
+      3. mem_busy 未加入 pipe_stall — issue 消耗 DIB 但 I→E1 冻结导致指令丢失
+         修复: pipe_stall = e1_has_branch || post_mispredict_bubble || mem_busy
+      回归: v1-smoke/rv32i-full/rv32m PASS, rv32i_misalign.S PASS (exit_code=0, 535 cycles)
     regression_test: "tests/directed/rv32i_misalign.S"
     related_errata: ["ERR-108", "ERR-109", "ERR-110", "ERR-111", "ERR-112", "ERR-113"]

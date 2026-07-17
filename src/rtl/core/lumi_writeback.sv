@@ -124,11 +124,13 @@ module lumi_writeback #(
     end
 
     // ── SA-5: 检测槽 2 是否需要延迟 ──
+    // ERR-114 FIX: 使用 wr_select[2] 而非 w_valid[0]&&w_valid[1]
+    // 原 bug: 当 slot 0/1 为 NOP (w_valid=1, rd=0) 时, 端口实际空闲,
+    //         但 w_valid[0]&&w_valid[1] 为 true → slot 2 被错误延迟
     logic slot2_need_stall;
     always_comb begin
         slot2_need_stall = 1'b0;
-        if (w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] &&
-            w_valid[0] && w_valid[1] && !e2_mul_valid && !e2_div_valid) begin
+        if (w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2]) begin
             slot2_need_stall = 1'b1;
         end
     end
@@ -170,9 +172,12 @@ module lumi_writeback #(
             wr_select[1]        = 1'b1;
         end
 
-        // ── 槽 2: 延迟到下周期 (如果端口都忙) ──
-        // 简化: 槽 2 使用端口 0 (如果槽 0 无效)
-        if (!w_valid[0] && w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2]) begin
+        // ── 槽 2: 使用空闲端口 (ERR-114: 修复 NOP 占用端口问题) ──
+        // ERR-114 FIX: 检查 !regfile_wr_en[0] 而非 !w_valid[0]
+        //   原 bug: NOP (w_valid=1, rd=0) 不写 regfile, 但 !w_valid[0] 为 false,
+        //   导致 slot 2 无法使用空闲端口 → 写回延迟 → RAW 冒险
+        // 槽 2 使用端口 0 (如果端口 0 空闲)
+        if (!regfile_wr_en[0] && w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2]) begin
             regfile_wr_en[0]    = 1'b1;
             regfile_wr_addr[0]  = w_rd[2];
             // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
@@ -182,8 +187,8 @@ module lumi_writeback #(
                 regfile_wr_data[0]  = w_result[2];
             wr_select[2]        = 1'b1;
         end
-        // 或者槽 2 使用端口 1 (如果槽 1 无效且无 E2)
-        if (!w_valid[1] && !e2_mul_valid && !e2_div_valid &&
+        // 或者槽 2 使用端口 1 (如果端口 1 空闲且无 E2)
+        if (!regfile_wr_en[1] && !e2_mul_valid && !e2_div_valid &&
             w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2]) begin
             regfile_wr_en[1]    = 1'b1;
             regfile_wr_addr[1]  = w_rd[2];
@@ -211,13 +216,34 @@ module lumi_writeback #(
             end
         end
 
-        // ── SA-5: Slot 2 延迟数据抢占 (槽 0/1 都忙且无 E2 抢占) ──
-        // 上周期被stall的slot 2, 本周期尝试写回 (优先级最低)
-        if (slot2_pending && !regfile_wr_en[0] && !regfile_wr_en[1] &&
-            !e2_mul_valid && !e2_div_valid) begin
-            regfile_wr_en[1]    = 1'b1;
-            regfile_wr_addr[1]  = slot2_rd_r;
-            regfile_wr_data[1]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+        // ── SA-5: Slot 2 延迟数据写回 (ERR-114: 修复端口占用问题) ──
+        // ERR-114 FIX: 使用任意空闲端口 (原代码要求两端口都空闲, 过度限制)
+        // 上周期被stall的slot 2, 本周期尝试写回
+        if (slot2_pending && !e2_mul_valid && !e2_div_valid) begin
+            if (!regfile_wr_en[0]) begin
+                regfile_wr_en[0]    = 1'b1;
+                regfile_wr_addr[0]  = slot2_rd_r;
+                regfile_wr_data[0]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+            end else if (!regfile_wr_en[1]) begin
+                regfile_wr_en[1]    = 1'b1;
+                regfile_wr_addr[1]  = slot2_rd_r;
+                regfile_wr_data[1]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+            end
+        end
+    end
+
+    // ERR-114 DEBUG: trace W stage slot 2 writeback
+    always_comb begin
+        if (w_valid[2] && w_rd[2] != 5'h0) begin
+            $display("[WB-DBG] cyc=%0d s0_v=%b s0_rd=%0d s1_v=%b s1_rd=%0d s2_v=%b s2_rd=%0d s2_res=0x%08h wr_sel=%b wr_en=%b wr0_addr=%0d wr0_data=0x%08h wr1_addr=%0d wr1_data=0x%08h stall=%b",
+                $time/1000,
+                w_valid[0], w_rd[0],
+                w_valid[1], w_rd[1],
+                w_valid[2], w_rd[2], w_result[2],
+                wr_select, regfile_wr_en,
+                regfile_wr_addr[0], regfile_wr_data[0],
+                regfile_wr_addr[1], regfile_wr_data[1],
+                slot2_need_stall);
         end
     end
 

@@ -285,7 +285,9 @@ module lumi_memory_stage #(
             lsu_valid[l]  = 1'b0;
 
             // 从 M 级对应 slot 获取 funct3
-            if (m_valid[l] && m_inst[l].fu_type == FU_MEM) begin
+            // ERR-114 FIX: ma_skip_r 时禁止 lsu_valid — 防止未对齐拆分完成后
+            //   SH 仍留在 M 级被当作普通 store 重复写入 SRAM
+            if (m_valid[l] && m_inst[l].fu_type == FU_MEM && !ma_skip_r) begin
                 lsu_funct3[l] = m_inst[l].funct3;
                 lsu_valid[l]  = 1'b1;
             end
@@ -567,10 +569,17 @@ module lumi_memory_stage #(
             // (ERR-029: 避免 ST_WAIT_READY 期间误更新)
             // 流水线寄存器: M 级输入 → 管道
             // SA-6 修复: stall_port1 时保持寄存器 (防止 port 0 被重复捕获)
+            // ERR-114 FIX: m_pipe_valid 门控 — 仅在 batch_done && !ma_skip_r 时提交
+            //   防止未对齐拆分期间指令被重复提交 (SH 提交 3 次导致后续 lui 丢失)
             if (!stall_port1) begin
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 m_pipe[i]       <= m_inst[i];
-                m_pipe_valid[i] <= m_valid[i];
+                // ERR-114: batch_done=0 → 内存操作进行中, 不提交
+                //          ma_skip_r=1 → 拆分完成后额外 1 周期 SH 仍在 M, 不重复提交
+                if (batch_done && !ma_skip_r)
+                    m_pipe_valid[i] <= m_valid[i];
+                else
+                    m_pipe_valid[i] <= 1'b0;
                 m_pipe_rd[i]    <= m_rd[i];
                 m_pipe_pc[i]    <= m_inst[i].pc;
                 m_pipe_inst[i]  <= m_inst[i].inst; // 显式捕获指令字

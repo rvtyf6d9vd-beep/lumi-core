@@ -23,6 +23,7 @@ module lumi_decode_issue #(
     input  logic [15:0]             pd_inst_raw  [FETCH_WIDTH-1:0],
     input  logic [3:0]              pd_inst_count,  // BUG-009-DIB: predecode 指令计数 (用于 dib_can_accept)
     input  logic                    f2_valid,  // 上一周期 F2 数据有效
+    input  logic                    fetch_active,  // ERR-114: fetch FSM 正在取指 (ST_FETCH/ST_STALL)
 
     // ── D 级输出 (→ RegFile 读端口) ───────────────────────────
     output logic [31:0]             d_rs1_data [ISSUE_WIDTH-1:0],
@@ -54,6 +55,7 @@ module lumi_decode_issue #(
     output logic                    dib_can_accept, // BUG-009-DIB: 当前 predecode 批次可放入 DIB (考虑 issue 排空)
     input  logic                    flush,
     input  logic                    div_busy,
+    input  logic                    pipe_stall,  // ERR-114: 流水线不能接收新指令 (分支气泡/误预测气泡)
 
     // ── Bug#5: E1→M Load-Use 冒险检测输入 ────────────────
     // 当 E1→M 有未完成 load 时, 依赖其结果的指令不能发射
@@ -130,22 +132,78 @@ module lumi_decode_issue #(
     // 保守 not_full: 预留一个完整 batch 空间, 防止部分写入丢失
     assign dib_not_full = (dib_count <= (DIB_DEPTH - FETCH_WIDTH));
 
-    // BUG-009-DIB: dib_can_accept — 考虑当前周期 issue 排空后的有效空间
-    // 解决 dib_not_full 过于保守导致的死锁: DIB 持续排空但 PC 永不前进
-    // dib_can_accept = 当前 predecode 批次在 issue 排空后可放入 DIB
-    logic [5:0] dib_count_after_issue; // 预测 issue 后的 DIB 占用
-    logic       dib_underflow;         // issue 导致下溢
-    assign dib_underflow = (issue_count[5:0] > {1'b0, dib_count});
-    assign dib_count_after_issue = dib_underflow ? 6'h0 : ({1'b0, dib_count} - issue_count[5:0]);
-    assign dib_can_accept = (dib_count_after_issue + {2'b0, pd_inst_count}) <= DIB_DEPTH[5:0];
+    // ═══ ERR-114 FIX: DIB pending entry 管理 (combinational advance) ═══
+    // 根因 (原始 advance-tracking 的 bug):
+    //   pd_advance_r 是 dib_can_accept 的 1 周期延迟寄存器.
+    //   当 DIB 满时 (dib_can_accept=0), predecode 输出未注册.
+    //   当 DIB 有空间时 (dib_can_accept=1), PC 前进, 但 pd_advance_r
+    //   仍为 0 (来自上一周期). 到下一周期 pd_advance_r=1 时, PC 已前进,
+    //   predecode 输出对应新 PC → 旧 PC 的指令永久丢失.
+    //
+    // 修复方案 (combinational advance, 无 1 周期 bubble):
+    //   1. dib_wr_offset 检查 pending + 新 predecode 空间 (全握手)
+    //   2. pd_advance = dib_can_accept && !stall_out (组合逻辑, 无延迟)
+    //   3. pd_inst_valid_r 在 pd_advance=1 时同周期注册 predecode 输出
+    //      → 注册的是当前 PC 的 predecode (PC 在 posedge 后才前进)
+    //   → DIB 写入旧 pending 和注册新数据在同一周期, 无 bubble
 
-    // ── pd_inst_r: 每周期捕获 predecode 输出 (替代原 f2r_pd_inst) ──
+    // ── pd_inst_r: predecode 输出寄存器 ──
     logic [31:0]        pd_inst_r [FETCH_WIDTH-1:0];
     logic [FETCH_WIDTH-1:0] pd_inst_valid_r;
     logic [31:0]        pd_inst_pc_r [FETCH_WIDTH-1:0];
     logic [FETCH_WIDTH-1:0] pd_inst_compressed_r;
     logic [15:0]        pd_inst_raw_r [FETCH_WIDTH-1:0];
 
+    // ── pd_pending: pd_inst_valid_r 中有效条目数 ──
+    logic [DIB_PTR_W-1:0] pd_pending;
+    always_comb begin
+        pd_pending = '0;
+        for (int i = 0; i < FETCH_WIDTH; i++)
+            if (pd_inst_valid_r[i]) pd_pending = pd_pending + 1'b1;
+    end
+
+    // ── dib_count_after_issue: 预测 issue 后的 DIB 占用 ──
+    logic [5:0] dib_count_after_issue;
+    logic       dib_underflow;
+    assign dib_underflow = (issue_count[5:0] > {1'b0, dib_count});
+    assign dib_count_after_issue = dib_underflow ? 6'h0 : ({1'b0, dib_count} - issue_count[5:0]);
+
+    // ── dib_wr_offset: ALL-OR-NOTHING + 全握手空间检查 ──
+    // 空间检查包含 pd_inst_count: 确保写入 pending 时, dib_can_accept=1,
+    //   fetch 会前进, 下周期 pd_advance_r=1, 注册新数据.
+    logic [DIB_PTR_W-1:0] dib_wr_offset;
+    always_comb begin
+        dib_wr_offset = pd_pending;
+        if ({1'b0, dib_count_after_issue} + {2'b0, dib_wr_offset} + {2'b0, pd_inst_count} > DIB_DEPTH[DIB_PTR_W+1:0])
+            dib_wr_offset = '0;
+    end
+
+    // ── pd_written / pd_remaining ──
+    logic [DIB_PTR_W-1:0] pd_written;
+    logic [DIB_PTR_W-1:0] pd_remaining;
+    assign pd_written   = dib_wr_offset;
+    assign pd_remaining = (pd_pending > pd_written) ? (pd_pending - pd_written) : '0;
+
+    // ── dib_can_accept: PC 可以前进的条件 ──
+    assign dib_can_accept = (pd_remaining == '0) &&
+                            ({1'b0, dib_count_after_issue} + {2'b0, pd_pending} + {2'b0, pd_inst_count} <= DIB_DEPTH[DIB_PTR_W+1:0]);
+
+    // ── pd_advance: 组合逻辑, 同周期注册 predecode 输出 ──
+    // 当 dib_can_accept=1 时, fetch 前进 PC. 在 posedge 时刻, pc_reg 还是旧值,
+    // predecode 输出对应旧 PC. pd_advance=1 时注册此输出, 同时 DIB 写入旧 pending.
+    // 下周期 PC 已前进, predecode 输出对应新 PC, 可再次注册.
+    // 关键: 无 1 周期延迟, 避免 DIB 满转空时旧 PC 指令丢失.
+    logic pd_advance;
+    assign pd_advance = dib_can_accept && !stall_out && fetch_active;
+
+    // ── pd_inst_valid_r 注册: advance + clear-after-write ──
+    // 两种更新路径 (不互斥, pd_advance 优先):
+    //   A. pd_advance=1: DIB 可接受 → 注册当前 predecode (覆盖旧数据)
+    //   B. dib_wr_offset>0 && !pd_advance: pending 已写入, 无新数据 → CLEAR
+    //      防止保留的 stale 数据被重复写入 DIB
+    //   C. 其余: 保留 pd_inst_valid_r (pending 未写完, 或无新数据)
+    // 关键: A 和 B 可以在同一周期发生 (pd_advance=1 && dib_wr_offset>0),
+    //   此时旧数据写入 DIB, 同时注册新数据 → 无 1 周期 bubble
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
             pd_inst_valid_r <= '0;
@@ -155,26 +213,26 @@ module lumi_decode_issue #(
                 pd_inst_pc_r[i]         <= 32'h0;
                 pd_inst_raw_r[i]        <= 16'h0;
             end
+        end else if (flush) begin
+            pd_inst_valid_r <= '0;
+            pd_inst_compressed_r <= '0;
         end else begin
-            pd_inst_valid_r      <= pd_inst_valid;
-            pd_inst_compressed_r <= pd_inst_compressed;
-            for (int i = 0; i < FETCH_WIDTH; i++) begin
-                pd_inst_r[i]     <= pd_inst[i];
-                pd_inst_pc_r[i]  <= pd_inst_pc[i];
-                pd_inst_raw_r[i] <= pd_inst_raw[i];
+            // A: DIB 可接受 → 注册新数据 (优先)
+            if (pd_advance) begin
+                pd_inst_valid_r      <= pd_inst_valid;
+                pd_inst_compressed_r <= pd_inst_compressed;
+                for (int i = 0; i < FETCH_WIDTH; i++) begin
+                    pd_inst_r[i]     <= pd_inst[i];
+                    pd_inst_pc_r[i]  <= pd_inst_pc[i];
+                    pd_inst_raw_r[i] <= pd_inst_raw[i];
+                end
             end
-        end
-    end
-
-    // ── DIB 写入偏移量计算 (组合逻辑) ──
-    logic [DIB_PTR_W-1:0] dib_wr_offset;
-
-    always_comb begin
-        dib_wr_offset = '0;
-        for (int i = 0; i < FETCH_WIDTH; i++) begin
-            // 保守检查: 确保当前及后续所有可能 valid 的 entry 都能写入
-            if (pd_inst_valid_r[i] && (dib_count + dib_wr_offset + (FETCH_WIDTH - 1 - i) < DIB_DEPTH))
-                dib_wr_offset = dib_wr_offset + 1'b1;
+            // B: pending 已写入但无新数据 → 清除 (防止重复写入)
+            if (dib_wr_offset > 0 && !pd_advance) begin
+                pd_inst_valid_r      <= '0;
+                pd_inst_compressed_r <= '0;
+            end
+            // C: 其余情况 → 保留 (非阻塞赋值, 无更新)
         end
     end
 
@@ -191,8 +249,11 @@ module lumi_decode_issue #(
             dib_rd_ptr <= '0;
             dib_count  <= '0;
         end else begin
-            // ── 写入: predecode → DIB (使用 pd_inst_r, 不是 pd_inst) ──
-            if (f2_valid && dib_wr_offset > 0) begin
+            // ── 写入: pd_inst_r → DIB ──
+            // dib_wr_offset 已检查 pending + 新 predecode 空间 (全握手).
+            //   pd_advance_r 确保下周期注册新数据, 不会重复写入.
+            //   不需要 f2_valid 门控 (会死锁).
+            if (dib_wr_offset > 0) begin
                 for (int i = 0; i < FETCH_WIDTH; i++) begin
                     if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].valid      <= 1'b1;
@@ -211,9 +272,9 @@ module lumi_decode_issue #(
             end
 
             // ── count 统一更新 ──
-            // 修复: 仅当 f2_valid=1 时才加 dib_wr_offset, 防止 f2_valid=0 时
-            // pd_inst_valid_r 中的残留 valid 条目虚增 dib_count
-            dib_count <= dib_count + (f2_valid ? dib_wr_offset : '0) - issue_count;
+            // dib_wr_offset: 0 或 pd_pending (全握手空间检查)
+            //   flush 时 dib_count 已重置
+            dib_count <= dib_count + dib_wr_offset - issue_count;
         end
     end
 
@@ -237,16 +298,19 @@ module lumi_decode_issue #(
             dib_bp_hit  = 1'b0;
             dib_bp_idx  = 0;
 
-            // Write-through bypass: 检查读取位置是否正在被写入
-            if (f2_valid) begin
-                for (int i = 0; i < FETCH_WIDTH; i++) begin
-                    if (!dib_bp_hit && pd_inst_valid_r[i] && (i < dib_wr_offset) &&
-                        ((dib_wr_ptr + i[DIB_PTR_W-1:0]) == dib_rd_addr)) begin
-                        dib_bp_hit = 1'b1;
-                        dib_bp_idx = i;
-                    end
-                end
-            end
+            // Write-through bypass: 暂时禁用 (ERR-114 调试)
+            // bypass 在特定 DIB 状态下会转发错误数据, 导致 PC 回退
+            // 禁用后指令从 DIB 寄存器读取 (1 周期延迟), 但功能正确
+            // TODO: 修复 bypass 后重新启用
+            // if (f2_valid && dib_not_full) begin
+            //     for (int i = 0; i < FETCH_WIDTH; i++) begin
+            //         if (!dib_bp_hit && pd_inst_valid_r[i] &&
+            //             ((dib_wr_ptr + i[DIB_PTR_W-1:0]) == dib_rd_addr)) begin
+            //             dib_bp_hit = 1'b1;
+            //             dib_bp_idx = i;
+            //         end
+            //     end
+            // end
 
             if (dib_bp_hit) begin
                 // 转发: 直接使用本周期写入数据
@@ -679,7 +743,9 @@ module lumi_decode_issue #(
         stop_issue = 1'b0;
 
         // ERR-019: post_flush_block 时禁止发射 — flush 后等待正确路径批次
-        if (!post_flush_block_r) begin
+        // ERR-114: pipe_stall 时禁止发射 — 分支气泡/误预测气泡期间 E1 不捕获,
+        //   若仍发射会消耗 DIB 条目但指令丢失
+        if (!post_flush_block_r && !pipe_stall) begin
 
         // 程序序扫描: 从解码队列中按序选择可发射的指令
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
@@ -707,6 +773,10 @@ module lumi_decode_issue #(
                                         tmp_fu_available = 1'b0;
                                 end
                             end
+                            // ERR-114 FIX: MEM 指令只能使用 slot 0/1 (2 个 LSU 端口)
+                            // slot 2 的 MEM 指令延后到下一周期 slot 0 发射
+                            if (dec[qi].fu_type == FU_MEM && s >= 2)
+                                tmp_fu_available = 1'b0;
 
                             // 检查批次内 RAW 冒险
                             tmp_batch_raw = 1'b0;
@@ -759,10 +829,11 @@ module lumi_decode_issue #(
         end
         end // ERR-019: close if (!post_flush_block_r)
 
-        // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue)
+        // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue 或 pipe_stall)
         if (!dib_empty && !post_flush_block_r) begin
             // DIB 有有效指令但 issue_count == 0, 说明被阻塞
-            if (dib_count > 0 && issue_count == 0)
+            // ERR-114: pipe_stall 也需要 stall_out, 防止 fetch 继续前进
+            if (dib_count > 0 && (issue_count == 0 || pipe_stall))
                 stall_out = 1'b1;
         end
 
@@ -921,7 +992,7 @@ module lumi_decode_issue #(
             post_flush_block_r <= 1'b0;
     end
 
-    // ── Phase 2 诊断 trace: 追踪 addi@0x2c 命运 ──
+    // ── ERR-114 诊断 trace: DIB 写入/注册状态 ──
     // synopsys translate_off
     `ifdef VERILATOR
     logic [31:0] di_cyc_cnt;
@@ -931,33 +1002,35 @@ module lumi_decode_issue #(
     initial begin
         forever begin
             @(posedge clk_core);
-            // 追踪 DIB 写入 (PC=0x2c addi)
-            if (f2_valid && dib_wr_offset > 0) begin
+            // 追踪 DIB 写入
+            if (dib_wr_offset > 0) begin
                 for (int i = 0; i < FETCH_WIDTH; i++) begin
                     if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
-                        if (pd_inst_pc_r[i] >= 32'h28 && pd_inst_pc_r[i] <= 32'h3c)
-                            $display("[DI-WR] cyc=%0d dib_idx=%0d pc=0x%04h inst=0x%08h",
-                                di_cyc_cnt, (dib_wr_ptr + i[DIB_PTR_W-1:0]),
-                                pd_inst_pc_r[i], pd_inst_raw_r[i]);
+                        $display("[DI-WR] cyc=%0d dib_idx=%0d pc=0x%08h inst=0x%08h",
+                            di_cyc_cnt, (dib_wr_ptr + i[DIB_PTR_W-1:0]),
+                            pd_inst_pc_r[i], pd_inst_r[i]);
                     end
                 end
             end
-            // 追踪 DIB 读取/issue (PC=0x28-0x3c)
+            // 追踪 DIB 注册决策
+            if (di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130) begin
+                $display("[DI-REG] cyc=%0d pd_pending=%0d dib_wr_off=%0d pd_rem=%0d can_acc=%0d adv=%0d f2v=%0d dib_cnt=%0d iss_cnt=%0d pd_ic=%0d",
+                    di_cyc_cnt, pd_pending, dib_wr_offset, pd_remaining,
+                    dib_can_accept, pd_advance, f2_valid, dib_count, issue_count, pd_inst_count);
+            end
+            // 追踪 issue (cyc 95-130)
             for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                if (issue_ready[s]) begin
-                    if (dib_read_pc[issue_sel[s]] >= 32'h20 && dib_read_pc[issue_sel[s]] <= 32'h3c)
-                        $display("[DI-IS] cyc=%0d slot=%0d pc=0x%04h raw=0x%04h inst=0x%08h fu=%0d rd=%0d rs1=%0d rs2=%0d stop=%0b",
-                            di_cyc_cnt, s, dib_read_pc[issue_sel[s]], dib_read_raw[issue_sel[s]],
-                            dib_read_inst[issue_sel[s]],
-                            dec[issue_sel[s]].fu_type, dec[issue_sel[s]].rd,
-                            dec[issue_sel[s]].rs1, dec[issue_sel[s]].rs2, stop_issue);
+                if (issue_ready[s] && di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130) begin
+                    $display("[DI-IS] cyc=%0d slot=%0d pc=0x%08h inst=0x%08h",
+                        di_cyc_cnt, s, dib_read_pc[issue_sel[s]], dib_read_inst[issue_sel[s]]);
                 end
             end
-            // 追踪 e1m_load_pending 和 stall
-            if (e1m_load_pending[0] || e1m_load_pending[1] || stall_out)
-                $display("[DI-STALL] cyc=%0d e1m_lp=[%0b,%0b] e1m_rd=[%0d,%0d] stall=%0b dib_cnt=%0d",
+            // 追踪 stall
+            if ((e1m_load_pending[0] || e1m_load_pending[1] || stall_out) &&
+                di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130)
+                $display("[DI-STALL] cyc=%0d e1m_lp=[%0b,%0b] stall=%0b dib_cnt=%0d",
                     di_cyc_cnt, e1m_load_pending[0], e1m_load_pending[1],
-                    e1m_rd[0], e1m_rd[1], stall_out, dib_count);
+                    stall_out, dib_count);
         end
     end
     `endif

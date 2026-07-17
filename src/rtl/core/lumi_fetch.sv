@@ -72,7 +72,10 @@ module lumi_fetch #(
     input  logic                    dib_not_full,         // DIB 有空间 (替代 dec_all_issued)
 
     // ── Debug ─────────────────────────────────────────────────
-    input  logic                    debug_halt
+    input  logic                    debug_halt,
+
+    // ── Fetch active (→ Decode/Issue) ─────────────────────────
+    output logic                    fetch_active  // 组合逻辑: state_reg == ST_FETCH/ST_STALL
 );
 
     import lumi_pkg::*;
@@ -676,6 +679,10 @@ module lumi_fetch #(
     // ERR-BTB: pred_branch_slot 输出 mux
     // 注: 这里直接传递组合逻辑值, 因为 predecode 也是组合逻辑
     // pred_branch_slot 始终反映当前周期的 F1 预测
+
+    // ERR-114 FIX: fetch_active — 组合逻辑, 指示 FSM 正在取指 (ST_FETCH/ST_STALL)
+    // 用于门控 pd_advance, 防止 ST_IDLE 阶段重复注册 predecode 输出
+    assign fetch_active = (state_reg == ST_FETCH || state_reg == ST_STALL);
 
     // ═══════════════════════════════════════════════════════════
     // FSM 组合逻辑

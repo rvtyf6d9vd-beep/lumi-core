@@ -746,11 +746,13 @@ module lumi_execute #(
     // ═══════════════════════════════════════════════════════════
     // LSU 地址输出 (2x LSU, 组合逻辑)
     // ═══════════════════════════════════════════════════════════
+    // ERR-114 FIX: 静态 slot-to-port 映射 (slot 0 → port 0, slot 1 → port 1)
+    // 原动态分配 (第一个 MEM → port 0) 与 memory stage 的静态映射不匹配:
+    //   当 MEM 在 slot 1/2 而 slot 0 为 NOP 时, execute 将地址写入 port 0,
+    //   但 memory stage 检查 slot 0 (NOP) → lsu_valid[0]=0 → store 丢失.
+    // 静态映射确保 execute 和 memory stage 的端口映射一致.
+    // slot 2 的 MEM 指令由 issue logic 阻止 (只有 2 个 LSU 端口).
     always_comb begin
-        // SA-CM-006: 使用 lsu0_occupied 标志替代地址 0 判断
-        // 原代码用 e1_mem_addr[0]==0 判断端口空闲，但地址 0x0 是有效 SRAM 地址
-        logic lsu0_occupied;
-        lsu0_occupied = 1'b0;
         e1_mem_addr[0]  = 32'h0;
         e1_mem_we[0]    = 1'b0;
         e1_mem_wdata[0] = 32'h0;
@@ -758,22 +760,18 @@ module lumi_execute #(
         e1_mem_we[1]    = 1'b0;
         e1_mem_wdata[1] = 32'h0;
 
-        // 从发射槽中分配 MEM 类型指令到 LSU 端口
-        for (int i = 0; i < ISSUE_WIDTH; i++) begin
-            if (e1_valid[i] && e1_inst[i].fu_type == FU_MEM) begin
-                if (!lsu0_occupied) begin
-                    // LSU 端口 0: 第一个 MEM 指令
-                    e1_mem_addr[0]  = e1_rs1_data[i] + e1_inst[i].imm;
-                    e1_mem_we[0]    = e1_inst[i].inst[5]; // STORE bit (opcode[5])
-                    e1_mem_wdata[0] = e1_rs2_data[i];
-                    lsu0_occupied   = 1'b1;
-                end else begin
-                    // LSU 端口 1: 第二个 MEM 指令
-                    e1_mem_addr[1]  = e1_rs1_data[i] + e1_inst[i].imm;
-                    e1_mem_we[1]    = e1_inst[i].inst[5];
-                    e1_mem_wdata[1] = e1_rs2_data[i];
-                end
-            end
+        // 静态映射: slot 0 → LSU port 0
+        if (e1_valid[0] && e1_inst[0].fu_type == FU_MEM) begin
+            e1_mem_addr[0]  = e1_rs1_data[0] + e1_inst[0].imm;
+            e1_mem_we[0]    = e1_inst[0].inst[5]; // STORE bit (opcode[5])
+            e1_mem_wdata[0] = e1_rs2_data[0];
+        end
+
+        // 静态映射: slot 1 → LSU port 1
+        if (e1_valid[1] && e1_inst[1].fu_type == FU_MEM) begin
+            e1_mem_addr[1]  = e1_rs1_data[1] + e1_inst[1].imm;
+            e1_mem_we[1]    = e1_inst[1].inst[5];
+            e1_mem_wdata[1] = e1_rs2_data[1];
         end
     end
 
