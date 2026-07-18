@@ -552,8 +552,10 @@ module lumi_fetch #(
 
             // ── BTB 更新 (分支反馈, fetch-bpred.html §3.1) ──
             // BUG-FIX: flush 期间不写入 BTB, 防止错误路径指令污染 BTB
+            // ERR-131g: 条件分支不覆盖 JAL/JALR 条目 (防止 aliasing 导致 JAL 反复误预测)
             if (branch_redirect_valid && state_reg != ST_FLUSH) begin
-                btb_mem[btb_wr_idx] <= btb_wr_data;
+                if (!(btb_mem[btb_wr_idx].valid && !btb_mem[btb_wr_idx].is_branch && btb_wr_data.is_branch))
+                    btb_mem[btb_wr_idx] <= btb_wr_data;
             end
 
             // ── LTAGE 更新 (fetch-bpred.html §3.3) ─────────
