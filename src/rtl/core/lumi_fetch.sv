@@ -791,12 +791,10 @@ module lumi_fetch #(
         // BUG-FIX2: 必须设置 flush_cnt_next = 2'd2, 否则 override 覆盖 case 语句
         // 中已设置的 flush_cnt_next, 导致 flush 延迟为 0 cycle, 流水线冲刷不充分.
         // SA-CM-007 FIX: trap takes priority over branch redirect
-        // SA-CM-REDIRECT-FIX: 使用寄存版边沿检测.
-        // branch_redirect_valid 是组合脉冲, 可能在多个连续时钟周期中出现.
-        // branch_redirect_valid_d 寄存一拍, 只在第一个周期检测到上升沿.
-        // 注意: redirect 触发后, pc_reg 在下一个 posedge 更新到目标地址.
-        // 在 ST_FLUSH 期间, override 不触发 (state_reg == ST_FLUSH).
-        if (branch_redirect_valid && !branch_redirect_valid_d && !trap_redirect_valid && state_reg != ST_FLUSH) begin
+        // ERR-131b FIX: 移除边沿检测 (!branch_redirect_valid_d)
+        // 原 bug: BSS 循环中 bgeu+JAL 连续误预测, 第二个 redirect 被抑制
+        // state_reg != ST_FLUSH 已足够防止 flush 期间重复 redirect
+        if (branch_redirect_valid && !trap_redirect_valid && state_reg != ST_FLUSH) begin
             pc_next        = branch_redirect_pc;
             f1_pc_out      = branch_redirect_pc;
             flush_cnt_next = 2'd2;
