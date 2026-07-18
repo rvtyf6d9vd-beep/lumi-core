@@ -342,8 +342,8 @@ module lumi_v1_tb_top;
     wait(reset_n);
     forever begin
       @(posedge clk_core);
-      if (cycle_count >= 170665 && cycle_count <= 170685) begin
-        $display("[DIAG-FL] cyc=%0d mispred=%0b dib_cnt=%0d pd_valid=%06b pd_pc0=0x%08h wait_fresh=%0b pd_adv=%0b fetch_act=%0b",
+      if (cycle_count >= 152545 && cycle_count <= 152570) begin
+        $display("[DIAG-FL] cyc=%0d mispred=%0b dib_cnt=%0d pd_valid=%06b pd_pc0=0x%08h wait_fresh=%0b pd_adv=%0b keep=%0d flush_pc=0x%08h fetch_act=%0b",
                  cycle_count,
                  u_dut.gen_single_core.u_core.e1_mispredict,
                  u_dut.gen_single_core.u_core.u_decode_issue.dib_count,
@@ -351,6 +351,8 @@ module lumi_v1_tb_top;
                  u_dut.gen_single_core.u_core.u_decode_issue.pd_inst_pc_r[0],
                  u_dut.gen_single_core.u_core.u_decode_issue.wait_for_fresh_r,
                  u_dut.gen_single_core.u_core.u_decode_issue.pd_advance,
+                 u_dut.gen_single_core.u_core.u_decode_issue.flush_keep_count,
+                 u_dut.gen_single_core.u_core.u_decode_issue.flush_pc,
                  u_dut.gen_single_core.u_core.u_decode_issue.fetch_active);
       end
     end
