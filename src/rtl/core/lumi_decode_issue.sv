@@ -131,6 +131,8 @@ module lumi_decode_issue #(
         logic [31:0] pc;             // 指令 PC
         logic        compressed;     // 压缩标志
         logic [15:0] inst_raw;       // 原始 16-bit (用于调试/trace)
+        logic        pred_taken;     // ERR-131L: F1 分支预测 (传播到 E1 用于 mispredict 检测)
+        logic [31:0] pred_target;    // ERR-131L: F1 预测目标
     } dib_entry_t;
 
     localparam int DIB_DEPTH  = 32;

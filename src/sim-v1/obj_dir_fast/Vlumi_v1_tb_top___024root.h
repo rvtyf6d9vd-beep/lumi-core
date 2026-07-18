@@ -1192,7 +1192,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vlumi_v1_tb_top___024root final {
         VlUnpacked<CData/*0:0*/, 12> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ltage_hit;
         VlUnpacked<CData/*2:0*/, 12> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__ltage_ctr;
         VlUnpacked<VlWide<3>/*71:0*/, 6> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__dec;
-        VlUnpacked<VlWide<3>/*81:0*/, 32> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__dib;
+        VlUnpacked<VlWide<4>/*114:0*/, 32> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__dib;
         VlUnpacked<IData/*31:0*/, 6> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__pd_inst_r;
         VlUnpacked<IData/*31:0*/, 6> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__pd_inst_pc_r;
         VlUnpacked<SData/*15:0*/, 6> lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT__pd_inst_raw_r;

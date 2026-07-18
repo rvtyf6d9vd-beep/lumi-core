@@ -281,6 +281,16 @@ module lumi_v1_tb_top;
                  u_dut.gen_single_core.u_core.u_fetch.f2_icache_data[127:96],
                  u_dut.gen_single_core.u_core.u_fetch.btb_hit);
       end
+      // 追踪 bgeu 0x20 在 E1 的评估
+      if (cycle_count > 119995 && cycle_count < 120010 &&
+          u_dut.gen_single_core.u_core.e1_br_pc == 32'h20) begin
+        $display("[E1-BGEU] cyc=%0d br_pc=0x%08h br_taken=%0b mispredict=%0b e1_has_branch=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_br_pc,
+                 u_dut.gen_single_core.u_core.e1_br_taken,
+                 u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.e1_has_branch);
+      end
       // 打印 cycle 119998-120006 的 pc_reg
       if (cycle_count >= 119998 && cycle_count <= 120006) begin
         $display("[PC-TRACE] cyc=%0d pc_reg=0x%08h",
