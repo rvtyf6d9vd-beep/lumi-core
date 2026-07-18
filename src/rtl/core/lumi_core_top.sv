@@ -151,6 +151,8 @@ module lumi_core_top #(
     logic [31:0]   e1_rs2_data_r [ISSUE_WIDTH-1:0];
     // ERR-019: 预测状态 (I→E1 流水线寄存器)
     logic          e1_pred_taken_r;
+    logic          i_pred_taken_from_dib;  // ERR-131L: DIB 发射指令的 F1 预测
+    logic [31:0]   i_pred_target_from_dib; // ERR-131L: DIB 发射指令的 F1 预测目标
     logic [31:0]   e1_pred_target_r;
 
     // ── E1 级 ──
@@ -367,6 +369,10 @@ module lumi_core_top #(
         .flush                 (di_flush_gated),  // ERR-131c: cooldown 抑制幽灵误预测
         .flush_pc              (e1_br_pc),       // ERR-131: 误预测分支 PC (选择性 DIB flush)
         .flush_taken           (e1_br_taken),    // ERR-131h: 误预测分支是否 taken
+        .pd_pred_taken         (f2_pd_pred_taken),  // ERR-131L: F1 预测传播到 DIB (组合逻辑, 当前 cycle)
+        .pd_pred_target        (f2_pred_target), // ERR-131L: F1 预测目标传播到 DIB
+        .i_pred_taken          (i_pred_taken_from_dib),  // ERR-131L: DIB 发射指令的预测
+        .i_pred_target         (i_pred_target_from_dib), // ERR-131L: DIB 发射指令的预测目标
         .div_busy              (e2_div_busy),
         .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测
@@ -625,7 +631,7 @@ module lumi_core_top #(
         end else begin
             e1_valid_r <= i_valid;
             // ERR-019: 捕获预测状态 (来自 F2)
-            e1_pred_taken_r  <= f2_pred_taken;
+            e1_pred_taken_r  <= i_pred_taken_from_dib;  // ERR-131L: 从 DIB 获取预测 (而非 F2)
             e1_pred_target_r <= f2_pred_target;
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 e1_inst_r[i]    <= i_inst[i];

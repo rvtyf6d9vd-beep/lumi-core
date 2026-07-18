@@ -38,6 +38,8 @@ module lumi_decode_issue #(
     // ── I 级输出 (→ Execute FU) ───────────────────────────────
     output lumi_pkg::inst_pkt_t     i_issue [ISSUE_WIDTH-1:0],
     output logic [ISSUE_WIDTH-1:0]  i_issue_valid,
+    output logic                    i_pred_taken,    // ERR-131L: DIB 中发射指令的 F1 预测
+    output logic [31:0]             i_pred_target,   // ERR-131L: DIB 中发射指令的 F1 预测目标
     output logic [3:0]              i_fu_id [ISSUE_WIDTH-1:0],
 
     // ── 旁路数据 (← E1/M/W) ──────────────────────────────────
@@ -56,6 +58,8 @@ module lumi_decode_issue #(
     input  logic                    flush,
     input  logic [31:0]             flush_pc,   // ERR-131: 误预测分支 PC (选择性 DIB flush)
     input  logic                    flush_taken, // ERR-131h: 误预测分支是否 taken
+    input  logic                    pd_pred_taken, // ERR-131L: F1 预测 taken (传播到 DIB)
+    input  logic [31:0]             pd_pred_target, // ERR-131L: F1 预测目标
     input  logic                    div_busy,
     input  logic                    pipe_stall,  // ERR-114: 流水线不能接收新指令 (分支气泡/误预测气泡)
 
@@ -168,6 +172,8 @@ module lumi_decode_issue #(
     logic [FETCH_WIDTH-1:0] pd_inst_valid_r;
     logic [31:0]        pd_inst_pc_r [FETCH_WIDTH-1:0];
     logic [FETCH_WIDTH-1:0] pd_inst_compressed_r;
+    logic                   pd_pred_taken_r;   // ERR-131L: 注册的 F1 预测
+    logic [31:0]            pd_pred_target_r;  // ERR-131L: 注册的 F1 预测目标
     logic [15:0]        pd_inst_raw_r [FETCH_WIDTH-1:0];
 
     // ── pd_pending: pd_inst_valid_r 中有效条目数 ──
@@ -224,6 +230,8 @@ module lumi_decode_issue #(
         if (!reset_n) begin
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
+            pd_pred_taken_r <= 1'b0;  // ERR-131L
+            pd_pred_target_r <= 32'h0; // ERR-131L
             for (int i = 0; i < FETCH_WIDTH; i++) begin
                 pd_inst_r[i]            <= 32'h0;
                 pd_inst_pc_r[i]         <= 32'h0;
@@ -233,11 +241,15 @@ module lumi_decode_issue #(
             // ERR-131L: flush 时始终清除 pd_inst_valid_r (不保留 wrong-path 数据)
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
+            pd_pred_taken_r <= 1'b0;  // ERR-131L
+            pd_pred_target_r <= 32'h0; // ERR-131L
         end else begin
             // A: DIB 可接受 → 注册新数据 (优先)
             if (pd_advance) begin
                 pd_inst_valid_r      <= pd_inst_valid;
                 pd_inst_compressed_r <= pd_inst_compressed;
+                pd_pred_taken_r  <= pd_pred_taken;   // ERR-131L
+                pd_pred_target_r <= pd_pred_target;  // ERR-131L
                 for (int i = 0; i < FETCH_WIDTH; i++) begin
                     pd_inst_r[i]     <= pd_inst[i];
                     pd_inst_pc_r[i]  <= pd_inst_pc[i];
@@ -305,6 +317,9 @@ module lumi_decode_issue #(
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pc         <= pd_inst_pc_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
+                        // ERR-131L: 存储 F1 预测 (传播到 E1 用于 mispredict 检测)
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= pd_pred_taken_r;
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
                     end
                 end
                 dib_wr_ptr <= dib_wr_ptr + dib_wr_offset;
@@ -327,6 +342,8 @@ module lumi_decode_issue #(
     logic [31:0]        dib_read_inst [FETCH_WIDTH-1:0];
     logic [31:0]        dib_read_pc [FETCH_WIDTH-1:0];
     logic [FETCH_WIDTH-1:0] dib_read_compressed;
+    logic [FETCH_WIDTH-1:0] dib_read_pred_taken;  // ERR-131L
+    logic [31:0]            dib_read_pred_target [FETCH_WIDTH-1:0]; // ERR-131L
     logic [15:0]        dib_read_raw [FETCH_WIDTH-1:0];
     logic [FETCH_WIDTH-1:0] dib_read_valid;
 
@@ -360,6 +377,8 @@ module lumi_decode_issue #(
                 dib_read_inst[s]       = pd_inst_r[dib_bp_idx];
                 dib_read_pc[s]         = pd_inst_pc_r[dib_bp_idx];
                 dib_read_compressed[s] = pd_inst_compressed_r[dib_bp_idx];
+                dib_read_pred_taken[s] = pd_pred_taken;  // ERR-131L: bypass path
+                dib_read_pred_target[s] = pd_pred_target; // ERR-131L
                 dib_read_raw[s]        = pd_inst_raw_r[dib_bp_idx];
                 dib_read_valid[s]      = 1'b1;
             end else begin
@@ -367,6 +386,8 @@ module lumi_decode_issue #(
                 dib_read_inst[s]       = dib[dib_rd_addr].inst;
                 dib_read_pc[s]         = dib[dib_rd_addr].pc;
                 dib_read_compressed[s] = dib[dib_rd_addr].compressed;
+                dib_read_pred_taken[s] = dib[dib_rd_addr].pred_taken;  // ERR-131L
+                dib_read_pred_target[s] = dib[dib_rd_addr].pred_target; // ERR-131L
                 dib_read_raw[s]        = dib[dib_rd_addr].inst_raw;
                 dib_read_valid[s]      = (s < dib_count) && dib[dib_rd_addr].valid;
             end
@@ -942,6 +963,11 @@ module lumi_decode_issue #(
                 // inst_raw 来自 predecode (原始 16-bit halfword)
                 i_issue[s].inst_raw = dib_read_raw[issue_sel[s]];
                 i_issue[s].is_compressed = dib_read_compressed[issue_sel[s]];
+                // ERR-131L: 传播预测到 E1 (仅 slot 0)
+                if (s == 0) begin
+                    i_pred_taken  = dib_read_pred_taken[issue_sel[0]];
+                    i_pred_target = dib_read_pred_target[issue_sel[0]];
+                end
                 i_issue[s].rd       = tmp_dec_d.has_rd ? tmp_dec_d.rd : 5'h0;
                 i_issue[s].rs1      = tmp_dec_d.rs1;
                 i_issue[s].rs2      = tmp_dec_d.rs2;
