@@ -247,22 +247,48 @@ module lumi_v1_tb_top;
   // ─── ERR-130 Debug: removed (fixed in a23d197) ──
   // ─── ERR-131 Debug: removed (fixed in 56b25a4) ──
 
-  // ─── ERR-131k: 捕获首次跳回 boot code (PC < 0x50, cycle > 100) ──
+  // ─── ERR-131L: 追踪 pointer store 0x4DB8 是否被执行 + 首次 mispredict ──
   initial begin
-    logic boot_return_logged;
+    logic ptr_store_seen;
+    logic first_mispred_logged;
     wait(reset_n);
-    boot_return_logged = 0;
+    ptr_store_seen = 0;
+    first_mispred_logged = 0;
     forever begin
       @(posedge clk_core);
-      if (!boot_return_logged && cycle_count >= 49995 && cycle_count <= 50005 &&
-          commit_valid_all[0]) begin
-        $display("[BOOT-RET] cyc=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h",
-                 cycle_count, commit_pc_packed[0], commit_inst_packed[0],
-                 commit_rd_packed[0], commit_rd_data_packed[0]);
-        if (commit_pc_packed[0] < 32'h50 && cycle_count > 50000) begin
-          boot_return_logged = 1;
-          $display("[BOOT-RET] *** JUMP TO BOOT CODE DETECTED ***");
-        end
+      // 检查 pointer store commit
+      if (!ptr_store_seen && commit_valid_all[0] && commit_pc_packed[0] == 32'h4DB8) begin
+        ptr_store_seen = 1;
+        $display("[PTR-STORE] cyc=%0d pc=0x4DB8 COMMITTED (pointer store executed)", cycle_count);
+      end
+      // 检查首次 mispredict (after BSS clear ~120K)
+      if (!first_mispred_logged && cycle_count > 120000 &&
+          u_dut.gen_single_core.u_core.e1_mispredict) begin
+        first_mispred_logged = 1;
+        $display("[FIRST-MISP] cyc=%0d br_pc=0x%08h br_taken=%0b pred_taken=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_br_pc,
+                 u_dut.gen_single_core.u_core.e1_br_taken,
+                 u_dut.gen_single_core.u_core.e1_pred_taken_r);
+      end
+      // 追踪 pc_reg=0x2C 时的 F1 预测 (BSS clear JAL)
+      if (cycle_count > 119980 && cycle_count < 120010 &&
+          u_dut.gen_single_core.u_core.u_fetch.pc_reg == 32'h2C) begin
+        $display("[F1-JAL] cyc=%0d pc_reg=0x%08h f1_pred_taken=%0b f2_icache_word3=0x%08h btb_hit=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_fetch.pc_reg,
+                 u_dut.gen_single_core.u_core.u_fetch.f1_pred_taken_comb,
+                 u_dut.gen_single_core.u_core.u_fetch.f2_icache_data[127:96],
+                 u_dut.gen_single_core.u_core.u_fetch.btb_hit);
+      end
+      // 打印 cycle 119998-120006 的 pc_reg
+      if (cycle_count >= 119998 && cycle_count <= 120006) begin
+        $display("[PC-TRACE] cyc=%0d pc_reg=0x%08h",
+                 cycle_count, u_dut.gen_single_core.u_core.u_fetch.pc_reg);
+      end
+      // 如果到了 CODE-WR cycle 还没看到 pointer store
+      if (!ptr_store_seen && cycle_count == 152540) begin
+        $display("[PTR-STORE] cyc=152540 pointer store 0x4DB8 NEVER COMMITTED!");
       end
     end
   end

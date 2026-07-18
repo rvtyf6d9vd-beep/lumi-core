@@ -371,6 +371,11 @@ module lumi_fetch #(
                 f1_pred_taken_comb  = 1'b1;
                 f1_pred_target_comb = btb_target;
             end
+
+            // ERR-131L: slot-0 BTB predicted taken → 设置 pred_branch_slot
+            // 让 predecode 截断分支后的 wrong-path 指令
+            if (f1_pred_taken_comb)
+                pred_branch_slot = pc_slot_in_grp;
         end
 
         // ── ERR-BTB: 组级别多位置 BTB 查找 ──────────────
@@ -438,7 +443,8 @@ module lumi_fetch #(
 
         // ERR-131h: BTB miss 时直接检测 JAL/条件分支 (消除冷启动误预测)
         // V1 ICache 是组合逻辑, 可在 F1 直接读取指令
-        if (!btb_hit && !grp_found) begin
+        // ERR-131L: JAL 检测无条件优先 (JAL 永远 taken, 不受 btb_hit/grp_found 影响)
+        begin
             automatic logic [31:0] f1_inst = f2_icache_data[{pc_reg[3:2], 5'b0} +: 32];
             if (f1_inst[6:0] == OP_JAL) begin
                 automatic logic [31:0] jal_imm = {{12{f1_inst[31]}}, f1_inst[19:12], f1_inst[20], f1_inst[30:21], 1'b0};
@@ -447,14 +453,6 @@ module lumi_fetch #(
                 f1_btb_hit_comb     = 1'b1;
                 if (f1_inst[11:7] == 5'd1 || f1_inst[11:7] == 5'd5)
                     ras_push = 1'b1;
-            end else if (f1_inst[6:0] == OP_BRANCH) begin
-                // ERR-131i: backward branch taken 启发式 (后向分支预测 taken, 前向分支预测 not-taken)
-                automatic logic [31:0] br_imm = {{20{f1_inst[31]}}, f1_inst[7], f1_inst[30:25], f1_inst[11:8], 1'b0};
-                if (br_imm[31]) begin  // 负偏移 = 后向分支 (loop)
-                    f1_pred_taken_comb  = 1'b1;
-                    f1_pred_target_comb = pc_reg + br_imm;
-                    f1_btb_hit_comb     = 1'b1;
-                end
             end
         end
     end
