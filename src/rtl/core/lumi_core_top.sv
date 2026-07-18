@@ -168,7 +168,8 @@ module lumi_core_top #(
         if (!reset_n) e1_mispredict_d <= 1'b0;
         else          e1_mispredict_d <= e1_mispredict;
     end
-    assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request;
+    assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request ||
+                           (e1_br_taken && !e1_mispredict);  // ERR-131L: taken branch 也 flush DIB
     wire di_flush_gated = di_flush_edge;  // ERR-131: cooldown 无效 (第一次 flush 已造成损害)
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
@@ -259,7 +260,7 @@ module lumi_core_top #(
         .f2_pred_taken         (f2_pred_taken),
         .f2_pred_target        (f2_pred_target),
         .branch_redirect_pc    (e1_br_target),
-        .branch_redirect_valid (e1_mispredict),
+        .branch_redirect_valid (e1_br_taken || e1_mispredict),  // ERR-131L: taken branch 也 redirect (清除 F2 wrong-path)
         .trap_redirect_pc      (trap_pc),
         .trap_redirect_valid   (trap_request),
         .tage_update_pc        (e1_br_pc),      // ERR-019: 使用分支 PC (非 target) 更新 BTB
@@ -581,8 +582,8 @@ module lumi_core_top #(
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n)
             post_mispredict_bubble_r <= 1'b0;
-        else if (e1_mispredict && mispredict_branch_has_rd)
-            post_mispredict_bubble_r <= 1'b1;   // 设置: 需要额外 1 周期
+        else if ((e1_mispredict && mispredict_branch_has_rd) || e1_br_taken)
+            post_mispredict_bubble_r <= 1'b1;   // ERR-131L: taken branch 也需要 1 cycle bubble
         else
             post_mispredict_bubble_r <= 1'b0;   // 自动清除
     end
@@ -602,8 +603,9 @@ module lumi_core_top #(
                 e1_rs1_data_r[i] <= 32'h0;
                 e1_rs2_data_r[i] <= 32'h0;
             end
-        end else if (e1_mispredict || trap_request) begin
+        end else if (e1_mispredict || trap_request || e1_br_taken) begin
             // ERR-019: flush 时清除 E1 输入, 杀死与分支同批次发射的推测指令
+            // ERR-131L: taken branch 也清除 I→E1 (squash wrong-path 指令)
             e1_valid_r <= '0;
             e1_pred_taken_r  <= 1'b0;
             e1_pred_target_r <= 32'h0;

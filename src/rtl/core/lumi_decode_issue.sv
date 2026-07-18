@@ -227,19 +227,10 @@ module lumi_decode_issue #(
                 pd_inst_pc_r[i]         <= 32'h0;
                 pd_inst_raw_r[i]        <= 16'h0;
             end
-        end else if (flush && !pd_advance) begin
-            // ERR-131: flush 且无新数据 → 清除
+        end else if (flush) begin
+            // ERR-131L: flush 时始终清除 pd_inst_valid_r (不保留 wrong-path 数据)
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
-        end else if (flush && pd_advance) begin
-            // ERR-131 FIX: flush 但有新数据 → 保留注册, 等待新数据覆盖后再写 DIB
-            pd_inst_valid_r      <= pd_inst_valid;
-            pd_inst_compressed_r <= pd_inst_compressed;
-            for (int i = 0; i < FETCH_WIDTH; i++) begin
-                pd_inst_r[i]     <= pd_inst[i];
-                pd_inst_pc_r[i]  <= pd_inst_pc[i];
-                pd_inst_raw_r[i] <= pd_inst_raw[i];
-            end
         end else begin
             // A: DIB 可接受 → 注册新数据 (优先)
             if (pd_advance) begin
