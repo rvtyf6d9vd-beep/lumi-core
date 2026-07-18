@@ -342,7 +342,7 @@ module lumi_v1_tb_top;
     wait(reset_n);
     forever begin
       @(posedge clk_core);
-      if (cycle_count >= 152545 && cycle_count <= 152570) begin
+      if (cycle_count >= 152540 && cycle_count <= 152555) begin
         $display("[DIAG-FL] cyc=%0d mispred=%0b dib_cnt=%0d pd_valid=%06b pd_pc0=0x%08h wait_fresh=%0b pd_adv=%0b keep=%0d flush_pc=0x%08h fetch_act=%0b",
                  cycle_count,
                  u_dut.gen_single_core.u_core.e1_mispredict,
