@@ -161,6 +161,14 @@ module lumi_core_top #(
     logic [31:0]   e1_br_target;
     logic [31:0]   e1_br_pc;  // ERR-019: 分支指令 PC (BTB 更新)
     logic          e1_mispredict;
+    // ERR-131: decode flush 边沿检测 — 防止 flush 期间错误路径指令反复触发 DIB 清除
+    logic          e1_mispredict_d;
+    logic          di_flush_edge;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n) e1_mispredict_d <= 1'b0;
+        else          e1_mispredict_d <= e1_mispredict;
+    end
+    assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request;
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
     logic          e1_br_is_jalr;
@@ -354,7 +362,7 @@ module lumi_core_top #(
         .stall_out             (dec_stall),
         .dib_not_full          (dib_not_full),
         .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
-        .flush                 (e1_mispredict || trap_request),
+        .flush                 (di_flush_edge),  // ERR-131: 边沿检测防止反复 flush
         .div_busy              (e2_div_busy),
         .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测

@@ -205,6 +205,10 @@ module lumi_v1_tb_top;
         if (v1_dc_addr >= 32'h7AB0 && v1_dc_addr < 32'h8300)
           $display("[LIST-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b ready=%0b",
                    cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be, v1_dc_ready);
+        // CODE-SECTION WRITE DETECTOR: any store to code region (0x0000-0x7AA3) is suspicious
+        if (v1_dc_addr < 32'h7AA4)
+          $display("[CODE-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b",
+                   cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be);
       end
     end
   end
@@ -220,10 +224,7 @@ module lumi_v1_tb_top;
           $display("[SRAM-RD] cyc=%0d addr=0x%08h idx=%0d rdata=0x%08h",
                    cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_rdata);
       end
-      // Phase 2: ALL DC activity (load+store) during caller setup + core_list_init
-      if (v1_dc_valid && cycle_count >= 169440 && cycle_count <= 169520)
-        $display("[INIT-DC] cyc=%0d addr=0x%08h we=%0b ready=%0b wdata=0x%08h rdata=0x%08h be=%04b",
-                 cycle_count, v1_dc_addr, v1_dc_we, v1_dc_ready, v1_dc_wdata, v1_dc_rdata, v1_dc_be);
+
     end
   end
 
@@ -243,28 +244,22 @@ module lumi_v1_tb_top;
     end
   end
 
-  // ─── ERR-130 Debug: M-stage pipeline register + regfile write trace ──
+  // ─── ERR-130 Debug: removed (fixed in a23d197) ──
+
+  // ─── ERR-131 Debug: pipe_stall component monitor ──
   initial begin
     wait(reset_n);
     forever begin
       @(posedge clk_core);
-      if (cycle_count >= 169465 && cycle_count <= 169485) begin
-        $display("[M-PIPE] cyc=%0d m_pipe_result[0]=0x%08h m_pipe_result[1]=0x%08h m_pipe_valid=%03b pending_p1=%0b stall_p1=%0b batch_done=%0b mem_ready=%0b",
+      if (cycle_count >= 791900 && cycle_count <= 792010) begin
+        $display("[PIPE-STALL] cyc=%0d mem_busy=%0b e1_div_pend=%0b e1_has_br=%0b post_mp=%0b pipe_stall=%0b",
                  cycle_count,
-                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[0],
-                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[1],
-                 u_dut.gen_single_core.u_core.u_memory.m_pipe_valid,
-                 u_dut.gen_single_core.u_core.u_memory.pending_port1_r,
-                 u_dut.gen_single_core.u_core.u_memory.stall_port1,
-                 u_dut.gen_single_core.u_core.u_memory.batch_done,
-                 u_dut.gen_single_core.u_core.dc_ready);
-        $display("[RF-WR] cyc=%0d wr_en=%02b wr_addr0=x%0d wr_data0=0x%08h wr_addr1=x%0d wr_data1=0x%08h",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.rf_wr_en,
-                 u_dut.gen_single_core.u_core.rf_wr_addr[0],
-                 u_dut.gen_single_core.u_core.rf_wr_data[0],
-                 u_dut.gen_single_core.u_core.rf_wr_addr[1],
-                 u_dut.gen_single_core.u_core.rf_wr_data[1]);
+                 u_dut.gen_single_core.u_core.mem_busy,
+                 u_dut.gen_single_core.u_core.e1_div_pending,
+                 u_dut.gen_single_core.u_core.e1_has_branch,
+                 u_dut.gen_single_core.u_core.post_mispredict_bubble,
+                 u_dut.gen_single_core.u_core.mem_busy || u_dut.gen_single_core.u_core.e1_div_pending ||
+                 u_dut.gen_single_core.u_core.e1_has_branch || u_dut.gen_single_core.u_core.post_mispredict_bubble);
       end
     end
   end
@@ -320,8 +315,8 @@ module lumi_v1_tb_top;
     forever begin
       @(posedge clk_core);
       if (|commit_valid_all) begin
-        // Print first 1000 cycles OR mergesort range (0x36c-0x5c0) OR near failure
-        if (cycle_count < 1000 || cycle_count > 169000) begin
+        // Print commit trace only when +dump_trace is active
+        if ($test$plusargs("dump_trace")) begin
           for (int s = 0; s < 3; s++) begin
             if (commit_valid_all[s]) begin
               $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h op=0x%02h",

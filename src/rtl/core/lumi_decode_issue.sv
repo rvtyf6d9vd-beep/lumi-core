@@ -208,6 +208,17 @@ module lumi_decode_issue #(
     logic pd_advance;
     assign pd_advance = dib_can_accept && !stall_out && fetch_active;
 
+    // synthesis translate_off
+    always @(posedge clk_core) begin
+        if (reset_n && pd_inst_pc[0] >= 32'h4aa0 && pd_inst_pc[0] <= 32'h4ac0) begin
+            $display("[PD-DBG] pd_adv=%0b f2v=%0b fetch_act=%0b valid=%06b pc0=0x%08h cnt=%0d dib_acc=%0b stall=%0b dib_cnt=%0d pipe_stall=%0b",
+                     pd_advance, f2_valid, fetch_active, pd_inst_valid,
+                     pd_inst_pc[0], pd_inst_count,
+                     dib_can_accept, stall_out, dib_count, pipe_stall);
+        end
+    end
+    // synthesis translate_on
+
     // ── pd_inst_valid_r 注册: advance + clear-after-write ──
     // 两种更新路径 (不互斥, pd_advance 优先):
     //   A. pd_advance=1: DIB 可接受 → 注册当前 predecode (覆盖旧数据)
@@ -867,11 +878,13 @@ module lumi_decode_issue #(
         end
         end // ERR-019: close if (!post_flush_block_r)
 
-        // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue 或 pipe_stall)
+        // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue)
         if (!dib_empty && !post_flush_block_r) begin
             // DIB 有有效指令但 issue_count == 0, 说明被阻塞
-            // ERR-114: pipe_stall 也需要 stall_out, 防止 fetch 继续前进
-            if (dib_count > 0 && (issue_count == 0 || pipe_stall))
+            // ERR-114: pipe_stall 时 issue 暂停, 但不应阻塞 fetch 填充 DIB
+            // ERR-131 FIX: 移除 || pipe_stall, 仅在真正无法发射时才 stall fetch
+            //   pipe_stall 是临时气泡 (branch/mem_busy), DIB 应继续缓冲
+            if (dib_count > 0 && issue_count == 0 && !pipe_stall)
                 stall_out = 1'b1;
         end
 
