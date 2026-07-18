@@ -130,10 +130,12 @@ v1-lint:
 	@echo "[V1-LINT] PASS — 0 errors"
 
 # V1 Sim (编译)
+# FIX: TMPDIR 设到 workspace 内，防止 sandbox 阻止 ar 创建临时文件
+V1_TMPDIR := $(V1_SIM_DIR)/tmp
 .PHONY: v1-build
 v1-build:
-	mkdir -p $(V1_SIM_DIR)
-	$(VERILATOR) --binary --timing --main $(INC_DIRS) --top-module lumi_v1_tb_top \
+	mkdir -p $(V1_SIM_DIR) $(V1_TMPDIR)
+	TMPDIR=$(V1_TMPDIR) $(VERILATOR) --binary --timing --main $(INC_DIRS) --top-module lumi_v1_tb_top \
 		-Mdir $(V1_OBJ_DIR) \
 		--prefix Vlumi_v1_tb_top \
 		-o Vlumi_v1 \

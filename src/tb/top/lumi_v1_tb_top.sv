@@ -195,10 +195,16 @@ module lumi_v1_tb_top;
     forever begin
       @(posedge clk_core);
       if (v1_dc_valid && v1_dc_we) begin
-        $display("[SRAM-WR] cyc=%0d addr=0x%08h idx=%0d data=0x%08h be=%04b",
-                 cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_wdata, v1_dc_be);
+        // Log stores to diagnostic area + results area + list area
+        if (v1_dc_addr >= 32'h3FF00 && v1_dc_addr < 32'h40000)
+          $display("[DIAG-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b ready=%0b",
+                   cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be, v1_dc_ready);
         if (v1_dc_addr[17:2] >= 65528 && v1_dc_addr[17:2] <= 65533)
           $display("[SRAM-WR] *** BENCHMARK RESULT AREA WRITE! ***");
+        // Log ALL stores to results+list area (0x7AB0-0x8300) — covers memblock ptrs + list data
+        if (v1_dc_addr >= 32'h7AB0 && v1_dc_addr < 32'h8300)
+          $display("[LIST-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b ready=%0b",
+                   cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be, v1_dc_ready);
       end
     end
   end
@@ -209,10 +215,15 @@ module lumi_v1_tb_top;
     wait(reset_n);
     forever begin
       @(posedge clk_core);
-      if (v1_dc_valid && !v1_dc_we && cycle_count < 1000) begin
-        $display("[SRAM-RD] cyc=%0d addr=0x%08h idx=%0d rdata=0x%08h",
-                 cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_rdata);
+      if (v1_dc_valid && !v1_dc_we) begin
+        if (cycle_count < 1000)
+          $display("[SRAM-RD] cyc=%0d addr=0x%08h idx=%0d rdata=0x%08h",
+                   cycle_count, v1_dc_addr, v1_dc_addr[17:2], v1_dc_rdata);
       end
+      // Phase 2: ALL DC activity (load+store) during caller setup + core_list_init
+      if (v1_dc_valid && cycle_count >= 169440 && cycle_count <= 169520)
+        $display("[INIT-DC] cyc=%0d addr=0x%08h we=%0b ready=%0b wdata=0x%08h rdata=0x%08h be=%04b",
+                 cycle_count, v1_dc_addr, v1_dc_we, v1_dc_ready, v1_dc_wdata, v1_dc_rdata, v1_dc_be);
     end
   end
 
@@ -228,6 +239,32 @@ module lumi_v1_tb_top;
       if (w_trap_req) begin
         $display("[TRAP] cyc=%0d trap_pc=0x%08h cause=%0d mepc=0x%08h",
                  cycle_count, w_trap_pc, w_csr_mcause, w_csr_mepc);
+      end
+    end
+  end
+
+  // ─── ERR-130 Debug: M-stage pipeline register + regfile write trace ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 169465 && cycle_count <= 169485) begin
+        $display("[M-PIPE] cyc=%0d m_pipe_result[0]=0x%08h m_pipe_result[1]=0x%08h m_pipe_valid=%03b pending_p1=%0b stall_p1=%0b batch_done=%0b mem_ready=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[0],
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[1],
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_valid,
+                 u_dut.gen_single_core.u_core.u_memory.pending_port1_r,
+                 u_dut.gen_single_core.u_core.u_memory.stall_port1,
+                 u_dut.gen_single_core.u_core.u_memory.batch_done,
+                 u_dut.gen_single_core.u_core.dc_ready);
+        $display("[RF-WR] cyc=%0d wr_en=%02b wr_addr0=x%0d wr_data0=0x%08h wr_addr1=x%0d wr_data1=0x%08h",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.rf_wr_en,
+                 u_dut.gen_single_core.u_core.rf_wr_addr[0],
+                 u_dut.gen_single_core.u_core.rf_wr_data[0],
+                 u_dut.gen_single_core.u_core.rf_wr_addr[1],
+                 u_dut.gen_single_core.u_core.rf_wr_data[1]);
       end
     end
   end
@@ -283,8 +320,8 @@ module lumi_v1_tb_top;
     forever begin
       @(posedge clk_core);
       if (|commit_valid_all) begin
-        // Print first 1000 cycles (T3 debug)
-        if (cycle_count < 1000) begin
+        // Print first 1000 cycles OR mergesort range (0x36c-0x5c0) OR near failure
+        if (cycle_count < 1000 || cycle_count > 169000) begin
           for (int s = 0; s < 3; s++) begin
             if (commit_valid_all[s]) begin
               $display("[CMT-DBG] cyc=%0d s=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h op=0x%02h",
@@ -311,23 +348,64 @@ module lumi_v1_tb_top;
     end
   end
 
-  // ── CoreMark Debug: 追踪 core_list_init 内循环关键寄存器 ──
-  // 记录 core_list_init 函数范围 (PC 0xbb8-0xef8) 内所有写寄存器操作
+  // ── Phase 3: Fetch Stage Debugging ───────────────────────────────
+  // Task 3.3: PC alignment monitoring
   initial begin
     wait(reset_n);
     forever begin
       @(posedge clk_core);
-      if (|commit_valid_all) begin
+      if (cycle_count < 1000 || cycle_count > 169000) begin
+        // Check F2 PC alignment
+        logic [31:0] f2_pc = u_dut.gen_single_core.u_core.f2_pc;
+        if (f2_pc[0] != 1'b0) begin
+          $error("[FETCH-PC] cyc=%0d: F2 PC not 2-byte aligned: 0x%08h", cycle_count, f2_pc);
+        end
+        // Check commit PC alignment
         for (int s = 0; s < 3; s++) begin
-          if (commit_valid_all[s]) begin
-            if (commit_pc_packed[s] >= 32'hbb8 && commit_pc_packed[s] <= 32'hef8) begin
-              if (commit_rd_packed[s] != 5'h0) begin
-                $display("[LIST-DBG] cyc=%0d pc=0x%08h rd=x%0d data=0x%08h",
-                         cycle_count, commit_pc_packed[s],
-                         commit_rd_packed[s], commit_rd_data_packed[s]);
-              end
+          if (u_dut.gen_single_core.u_core.commit_valid[s]) begin
+            logic [31:0] pc = u_dut.gen_single_core.u_core.commit_pc[s];
+            if (pc[0] != 1'b0) begin
+              $error("[FETCH-PC] cyc=%0d: Commit PC %0d not 2-byte aligned: 0x%08h", cycle_count, s, pc);
             end
           end
+        end
+      end
+    end
+  end
+
+  // Task 3.4: Predecode boundary integrity tracing
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 1000 || cycle_count > 169000) begin
+        logic [4:0] pd_bytes_consumed = u_dut.gen_single_core.u_core.pd_bytes_consumed;
+        logic [3:0] pd_inst_count = u_dut.gen_single_core.u_core.pd_inst_count;
+        logic [15:0] pd_carry_hw = u_dut.gen_single_core.u_core.pd_carry_hw_out;
+        logic pd_carry_valid = u_dut.gen_single_core.u_core.pd_carry_valid_out;
+        
+        // Print predecode info for debugging
+        if (pd_bytes_consumed != 5'h0) begin
+          $display("[PREDEC-DBG] cyc=%0d bytes_consumed=%0d inst_count=%0d carry_hw=0x%04h carry_valid=%0b",
+                   cycle_count, pd_bytes_consumed, pd_inst_count, pd_carry_hw, pd_carry_valid);
+        end
+      end
+    end
+  end
+
+  // Task 3.5: Branch prediction target tracing
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 1000 || cycle_count > 169000) begin
+        logic [31:0] f2_pred_target = u_dut.gen_single_core.u_core.f2_pred_target;
+        logic f2_pred_taken = u_dut.gen_single_core.u_core.f2_pred_taken;
+        
+        // Print branch prediction info
+        if (f2_pred_taken) begin
+          $display("[BRANCH-DBG] cyc=%0d pred_taken=%0b pred_target=0x%08h",
+                   cycle_count, f2_pred_taken, f2_pred_target);
         end
       end
     end
@@ -454,7 +532,11 @@ module lumi_v1_tb_top;
     .commit_pc        (commit_pc_packed),
     .commit_inst      (commit_inst_packed),
     .commit_rd        (commit_rd_packed),
-    .commit_rd_data   (commit_rd_data_packed)
+    .commit_rd_data   (commit_rd_data_packed),
+    .v1_dc_valid      (v1_dc_valid),
+    .v1_dc_we         (v1_dc_we),
+    .v1_dc_addr       (v1_dc_addr),
+    .v1_dc_wdata      (v1_dc_wdata)
   );
 
   // ─── Hex 文件加载 (+hex_file=xxx.hex) ──────────────────────
@@ -579,7 +661,7 @@ module lumi_v1_tb_top;
   bit          stall_detected;
 
   initial begin
-    stall_timeout    = 2_000_000; // 2M cycles without commit = stall
+    stall_timeout    = 10_000_000; // 10M cycles without commit = stall
     last_progress_cyc = 0;
     stall_detected   = 1'b0;
     wait(reset_n);

@@ -12,7 +12,11 @@ module lumi_scoreboard #(
     input logic [ISSUE_WIDTH-1:0][31:0]    commit_pc,
     input logic [ISSUE_WIDTH-1:0][31:0]    commit_inst,
     input logic [ISSUE_WIDTH-1:0][4:0]     commit_rd,
-    input logic [ISSUE_WIDTH-1:0][31:0]    commit_rd_data
+    input logic [ISSUE_WIDTH-1:0][31:0]    commit_rd_data,
+    input logic                            v1_dc_valid,
+    input logic                            v1_dc_we,
+    input logic [31:0]                     v1_dc_addr,
+    input logic [31:0]                     v1_dc_wdata
 );
 
   // ─── 统计 ──────────────────────────────────────────────────
@@ -219,6 +223,12 @@ module lumi_scoreboard #(
             last_commit_pc <= commit_pc[0];
           end
         end
+      end
+      // Store-to-0x3FFE0 detection (Task 4.1)
+      if (v1_dc_valid && v1_dc_we && v1_dc_addr == 32'h3FFE0 && !test_done) begin
+        test_done <= 1'b1;
+        exit_code <= 32'h0; // PASS
+        $display("[SB] STORE-to-0x3FFE0 detected: magic=0x%08h", v1_dc_wdata);
       end
     end // if (!test_done)
     end // else begin

@@ -2766,3 +2766,63 @@ errata:
     resolved_by: hw-design
     resolution: "移除 post_flush_hold_r 及相关逻辑"
     regression_test: "tests/directed/rv32im_bug_regression.S (TC-3)"
+
+  - id: "ERR-128"
+    title: "REM 指令结果错误 (Bug-REM)"
+    description: |
+      REM (取余) 指令在特定操作数组合下产生错误结果。
+      原因为 DIV/REM 共享除法器时 REM 结果路径未正确选择余数寄存器。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "修正 REM 结果选择逻辑，确保 funct3[1] 选择余数而非商"
+    regression_test: "tests/directed/rv32m_basic.S"
+
+  - id: "ERR-129"
+    title: "trap flush 同批次 post-exception 指令未被抑制 (Bug-TRAP-BATCH)"
+    description: |
+      当 ECALL/EBREAK 触发 trap 时，同一 commit batch 中位于异常指令之后的
+      指令仍被提交到寄存器文件，导致架构状态污染。
+      具体表现: csrr_mcause.S 测试中 trap handler 读到的 mcause 值被后续
+      指令的写回覆盖。
+    discovered_date: "2026-07-19"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv", "src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-19"
+    resolved_by: hw-design
+    resolution: "trap_flush 信号抑制同批次中异常指令之后所有 slot 的 regfile 写回"
+    regression_test: "tests/directed/csrr_mcause.S"
+
+  - id: "ERR-130"
+    title: "双 load 端口串行化时 port0 数据丢失 (Bug-DUAL-LD)"
+    description: |
+      当同一 batch 包含两条 load 指令 (如 lw + lh) 时，stall_port1=1 阻止
+      整个 always_ff 块执行，导致 port0 的 load 数据未被捕获到 m_pipe_result[0]。
+      下一周期 stall_port1=0 时，fwd_load_data[0] 已变为 port1 的数据，
+      port0 结果被覆写为错误值。
+      具体表现: CoreMark core_list_init 中 lw a1,12(s0) 读到 0 而非正确指针，
+      导致链表初始化写入地址 0，mergesort 触发 assertion ebreak。
+    discovered_date: "2026-07-19"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-19"
+    resolved_by: hw-design
+    resolution: |
+      重构 stall_port1 分支: 新增 else if (stall_port1) 分支，在 stall 期间
+      专门捕获 port0 的 load 结果到 m_pipe_result[0]，同时冻结其他寄存器。
+      正常分支增加 !(pending_port1_r && i==0) 条件防止 port0 被覆写。
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-7)"

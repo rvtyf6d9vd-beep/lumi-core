@@ -579,9 +579,22 @@ module lumi_memory_stage #(
             // ERR-114 FIX: m_pipe_valid 门控 — 仅在 batch_done && !ma_skip_r 时提交
             //   防止未对齐拆分期间指令被重复提交 (SH 提交 3 次导致后续 lui 丢失)
             // Trap flush: trap_request 时清除 M→W valid, 防止异常指令重复提交
+            // ERR-130 FIX: 双 load 端口串行化时，stall_port1=1 期间仍需捕获端口0的 load 数据
+            // 原 bug: stall_port1=1 时整个寄存器更新被跳过，端口0 load 的 fwd_load_data[0]
+            //   永远不会被捕获到 m_pipe_result[0] → 后续依赖指令读到旧值 0
+            // 修复: stall_port1=1 时，专门捕获端口0的 load 结果 (其他寄存器保持冻结)
             if (trap_flush) begin
                 m_pipe_valid <= '0;
-            end else if (!stall_port1) begin
+            end else if (stall_port1) begin
+                // stall_port1=1: 端口0已完成 (mem_ready_in=1)，端口1等待
+                // 冻结所有 pipeline 寄存器，但捕获端口0的 load 数据
+                m_pipe_valid <= '0;  // 防止 W 级重复提交
+                if (m_valid[0] && m_inst[0].fu_type == FU_MEM && !m_inst[0].inst[5]) begin
+                    // 端口0是 load: 捕获 SRAM 读出的数据 (此时 SRAM 正读端口0地址)
+                    if (mem_ready_in && !ma_active_r && !(lsu_misalign[0] || lsu_misalign[1]))
+                        m_pipe_result[0] <= fwd_load_data[0];
+                end
+            end else begin
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 m_pipe[i]       <= m_inst[i];
                 // ERR-114: batch_done=0 → 内存操作进行中, 不提交
@@ -609,7 +622,10 @@ module lumi_memory_stage #(
                                 // Bug#5: 使用 fwd_load_data (含 store→load 转发)
                                 // 替代 lsu_load_data (仅 SRAM 读出, 同周期 store 未生效)
                                 // BUG-007: 未对齐拆分期间不捕获 cycle 1 结果
-                                if (mem_ready_in && !ma_active_r && !(lsu_misalign[0] || lsu_misalign[1])) begin
+                                // ERR-130 FIX: pending_port1_r 时 SRAM 正处理端口1 load,
+                                //   fwd_load_data[0] 包含端口1数据, 不覆盖端口0已捕获结果
+                                if (mem_ready_in && !ma_active_r && !(lsu_misalign[0] || lsu_misalign[1]) &&
+                                    !(pending_port1_r && i == 0)) begin
                                     m_pipe_result[i] <= (i < 2) ? fwd_load_data[i] : fwd_load_data[0];
                                 end
                                 // BUG-007: 未对齐 load cycle 2 — 合并高低部分
@@ -661,13 +677,6 @@ module lumi_memory_stage #(
                 end
             end
             end // if (!stall_port1)
-            else begin
-                // stall_port1=1: clear m_pipe_valid to prevent W stage re-commit.
-                // When dual-LSU port 0 completes but port 1 needs 1 more cycle,
-                // stall_port1 freezes the M→W register. Without clearing valid,
-                // the W stage re-commits the same instructions (duplicate commit).
-                m_pipe_valid <= '0;
-            end
 
             // Store Buffer 入队
             // ERR-027/028 修复: BYPASS_SB=1 时跳过 SB, store 直写 SRAM

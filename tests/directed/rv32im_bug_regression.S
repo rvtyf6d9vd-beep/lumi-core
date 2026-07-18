@@ -1,11 +1,12 @@
 # =================================================================
-# RV32IM Bug Regression Test — 13 个 RTL Bug 回归测试
-# 覆盖: ERR-115~ERR-127 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
+# RV32IM Bug Regression Test — 16 个 RTL Bug 回归测试
+# 覆盖: ERR-115~ERR-130 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
 #        NT-REDIR/LTAGE-NT/BTB-OVR/EXC-PROP/TRAP-FL/IRQ-MIE/
-#        STP1-DUP/PFHR)
-# 6 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
+#        STP1-DUP/PFHR/REM/TRAP-BATCH/DUAL-LD)
+# 7 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
 #          TC-3(误预测指令保留) TC-4(LTAGE+BTB)
 #          TC-5(EBREAK/ECALL trap) TC-6(双MEM不重复提交)
+#          TC-7(双 load 端口串行化)
 # Pass: a0=0 ECALL | Fail: a0=1 ECALL (sig 区记录失败 TC 号)
 # Compile: riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -nostdlib
 # =================================================================
@@ -348,15 +349,92 @@ tc6_add_ok:
     sw      t0, 124(sp)
 
     # ══════════════════════════════════════════════════════════
+    # TC-7: 双 load 端口串行化时 port0 数据保持 (ERR-130 Bug-DUAL-LD)
+    # 验证: 同一 batch 中 lw + lh 两条 load，port0 结果不被 port1 覆写
+    # ══════════════════════════════════════════════════════════
+tc7_start:
+    # 准备测试数据: 在 0xE00 存放已知值
+    li      a0, 0xE00
+    li      t0, 0xDEADBEEF      # 32-bit value for lw
+    li      t1, 0x00001234      # 16-bit value for lh (lower half)
+    sw      t0, 0(a0)           # 0xE00 = 0xDEADBEEF
+    sw      t1, 4(a0)           # 0xE04 = 0x00001234
+
+    # 关键测试: 两条 load 紧邻 (同一 batch 发射)
+    # lw 先于 lh，触发 stall_port1，port0 结果必须保持
+    lw      a1, 0(a0)           # a1 = 0xDEADBEEF (port0)
+    lh      a2, 4(a0)           # a2 = 0x1234 (port1, sign-extended)
+
+    # 验证 port0 load 结果 (ERR-130 核心: 不被 port1 覆写)
+    li      t2, 0xDEADBEEF
+    beq     a1, t2, tc7_lw_ok
+    addi    s0, s0, 1
+    sw      a1, 136(sp)         # sig: TC-7 lw fail (got wrong value)
+    j       test_fail
+tc7_lw_ok:
+
+    # 验证 port1 load 结果
+    li      t3, 0x1234
+    beq     a2, t3, tc7_lh_ok
+    addi    s0, s0, 1
+    sw      a2, 140(sp)         # sig: TC-7 lh fail
+    j       test_fail
+tc7_lh_ok:
+
+    # 变体: lw + lb 组合 (不同 funct3 但同样触发双端口)
+    li      a0, 0xE00
+    lw      a3, 0(a0)           # a3 = 0xDEADBEEF
+    lb      a4, 4(a0)           # a4 = 0x34 (sign-extended from 0x34)
+    li      t4, 0xDEADBEEF
+    beq     a3, t4, tc7_lw2_ok
+    addi    s0, s0, 1
+    sw      a3, 144(sp)
+    j       test_fail
+tc7_lw2_ok:
+    li      t5, 0x34
+    beq     a4, t5, tc7_lb_ok
+    addi    s0, s0, 1
+    sw      a4, 148(sp)
+    j       test_fail
+tc7_lb_ok:
+
+    # 变体: 连续 3 条 load (port0 + port1 + 下一 batch port0)
+    li      a0, 0xE00
+    lw      s2, 0(a0)           # 0xDEADBEEF
+    lw      s3, 4(a0)           # 0x00001234
+    lw      s4, 0(a0)           # 0xDEADBEEF again
+    li      t0, 0xDEADBEEF
+    li      t1, 0x00001234
+    beq     s2, t0, tc7_3ld_1
+    addi    s0, s0, 1
+    sw      s2, 152(sp)
+    j       test_fail
+tc7_3ld_1:
+    beq     s3, t1, tc7_3ld_2
+    addi    s0, s0, 1
+    sw      s3, 156(sp)
+    j       test_fail
+tc7_3ld_2:
+    beq     s4, t0, tc7_3ld_3
+    addi    s0, s0, 1
+    sw      s4, 160(sp)
+    j       test_fail
+tc7_3ld_3:
+
+    # PASS TC-7 marker
+    li      t0, 7
+    sw      t0, 164(sp)
+
+    # ══════════════════════════════════════════════════════════
     # All tests passed!
     # ══════════════════════════════════════════════════════════
     li      t0, 0x55AA
-    sw      t0, 128(sp)         # PASS marker
+    sw      t0, 168(sp)         # PASS marker
 
     li      a0, 0
     ecall
 
 test_fail:
-    sw      s0, 132(sp)         # total fail count
+    sw      s0, 172(sp)         # total fail count
     li      a0, 1
     ecall
