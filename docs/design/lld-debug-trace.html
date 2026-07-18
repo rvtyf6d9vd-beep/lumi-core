@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — Debug Module &amp; Nexus Trace</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Debug Module &amp; Nexus Trace Low Level Design</h1>
+    <p class="subtitle">JTAG DMI + Halt/Resume + Trigger Module + Nexus Trace Encoder + AXI4 写出</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-009 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="debug-trace.html">debug-trace.html</a> (LUMI-DESIGN-012)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/debug/lumi_debug_module.sv</code> · <code>src/rtl/debug/lumi_trace.sv</code></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#debug">IC-5.1 (Debug DMI)</a> · <a href="interface-contracts.html#trace">IC-5.2 (Trace AXI)</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名 (Debug)</td><td><code>lumi_debug_module</code></td></tr>
+    <tr><td>模块名 (Trace)</td><td><code>lumi_trace</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/debug/lumi_debug_module.sv</code> (360 行)<br><code>src/rtl/debug/lumi_trace.sv</code> (231 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="debug-trace.html">debug-trace.html</a> (LUMI-DESIGN-012)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-009</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>DMI 寄存器读写 (dmcontrol/dmstatus/abstractcs/command/data0/progbuf)</td><td>JTAG TAP 物理层 (由 <code>lumi_dft_ctrl</code> 管理)</td></tr>
+    <tr><td>Hart Halt/Resume 控制 (W 级精确 halt)</td><td>异常/Trap 处理 (属于 exception-handling)</td></tr>
+    <tr><td>Abstract Command 发起与超时检测</td><td>CSR 存储阵列 (属于 writeback-csr)</td></tr>
+    <tr><td>Trigger Module (mcontrol type 2, EQUAL/NAPOT 匹配)</td><td>软件断点 (EBREAK 指令)</td></tr>
+    <tr><td>TCK↔CLK_CORE 跨时钟域同步 (2-FF)</td><td>PLL / 时钟生成 (SoC 级)</td></tr>
+    <tr><td>Nexus Trace 编码 + FIFO + AXI4 burst 写出</td><td>AXI 总线互联 (属于 pma-axi)</td></tr>
+    <tr><td>调试安全等级检查 (D-016, 3 级)</td><td>eFuse/OTP 编程 (SoC 级)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> W 级 <code>commit_pc/commit_valid</code> (来自 writeback-csr) &nbsp;|&nbsp; <a href="dft-security.html">dft_ctrl</a> (JTAG TAP 复用)</p>
+<p><strong>下游:</strong> <code>debug_halt_req/debug_resume_req</code> → 取指级 flush 控制 &nbsp;|&nbsp; <code>trigger_match_en</code> → 流水线 trigger 注入 &nbsp;|&nbsp; <code>trace_axi_*</code> → AXI 写出总线</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查）</td><td>ERR-064 (FPU), ERR-073 (WFI)</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-DBG-001</td><td>DMI 寄存器访问</td><td>7-bit 地址空间, 读写 dmcontrol(0x10)/dmstatus(0x11)/abstractcs(0x17)/command(0x18)/data0(0x04)/progbuf[0:7](0x20~0x27)</td><td><span class="req-tag">LUMI-DBG-001</span></td></tr>
+    <tr><td>F-DBG-002</td><td>Halt/Resume</td><td>W 级精确 halt, halt_req→commit_valid→ST_HALTED; resumereq→ST_RUN</td><td><span class="req-tag">LUMI-DBG-002</span> <span class="constraint-tag">DEC-007-1</span></td></tr>
+    <tr><td>F-DBG-003</td><td>Single-step</td><td>dmcontrol.step=1 时, 执行一条指令后 re-halt</td><td><span class="req-tag">LUMI-DBG-002</span></td></tr>
+    <tr><td>F-DBG-004</td><td>Abstract Command</td><td>HALTED 状态下向 core 发起寄存器读写命令, 1000 cycle 超时</td><td><span class="req-tag">LUMI-DBG-003</span></td></tr>
+    <tr><td>F-DBG-005</td><td>Trigger Module</td><td>NUM_TRIGGERS=4 个 mcontrol type 2 触发器, EQUAL/NAPOT 地址匹配</td><td><span class="req-tag">LUMI-DBG-001</span></td></tr>
+    <tr><td>F-DBG-006</td><td>调试安全</td><td>3 级安全: Level 0 (locked) / Level 1 (bp_only) / Level 2 (open, 默认)</td><td><span class="req-tag">LUMI-SEC-003</span> <span class="constraint-tag">D-016</span></td></tr>
+    <tr><td>F-TRC-001</td><td>Nexus Trace 编码</td><td>顺序 PC 不输出, 分支/异常/非顺序输出 trace 消息</td><td><span class="req-tag">LUMI-TRC-001</span></td></tr>
+    <tr><td>F-TRC-002</td><td>Trace FIFO</td><td>64-bit × FIFO_DEPTH (默认 256), 溢出计数</td><td><span class="req-tag">LUMI-TRC-001</span></td></tr>
+    <tr><td>F-TRC-003</td><td>AXI4 burst 写出</td><td>2×64-bit → 128-bit burst, 基地址 0x8000_0000, 自动递增</td><td><span class="req-tag">LUMI-TRC-002</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常运行 (ST_RUN)</td><td>reset / resume</td><td>Hart 正常执行, Trigger 持续匹配 commit_pc</td></tr>
+    <tr><td>Halt 请求 (ST_HALT_REQ)</td><td>haltreq=1 或 trigger_hit</td><td>等待当前指令 W 级提交 (精确 halt)</td></tr>
+    <tr><td>Halted (ST_HALTED)</td><td>commit_valid after halt_req</td><td>流水线 flush, 等待 DMI 命令 (Abstract Cmd / Resume / Step)</td></tr>
+    <tr><td>单步 (ST_SINGLE_STEP)</td><td>step_mode=1 in HALTED</td><td>释放 halt, 执行一条指令后 re-halt</td></tr>
+    <tr><td>Trigger (ST_TRIGGER)</td><td>trigger_hit in ST_RUN</td><td>Trigger 命中导致 halt</td></tr>
+    <tr><td>Trace Idle (ST_IDLE)</td><td>trace_enable=0</td><td>Trace 模块空闲</td></tr>
+    <tr><td>Trace Capture/Encode/Flush</td><td>trace_enable=1 + commit_valid</td><td>捕获 commit → Nexus 编码 → FIFO 写入 → AXI burst 写出</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 lumi_debug_module 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td></tr>
+    <tr><td><code>tck</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>10~50 MHz</td><td>JTAG 时钟 (异步于 clk_core)</td></tr>
+    <tr><td><code>tms</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG TAP 状态机控制</td></tr>
+    <tr><td><code>tdi</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG 数据输入</td></tr>
+    <tr><td><code>tdo</code></td><td>output</td><td>1</td><td>0</td><td>TCK</td><td>—</td><td>registered</td><td>JTAG 数据输出 (bypass)</td></tr>
+    <tr><td><code>trst_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>TCK</td><td>—</td><td>异步复位</td><td>JTAG TAP 复位</td></tr>
+    <tr><td><code>dmi_addr</code></td><td>input</td><td>7</td><td>—</td><td>TCK→CDC</td><td>DMI req/ready</td><td>held until ready</td><td>DMI 寄存器地址</td></tr>
+    <tr><td><code>dmi_wdata</code></td><td>input</td><td>32</td><td>—</td><td>TCK→CDC</td><td>DMI req/ready</td><td>held until ready</td><td>DMI 写数据</td></tr>
+    <tr><td><code>dmi_rdata</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>DMI 读数据 (地址解码输出)</td></tr>
+    <tr><td><code>dmi_op</code></td><td>input</td><td>2</td><td>—</td><td>TCK→CDC</td><td>DMI req/ready</td><td>held until ready</td><td>DMI 操作 (00=nop,01=read,10=write)</td></tr>
+    <tr><td><code>dmi_req_valid</code></td><td>input</td><td>1</td><td>—</td><td>TCK→CDC</td><td>DMI req/ready</td><td>async→2FF sync</td><td>DMI 请求有效</td></tr>
+    <tr><td><code>dmi_req_ready</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE→TCK</td><td>DMI req/ready</td><td>2FF sync to TCK</td><td>DMI 就绪 (回 JTAG 侧)</td></tr>
+    <tr><td><code>abs_cmd_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Abstract Command 有效 (HALTED+busy)</td></tr>
+    <tr><td><code>abs_cmd_data</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Abstract Command 定义 (command 寄存器)</td></tr>
+    <tr><td><code>abs_resp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>Core 应答 (00=ok,01=busy,02=n/a,03=exc)</td></tr>
+    <tr><td><code>debug_halt_req</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Halt 请求 (HALTED/TRIGGER 时=1)</td></tr>
+    <tr><td><code>debug_resume_req</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Resume 请求</td></tr>
+    <tr><td><code>commit_pc</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>W 级提交 PC (精确 halt + trigger 匹配)</td></tr>
+    <tr><td><code>commit_valid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>W 级提交有效</td></tr>
+    <tr><td><code>trigger_match_addr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trigger 匹配地址</td></tr>
+    <tr><td><code>trigger_match_en</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trigger 匹配有效</td></tr>
+</table>
+
+<h2>3.2 lumi_trace 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>commit_pc</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>W 级提交 PC</td></tr>
+    <tr><td><code>commit_valid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>W 级提交有效</td></tr>
+    <tr><td><code>commit_type</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>提交类型 (00=seq,01=branch,10=exc)</td></tr>
+    <tr><td><code>trace_enable</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trace 使能 (透传 trace_config_en)</td></tr>
+    <tr><td><code>trace_data_out</code></td><td>output</td><td>64</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>FIFO 读出数据</td></tr>
+    <tr><td><code>trace_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>FIFO 非空</td></tr>
+    <tr><td><code>trace_axi_addr</code></td><td>output</td><td>32</td><td>0x80000000</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>AXI4 写出地址 (自动 +16)</td></tr>
+    <tr><td><code>trace_axi_wdata</code></td><td>output</td><td>128</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>AXI4 写出数据 (2×64→128)</td></tr>
+    <tr><td><code>trace_axi_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>AXI4 burst 有效</td></tr>
+    <tr><td><code>trace_axi_ready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>AXI4 slave 就绪</td></tr>
+    <tr><td><code>trace_config_en</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>CSR 配置的 trace 使能位</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td><code>dmi_req_valid</code></td><td>TCK</td><td>CLK_CORE</td><td>2-FF 同步 + 上升沿检测 (dmi_req_posedge_core)</td></tr>
+    <tr><td><code>dmi_addr/wdata/op</code></td><td>TCK</td><td>CLK_CORE</td><td>在 dmi_req_posedge_core 采样 (JTAG 侧须保持稳定)</td></tr>
+    <tr><td><code>dmi_req_ready_core</code></td><td>CLK_CORE</td><td>TCK</td><td>2-FF 同步 (dmi_req_ready_sync0/1)</td></tr>
+    <tr><td><code>tdo</code></td><td>TCK</td><td>—</td><td>TCK 域内部寄存器, 无 CDC</td></tr>
+</table>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 Debug 主 FSM — <code>dbg_state_e</code> (3-bit, 6 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_RUN</code></td><td>3'b000</td><td>正常运行</td><td>reset / resume</td></tr>
+    <tr><td><code>ST_HALT_REQ</code></td><td>3'b001</td><td>等待 W 级精确 halt</td><td>haltreq &amp;&amp; !debug_locked</td></tr>
+    <tr><td><code>ST_HALTED</code></td><td>3'b010</td><td>已 halt, 等待命令</td><td>commit_valid || halted_ack</td></tr>
+    <tr><td><code>ST_RESUME_REQ</code></td><td>3'b011</td><td>恢复执行</td><td>resumereq</td></tr>
+    <tr><td><code>ST_SINGLE_STEP</code></td><td>3'b100</td><td>单步执行</td><td>step_mode &amp;&amp; !debug_locked</td></tr>
+    <tr><td><code>ST_TRIGGER</code></td><td>3'b101</td><td>Trigger 命中 halt</td><td>trigger_hit &amp;&amp; !debug_locked</td></tr>
+</table>
+
+<h2>4.2 Debug FSM 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_RUN : reset
+    ST_RUN --> ST_HALT_REQ : haltreq && !locked
+    ST_RUN --> ST_TRIGGER : trigger_hit && !locked
+    ST_HALT_REQ --> ST_HALTED : commit_valid || halted_ack
+    ST_HALTED --> ST_RESUME_REQ : resumereq
+    ST_HALTED --> ST_SINGLE_STEP : step_mode && !locked
+    ST_RESUME_REQ --> ST_RUN : (always)
+    ST_SINGLE_STEP --> ST_HALTED : single_step_done
+    ST_TRIGGER --> ST_RESUME_REQ : resumereq
+</pre>
+
+<h2>4.3 DMUI 握手 FSM — <code>dmui_state_e</code> (2-bit, 3 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>DMUI_IDLE</code></td><td>2'b00</td><td>等待 DMI 请求</td><td>reset / valid 撤除</td></tr>
+    <tr><td><code>DMUI_PROC</code></td><td>2'b01</td><td>处理 DMI 读写</td><td>dmi_req_posedge_core</td></tr>
+    <tr><td><code>DMUI_DONE</code></td><td>2'b10</td><td>应答完成</td><td>PROC 完成 (1 cycle)</td></tr>
+</table>
+
+<h2>4.4 Trace 主 FSM — <code>trace_state_e</code> (2-bit, 4 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>2'b00</td><td>Trace 空闲</td><td>reset / trace_enable=0</td></tr>
+    <tr><td><code>ST_CAPTURE</code></td><td>2'b01</td><td>捕获 commit 信息</td><td>trace_enable=1</td></tr>
+    <tr><td><code>ST_ENCODE</code></td><td>2'b10</td><td>Nexus 编码 + FIFO 写入</td><td>commit_valid</td></tr>
+    <tr><td><code>ST_FLUSH</code></td><td>2'b11</td><td>AXI burst 写出</td><td>FIFO 有数据</td></tr>
+</table>
+
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_CAPTURE : trace_enable
+    ST_CAPTURE --> ST_ENCODE : commit_valid
+    ST_CAPTURE --> ST_IDLE : !trace_enable
+    ST_ENCODE --> ST_FLUSH : !fifo_full || burst_full
+    ST_ENCODE --> ST_CAPTURE : fifo_full
+    ST_FLUSH --> ST_CAPTURE : burst sent / fifo_empty
+    ST_FLUSH --> ST_IDLE : !trace_enable
+</pre>
+
+<h2>4.5 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护 (Abstract Cmd):</strong> 1000 cycle 超时计数器, 超时后置 <code>cmderr=010</code>, 释放 busy</li>
+    <li><strong>死锁防护 (DMI):</strong> DMUI FSM 在 2 cycle 内完成 (PROC→DONE), DONE 等待 valid 撤除后回 IDLE</li>
+    <li><strong>死锁防护 (Trace FIFO):</strong> FIFO 满时丢弃 (overflow_count++), 不阻塞流水线</li>
+    <li><strong>活锁防护 (Halt):</strong> HALT_REQ 等待 commit_valid, 若流水线 stall 则 halt 延迟但不死锁 (stall 最终会被 flush 解除)</li>
+</ul>
+
+<!-- ═══ §5 数据通路 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 Debug Module 数据通路</h2>
+<pre class="mermaid">
+graph LR
+    TCK[tck 域] -->|2-FF CDC| SYNC[dmi_req_posedge_core]
+    SYNC --> DMUI[DMUI FSM]
+    DMUI -->|DMI WRITE| REGS[DMI 寄存器阵列]
+    DMUI -->|DMI READ| RDATA[dmi_rdata 组合解码]
+    REGS -->|haltreq| DBG_FSM[Debug 主 FSM]
+    DBG_FSM -->|halt_req| CORE[流水线 flush]
+    CORE -->|commit_pc| DBG_FSM
+    REGS -->|tdata2/tmatch/tenable| TRIG[Trigger 匹配器]
+    CORE -->|commit_pc| TRIG
+    TRIG -->|trigger_hit| DBG_FSM
+</pre>
+
+<h2>5.2 Trace 数据通路</h2>
+<pre class="mermaid">
+graph LR
+    W[commit_pc/valid/type] --> CAP[捕获寄存器]
+    CAP --> ENC[Nexus 编码器]
+    ENC -->|encoded_data| FIFO[Trace FIFO 64b×256]
+    FIFO -->|fifo_rd| BURST[AXI burst 缓冲]
+    BURST -->|128-bit| AXI[trace_axi_wdata/addr/valid]
+</pre>
+
+<h2>5.3 关键时序</h2>
+<table>
+    <tr><th>Cycle</th><th>事件</th><th>Debug FSM</th><th>DMUI FSM</th><th>输出</th></tr>
+    <tr><td>T</td><td>JTAG 写 dmcontrol.haltreq=1</td><td>ST_RUN</td><td>DMUI_IDLE→PROC</td><td>—</td></tr>
+    <tr><td>T+1</td><td>DMI 写完成</td><td>ST_RUN→ST_HALT_REQ</td><td>PROC→DONE</td><td>dmcontrol 更新</td></tr>
+    <tr><td>T+2~N</td><td>等待 W 级 commit_valid</td><td>ST_HALT_REQ</td><td>DONE→IDLE</td><td>—</td></tr>
+    <tr><td>T+N+1</td><td>当前指令提交, PC 捕获</td><td>ST_HALT_REQ→ST_HALTED</td><td>IDLE</td><td>halted_pc 锁存</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>Halt 期间 NMI 到达</td><td>NMI 优先级 > halt, HALT_REQ→ST_RUN (NMI 处理)</td><td>cg_debug_nmi</td></tr>
+    <tr><td>BC-002</td><td>debug_locked=1 时 haltreq</td><td>忽略 haltreq, 不离开 ST_RUN</td><td>cg_security_locked</td></tr>
+    <tr><td>BC-003</td><td>Abstract Cmd 超时 (1000 cycle)</td><td>busy→0, cmderr→010 (timeout)</td><td>cg_abstract_timeout</td></tr>
+    <tr><td>BC-004</td><td>Trace FIFO 满时新 trace</td><td>丢弃, overflow_count++, 不阻塞流水线</td><td>cg_trace_overflow</td></tr>
+    <tr><td>BC-005</td><td>trace_enable 在 FLUSH 中撤除</td><td>ST_FLUSH→ST_IDLE, 剩余 FIFO 数据丢失</td><td>cg_trace_disable</td></tr>
+    <tr><td>BC-006</td><td>Trigger NAPOT 匹配低 4 位</td><td>忽略 tdata2[3:0] 作为掩码位进行 NAPOT 比较</td><td>cg_trigger_napot</td></tr>
+    <tr><td>BC-007</td><td>Single-step 时无指令可执行</td><td>single_step_done 仅在 commit_valid 时置 1, 否则持续等待</td><td>cg_singlestep_stall</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>Abstract Cmd 超时</td><td>abstract_timeout_cnt ≥ 1000</td><td>清除 busy, 设置 cmderr=timeout, 等待软件清除</td></tr>
+    <tr><td>DMI 访问未实现地址</td><td>地址不在已实现范围内</td><td>返回 dmi_rdata=0 (无错误上报)</td></tr>
+    <tr><td>Trace FIFO 溢出</td><td>fifo_full &amp;&amp; encoded_valid</td><td>丢弃数据, overflow_count 递增, 可通过 CSR 读取</td></tr>
+</table>
+
+<h2>6.3 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位所有寄存器: FSM→ST_RUN/ST_IDLE, DMI 寄存器→0, FIFO 指针→0</td><td>异步</td></tr>
+    <tr><td><code>trst_n</code></td><td>仅复位 TCK 域: TAP→RESET, dmi_req_ready→0, tdo→0</td><td>异步 (TCK 域)</td></tr>
+    <tr><td>流水线 flush</td><td>debug halt 触发流水线 flush (F2/D/I/E1/E2/M 级), commit_valid 保证已提交指令不受影响</td><td>下一 clk↑</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>NUM_TRIGGERS</code></td><td>int</td><td>4</td><td>1~8</td><td>mcontrol type 2 触发器数量</td></tr>
+    <tr><td><code>FIFO_DEPTH</code></td><td>int (lumi_trace)</td><td>256</td><td>64~1024</td><td>Trace FIFO 深度 (64-bit entry)</td></tr>
+    <tr><td><code>debug_security_level</code></td><td>logic[1:0]</td><td>2'b10 (Level 2)</td><td>00/01/10</td><td>调试安全等级 (eFuse 配置)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>NUM_TRIGGERS</code> 必须为 2 的幂 (简化 <code>$clog2</code> 索引)</li>
+    <li><code>FIFO_DEPTH</code> 必须为 2 的幂 (FIFO 指针自然回绕)</li>
+    <li>Abstract 超时固定 1000 cycle, 不由参数控制</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>CDC 同步器</td><td>TCK↔CLK_CORE 2-FF 同步 + 上升沿检测</td><td><code>dmi_req_posedge_core</code></td></tr>
+    <tr><td>DMUI 握手 FSM</td><td>DMI 请求接收→处理→应答 3 态</td><td><code>dmui_state, dmi_req_ready_core</code></td></tr>
+    <tr><td>DMI 寄存器阵列</td><td>dmcontrol/dmstatus/abstractcs/command/data0/progbuf</td><td><code>dmi_rdata (combinational read)</code></td></tr>
+    <tr><td>Debug 主 FSM</td><td>Halt/Resume/Step/Trigger 6 态控制</td><td><code>debug_halt_req, debug_resume_req</code></td></tr>
+    <tr><td>Trigger Module</td><td>4 路 EQUAL/NAPOT 地址比较器</td><td><code>trigger_hit, trigger_match_en</code></td></tr>
+    <tr><td>Abstract Timeout</td><td>1000 cycle 超时计数器</td><td><code>abstract_timeout_cnt, abstractcs[10:8]</code></td></tr>
+    <tr><td>Trace 捕获+编码</td><td>commit 捕获 → Nexus 压缩编码</td><td><code>cap_pc, encoded_data, msg_type</code></td></tr>
+    <tr><td>Trace FIFO</td><td>64b × FIFO_DEPTH 同步 FIFO</td><td><code>fifo_wr_ptr, fifo_rd_ptr, fifo_count</code></td></tr>
+    <tr><td>AXI burst 缓冲</td><td>2×64→128 bit 打包, 地址自动递增</td><td><code>burst_buf[1:0], axi_base_addr</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器 (Debug Module)</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>dmcontrol</code></td><td>32</td><td>0</td><td>DMI write 0x10</td><td>[31]=haltreq, [30]=resumereq, [2]=step</td></tr>
+    <tr><td><code>dmstatus</code></td><td>32</td><td>0</td><td>每 cycle 自动更新</td><td>[9]=allhalted, [8]=allrunning, [3:0]=version=2</td></tr>
+    <tr><td><code>abstractcs</code></td><td>32</td><td>0</td><td>DMI write 0x17 / 超时</td><td>[12]=busy, [10:8]=cmderr (W1C)</td></tr>
+    <tr><td><code>command</code></td><td>32</td><td>0</td><td>DMI write 0x18</td><td>Abstract Cmd 定义</td></tr>
+    <tr><td><code>data0</code></td><td>32</td><td>0</td><td>DMI write 0x04</td><td>Abstract Data 传递</td></tr>
+    <tr><td><code>progbuf[0:7]</code></td><td>32×8</td><td>0</td><td>DMI write 0x20~0x27</td><td>Program Buffer</td></tr>
+    <tr><td><code>tdata2[0:3]</code></td><td>32×4</td><td>0</td><td>CSR 写入</td><td>Trigger 地址比较值</td></tr>
+    <tr><td><code>tmatch[0:3]</code></td><td>2×4</td><td>00</td><td>CSR 写入</td><td>匹配类型 (00=EQUAL,01=NAPOT)</td></tr>
+    <tr><td><code>tenable[0:3]</code></td><td>1×4</td><td>0</td><td>CSR 写入</td><td>触发器使能</td></tr>
+    <tr><td><code>halted_pc</code></td><td>32</td><td>0</td><td>HALT_REQ→HALTED 时捕获 commit_pc</td><td>halt 时 PC 快照</td></tr>
+</table>
+
+<h2>8.3 内部寄存器 (Trace)</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>prev_pc</code></td><td>32</td><td>0</td><td>commit_valid: prev_pc = commit_pc + 4</td><td>顺序 PC 检测基准</td></tr>
+    <tr><td><code>cap_pc/cap_type</code></td><td>32+2</td><td>0</td><td>ST_CAPTURE 时采样</td><td>当前捕获事件</td></tr>
+    <tr><td><code>fifo_mem[]</code></td><td>64×256</td><td>—</td><td>ST_ENCODE: 写入; ST_FLUSH: 读出</td><td>Trace FIFO 存储</td></tr>
+    <tr><td><code>overflow_count</code></td><td>64</td><td>0</td><td>FIFO 满时递增</td><td>溢出丢弃计数</td></tr>
+    <tr><td><code>burst_buf[0:1]</code></td><td>64×2</td><td>0</td><td>ST_FLUSH 读出 FIFO</td><td>128-bit AXI 打包</td></tr>
+    <tr><td><code>axi_base_addr</code></td><td>32</td><td>0x80000000</td><td>AXI 完成后 +16</td><td>写出地址自增</td></tr>
+</table>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>全部 DMI 寄存器读写 (F-DBG-001)</td><td>100% 地址 × 读写</td><td>P0</td></tr>
+    <tr><td>Halt/Resume/Step 全路径 (F-DBG-002/003)</td><td>100% FSM 转移</td><td>P0</td></tr>
+    <tr><td>Abstract Cmd 正常+超时 (F-DBG-004)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Trigger EQUAL/NAPOT 匹配 (F-DBG-005)</td><td>全触发器 × 全匹配类型</td><td>P1</td></tr>
+    <tr><td>安全等级 0/1/2 (F-DBG-006)</td><td>全等级 × 全操作</td><td>P0</td></tr>
+    <tr><td>Trace 编码 (F-TRC-001)</td><td>顺序/分支/异常/SYNC</td><td>P0</td></tr>
+    <tr><td>FIFO 满/空/溢出 (F-TRC-002)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>AXI burst 写出 (F-TRC-003)</td><td>100% 完成+中断</td><td>P1</td></tr>
+    <tr><td>CDC 同步延迟</td><td>全 dmi_req_valid 脉冲</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_halt_precision</code></td><td>haltreq → ##[0:8] halted (commit_valid 后)</td><td>halt 延迟 ≤8 cycle</td></tr>
+    <tr><td><code>assert_abstract_timeout</code></td><td>busy → ##[0:1001] !busy</td><td>Abstract Cmd 必在 1001 cycle 内完成</td></tr>
+    <tr><td><code>assert_dmi_handshake</code></td><td>dmi_req_valid → ##[1:10] dmi_req_ready</td><td>DMI 请求必须在 10 cycle 内应答</td></tr>
+    <tr><td><code>assert_locked_no_halt</code></td><td>debug_locked → !debug_halt_req</td><td>锁定状态下不可 halt</td></tr>
+    <tr><td><code>assert_trace_no_stall</code></td><td>fifo_full → !stall (FIFO 满不阻塞流水线)</td><td>Trace 不影响流水线</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-DBG-001</span></td><td>JTAG Debug Module + DMI</td><td>§2.1, §3.1, §8.2</td><td><code>lumi_debug_module</code> DMI 寄存器阵列</td></tr>
+    <tr><td><span class="req-tag">LUMI-DBG-002</span></td><td>Halt/Resume/Step</td><td>§2.1, §4.1</td><td><code>dbg_state_e</code> 主 FSM</td></tr>
+    <tr><td><span class="req-tag">LUMI-DBG-003</span></td><td>Abstract Commands</td><td>§2.1, §8.2</td><td><code>abs_cmd_valid</code>, timeout counter</td></tr>
+    <tr><td><span class="req-tag">LUMI-TRC-001</span></td><td>Nexus Trace Encoder</td><td>§2.1, §5.2</td><td><code>lumi_trace</code> 编码逻辑</td></tr>
+    <tr><td><span class="req-tag">LUMI-TRC-002</span></td><td>Trace AXI4 写出</td><td>§2.1, §3.2</td><td><code>trace_axi_*</code> burst 缓冲</td></tr>
+    <tr><td><span class="req-tag">LUMI-SEC-003</span></td><td>调试安全等级</td><td>§2.1, §6.1</td><td><code>debug_security_level</code>, debug_locked</td></tr>
+    <tr><td><span class="req-tag">LUMI-FEAT-001~004</span></td><td>Debug/Trace 功能特性</td><td>§2.1</td><td>全模块</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="debug-trace.html">debug-trace.html</a> (LUMI-DESIGN-012) 的设计细化。HLD §2 (功能) → 本文档 §2; HLD §3 (接口) → 本文档 §3 (8 列深化); HLD §2.4 (Trigger) → 本文档 §8.1 Trigger Module。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#debug">IC-5.1 (Debug DMI)</a> · <a href="interface-contracts.html#trace">IC-5.2 (Trace AXI)</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>LUMI-LLD-009 &nbsp;|&nbsp; Debug Module &amp; Nexus Trace &nbsp;|&nbsp; Phase 5 &nbsp;|&nbsp; 2026-07-16</p>
+</div>
+
+</body>
+</html>

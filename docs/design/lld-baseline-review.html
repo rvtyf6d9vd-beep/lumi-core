@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLD 基线审查报告 — Lumi-Core RTL 全量同步</title>
+<style>
+:root{--bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--ok-bg:#e8f5e9;--ok-border:#2e7d32}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);max-width:1200px;margin:0 auto;padding:2rem}
+h1{font-size:1.5rem;color:var(--accent);margin:2rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+h2{font-size:1.2rem;color:#1a3a5c;margin:1.5rem 0 0.6rem}
+h3{font-size:1.05rem;color:#37474f;margin:1rem 0 0.4rem}
+p{margin:0.5rem 0}
+table{width:100%;border-collapse:collapse;font-size:0.88rem;margin:0.8rem 0}
+th{background:var(--accent);color:#fff;padding:0.4rem 0.6rem;text-align:left;font-weight:600;font-size:0.82rem}
+td{padding:0.35rem 0.6rem;border-bottom:1px solid var(--border);vertical-align:top}
+tr:nth-child(even) td{background:#f8f9fa}
+code{background:var(--code-bg);padding:0.1rem 0.3rem;border-radius:3px;font-family:Menlo,monospace;font-size:0.85em}
+.cover{text-align:center;padding:2rem 0;border-bottom:3px solid var(--accent);margin-bottom:2rem}
+.cover h1{font-size:1.8rem}
+.cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1rem}
+.summary{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;border-radius:0 6px 6px 0}
+.warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.6rem 1rem;margin:0.8rem 0;border-radius:0 6px 6px 0}
+.ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.6rem 1rem;margin:0.8rem 0;border-radius:0 6px 6px 0}
+.module-card{border:1px solid var(--border);border-radius:8px;padding:1rem;margin:1rem 0;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.module-card h3{margin-top:0;color:var(--accent)}
+.footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1rem;border-top:1px solid var(--border)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.8rem;margin:1rem 0}
+.stat-box{background:#f8f9fa;border:1px solid var(--border);border-radius:6px;padding:0.8rem;text-align:center}
+.stat-box .num{font-size:1.8rem;font-weight:700;color:var(--accent)}
+.stat-box .label{font-size:0.82rem;color:#90a4ae}
+</style>
+</head>
+<body>
+
+<div class="cover">
+<h1>LLD 基线审查报告</h1>
+<p style="color:#546e7a;font-size:1.1rem">Phase 1: 全面 RTL 同步审查 — 代码基线建立</p>
+<div class="meta">
+<p><strong>日期:</strong> 2026-07-16 &nbsp;|&nbsp; <strong>生成工具:</strong> lld_signal_extract.py + generate_baseline_review.py</p>
+<p><strong>RTL 路径:</strong> <code>src/rtl/</code> &nbsp;|&nbsp; <strong>基线 JSON:</strong> <code>scripts/lld-check/rtl_baseline.json</code></p>
+</div>
+</div>
+
+<h1>1. 审查概览</h1>
+
+<div class="summary">
+<strong>审查目的:</strong> 对全部 RTL 文件做全面审查，自动提取端口清单和状态机枚举，建立精确的代码基线，为后续 LLD 编写提供数据支撑。
+</div>
+
+<div class="stats-grid">
+<div class="stat-box"><div class="num">24</div><div class="label">SV 文件</div></div>
+<div class="stat-box"><div class="num">25</div><div class="label">模块</div></div>
+<div class="stat-box"><div class="num">638</div><div class="label">端口信号</div></div>
+<div class="stat-box"><div class="num">26</div><div class="label">枚举定义</div></div>
+<div class="stat-box"><div class="num">54</div><div class="label">枚举状态</div></div>
+<div class="stat-box"><div class="num">337</div><div class="label">Input 端口</div></div>
+<div class="stat-box"><div class="num">301</div><div class="label">Output 端口</div></div>
+</div>
+
+<h1>2. 枚举/状态机定义清单</h1>
+<p>以下枚举中包含 FSM 状态定义或关键类型枚举，LLD §4 状态机章节必须覆盖这些定义。</p>
+<table>
+<tr><th>枚举名</th><th>文件</th><th>状态数</th><th>状态列表</th></tr>
+<tr><td><code>axi_state_e</code></td><td>lumi_axi_wrapper.sv</td><td>0</td><td></td></tr>
+<tr><td><code>dec_state_e</code></td><td>lumi_decode_issue.sv</td><td>0</td><td></td></tr>
+<tr><td><code>div_state_e</code></td><td>lumi_execute.sv</td><td>0</td><td></td></tr>
+<tr><td><code>fetch_state_e</code></td><td>lumi_fetch.sv</td><td>5</td><td><code>ST_IDLE</code>=3'd0, <code>ST_FETCH</code>=3'd1, <code>ST_STALL</code>=3'd2, <code>ST_FLUSH</code>=3'd3, <code>ST_HALT</code>=3'd4</td></tr>
+<tr><td><code>mem_state_e</code></td><td>lumi_memory_stage.sv</td><td>0</td><td></td></tr>
+<tr><td><code>wb_state_e</code></td><td>lumi_writeback.sv</td><td>0</td><td></td></tr>
+<tr><td><code>dbg_state_e</code></td><td>lumi_debug_module.sv</td><td>0</td><td></td></tr>
+<tr><td><code>dmui_state_e</code></td><td>lumi_debug_module.sv</td><td>0</td><td></td></tr>
+<tr><td><code>trace_msg_e</code></td><td>lumi_trace.sv</td><td>5</td><td><code>MSG_SYNC</code>=3'd1, <code>MSG_BRANCH</code>=3'd2, <code>MSG_EXCEPTION</code>=3'd3, <code>MSG_CONTEXT</code>=3'd4, <code>MSG_NOP</code>=3'd0   // 空闲/NOP</td></tr>
+<tr><td><code>trace_state_e</code></td><td>lumi_trace.sv</td><td>0</td><td></td></tr>
+<tr><td><code>dft_state_e</code></td><td>lumi_dft_ctrl.sv</td><td>0</td><td></td></tr>
+<tr><td><code>mbist_state_e</code></td><td>lumi_dft_ctrl.sv</td><td>0</td><td></td></tr>
+<tr><td><code>tap_state_e</code></td><td>lumi_dft_ctrl.sv</td><td>0</td><td></td></tr>
+<tr><td><code>fpu_inst_e</code></td><td>lumi_fpu.sv</td><td>8</td><td><code>INST_FADD</code>=6'd0, <code>INST_FMUL</code>=6'd1, <code>INST_FMA</code>=6'd2, <code>INST_FDIV</code>=6'd3, <code>INST_FSQRT</code>=6'd4, <code>INST_FCVT</code>=6'd5, <code>INST_FMV</code>=6'd6, <code>INST_FCMP</code>=6'd7</td></tr>
+<tr><td><code>fpu_state_e</code></td><td>lumi_fpu.sv</td><td>0</td><td></td></tr>
+<tr><td><code>vec_inst_e</code></td><td>lumi_vector.sv</td><td>8</td><td><code>INST_VARITH</code>=7'd0, <code>INST_VMUL</code>=7'd1, <code>INST_VREDUCE</code>=7'd2, <code>INST_VLOAD</code>=7'd3, <code>INST_VSTORE</code>=7'd4, <code>INST_VMASK</code>=7'd5, <code>INST_VPERM</code>=7'd6, <code>INST_VCMP</code>=7'd7    // 向量比较</td></tr>
+<tr><td><code>vec_state_e</code></td><td>lumi_vector.sv</td><td>0</td><td></td></tr>
+<tr><td><code>priv_e</code></td><td>lumi_types_pkg.sv</td><td>3</td><td><code>PRIV_M</code>=2'b11, <code>PRIV_S</code>=2'b01, <code>PRIV_U</code>=2'b00</td></tr>
+<tr><td><code>fu_type_e</code></td><td>lumi_types_pkg.sv</td><td>8</td><td><code>FU_ALU</code>=4'd0, <code>FU_MUL</code>=4'd1, <code>FU_DIV</code>=4'd2, <code>FU_MEM</code>=4'd3, <code>FU_FP</code>=4'd4, <code>FU_VEC</code>=4'd5, <code>FU_BRANCH</code>=4'd6, <code>FU_MISC</code>=4'd7</td></tr>
+<tr><td><code>exc_type_e</code></td><td>lumi_types_pkg.sv</td><td>14</td><td><code>EXC_INST_MISALIGN</code>=4'd0, <code>EXC_INST_ACCESS</code>=4'd1, <code>EXC_ILLEGAL_INST</code>=4'd2, <code>EXC_BREAKPOINT</code>=4'd3, <code>EXC_LOAD_MISALIGN</code>=4'd4, <code>EXC_LOAD_ACCESS</code>=4'd5, <code>EXC_STORE_MISALIGN</code>=4'd6, <code>EXC_STORE_ACCESS</code>=4'd7, <code>EXC_ECALL_U</code>=4'd8, <code>EXC_ECALL_S</code>=4'd9, <code>EXC_ECALL_M</code>=4'd11, <code>EXC_INST_PAGE</code>=4'd12, <code>EXC_LOAD_PAGE</code>=4'd13, <code>EXC_STORE_PAGE</code>=4'd15</td></tr>
+<tr><td><code>pma_result_e</code></td><td>lumi_types_pkg.sv</td><td>3</td><td><code>PMA_PASS</code>=2'b00, <code>PMA_FAULT</code>=2'b01, <code>PMA_MISALIGNED</code>=2'b10</td></tr>
+<tr><td><code>clic_state_e</code></td><td>lumi_clic.sv</td><td>0</td><td></td></tr>
+<tr><td><code>cache_state_e</code></td><td>lumi_cache.sv</td><td>0</td><td></td></tr>
+<tr><td><code>tcm_state_e</code></td><td>lumi_tcm.sv</td><td>0</td><td></td></tr>
+<tr><td><code>ls_state_e</code></td><td>lumi_lockstep.sv</td><td>0</td><td></td></tr>
+<tr><td><code>pwr_state_e</code></td><td>lumi_power_mgmt.sv</td><td>0</td><td></td></tr>
+
+</table>
+
+<h1>3. 模块端口清单 (按文件)</h1>
+<p>以下为自动提取的全部模块端口声明。LLD §3 接口约束表必须 100% 覆盖这些端口。</p>
+
+<div class="module-card">
+<h3><code>lumi_axi_wrapper</code> <small style="color:#90a4ae">(src/rtl/bus/lumi_axi_wrapper.sv)</small></h3>
+<p>端口数: 75</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>clk_bus</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ic_refill_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ic_refill_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>ic_refill_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_refill_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_refill_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_refill_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_evict_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_evict_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_evict_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_evict_data</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>nc_access_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nc_access_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>nc_access_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>nc_access_we</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nc_access_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>nc_access_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trace_write_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_write_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_write_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trace_write_data</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awlen</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>m_axi_awsize</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_awburst</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_awlock</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awcache</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_awprot</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_awvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wlast</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_bresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_bvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_bready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arlen</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>m_axi_arsize</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_arburst</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_arlock</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arcache</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_arprot</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_arvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_rlast</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_awvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_awready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>m_ffp_wstrb</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_ffp_wvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_wready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_bresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_ffp_bvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_bready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_arvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_arready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_rdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>m_ffp_rresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_ffp_rvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_ffp_rready</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_cdc_2ff_sync</code> <small style="color:#90a4ae">(src/rtl/bus/lumi_cdc_sync.sv)</small></h3>
+<p>端口数: 4</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_dst</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>rst_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>din</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dout</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_pma_checker</code> <small style="color:#90a4ae">(src/rtl/bus/lumi_pma_checker.sv)</small></h3>
+<p>端口数: 14</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pma_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>pma_access_type</code></td><td>input</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>pma_privilege</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>pma_result</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>lumi_pkg</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>pmp_check_req</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>pmp_check_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>pmp_check_type</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>pmp_result</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>route_tcm</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>route_cache</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>route_mmio</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_bypass</code> <small style="color:#90a4ae">(src/rtl/core/lumi_bypass.sv)</small></h3>
+<p>端口数: 20</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>m_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>w_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>w_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>fpu_result</code></td><td>input</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>fpu_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>fpu_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>query_rs1</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>query_rs2</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>bypass_rs1_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>bypass_rs2_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_core_top</code> <small style="color:#90a4ae">(src/rtl/core/lumi_core_top.sv)</small></h3>
+<p>端口数: 47</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ic_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>ic_data</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>ic_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ic_req_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_rdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dc_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_be</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>dc_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_ready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dc_hit</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_request</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_id</code></td><td>input</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>irq_level</code></td><td>input</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>csr_addr</code></td><td>output</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>csr_rdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>csr_op</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>mstatus_out</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mtvec_out</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>debug_halt</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nmi_signal</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_result</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>hpm_inst_retired</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch_miss</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_load</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_store</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_exception</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_exc_fetch</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>core_exc_decode</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>core_exc_exec</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>core_exc_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>core_exc_insn</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>core_exc_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>wfi_req</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mon_inst</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mon_inst_raw</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>mon_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>mon_rd_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mon_irq</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_decode_issue</code> <small style="color:#90a4ae">(src/rtl/core/lumi_decode_issue.sv)</small></h3>
+<p>端口数: 26</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pd_inst</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pd_inst_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pd_inst_raw</code></td><td>input</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>f2_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>d_rs1_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>d_rs2_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>regfile_rs1_addr</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>regfile_rs2_addr</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>regfile_rs1_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>regfile_rs2_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>lumi_pkg</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>i_fu_id</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>bypass_rs1_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>bypass_rs2_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>fu_busy</code></td><td>input</td><td>10</td><td>9:0</td></tr>
+<tr><td><code>stall_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dib_not_full</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>flush</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>div_busy</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_execute</code> <small style="color:#90a4ae">(src/rtl/core/lumi_execute.sv)</small></h3>
+<p>端口数: 33</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>lumi_pkg</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_rs1_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_rs2_data</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_pred_taken</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_sb_empty</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_pred_target</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_result</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_branch_taken</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_branch_target</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_branch_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_mispredict</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_br_is_jal</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_br_is_jalr</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_br_is_call</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_br_is_ret</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_br_is_compressed</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_mem_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e1_mem_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_mem_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_mul_result</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_mul_result_hi</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_mul_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e2_div_result</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_div_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e2_div_busy</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e2_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>e1_exc_cause</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_fetch</code> <small style="color:#90a4ae">(src/rtl/core/lumi_fetch.sv)</small></h3>
+<p>端口数: 37</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>f1_pc_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>f2_icache_data</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>f2_icache_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>f2_instructions</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>f2_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>f2_pc_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>f2_pred_taken</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>f2_pred_target</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>f2_raw_data_out</code></td><td>output</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>f2_base_pc_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>f2_start_offset_out</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>f2_pred_taken_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>f2_carry_hw_out</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>f2_carry_valid_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>pred_branch_slot</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>branch_redirect_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>branch_redirect_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_redirect_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_redirect_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tage_update_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>tage_update_taken</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tage_update_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>br_update_is_jal</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>br_update_is_jalr</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>br_update_is_call</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>br_update_is_ret</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>br_update_is_compressed</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>predecode_bytes_consumed</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>predecode_inst_count</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>predecode_carry_hw_out</code></td><td>input</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>predecode_carry_valid_out</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dec_stall</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dib_not_full</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>debug_halt</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_predecode</code> <small style="color:#90a4ae">(src/rtl/core/lumi_predecode.sv)</small></h3>
+<p>端口数: 16</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>raw_data</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>base_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>start_offset</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>carry_hw</code></td><td>input</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>carry_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pred_taken</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>pred_branch_slot</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>inst</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>inst_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>inst_raw</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>inst_count</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>bytes_consumed</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>carry_hw_out</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>carry_valid_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_writeback</code> <small style="color:#90a4ae">(src/rtl/core/lumi_writeback.sv)</small></h3>
+<p>端口数: 40</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>lumi_pkg</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>w_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>w_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>w_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>regfile_wr_en</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>regfile_wr_addr</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>regfile_wr_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_result</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_request</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_request</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_addr</code></td><td>output</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>csr_rdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>csr_op</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>mstatus_out</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mtvec_out</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_mul_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_mul_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e2_div_result</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>e2_div_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>e2_rd</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>hpm_inst_retired</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch_miss</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_load</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_store</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_exception</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mon_inst</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mon_inst_raw</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>mon_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>mon_rd_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mon_irq</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_csr_unit</code> <small style="color:#90a4ae">(src/rtl/csr/lumi_csr_unit.sv)</small></h3>
+<p>端口数: 42</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>csr_addr</code></td><td>input</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>csr_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>csr_we</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>csr_op</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>mstatus_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mtvec_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mepc_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mcause_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>medeleg_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mideleg_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>priv_mode_out</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>trap_enter</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_is_irq</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_pc_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_cause_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_tval_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_priv_in</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>mret_exec</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>sret_exec</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nmi_enter</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>mnret_exec</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nmi_pc_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>clic_csr_addr</code></td><td>output</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>clic_csr_wdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>clic_csr_rdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>clic_csr_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_inst_retired</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_branch_mispred</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_icache_miss</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_dcache_miss</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_tlb_miss</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_interrupt</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>hpm_count</code></td><td>output</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>mie_meip</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mie_msip</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mie_mtip</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mie_r_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mip_r_out</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_debug_module</code> <small style="color:#90a4ae">(src/rtl/debug/lumi_debug_module.sv)</small></h3>
+<p>端口数: 22</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tck</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tms</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdi</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdo</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trst_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dmi_addr</code></td><td>input</td><td>7</td><td>6:0</td></tr>
+<tr><td><code>dmi_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dmi_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dmi_op</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>dmi_req_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dmi_req_ready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>abs_cmd_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>abs_cmd_data</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>abs_resp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>debug_halt_req</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>debug_resume_req</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trigger_match_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trigger_match_en</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_trace</code> <small style="color:#90a4ae">(src/rtl/debug/lumi_trace.sv)</small></h3>
+<p>端口数: 13</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_type</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>trace_enable</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_data_out</code></td><td>output</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>trace_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_axi_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trace_axi_wdata</code></td><td>output</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>trace_axi_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_axi_ready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trace_config_en</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_dft_ctrl</code> <small style="color:#90a4ae">(src/rtl/dft/lumi_dft_ctrl.sv)</small></h3>
+<p>端口数: 19</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>scan_enable</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>scan_in</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>scan_out</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>scan_mode</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mbist_enable</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>mbist_start</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mbist_done</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mbist_fail</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mbist_error_count</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mbist_diag</code></td><td>output</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>tck</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tms</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdi</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdo</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_select</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>tamper_detect</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>secure_lock</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_fpu</code> <small style="color:#90a4ae">(src/rtl/fpu/lumi_fpu.sv)</small></h3>
+<p>端口数: 15</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>fpu_issue_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>fpu_inst_type</code></td><td>input</td><td>6</td><td>5:0</td></tr>
+<tr><td><code>fpu_fmt</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>fpu_rm</code></td><td>input</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>fpu_rs1</code></td><td>input</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>fpu_rs2</code></td><td>input</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>fpu_rs3</code></td><td>input</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>fpu_result_data</code></td><td>output</td><td>64</td><td>63:0</td></tr>
+<tr><td><code>fpu_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>fpu_issue_ready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>fpu_result_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>fpu_fflags</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>fpu_busy</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_vector</code> <small style="color:#90a4ae">(src/rtl/fpu/lumi_vector.sv)</small></h3>
+<p>端口数: 20</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_issue_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_opcode</code></td><td>input</td><td>7</td><td>6:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>vstart</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>vl</code></td><td>input</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>vtype</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_rd</code></td><td>output</td><td>5</td><td>4:0</td></tr>
+<tr><td><code>vec_ready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_busy</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_mem_addr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_mem_we</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_mem_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vec_mem_ready</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_clic</code> <small style="color:#90a4ae">(src/rtl/interrupt/lumi_clic.sv)</small></h3>
+<p>端口数: 19</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>meip_in</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>seip_in</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>msip_in</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>mtip_in</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>mie_gate</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>meip</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_id</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>irq_level_out</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>irq_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_preempt</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_ack</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>clic_csr_addr</code></td><td>input</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>clic_csr_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>clic_csr_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>clic_csr_we</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_exception</code> <small style="color:#90a4ae">(src/rtl/interrupt/lumi_exception.sv)</small></h3>
+<p>端口数: 38</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>exc_fetch</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>exc_decode</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>exc_exec</code></td><td>input</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>exc_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>exc_insn</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>exc_pc</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>nmi_signal</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_request</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_id</code></td><td>input</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>irq_ack</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mtvec_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mstatus_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>medeleg_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mideleg_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>priv_mode_in</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>mnepc_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mncause_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>mnstatus_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>stvec_in</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>is_mret</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>is_sret</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>is_mnret</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_take</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_cause</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_epc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_tval</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_is_irq</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_enter</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mret_exec</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>sret_exec</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>nmi_enter_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>mnret_exec_out</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>delegated</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>flush_pipe</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_plic</code> <small style="color:#90a4ae">(src/rtl/interrupt/lumi_plic.sv)</small></h3>
+<p>端口数: 10</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>plic_addr</code></td><td>input</td><td>12</td><td>11:0</td></tr>
+<tr><td><code>plic_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>plic_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>plic_we</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_tcm</code> <small style="color:#90a4ae">(src/rtl/memory/lumi_tcm.sv)</small></h3>
+<p>端口数: 29</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>core_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>core_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>core_we</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_be</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>core_valid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_ready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_hit</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_awaddr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dma_awvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_awready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_wdata</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dma_wvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_wready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_araddr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dma_addr</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dma_arvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_arready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_rdata</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>dma_rvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_rready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_bresp</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>dma_bvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>dma_bready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ecc_ce_irq</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>ecc_ded_irq</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>ecc_ce_count</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_lockstep</code> <small style="color:#90a4ae">(src/rtl/multicore/lumi_lockstep.sv)</small></h3>
+<p>端口数: 17</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>commit_pc_a</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_pc_b</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_result_a</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>commit_result_b</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>lockstep_match</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>lockstep_error</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>error_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>error_slot</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>lockstep_enable</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>lockstep_error_mode</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>lockstep_nmi</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>lockstep_reset</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>lockstep_log</code></td><td>output</td><td>64</td><td>63:0</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_multicore_top</code> <small style="color:#90a4ae">(src/rtl/multicore/lumi_multicore_top.sv)</small></h3>
+<p>端口数: 16</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>axi_araddr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>axi_arvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>axi_arready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>axi_rdata</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>axi_rvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>axi_rready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>tck</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tms</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdi</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>tdo</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_power_mgmt</code> <small style="color:#90a4ae">(src/rtl/power/lumi_power_mgmt.sv)</small></h3>
+<p>端口数: 16</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>wfi_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>wrs_req</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_active</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>irq_pending</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>icg_en</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_sleep</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>logic</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>sys_reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>debug_reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>core_reset_n</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>bus_reset_n</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>vcc_on</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>vcc_ret_on</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>power_state</code></td><td>output</td><td>1</td><td>1</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>lumi_soc_top</code> <small style="color:#90a4ae">(src/rtl/top/lumi_soc_top.sv)</small></h3>
+<p>端口数: 50</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>clk_bus</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awid</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_awaddr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>m_axi_awlen</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>m_axi_awsize</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_awburst</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_awlock</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awcache</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_awprot</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_awvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_awready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wdata</code></td><td>output</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>m_axi_wstrb</code></td><td>output</td><td>16</td><td>15:0</td></tr>
+<tr><td><code>m_axi_wlast</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_wready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_bid</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_bresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_bvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_bready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arid</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_araddr</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>m_axi_arlen</code></td><td>output</td><td>8</td><td>7:0</td></tr>
+<tr><td><code>m_axi_arsize</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_arburst</code></td><td>output</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_arlock</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arcache</code></td><td>output</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_arprot</code></td><td>output</td><td>3</td><td>2:0</td></tr>
+<tr><td><code>m_axi_arvalid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_arready</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rid</code></td><td>input</td><td>4</td><td>3:0</td></tr>
+<tr><td><code>m_axi_rdata</code></td><td>input</td><td>128</td><td>127:0</td></tr>
+<tr><td><code>m_axi_rresp</code></td><td>input</td><td>2</td><td>1:0</td></tr>
+<tr><td><code>m_axi_rlast</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rvalid</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>m_axi_rready</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_tck</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_tms</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_tdi</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_tdo</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>jtag_trst_n</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>ext_irq</code></td><td>input</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>logic</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>nmi_signal</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>debug_halt</code></td><td>input</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_valid</code></td><td>output</td><td>1</td><td>1</td></tr>
+<tr><td><code>trap_cause</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+<tr><td><code>trap_pc</code></td><td>output</td><td>32</td><td>31:0</td></tr>
+
+</table>
+</div>
+
+
+<div class="module-card">
+<h3><code>u_dbg</code> <small style="color:#90a4ae">(src/rtl/top/lumi_soc_top.sv)</small></h3>
+<p>端口数: 0</p>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>位宽表达式</th></tr>
+
+</table>
+</div>
+
+
+<h1>4. 待人工审查项</h1>
+
+<div class="warn">
+<strong>以下项需人工确认:</strong>
+<ul>
+<li>跨时钟域 (CDC) 接口识别 — 检查 <code>clk_bus</code> / <code>clk_core</code> 双时钟模块</li>
+<li>Parameter 化位宽的默认值确认 — 部分位宽为表达式，需确认实际参数值</li>
+<li>SV Interface 实例化关系 — 检查 <code>pipeline_if</code> / <code>axi4_if</code> / <code>mem_req_if</code> / <code>interrupt_if</code> / <code>jtag_if</code> 在各模块中的实例化</li>
+<li>未连接/预留端口识别</li>
+<li>模块间信号名一致性 — 同一信号在不同模块中可能命名不同</li>
+</ul>
+</div>
+
+<div class="ok">
+<strong>自动检查通过项:</strong>
+<ul>
+<li>全部 25 个模块端口提取成功</li>
+<li>全部 26 个枚举定义提取成功 (54 个状态)</li>
+<li>基线 JSON 已保存至 <code>scripts/lld-check/rtl_baseline.json</code></li>
+</ul>
+</div>
+
+<div class="footer">
+<p><a href="lld-index.html">LLD 索引</a> | <a href="interface-contracts.html">接口契约</a> | <a href="../index.html">文档地图</a></p>
+<p>Lumi-Core LLD Baseline Review — 2026-07-16</p>
+</div>
+
+</body>
+</html>

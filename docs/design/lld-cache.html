@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — L1 Cache (I-Cache / D-Cache) Low Level Design</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>L1 Cache (I-Cache / D-Cache) Low Level Design</h1>
+    <p class="subtitle">L1 I-Cache + D-Cache 控制器 &mdash; 4/8-way SA, PLRU, Write-back, ECC, FENCE</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-007 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="cache.html">cache.html</a> (LUMI-DESIGN-007)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/memory/lumi_cache.sv</code> (559 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#cache">IC-Cache</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_cache</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/memory/lumi_cache.sv</code> (559 行)</td></tr>
+    <tr><td>依赖包</td><td><code>lumi_pkg</code> (<code>src/rtl/include/lumi_types_pkg.sv</code>)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="cache.html">cache.html</a> (LUMI-DESIGN-007)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-007</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>I-Cache Tag/Data RAM 存储阵列 (可配 4/8-way SA)</td><td>TCM 存储阵列 (属于 <a href="tcm.html">tcm.html</a>)</td></tr>
+    <tr><td>D-Cache Tag/Data RAM 存储阵列 (Write-back + Write-allocate)</td><td>AXI 总线协议层 (属于 <a href="pma-axi.html">pma-axi.html</a>)</td></tr>
+    <tr><td>PLRU 替换策略 (二叉树, N-1 bits/set)</td><td>PMA 属性检查与路由 (属于 <a href="pma-axi.html">pma-axi.html</a>)</td></tr>
+    <tr><td>Refill FSM: AXI AR&rarr;R burst (4 beat &times; 128bit = 64B)</td><td>AMO 原子操作执行 (属于 <a href="execute-alu.html">execute-alu.html</a>)</td></tr>
+    <tr><td>Evict FSM: 脏行 AXI AW&rarr;W burst 写回</td><td>流水线级间寄存器 (属于 <a href="fetch-bpred.html">fetch-bpred.html</a>)</td></tr>
+    <tr><td>FENCE / FENCE.I 指令执行</td><td></td></tr>
+    <tr><td>ECC SECDED 中断输出端口 (ce/ded irq)</td><td></td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="fetch-bpred.html">fetch-bpred.html</a> (I-Cache 取指地址 F1&rarr;F2) | <a href="lld-memory-stage.html">Memory Stage</a> (D-Cache Load/Store M 级)</p>
+<p><strong>下游:</strong> <a href="pma-axi.html">pma-axi.html</a> (Refill/Evict AXI 总线) | <a href="writeback-csr.html">writeback-csr.html</a> (ECC 中断)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 (基于 <code>lumi_cache.sv</code> M3 Batch-2 RTL)</td><td>&mdash;</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>I-Cache 取指</td><td>32KB 可配 4/8-way SA, 64B line, 128bit 读出宽度, 1 cycle hit 延迟</td><td><span class="req-tag">LUMI-MEM-006</span></td></tr>
+    <tr><td>F-002</td><td>D-Cache Load/Store</td><td>32KB 可配 4/8-way SA, 64B line, Write-back + Write-allocate, 32bit word 粒度</td><td><span class="req-tag">LUMI-MEM-006</span></td></tr>
+    <tr><td>F-003</td><td>PLRU 替换</td><td>Pseudo-LRU 二叉树策略, 4-way 3 bit/set, 8-way 7 bit/set</td><td><span class="req-tag">LUMI-MEM-006</span></td></tr>
+    <tr><td>F-004</td><td>AXI Refill</td><td>Miss 时发起 AXI AR burst, 4 beat &times; 128bit 填充 64B cacheline</td><td><span class="req-tag">LUMI-MEM-006</span></td></tr>
+    <tr><td>F-005</td><td>Dirty Evict</td><td>D-Cache miss 时若 victim 行 dirty, 先 AXI AW/W burst 写回</td><td><span class="req-tag">LUMI-MEM-006</span></td></tr>
+    <tr><td>F-006</td><td>FENCE</td><td>排空 Store Buffer, 等待 pending refill 完成</td><td><span class="req-tag">LUMI-MEM-008</span></td></tr>
+    <tr><td>F-007</td><td>FENCE.I</td><td>Invalidate I-Cache 全部行 + pipeline flush</td><td><span class="req-tag">LUMI-MEM-008</span></td></tr>
+    <tr><td>F-008</td><td>ECC SECDED</td><td>可选 ECC 保护, 通过 <code>dc_ecc_ce_irq</code>/<code>dc_ecc_ded_irq</code> 输出中断</td><td><span class="req-tag">LUMI-MEM-007</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>I-Cache Hit</td><td><code>ic_valid=1</code> 且 tag 匹配</td><td>1 cycle 返回 128bit 指令数据, <code>ic_hit=1</code></td></tr>
+    <tr><td>I-Cache Miss</td><td><code>ic_valid=1</code> 且 tag 不匹配</td><td>stall pipeline, 发起 AXI refill, 填充后返回 IDLE</td></tr>
+    <tr><td>D-Cache Load Hit</td><td><code>dc_valid=1, dc_we=0</code> 且 tag 匹配</td><td>1 cycle 返回 32bit 数据, <code>dc_hit=1</code></td></tr>
+    <tr><td>D-Cache Store Hit</td><td><code>dc_valid=1, dc_we=1</code> 且 tag 匹配</td><td>写入 data RAM + 置 dirty bit, <code>dc_hit=1</code></td></tr>
+    <tr><td>D-Cache Miss (clean victim)</td><td><code>dc_valid=1</code> miss, victim 行 clean</td><td>直接 AXI refill 新行, 若为 store 则 refill 后 retry</td></tr>
+    <tr><td>D-Cache Miss (dirty victim)</td><td><code>dc_valid=1</code> miss, victim 行 dirty</td><td>先 AXI evict 脏行, 再 refill 新行</td></tr>
+    <tr><td>FENCE</td><td><code>fence_req=1</code></td><td>drain store buffer, <code>fence_done=1</code></td></tr>
+    <tr><td>FENCE.I</td><td><code>fence_i_req=1</code></td><td>invalidate 所有 I-Cache lines, <code>fence_done=1</code></td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表 (8 列约束)</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- 时钟/复位 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">时钟与复位</td></tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>&mdash;</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <!-- I-Cache 取指接口 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">I-Cache 取指接口 (F1&rarr;F2)</td></tr>
+    <tr>
+        <td><code>ic_addr</code></td><td>input</td><td>32</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>取指地址 (F1 级 PC)</td>
+    </tr>
+    <tr>
+        <td><code>ic_rdata</code></td><td>output</td><td>128</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>指令数据 (128bit, 匹配 fetch 宽度)</td>
+    </tr>
+    <tr>
+        <td><code>ic_hit</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>I-Cache 命中指示</td>
+    </tr>
+    <tr>
+        <td><code>ic_valid</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>取指请求有效</td>
+    </tr>
+    <tr>
+        <td><code>ic_ready</code></td><td>output</td><td>1</td><td>1 (IDLE)</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>I-Cache 就绪 (miss 时为 0)</td>
+    </tr>
+    <tr>
+        <td><code>ic_flush</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>FENCE.I 触发全量 invalidate</td>
+    </tr>
+    <!-- D-Cache 数据接口 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">D-Cache 数据接口 (M 级)</td></tr>
+    <tr>
+        <td><code>dc_addr</code></td><td>input</td><td>32</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>数据访问地址</td>
+    </tr>
+    <tr>
+        <td><code>dc_wdata</code></td><td>input</td><td>32</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>Store 写入数据</td>
+    </tr>
+    <tr>
+        <td><code>dc_rdata</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>Load 读出数据</td>
+    </tr>
+    <tr>
+        <td><code>dc_we</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>写使能 (1=Store, 0=Load)</td>
+    </tr>
+    <tr>
+        <td><code>dc_be</code></td><td>input</td><td>4</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>字节使能 (byte enable)</td>
+    </tr>
+    <tr>
+        <td><code>dc_hit</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>D-Cache 命中指示</td>
+    </tr>
+    <tr>
+        <td><code>dc_valid</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>访问请求有效</td>
+    </tr>
+    <tr>
+        <td><code>dc_ready</code></td><td>output</td><td>1</td><td>1 (IDLE)</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>D-Cache 就绪 (miss 时为 0)</td>
+    </tr>
+    <!-- AXI Refill -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">AXI Refill 读通道 (AR/R)</td></tr>
+    <tr>
+        <td><code>refill_araddr</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Refill 读地址 (cacheline 对齐)</td>
+    </tr>
+    <tr>
+        <td><code>refill_arvalid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Refill AR 有效</td>
+    </tr>
+    <tr>
+        <td><code>refill_arready</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>combinational</td><td>Refill AR 就绪 (slave)</td>
+    </tr>
+    <tr>
+        <td><code>refill_rdata</code></td><td>input</td><td>128</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Refill 读数据 (128bit/beat)</td>
+    </tr>
+    <tr>
+        <td><code>refill_rvalid</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Refill R 数据有效</td>
+    </tr>
+    <tr>
+        <td><code>refill_rlast</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Refill R 最后一拍</td>
+    </tr>
+    <tr>
+        <td><code>refill_rready</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>combinational</td><td>Refill R 就绪 (master 始终 ready)</td>
+    </tr>
+    <!-- AXI Evict -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">AXI Evict 写通道 (AW/W)</td></tr>
+    <tr>
+        <td><code>evict_awaddr</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Evict 写地址 (脏行基地址)</td>
+    </tr>
+    <tr>
+        <td><code>evict_awvalid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Evict AW 有效</td>
+    </tr>
+    <tr>
+        <td><code>evict_awready</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>combinational</td><td>Evict AW 就绪 (slave)</td>
+    </tr>
+    <tr>
+        <td><code>evict_awlen</code></td><td>output</td><td>8</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Evict burst 长度 (固定 8'd3 = 4 beat)</td>
+    </tr>
+    <tr>
+        <td><code>evict_wdata</code></td><td>output</td><td>128</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Evict 写数据 (128bit/beat)</td>
+    </tr>
+    <tr>
+        <td><code>evict_wvalid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>registered</td><td>Evict W 有效</td>
+    </tr>
+    <tr>
+        <td><code>evict_wlast</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>combinational</td><td>Evict W 最后一拍</td>
+    </tr>
+    <tr>
+        <td><code>evict_wready</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>AXI4</td><td>combinational</td><td>Evict W 就绪 (slave)</td>
+    </tr>
+    <!-- FENCE -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">FENCE 控制接口</td></tr>
+    <tr>
+        <td><code>fence_req</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>FENCE 指令请求</td>
+    </tr>
+    <tr>
+        <td><code>fence_i_req</code></td><td>input</td><td>1</td><td>&mdash;</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>FENCE.I 指令请求 (最高优先级)</td>
+    </tr>
+    <tr>
+        <td><code>fence_done</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>FENCE/FENCE.I 操作完成</td>
+    </tr>
+    <!-- ECC -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">ECC 中断输出</td></tr>
+    <tr>
+        <td><code>dc_ecc_ce_irq</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>D-Cache ECC 单 bit 纠正中断</td>
+    </tr>
+    <tr>
+        <td><code>dc_ecc_ded_irq</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>&mdash;</td><td>combinational</td><td>D-Cache ECC 双 bit 检测中断</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+I-Cache / D-Cache 均采用 <code>valid-ready</code> 握手: <code>valid</code> 为 registered input, <code>ready</code> 为 combinational output。
+数据传输发生在 <code>valid &amp;&amp; ready</code> 的 clk 上升沿。
+AXI Refill/Evict 遵循 AXI4 协议: AR/R 通道完成 refill 读, AW/W 通道完成 evict 写。
+当前 RTL 中 <code>refill_rready</code> 在 REFILL_R 状态始终为 1 (无反压)。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>mem_req_if</code> (逻辑等价)</td><td>I-Cache 端口</td><td>responder</td><td>fetch-bpred (F1&rarr;F2 取指)</td></tr>
+    <tr><td><code>mem_req_if</code> (逻辑等价)</td><td>D-Cache 端口</td><td>responder</td><td>Memory Stage (M 级 Load/Store)</td></tr>
+    <tr><td><code>axi4_if</code> (子集)</td><td>Refill AR/R</td><td>master (部分)</td><td>pma-axi 总线矩阵</td></tr>
+    <tr><td><code>axi4_if</code> (子集)</td><td>Evict AW/W</td><td>master (部分)</td><td>pma-axi 总线矩阵</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td colspan="4" style="text-align:center;color:#90a4ae;">无跨时钟域接口 &mdash; 所有端口均在 CLK_CORE 域</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<h3>3.4.1 I-Cache Hit 时序</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Fetch (F1)
+    participant C as lumi_cache
+    F->>C: ic_valid=1, ic_addr=PC
+    C-->>F: ic_ready=1
+    Note over F,C: clk↑: Tag 并行比较 (组合逻辑)
+    C-->>F: ic_hit=1, ic_rdata=inst[127:0]
+    Note over F,C: 同一 cycle 返回 (1-cycle hit)
+</pre>
+
+<h3>3.4.2 D-Cache Miss + Evict + Refill 时序</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant M as MemStage
+    participant C as lumi_cache
+    participant AXI as AXI Slave
+    M->>C: dc_valid=1, dc_addr, dc_we
+    C-->>M: dc_ready=0 (miss)
+    C->>AXI: evict_awvalid=1, evict_awaddr
+    AXI-->>C: evict_awready=1
+    loop 4 beats
+        C->>AXI: evict_wvalid=1, evict_wdata
+        AXI-->>C: evict_wready=1
+    end
+    C->>AXI: refill_arvalid=1, refill_araddr
+    AXI-->>C: refill_arready=1
+    loop 4 beats
+        AXI->>C: refill_rvalid=1, refill_rdata
+        C-->>AXI: refill_rready=1
+    end
+    C-->>M: dc_ready=1, dc_hit=1
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码 (4bit)</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>4'd0</td><td>空闲等待, ic_ready/dc_ready=1</td><td>reset / 操作完成</td></tr>
+    <tr><td><code>ST_IC_LOOKUP</code></td><td>4'd1</td><td>I-Cache tag 并行比较</td><td><code>ic_valid=1</code> (IDLE 时)</td></tr>
+    <tr><td><code>ST_IC_REFILL_AR</code></td><td>4'd2</td><td>I-Cache miss: 发起 AXI AR 请求</td><td>IC lookup miss</td></tr>
+    <tr><td><code>ST_IC_REFILL_R</code></td><td>4'd3</td><td>I-Cache miss: 接收 AXI R 数据 (4 beat)</td><td>AR handshake 完成</td></tr>
+    <tr><td><code>ST_DC_LOOKUP</code></td><td>4'd4</td><td>D-Cache tag 并行比较</td><td><code>dc_valid=1</code> (IDLE 时)</td></tr>
+    <tr><td><code>ST_DC_STORE_HIT</code></td><td>4'd5</td><td>D-Cache store hit: 写入 data RAM + dirty</td><td>DC lookup store hit</td></tr>
+    <tr><td><code>ST_DC_EVICT_AW</code></td><td>4'd6</td><td>D-Cache miss: 发起 AXI AW 请求 (脏行)</td><td>DC miss + victim dirty</td></tr>
+    <tr><td><code>ST_DC_EVICT_W</code></td><td>4'd7</td><td>D-Cache miss: 发送 AXI W 数据 (4 beat)</td><td>AW handshake 完成</td></tr>
+    <tr><td><code>ST_DC_REFILL_AR</code></td><td>4'd8</td><td>D-Cache miss: 发起 AXI AR 请求</td><td>evict 完成 / victim clean</td></tr>
+    <tr><td><code>ST_DC_REFILL_R</code></td><td>4'd9</td><td>D-Cache miss: 接收 AXI R 数据 (4 beat)</td><td>AR handshake 完成</td></tr>
+    <tr><td><code>ST_DC_STORE_RETRY</code></td><td>4'd10</td><td>D-Cache store miss: refill 后重试写入</td><td>DC refill 完成 + dc_we_reg=1</td></tr>
+    <tr><td><code>ST_FENCE</code></td><td>4'd11</td><td>FENCE: drain store buffer</td><td><code>fence_req=1</code> (IDLE 时)</td></tr>
+    <tr><td><code>ST_FENCE_I</code></td><td>4'd12</td><td>FENCE.I: invalidate 全部 I-Cache lines</td><td><code>fence_i_req=1</code> (IDLE 时, 最高优先级)</td></tr>
+</table>
+
+<h2>4.2 状态转移图 (Cache 替换 FSM)</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset_n=0
+
+    ST_IDLE --> ST_FENCE_I : fence_i_req (最高优先级)
+    ST_IDLE --> ST_FENCE : fence_req
+    ST_IDLE --> ST_IC_LOOKUP : ic_valid
+    ST_IDLE --> ST_DC_LOOKUP : dc_valid
+
+    ST_IC_LOOKUP --> ST_IDLE : ic_any_hit (HIT, ic_hit=1)
+    ST_IC_LOOKUP --> ST_IC_REFILL_AR : !ic_any_hit (MISS)
+
+    ST_IC_REFILL_AR --> ST_IC_REFILL_R : refill_arready
+    ST_IC_REFILL_R --> ST_IDLE : refill_rlast && refill_rvalid
+
+    ST_DC_LOOKUP --> ST_IDLE : dc_any_hit && !dc_we (Load HIT)
+    ST_DC_LOOKUP --> ST_DC_STORE_HIT : dc_any_hit && dc_we (Store HIT)
+    ST_DC_LOOKUP --> ST_DC_EVICT_AW : !dc_any_hit && victim_dirty
+    ST_DC_LOOKUP --> ST_DC_REFILL_AR : !dc_any_hit && !victim_dirty
+
+    ST_DC_STORE_HIT --> ST_IDLE : (写入完成)
+
+    ST_DC_EVICT_AW --> ST_DC_EVICT_W : evict_awready
+    ST_DC_EVICT_W --> ST_DC_EVICT_W : !evict_wlast (继续发送)
+    ST_DC_EVICT_W --> ST_DC_REFILL_AR : evict_wlast (4 beat 完成)
+
+    ST_DC_REFILL_AR --> ST_DC_REFILL_R : refill_arready
+    ST_DC_REFILL_R --> ST_IDLE : rlast && !dc_we_reg (Load miss 完成)
+    ST_DC_REFILL_R --> ST_DC_STORE_RETRY : rlast && dc_we_reg (Store miss)
+
+    ST_DC_STORE_RETRY --> ST_IDLE : (retry 写入完成)
+
+    ST_FENCE --> ST_IDLE : fence_done=1
+    ST_FENCE_I --> ST_IDLE : fence_done=1 (invalidate 全部 I-Cache)
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_FENCE_I</td><td><code>fence_i_req=1</code></td><td>&mdash;</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_FENCE</td><td><code>fence_req=1 &amp;&amp; !fence_i_req</code></td><td>&mdash;</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_IC_LOOKUP</td><td><code>ic_valid=1</code> (无 fence)</td><td><code>addr_reg &larr; ic_addr</code></td></tr>
+    <tr><td>ST_IDLE</td><td>ST_DC_LOOKUP</td><td><code>dc_valid=1</code> (无 fence/ic)</td><td><code>addr_reg &larr; dc_addr; dc_wdata_reg &larr; dc_wdata</code></td></tr>
+    <tr><td>ST_IC_LOOKUP</td><td>ST_IDLE</td><td><code>ic_any_hit=1</code></td><td><code>ic_hit=1; ic_ready=1</code></td></tr>
+    <tr><td>ST_IC_LOOKUP</td><td>ST_IC_REFILL_AR</td><td><code>!ic_any_hit</code></td><td><code>ic_ready=0</code></td></tr>
+    <tr><td>ST_IC_REFILL_AR</td><td>ST_IC_REFILL_R</td><td><code>refill_arready=1</code></td><td><code>refill_arvalid=1; refill_araddr=cacheline aligned</code></td></tr>
+    <tr><td>ST_IC_REFILL_R</td><td>ST_IDLE</td><td><code>refill_rlast &amp;&amp; refill_rvalid</code></td><td>写入 tag/data RAM (victim way)</td></tr>
+    <tr><td>ST_DC_LOOKUP</td><td>ST_IDLE</td><td><code>dc_any_hit &amp;&amp; !dc_we_reg</code></td><td><code>dc_hit=1; dc_ready=1</code></td></tr>
+    <tr><td>ST_DC_LOOKUP</td><td>ST_DC_STORE_HIT</td><td><code>dc_any_hit &amp;&amp; dc_we_reg</code></td><td><code>dc_hit=1; dc_ready=1</code></td></tr>
+    <tr><td>ST_DC_LOOKUP</td><td>ST_DC_EVICT_AW</td><td><code>!dc_any_hit &amp;&amp; victim.valid &amp;&amp; victim.dirty</code></td><td>锁存 evict 数据</td></tr>
+    <tr><td>ST_DC_LOOKUP</td><td>ST_DC_REFILL_AR</td><td><code>!dc_any_hit &amp;&amp; !(victim.valid &amp;&amp; victim.dirty)</code></td><td>&mdash;</td></tr>
+    <tr><td>ST_DC_STORE_HIT</td><td>ST_IDLE</td><td>always</td><td>写入 data RAM + dirty=1</td></tr>
+    <tr><td>ST_DC_EVICT_AW</td><td>ST_DC_EVICT_W</td><td><code>evict_awready=1</code></td><td><code>evict_awvalid=1; awlen=8'd3</code></td></tr>
+    <tr><td>ST_DC_EVICT_W</td><td>ST_DC_REFILL_AR</td><td><code>evict_wlast &amp;&amp; evict_wready</code></td><td>4 beat 写完</td></tr>
+    <tr><td>ST_DC_REFILL_AR</td><td>ST_DC_REFILL_R</td><td><code>refill_arready=1</code></td><td><code>refill_arvalid=1</code></td></tr>
+    <tr><td>ST_DC_REFILL_R</td><td>ST_IDLE</td><td><code>rlast &amp;&amp; rvalid &amp;&amp; !dc_we_reg</code></td><td>写入 tag/data RAM (victim way)</td></tr>
+    <tr><td>ST_DC_REFILL_R</td><td>ST_DC_STORE_RETRY</td><td><code>rlast &amp;&amp; rvalid &amp;&amp; dc_we_reg</code></td><td>写入 tag/data RAM</td></tr>
+    <tr><td>ST_DC_STORE_RETRY</td><td>ST_IDLE</td><td>always</td><td>重新查找 + 写入 + dirty=1</td></tr>
+    <tr><td>ST_FENCE</td><td>ST_IDLE</td><td>always</td><td><code>fence_done=1</code></td></tr>
+    <tr><td>ST_FENCE_I</td><td>ST_IDLE</td><td>always</td><td><code>fence_done=1</code>; invalidate 全部 I-Cache</td></tr>
+</table>
+
+<h2>4.4 优先级仲裁</h2>
+<p>在 <code>ST_IDLE</code> 状态，请求优先级为：</p>
+<ol>
+    <li><strong>FENCE.I</strong> (<code>fence_i_req</code>) &mdash; 最高优先级， invalidate I-Cache 保证指令流一致</li>
+    <li><strong>FENCE</strong> (<code>fence_req</code>) &mdash; drain store buffer</li>
+    <li><strong>I-Cache</strong> (<code>ic_valid</code>) &mdash; 取指请求</li>
+    <li><strong>D-Cache</strong> (<code>dc_valid</code>) &mdash; 数据访问 (最低优先级)</li>
+</ol>
+
+<h2>4.5 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> AXI 握手协议保证 <code>valid</code> 持续拉高直到 <code>ready</code> 响应。Refill/Evict FSM 无超时机制，依赖 AXI slave 最终响应。系统级需保证 AXI interconnect 无死锁。</li>
+    <li><strong>活锁防护:</strong> IDLE 优先级仲裁为静态优先级 (FENCE.I &gt; FENCE &gt; IC &gt; DC)，不存在活锁风险。D-Cache 不会饿死因为 FENCE/I-Cache 操作为有限状态 (1 cycle 即返回 IDLE)。</li>
+    <li><strong>Refill/Evict 互斥:</strong> 共享 AXI AR/R 通道，FSM 保证 I-Cache refill 与 D-Cache refill 不会同时发起 (串行化于 IDLE)。</li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 I-Cache 数据通路 (4/8-way 组相联查找)</h2>
+<pre class="mermaid">
+graph TB
+    A["ic_addr[31:0]"] --> B["地址解码"]
+    B --> C["ic_idx = addr[IC_OFF_W +: IC_IDX_W]"]
+    B --> D["ic_tag = addr[31 -: IC_TAG_W]"]
+    B --> E["ic_offset = addr[0 +: IC_OFF_W]"]
+
+    C --> F["Tag RAM 并行读出 N-way"]
+    F --> G0["Way0: valid && tag==ic_tag?"]
+    F --> G1["Way1: valid && tag==ic_tag?"]
+    F --> G2["Way2: valid && tag==ic_tag?"]
+    F --> G3["Way...N-1"]
+
+    G0 --> H["ic_way_hit[N-1:0]"]
+    G1 --> H
+    G2 --> H
+    G3 --> H
+
+    H --> I{"ic_any_hit?"}
+    I -->|YES| J["Data RAM MUX: ic_data_mem[idx][hit_way]"]
+    J --> K["128bit 提取: aligned_off = offset[5:4]<<4"]
+    K --> L["ic_rdata[127:0]"]
+
+    I -->|NO| M["MISS: 进入 IC_REFILL_AR"]
+
+    M --> N["PLRU victim 选择"]
+    N --> O["优先找 invalid way"]
+    O -->|有 invalid| P["victim_way = 首个 invalid"]
+    O -->|全 valid| Q["victim_way = plru_victim()"]
+</pre>
+<p><em>注: 地址解码为参数化表达式 (IC_OFF_W = $clog2(ICACHE_LINE) = 6)。4-way 32KB 时 IC_IDX_W=7/IC_TAG_W=19; 8-way 64KB 时 IC_IDX_W=6/IC_TAG_W=20。</em></p>
+
+<h2>5.2 D-Cache 数据通路 (Load/Store)</h2>
+<pre class="mermaid">
+graph TB
+    A["dc_addr[31:0]"] --> B["地址解码"]
+    B --> C["dc_idx = addr[DC_OFF_W +: DC_IDX_W]"]
+    B --> D["dc_tag = addr[31 -: DC_TAG_W]"]
+    B --> E["dc_offset = addr[0 +: DC_OFF_W]"]
+
+    C --> F["Tag RAM 并行读出 N-way"]
+    F --> G["dc_way_hit[N-1:0] 比较"]
+
+    G --> H{"dc_any_hit?"}
+
+    H -->|Load HIT| I["Data RAM MUX: dc_data_mem[idx][hit_way]"]
+    I --> J["32bit word 提取: word_off = offset[5:2]<<2"]
+    J --> K["dc_rdata[31:0]"]
+
+    H -->|Store HIT| L["Byte-wise 写入 data RAM"]
+    L --> M["按 dc_be[3:0] 逐字节写入"]
+    M --> N["置 dirty=1"]
+
+    H -->|MISS| O{"victim dirty?"}
+    O -->|YES| P["EVICT: 锁存脏行到 evict_buf"]
+    P --> Q["AXI AW/W burst 写回"]
+    Q --> R["REFILL: AXI AR/R burst"]
+
+    O -->|NO| R
+
+    R --> S["写入 tag/data RAM (victim way)"]
+    S --> T{"dc_we_reg?"}
+    T -->|Store| U["STORE_RETRY: 重新查找 + 写入 + dirty"]
+    T -->|Load| V["返回 IDLE"]
+</pre>
+
+<h2>5.3 PLRU 替换算法</h2>
+<pre>
+// ─── PLRU 二叉树结构 (4-way, 3 bit/set) ───────────────
+//
+//         b0
+//        /  \
+//      b1    b2
+//     / \   / \
+//   W0  W1 W2  W3
+//
+// ─── 8-way 扩展 (7 bit/set) ───────────────────────────
+//
+//             b0
+//           /    \
+//        b1        b2
+//       /  \      /  \
+//     b3    b4  b5    b6
+//    / \  / \  / \  / \
+//  W0 W1 W2 W3 W4 W5 W6 W7
+//
+// bit=0 → 左子树 (最近访问方向)
+// bit=1 → 右子树
+// Victim: 从根沿 bit 方向走到叶子
+
+// RTL 实现 (lumi_cache.sv L182-L211):
+function plru_victim(plru_bits):
+    way = 0
+    for level = 0 to log2(WAYS)-1:
+        bit_idx = ((1 &lt;&lt; level) - 1) + (way &gt;&gt; (log2(WAYS) - 1 - level))
+        way = (way &lt;&lt; 1) | plru_bits[bit_idx]
+    return way
+
+// Victim 选择优先级: invalid way 优先于 PLRU victim
+// (lumi_cache.sv L254-L272):
+//   1. 遍历所有 way, 找首个 valid=0 的 way
+//   2. 若全部 valid=1, 使用 PLRU victim
+</pre>
+
+<h2>5.4 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>FSM 状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td><code>ic_valid=1, ic_addr=PC</code></td><td>ST_IDLE &rarr; ST_IC_LOOKUP</td><td><code>ic_ready=1</code></td><td>地址锁存, tag 比较开始</td></tr>
+    <tr><td>T (hit)</td><td>&mdash;</td><td>ST_IC_LOOKUP &rarr; ST_IDLE</td><td><code>ic_hit=1, ic_rdata=inst</code></td><td>同 cycle 返回 (组合逻辑)</td></tr>
+    <tr><td>T (miss)</td><td>&mdash;</td><td>ST_IC_LOOKUP &rarr; ST_IC_REFILL_AR</td><td><code>ic_ready=0</code></td><td>pipeline stall</td></tr>
+    <tr><td>T+1..T+N</td><td>&mdash;</td><td>ST_IC_REFILL_AR &rarr; ST_IC_REFILL_R</td><td>AXI 握手</td><td>等待 AXI 响应 (10-30 cycle)</td></tr>
+    <tr><td>T+N+4</td><td>&mdash;</td><td>ST_IC_REFILL_R &rarr; ST_IDLE</td><td>tag/data RAM 写入</td><td>4 beat 接收完成</td></tr>
+    <tr><td>T+N+5</td><td>重新取指</td><td>ST_IDLE &rarr; ST_IC_LOOKUP</td><td><code>ic_hit=1</code> (必然命中)</td><td>refill 后首次访问必然 hit</td></tr>
+</table>
+
+<h2>5.5 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>Tag Comparator (IC_TAG_W bit XOR + NOR tree)</td><td>3 gate</td><td>~150 ps</td><td>关键路径, 决定 hit/miss</td></tr>
+    <tr><td>Data RAM MUX (N-way &rarr; 1)</td><td>2-3 gate</td><td>~120 ps</td><td>hit_way 选择</td></tr>
+    <tr><td>PLRU victim 选择 (log2(WAYS) 级 MUX)</td><td>3 gate (8-way)</td><td>~100 ps</td><td>不在关键路径 (miss 时才用)</td></tr>
+    <tr><td>I-Cache 地址解码 &rarr; ic_rdata 输出</td><td>~6 gate</td><td>~350 ps</td><td>1GHz@28HPC 裕量充足</td></tr>
+</table>
+
+<h2>5.6 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>结构冒险</td><td>I-Cache 与 D-Cache 同时请求</td><td>IDLE 仲裁: I-Cache 优先于 D-Cache</td><td>D-Cache 等待 1 cycle</td></tr>
+    <tr><td>结构冒险</td><td>Refill AR/R 通道共享</td><td>FSM 串行化: I-refill 和 D-refill 不重叠</td><td>排队等待</td></tr>
+    <tr><td>数据冒险</td><td>D-Cache store miss: refill 后需 retry</td><td>ST_DC_STORE_RETRY 状态: 重新查找并写入</td><td>额外 1 cycle</td></tr>
+    <tr><td>控制冒险</td><td>FENCE.I 后取指地址变化</td><td>invalidate 全部 I-Cache + pipeline flush</td><td>后续全部 cold miss</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr>
+        <td><span class="lld-tag">BC-001</span></td>
+        <td><strong>同时 I-Cache 和 D-Cache 请求</strong><br><code>ic_valid=1 &amp;&amp; dc_valid=1</code> 在 ST_IDLE</td>
+        <td>静态优先级仲裁: I-Cache 优先处理, D-Cache 等待下一个 cycle 进入 ST_DC_LOOKUP。<br>RTL: <code>lumi_cache.sv</code> L436-L441 (<code>else if (ic_valid) ... else if (dc_valid)</code>)</td>
+        <td>交叉覆盖: ic_valid &times; dc_valid 同时有效</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-002</span></td>
+        <td><strong>D-Cache Store Miss + Dirty Victim (Evict 后 Retry)</strong><br>Store 未命中且 victim 行 dirty</td>
+        <td>三段流程: (1) ST_DC_EVICT_AW &rarr; ST_DC_EVICT_W 写回脏行; (2) ST_DC_REFILL_AR &rarr; ST_DC_REFILL_R 填充新行; (3) ST_DC_STORE_RETRY 重新查找 hit way 并写入 + dirty。<br>RTL: L372-L385 (store retry 重新遍历所有 way)</td>
+        <td>场景: store miss 全覆盖 &times; victim dirty/clean 交叉</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-003</span></td>
+        <td><strong>ECC 错误 (SECDED)</strong><br>Data RAM 单/双 bit 错误</td>
+        <td>当前 RTL 预留 <code>dc_ecc_ce_irq</code>/<code>dc_ecc_ded_irq</code> 输出端口 (FSM 中默认 0, 待 ECC 模块集成)。<br>CE: 自动纠正 + 回写; DED: 触发 Load/Store Access Fault (mcause=5/7)。<br>RTL: L411-L412 (默认拉低)</td>
+        <td>ECC 注入测试: 512 数据位逐一翻转 (CE) + 相邻双位 (DED)</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-004</span></td>
+        <td><strong>非对齐访问</strong><br><code>dc_addr[1:0] != 2'b00</code> (非 word 对齐)</td>
+        <td>Cache 内部以 word 为粒度提取 (<code>word_off = dc_offset[DC_OFF_W-1:2] &lt;&lt; 2</code>, L289)。<br>非对齐地址的 byte enable <code>dc_be[3:0]</code> 由上游 Memory Stage 处理对齐异常。<br>Cache 仅按 be 字节写入, 不检查对齐。</td>
+        <td>dc_be 全组合 (16 种) &times; 非对齐地址</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-005</span></td>
+        <td><strong>FENCE.I 与取指同时发生</strong><br><code>fence_i_req=1 &amp;&amp; ic_valid=1</code></td>
+        <td>FENCE.I 具有最高优先级 (L430), 先处理 invalidate, 取指请求被忽略 (本 cycle 不进入 ST_IC_LOOKUP)。<br>FENCE.I 遍历所有 set &times; way 清零 valid (L395-L399)。<br>后续取指将全部 cold miss。</td>
+        <td>FENCE.I 后 100% miss rate 验证</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-006</span></td>
+        <td><strong>所有 Way 均 Valid (无空 way)</strong><br>Miss 时 N-way 全部 valid=1</td>
+        <td>PLRU victim 选择: 优先查找 invalid way (L256-L261 <code>break</code>), 若无则使用 PLRU 二叉树算法选择 victim (L182-L196)。<br>若 victim dirty 则先 evict 再 refill。</td>
+        <td>PLRU 8 状态 &times; 4/8 hit way = 全覆盖</td>
+    </tr>
+    <tr>
+        <td><span class="lld-tag">BC-007</span></td>
+        <td><strong>Reset 期间 Cache 状态</strong><br>异步复位 <code>reset_n=0</code></td>
+        <td>所有寄存器异步复位 (L296-L305): FSM &rarr; ST_IDLE, beat_cnt/addr_reg/evict 全部清零。<br><strong>注意:</strong> Tag/Data RAM 数组未复位 (SV 仿真初始值为 X), 复位后所有 valid=0 需通过 refill 填充。</td>
+        <td>Reset 后首次访问 miss 验证</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>Data RAM SEC (单 bit 错误)</td><td>ECC 解码 (SECDED, 预留端口)</td><td>自动纠正 + 回写 + <code>dc_ecc_ce_irq=1</code></td></tr>
+    <tr><td>Data RAM DED (双 bit 错误)</td><td>ECC 解码 (SECDED, 预留端口)</td><td>触发 Load/Store Access Fault + <code>dc_ecc_ded_irq=1</code></td></tr>
+    <tr><td>Tag RAM 错误</td><td>ECC 校验 (预留)</td><td>视为 miss + invalidate 该行 + refill</td></tr>
+    <tr><td>AXI 总线错误 (SLVERR/DECERR)</td><td>AXI RRESP/BRESP (当前未处理)</td><td>未来: 触发 Bus Error 异常 (mcause=5/7)</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>多 hit 异常:</strong> 若同一 set 中多个 way 同时 hit (不应发生, 表示 tag RAM 损坏), RTL 取最高编号 way (<code>ic_hit_way</code> 在 for 循环中最后赋值覆盖)。实际应通过 ECC 检测。</li>
+    <li><strong>ic_flush 端口:</strong> 当前 RTL 声明了 <code>ic_flush</code> 输入端口但未在 FSM 中直接使用 (FENCE.I 通过 <code>fence_i_req</code> 触发)。该端口为预留接口。</li>
+    <li><strong>AXI BRESP:</strong> Evict 写回不检查 AXI B 通道响应 (无 <code>evict_bvalid/bresp</code> 端口), 假设写回总是成功。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>ic_ready=0</code> (miss stall)</td><td>I-Cache miss 时拉低 ready, 流水线 F1 级 stall (PC 冻结)</td><td>同 cycle 生效 (combinational)</td></tr>
+    <tr><td><code>dc_ready=0</code> (miss stall)</td><td>D-Cache miss 时拉低 ready, M 级 stall (pipeline back-pressure)</td><td>同 cycle 生效 (combinational)</td></tr>
+    <tr><td><code>fence_i_req=1</code></td><td>Invalidate 全部 I-Cache lines (valid=0), 触发 pipeline flush</td><td>下一 clk&uarr; 生效 (tag RAM 写入)</td></tr>
+    <tr><td><code>reset_n=0</code></td><td>异步复位所有寄存器: FSM&rarr;IDLE, 计数器清零。Tag/Data RAM 不复位 (cold start)</td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>ICACHE_SIZE</code></td><td>int</td><td>32KB (lumi_pkg::ICACHE_SIZE)</td><td>8/16/32 KB</td><td>I-Cache 总容量; 影响 IC_SETS = SIZE/(WAYS*LINE)</td></tr>
+    <tr><td><code>ICACHE_WAYS</code></td><td>int</td><td>8 (lumi_pkg::ICACHE_WAYS)</td><td>4 或 8</td><td>I-Cache 组相联度; 影响 IC_PLRU_W, ic_way_hit 位宽</td></tr>
+    <tr><td><code>ICACHE_LINE</code></td><td>int</td><td>64B (lumi_pkg::ICACHE_LINE)</td><td>64</td><td>I-Cache 行大小 (byte); 影响 IC_OFF_W, REFILL_BEATS</td></tr>
+    <tr><td><code>DCACHE_SIZE</code></td><td>int</td><td>32KB (lumi_pkg::DCACHE_SIZE)</td><td>8/16/32 KB</td><td>D-Cache 总容量; 影响 DC_SETS</td></tr>
+    <tr><td><code>DCACHE_WAYS</code></td><td>int</td><td>8 (lumi_pkg::DCACHE_WAYS)</td><td>4 或 8</td><td>D-Cache 组相联度; 影响 DC_PLRU_W</td></tr>
+    <tr><td><code>DCACHE_LINE</code></td><td>int</td><td>64B (lumi_pkg::DCACHE_LINE)</td><td>64</td><td>D-Cache 行大小 (byte)</td></tr>
+</table>
+
+<h2>7.1 派生参数 (localparam)</h2>
+<table>
+    <tr><th>派生参数</th><th>计算公式</th><th>默认值 (8-way, 32KB)</th><th>说明</th></tr>
+    <tr><td><code>IC_SETS</code></td><td><code>ICACHE_SIZE / (ICACHE_WAYS * ICACHE_LINE)</code></td><td>64</td><td>I-Cache 组数</td></tr>
+    <tr><td><code>IC_IDX_W</code></td><td><code>$clog2(IC_SETS)</code></td><td>6</td><td>I-Cache 索引位宽</td></tr>
+    <tr><td><code>IC_OFF_W</code></td><td><code>$clog2(ICACHE_LINE)</code></td><td>6</td><td>I-Cache 行内偏移位宽</td></tr>
+    <tr><td><code>IC_TAG_W</code></td><td><code>32 - IC_IDX_W - IC_OFF_W</code></td><td>20</td><td>I-Cache tag 位宽</td></tr>
+    <tr><td><code>IC_PLRU_W</code></td><td><code>ICACHE_WAYS - 1</code> (WAYS&gt;2)</td><td>7</td><td>I-Cache PLRU bits/set</td></tr>
+    <tr><td><code>DC_SETS</code></td><td><code>DCACHE_SIZE / (DCACHE_WAYS * DCACHE_LINE)</code></td><td>64</td><td>D-Cache 组数</td></tr>
+    <tr><td><code>DC_IDX_W</code></td><td><code>$clog2(DC_SETS)</code></td><td>6</td><td>D-Cache 索引位宽</td></tr>
+    <tr><td><code>DC_OFF_W</code></td><td><code>$clog2(DCACHE_LINE)</code></td><td>6</td><td>D-Cache 行内偏移位宽</td></tr>
+    <tr><td><code>DC_TAG_W</code></td><td><code>32 - DC_IDX_W - DC_OFF_W</code></td><td>20</td><td>D-Cache tag 位宽</td></tr>
+    <tr><td><code>DC_PLRU_W</code></td><td><code>DCACHE_WAYS - 1</code></td><td>7</td><td>D-Cache PLRU bits/set</td></tr>
+    <tr><td><code>REFILL_BEATS</code></td><td><code>DCACHE_LINE / 16</code></td><td>4</td><td>Refill burst beat 数 (64B/16B)</td></tr>
+    <tr><td><code>BEAT_CNT_W</code></td><td><code>$clog2(REFILL_BEATS)</code></td><td>2</td><td>beat 计数器位宽</td></tr>
+</table>
+
+<h2>7.2 参数约束关系</h2>
+<ul>
+    <li><code>ICACHE_SIZE</code> 必须 &ge; <code>ICACHE_WAYS &times; ICACHE_LINE</code> (至少 1 set)</li>
+    <li><code>DCACHE_SIZE</code> 必须 &ge; <code>DCACHE_WAYS &times; DCACHE_LINE</code> (至少 1 set)</li>
+    <li><code>ICACHE_WAYS</code> / <code>DCACHE_WAYS</code> 必须为 2 的幂 (PLRU 二叉树要求)</li>
+    <li><code>ICACHE_LINE</code> / <code>DCACHE_LINE</code> 必须为 2 的幂 (地址解码要求)</li>
+    <li><code>ICACHE_LINE</code> / <code>DCACHE_LINE</code> 必须 &ge; 16 (AXI 128bit = 16B/beat, 至少 1 beat)</li>
+    <li><code>IC_IDX_W + IC_OFF_W + IC_TAG_W = 32</code> (32bit 地址空间, 由 RTL 自动保证)</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>逻辑区域</th><th>职责</th><th>关键信号 (RTL 行号)</th></tr>
+    <tr><td>I-Cache Tag RAM</td><td><code>ic_tag_t ic_tag_mem[0:IC_SETS-1][0:ICACHE_WAYS-1]</code>: valid + tag</td><td>L104-L111</td></tr>
+    <tr><td>I-Cache Data RAM</td><td><code>ic_data_mem[0:IC_SETS-1][0:ICACHE_WAYS-1]</code>: 512bit/line</td><td>L110</td></tr>
+    <tr><td>I-Cache PLRU</td><td><code>ic_plru[0:IC_SETS-1]</code>: 7 bit/set (8-way)</td><td>L111</td></tr>
+    <tr><td>D-Cache Tag RAM</td><td><code>dc_tag_t dc_tag_mem[0:DC_SETS-1][0:DCACHE_WAYS-1]</code>: valid + dirty + tag</td><td>L114-L122</td></tr>
+    <tr><td>D-Cache Data RAM</td><td><code>dc_data_mem[0:DC_SETS-1][0:DCACHE_WAYS-1]</code>: 512bit/line</td><td>L121</td></tr>
+    <tr><td>D-Cache PLRU</td><td><code>dc_plru[0:DC_SETS-1]</code>: 7 bit/set (8-way)</td><td>L122</td></tr>
+    <tr><td>FSM 控制</td><td>13 状态 cache_state_e, 组合逻辑 + 时序逻辑</td><td>L125-L141, L294-L556</td></tr>
+    <tr><td>Refill Buffer</td><td><code>refill_buf[0:3]</code>: 4 &times; 128bit 暂存 AXI 数据</td><td>L165</td></tr>
+    <tr><td>Evict Buffer</td><td><code>evict_buf</code>: 512bit 脏行暂存</td><td>L176</td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>4 bit</td><td>ST_IDLE</td><td>每 clk&uarr;</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>addr_reg</code></td><td>32 bit</td><td>0</td><td>进入 LOOKUP/REFILL_AR</td><td>暂存当前访问地址</td></tr>
+    <tr><td><code>dc_wdata_reg</code></td><td>32 bit</td><td>0</td><td>进入 DC_LOOKUP</td><td>暂存 Store 写数据</td></tr>
+    <tr><td><code>dc_be_reg</code></td><td>4 bit</td><td>0</td><td>进入 DC_LOOKUP</td><td>暂存字节使能</td></tr>
+    <tr><td><code>dc_we_reg</code></td><td>1 bit</td><td>0</td><td>进入 DC_LOOKUP</td><td>暂存写使能</td></tr>
+    <tr><td><code>beat_cnt</code></td><td>BEAT_CNT_W+1</td><td>0</td><td>REFILL_R 状态每 rvalid</td><td>Refill beat 计数器</td></tr>
+    <tr><td><code>evict_addr_reg</code></td><td>32 bit</td><td>0</td><td>进入 DC_EVICT_AW</td><td>Evict 行基地址</td></tr>
+    <tr><td><code>evict_buf</code></td><td>512 bit</td><td>0</td><td>进入 DC_EVICT_AW</td><td>脏行数据暂存</td></tr>
+    <tr><td><code>evict_dirty</code></td><td>1 bit</td><td>0</td><td>进入 DC_EVICT_AW</td><td>Evict 行 dirty 标志</td></tr>
+    <tr><td><code>evict_beat_cnt</code></td><td>BEAT_CNT_W</td><td>0</td><td>EVICT_W 每 wready</td><td>Evict beat 计数器</td></tr>
+    <tr><td><code>refill_buf[0:3]</code></td><td>4 &times; 128 bit</td><td>&mdash;</td><td>REFILL_R 每 rvalid</td><td>Refill 数据暂存 (4 beat)</td></tr>
+</table>
+
+<h2>8.3 关键算法 &mdash; Tag 比较与数据提取</h2>
+<pre>
+// ─── I-Cache Tag 并行比较 (组合逻辑, L224-L236) ───────
+always_comb begin
+    ic_any_hit = 0; ic_way_hit = 0; ic_hit_way = 0;
+    for (w = 0; w &lt; ICACHE_WAYS; w++):
+        if ic_tag_mem[ic_idx][w].valid && ic_tag_mem[ic_idx][w].tag == ic_tag:
+            ic_way_hit[w] = 1
+            ic_any_hit    = 1
+            ic_hit_way    = w        // 最后 hit 覆盖 (多 hit 取最高 way)
+
+// ─── I-Cache 128bit 数据提取 (L275-L283) ─────────────
+// aligned_off 对齐到 16B 边界: offset[5:4] &lt;&lt; 4
+ic_rdata = ic_data_mem[ic_idx][ic_hit_way][(aligned_off*8) +: 128]
+
+// ─── D-Cache 32bit word 提取 (L286-L292) ─────────────
+// word_off 对齐到 4B 边界: offset[5:2] &lt;&lt; 2
+dc_rdata = dc_data_mem[dc_idx][dc_hit_way][(word_off*8) +: 32]
+
+// ─── D-Cache Store Hit 字节写入 (L362-L369) ──────────
+// 按 dc_be[3:0] 逐字节写入 data RAM
+for (byt = 0; byt &lt; 4; byt++):
+    if dc_be_reg[byt]:
+        dc_data_mem[dc_idx][dc_hit_way][byte_offset * 8 +: 8] &lt;= dc_wdata_reg[byt*8 +: 8]
+dc_tag_mem[dc_idx][dc_hit_way].dirty &lt;= 1
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (&sect;2.1 F-001~F-008)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (&sect;6.1 BC-001~BC-007)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态 (13 状态)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全转移 (21 条转移路径)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>PLRU 全状态 (8-way: 128 PLRU 状态 &times; 8 hit way)</td><td>100% (代表 set)</td><td>P1</td></tr>
+    <tr><td>I-Cache hit &times; ic_valid 交叉</td><td>全覆盖</td><td>P0</td></tr>
+    <tr><td>D-Cache hit/miss &times; Load/Store &times; victim dirty/clean</td><td>全覆盖</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_ic_hit_implies_ready</code></td><td><code>ic_hit |-> ic_ready</code></td><td>hit 时 ready 必须为 1</td></tr>
+    <tr><td><code>assert_dc_hit_implies_ready</code></td><td><code>dc_hit |-> dc_ready</code></td><td>hit 时 ready 必须为 1</td></tr>
+    <tr><td><code>assert_refill_no_overlap</code></td><td><code>!(state == IC_REFILL_R && state == DC_REFILL_R)</code></td><td>I/D refill 不重叠</td></tr>
+    <tr><td><code>assert_fence_i_priority</code></td><td><code>fence_i_req && state==IDLE |=> state == ST_FENCE_I</code></td><td>FENCE.I 最高优先级</td></tr>
+    <tr><td><code>assert_refill_beat_count</code></td><td><code>state == REFILL_R && rlast |-> beat_cnt == REFILL_BEATS-1</code></td><td>Refill 固定 4 beat</td></tr>
+    <tr><td><code>assert_evict_awlen</code></td><td><code>state == DC_EVICT_AW |-> evict_awlen == 8'd3</code></td><td>Evict burst = 4 beat</td></tr>
+    <tr><td><code>assert_no_multi_hit</code></td><td><code>$onehot0(ic_way_hit)</code></td><td>单 set 不应多 way 同时 hit</td></tr>
+    <tr><td><code>assert_store_retry_hit</code></td><td><code>state == DC_STORE_RETRY |-> dc_any_hit</code></td><td>retry 时 refill 后必须 hit</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-006</span></td><td>L1 Cache 可配 (8/16/32KB, 4/8-way)</td><td>&sect;2.1 F-001/F-002, &sect;7</td><td><code>lumi_cache.sv</code> L26-L32 (parameters), L86-L97 (localparams)</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-006</span></td><td>PLRU 替换策略</td><td>&sect;2.1 F-003, &sect;5.3</td><td>L182-L211 (plru_victim function), L254-L272 (victim select)</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-006</span></td><td>Refill/Evict AXI burst</td><td>&sect;2.1 F-004/F-005, &sect;4</td><td>L456-L541 (refill/evict FSM states)</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-007</span></td><td>ECC SECDED 保护</td><td>&sect;2.1 F-008, &sect;6.1 BC-003</td><td>L78-L79 (irq ports), L411-L412 (default 0)</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-008</span></td><td>RVWMO FENCE/FENCE.I</td><td>&sect;2.1 F-006/F-007, &sect;4.4</td><td>L429-L441 (priority), L543-L552 (FENCE states), L395-L399 (invalidate)</td></tr>
+    <tr><td><span class="req-tag">LUMI-SAFE-001</span></td><td>ECC/Parity 内存保护</td><td>&sect;6.2</td><td>ECC 端口预留 (待集成)</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="cache.html">cache.html</a> (LUMI-DESIGN-007) 的 RTL 级设计细化：</p>
+<ul>
+    <li>HLD &sect;2.1 (Cache 组织) &rarr; LLD &sect;7 (参数) + &sect;8.1 (存储阵列)</li>
+    <li>HLD &sect;2.2 (操作流程) &rarr; LLD &sect;4 (FSM) + &sect;5 (数据通路)</li>
+    <li>HLD &sect;2.3 (PLRU) &rarr; LLD &sect;5.3 (PLRU 算法) + &sect;8.3 (RTL 实现)</li>
+    <li>HLD &sect;2.4 (Refill FSM) &rarr; LLD &sect;4 (13 状态 FSM, 含 Evict)</li>
+    <li>HLD &sect;2.5 (ECC) &rarr; LLD &sect;6.1 BC-003 + &sect;6.2 (端口预留)</li>
+    <li>HLD &sect;2.6 (FENCE) &rarr; LLD &sect;4.4 (优先级) + &sect;4.3 (FENCE/FENCE_I 状态)</li>
+    <li>HLD &sect;3.1 (端口) &rarr; LLD &sect;3.1 (8 列约束表, 覆盖全部 28 个端口)</li>
+</ul>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#cache">IC-Cache</a> (I-Cache/D-Cache valid-ready 握手 + AXI Refill/Evict)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="cache.html" class="back-link">HLD: cache.html</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>LUMI-LLD-007 &mdash; L1 Cache Low Level Design &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-16<br>
+    承接: <a href="cache.html">cache.html</a> (LUMI-DESIGN-007) &nbsp;|&nbsp;
+    RTL: <code>src/rtl/memory/lumi_cache.sv</code> &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

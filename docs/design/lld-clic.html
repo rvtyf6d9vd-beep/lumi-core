@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_clic CLIC 中断控制器</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_clic — CLIC 中断控制器 Low Level Design</h1>
+    <p class="subtitle">Core-Local Interrupt Controller (N 本地中断 + 优先级抢占 + CSR 集成)</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-CLIC &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="clic-plic.html">clic-plic.html</a> §2.3-2.5</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/interrupt/lumi_clic.sv</code></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#clic">IC-CLIC</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_clic</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/interrupt/lumi_clic.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="clic-plic.html">clic-plic.html</a> (LUMI-DESIGN-CLIC)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-CLIC</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>CLIC 本地中断接收、聚合与优先级仲裁</td>
+        <td>异常处理逻辑 (属于 <a href="lld-exception.html">lld-exception.html</a>)</td>
+    </tr>
+    <tr>
+        <td>PLIC/CLINT 中断信号集成 (meip/seip/msip/mtip)</td>
+        <td>PLIC 内部仲裁 (属于 <a href="lld-plic.html">lld-plic.html</a>)</td>
+    </tr>
+    <tr>
+        <td>CLIC CSR 寄存器管理 (mintstatus/mintthresh/mclick)</td>
+        <td>标准 mstatus/mip/mie CSR (属于 writeback-csr.html)</td>
+    </tr>
+    <tr>
+        <td>中断抢占检测与 FSM 状态管理</td>
+        <td>NMI (Smrnmi) 处理 (属于 <a href="lld-exception.html">lld-exception.html</a>)</td>
+    </tr>
+    <tr>
+        <td>硬件延时计数 (HW_LAT cycle 预算)</td>
+        <td>流水线 flush/PC 跳转 (属于核心流水线)</td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="lld-plic.html">lumi_plic</a> (MEIP 输出) | CLINT (msip/mtip) | 外部本地中断源</p>
+<p><strong>下游:</strong> <a href="lld-exception.html">lumi_exception</a> (irq_request/irq_id/irq_ack) | CSR 单元 (CLIC CSR 读写)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查，基于 lumi_clic.sv L1-279）</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>本地中断聚合</td><td>接收 NUM_INT 路本地中断输入，逐位扫描 pending 状态</td><td><span class="req-tag">LUMI-CLIC-001</span></td></tr>
+    <tr><td>F-002</td><td>多源优先级仲裁</td><td>聚合本地中断 + PLIC(MEIP) + CLINT(MTIP/MSIP)，按 8-bit level 选取最高优先级</td><td><span class="req-tag">LUMI-CLIC-002</span></td></tr>
+    <tr><td>F-003</td><td>优先级抢占</td><td>在 ST_PENDING 状态检测更高级别中断，触发抢占 (irq_preempt)</td><td><span class="req-tag">LUMI-CLIC-003</span></td></tr>
+    <tr><td>F-004</td><td>CLIC CSR 管理</td><td>mintstatus(0xFB1) / mintthresh(0x347) / mclick(0xFB0) 读写</td><td><span class="req-tag">LUMI-CLIC-001</span></td></tr>
+    <tr><td>F-005</td><td>硬件延时控制</td><td>HW_LAT cycle 计数器，确保中断延时预算 (≤16 cycle)</td><td><span class="req-tag">LUMI-SYS-003</span></td></tr>
+    <tr><td>F-006</td><td>MIE 门控</td><td>mstatus.MIE=0 时不响应任何中断</td><td><span class="req-tag">LUMI-CLIC-002</span></td></tr>
+    <tr><td>F-007</td><td>Claim/Complete 协议</td><td>mclick 读返回 claim_id，写 complete 清除中断</td><td><span class="req-tag">LUMI-CLIC-003</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>空闲 (IDLE)</td><td>无中断 pending 或 MIE=0</td><td>持续扫描中断输入，等待有效中断</td></tr>
+    <tr><td>中断检测 (DETECT→PRIORITY)</td><td>gate_open &amp;&amp; highest_pending</td><td>确认中断 pending，锁存 ID 和 level</td></tr>
+    <tr><td>延时等待 (LATENCY)</td><td>进入 LATENCY 状态</td><td>latency_cnt 计数至 HW_LAT</td></tr>
+    <tr><td>中断挂起 (PENDING)</td><td>延时计数完成</td><td>meip/irq_valid 置位，等待 CPU 应答</td></tr>
+    <tr><td>抢占模式</td><td>PENDING 中检测到更高级别中断</td><td>irq_preempt=1，回到 PRIORITY 重新仲裁</td></tr>
+    <tr><td>应答 (ACK)</td><td>irq_ack=1</td><td>清除 claim，更新 mintstatus.mil，返回 IDLE</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位（低有效）</td>
+    </tr>
+    <tr>
+        <td><code>irq_local</code></td><td>input</td><td>NUM_INT</td><td>—</td>
+        <td>CLK_CORE</td><td>电平触发</td><td>combinational</td><td>本地中断输入 (N 路)</td>
+    </tr>
+    <tr>
+        <td><code>irq_level_packed</code></td><td>input</td><td>NUM_INT×8</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>每路中断 8-bit 优先级 packed 格式</td>
+    </tr>
+    <tr>
+        <td><code>meip_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平触发</td><td>combinational</td><td>PLIC 外部中断 pending (M-mode)</td>
+    </tr>
+    <tr>
+        <td><code>seip_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平触发</td><td>combinational</td><td>S-mode 外部中断 pending</td>
+    </tr>
+    <tr>
+        <td><code>msip_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平触发</td><td>combinational</td><td>CLINT 软件中断</td>
+    </tr>
+    <tr>
+        <td><code>mtip_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平触发</td><td>combinational</td><td>CLINT 定时器中断</td>
+    </tr>
+    <tr>
+        <td><code>mie_gate</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>mstatus.MIE 门控信号</td>
+    </tr>
+    <tr>
+        <td><code>meip</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (FSM 输出)</td><td>外部中断 pending 输出 (→ CSR mip)</td>
+    </tr>
+    <tr>
+        <td><code>irq_id</code></td><td>output</td><td>8</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (FSM 输出)</td><td>当前中断 ID</td>
+    </tr>
+    <tr>
+        <td><code>irq_level_out</code></td><td>output</td><td>8</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (FSM 输出)</td><td>当前中断优先级</td>
+    </tr>
+    <tr>
+        <td><code>irq_valid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (FSM 输出)</td><td>中断请求有效信号</td>
+    </tr>
+    <tr>
+        <td><code>irq_preempt</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (FSM 输出)</td><td>抢占标志</td>
+    </tr>
+    <tr>
+        <td><code>irq_ack</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>CPU 应答 (来自 exception 模块)</td>
+    </tr>
+    <tr>
+        <td><code>clic_csr_addr</code></td><td>input</td><td>12</td><td>—</td>
+        <td>CLK_CORE</td><td>直接映射</td><td>combinational</td><td>CLIC CSR 地址</td>
+    </tr>
+    <tr>
+        <td><code>clic_csr_wdata</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>直接映射</td><td>registered (写)</td><td>CLIC CSR 写数据</td>
+    </tr>
+    <tr>
+        <td><code>clic_csr_rdata</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>直接映射</td><td>combinational (读)</td><td>CLIC CSR 读数据</td>
+    </tr>
+    <tr>
+        <td><code>clic_csr_we</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>registered (写)</td><td>CLIC CSR 写使能</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+CLIC 与核心之间采用 <strong>请求-应答</strong> 协议：<code>irq_valid</code> 为 FSM 组合输出，在 ST_PENDING 状态拉高；
+<code>irq_ack</code> 由 CPU 在 trap 进入时脉冲一个 cycle。数据传输（中断 ID + level）在 <code>irq_valid</code> 有效期间保持稳定（锁存于 latch_id/latch_level）。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>interrupt_if</code></td><td>clic_irq_if</td><td>source</td><td>lumi_exception (sink)</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>无</td><td>—</td><td>—</td><td>所有信号均在 CLK_CORE 域内；外部中断源已在 SoC 顶层同步</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant SRC as 中断源
+    participant CLIC as lumi_clic
+    participant CPU as 核心 (exception)
+    SRC->>CLIC: irq_local[i]=1, level=X
+    Note over CLIC: IDLE→DETECT→PRIORITY→LATENCY
+    Note over CLIC: latency_cnt 计数 HW_LAT cycle
+    CLIC->>CPU: irq_valid=1, irq_id=i, irq_level=X
+    Note over CLIC: ST_PENDING 保持
+    CPU->>CLIC: irq_ack=1
+    Note over CLIC: ST_ACK→IDLE, claim_valid=0
+    Note over CLIC: mintstatus.mil 更新为 latch_level
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'b000</td><td>空闲等待，持续扫描中断</td><td>reset / ACK 完成</td></tr>
+    <tr><td><code>ST_DETECT</code></td><td>3'b001</td><td>确认中断仍然 pending</td><td>gate_open &amp;&amp; highest_pending</td></tr>
+    <tr><td><code>ST_PRIORITY</code></td><td>3'b010</td><td>输出最高优先级中断 ID/level</td><td>DETECT 确认 pending 有效</td></tr>
+    <tr><td><code>ST_LATENCY</code></td><td>3'b011</td><td>硬件延时计数 (HW_LAT cycles)</td><td>PRIORITY 完成，锁存 latch_id/latch_level</td></tr>
+    <tr><td><code>ST_PENDING</code></td><td>3'b100</td><td>中断挂起，meip/irq_valid=1，等待 ACK</td><td>latency_cnt ≥ HW_LAT</td></tr>
+    <tr><td><code>ST_ACK</code></td><td>3'b101</td><td>CPU 应答，清除 claim</td><td>irq_ack=1</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_DETECT : gate_open && highest_pending
+    ST_IDLE --> ST_IDLE : !gate_open || !highest_pending
+    ST_DETECT --> ST_PRIORITY : highest_pending
+    ST_DETECT --> ST_IDLE : !highest_pending
+    ST_PRIORITY --> ST_LATENCY : 锁存 latch_id/latch_level
+    ST_LATENCY --> ST_LATENCY : latency_cnt < HW_LAT
+    ST_LATENCY --> ST_PENDING : latency_cnt >= HW_LAT
+    ST_PENDING --> ST_PRIORITY : highest_pending && highest_level > latch_level (抢占)
+    ST_PENDING --> ST_ACK : irq_ack
+    ST_PENDING --> ST_PENDING : !irq_ack && 无抢占
+    ST_ACK --> ST_IDLE : 清除 claim, 更新 mintstatus
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_DETECT</td><td><code>mie_gate &amp;&amp; highest_pending</code></td><td>—</td></tr>
+    <tr><td>ST_DETECT</td><td>ST_PRIORITY</td><td><code>highest_pending</code> (二次确认)</td><td>—</td></tr>
+    <tr><td>ST_DETECT</td><td>ST_IDLE</td><td><code>!highest_pending</code> (中断消失)</td><td>—</td></tr>
+    <tr><td>ST_PRIORITY</td><td>ST_LATENCY</td><td>无条件 (1 cycle)</td><td><code>latch_id ≤ highest_id; latch_level ≤ highest_level</code></td></tr>
+    <tr><td>ST_LATENCY</td><td>ST_PENDING</td><td><code>latency_cnt ≥ HW_LAT</code></td><td><code>claim_id ≤ latch_id; claim_valid ≤ 1</code></td></tr>
+    <tr><td>ST_PENDING</td><td>ST_PRIORITY</td><td><code>highest_pending &amp;&amp; highest_level &gt; latch_level</code></td><td><code>irq_preempt = 1</code></td></tr>
+    <tr><td>ST_PENDING</td><td>ST_ACK</td><td><code>irq_ack</code></td><td><code>meip=1, irq_valid=1</code> (末 cycle)</td></tr>
+    <tr><td>ST_ACK</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td><code>claim_valid=0; mintstatus.mil=latch_level</code></td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> FSM 无循环依赖。ST_LATENCY 有明确计数器 (latency_cnt)，保证 HW_LAT cycle 后必然转移到 ST_PENDING。ST_PENDING 等待外部 irq_ack，由 CPU trap 逻辑保证响应。</li>
+    <li><strong>活锁防护:</strong> ST_PENDING 的抢占回到 ST_PRIORITY 时，新中断级别必须严格大于当前 latch_level，因此不会发生同级抢占的无限循环。每次抢占必然提升中断级别，最多 256 次后达到最高级别。</li>
+    <li><strong>中断丢失防护:</strong> 在 ST_DETECT 状态二次确认 pending，避免毛刺触发虚假中断。抢占时不回 ST_IDLE 而是回 ST_PRIORITY，保证高优先级中断不被遗漏。</li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    A[irq_local N-bit] --> B[Level Unpack]
+    A2[irq_level_packed] --> B
+    B --> C[优先级仲裁器]
+    D[meip_in] --> C
+    E[mtip_in] --> C
+    F[msip_in] --> C
+    G[mintthresh_r] --> C
+    H[current_mil] --> C
+    C --> I{highest_pending?}
+    I -->|Yes| J[锁存 latch_id/latch_level]
+    I -->|No| K[无中断]
+    J --> L[HW_LAT 计数器]
+    L --> M[claim_id/claim_valid]
+    M --> N[irq_valid/irq_id/irq_level_out]
+</pre>
+
+<h3>5.1.1 优先级仲裁逻辑</h3>
+<p>仲裁采用<strong>组合逻辑并行扫描</strong>，分四轮依次比较：</p>
+<ol>
+    <li><strong>本地中断 (CLIC):</strong> 从 <code>NUM_INT-1</code> 到 0 逆序扫描，条件: <code>irq_local[i] &amp;&amp; level &gt; mintthresh &amp;&amp; level &gt; current_mil</code></li>
+    <li><strong>外部中断 (PLIC):</strong> <code>meip_in</code> 固定 level=0xFF, ID=11</li>
+    <li><strong>定时器中断 (CLINT):</strong> <code>mtip_in</code> 固定 level=0xF0, ID=7</li>
+    <li><strong>软件中断 (CLINT):</strong> <code>msip_in</code> 固定 level=0x80, ID=3</li>
+</ol>
+<p>同级别中断按 <strong>高 ID 优先</strong> 原则仲裁。每轮比较条件: <code>level &gt; highest_level || (level == highest_level &amp;&amp; id &gt; highest_id)</code></p>
+
+<h2>5.2 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td>irq_local[i]=1</td><td>ST_IDLE→ST_DETECT</td><td>irq_valid=0</td><td>中断到达，MIE=1</td></tr>
+    <tr><td>T+1</td><td>irq_local[i]=1</td><td>ST_DETECT→ST_PRIORITY</td><td>irq_id=i (组合)</td><td>二次确认 pending</td></tr>
+    <tr><td>T+2</td><td>—</td><td>ST_PRIORITY→ST_LATENCY</td><td>—</td><td>锁存 latch_id/level</td></tr>
+    <tr><td>T+3~T+2+HW_LAT</td><td>—</td><td>ST_LATENCY</td><td>irq_id=latch_id</td><td>latency_cnt 计数</td></tr>
+    <tr><td>T+3+HW_LAT</td><td>—</td><td>ST_LATENCY→ST_PENDING</td><td>irq_valid=1, meip=1</td><td>claim 锁存</td></tr>
+    <tr><td>T+N (ACK)</td><td>irq_ack=1</td><td>ST_PENDING→ST_ACK</td><td>irq_valid=0</td><td>CPU 应答</td></tr>
+    <tr><td>T+N+1</td><td>—</td><td>ST_ACK→ST_IDLE</td><td>—</td><td>mintstatus.mil 更新</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>irq_local → highest_id/level (仲裁)</td><td>O(NUM_INT) 比较链</td><td>~2-4 ns (NUM_INT=16)</td><td>NUM_INT 增大时可能成为关键路径</td></tr>
+    <tr><td>FSM state → irq_valid/meip</td><td>1 级 case 解码</td><td>&lt;1 ns</td><td>组合输出</td></tr>
+    <tr><td>clic_csr_addr → clic_csr_rdata</td><td>1 级 case 解码</td><td>&lt;1 ns</td><td>3 路 CSR 读</td></tr>
+    <tr><td>irq_level_packed → irq_level[i] (unpack)</td><td>1 级 slice</td><td>&lt;0.5 ns</td><td>纯布线</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>CSR 写 vs 仲裁读</td><td>mintthresh 写入同时仲裁器读取</td><td>CSR 写在 clk↑ 生效，仲裁为组合逻辑读旧值；下一 cycle 仲裁使用新阈值</td><td>1 cycle</td></tr>
+    <tr><td>抢占竞争</td><td>ST_PENDING 中新旧中断同时到达</td><td>抢占条件要求 strictly greater，同级不抢占</td><td>0 cycle</td></tr>
+    <tr><td>中断消失</td><td>DETECT 阶段中断源撤回</td><td>二次确认 highest_pending，不满足则回 IDLE</td><td>1 cycle</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>所有中断级别 = 0 (最低)</td><td>level=0 不大于 mintthresh(默认 0)，不触发中断。仅当 mintthresh 未设且 level &gt; 0 时才响应</td><td>TC-CLIC-BC01</td></tr>
+    <tr><td>BC-002</td><td>多路中断同时到达且级别相同</td><td>同级别按高 ID 优先仲裁 (for 循环逆序 + 比较条件)</td><td>TC-CLIC-BC02</td></tr>
+    <tr><td>BC-003</td><td>MIE=0 期间中断到达</td><td>gate_open=0，FSM 保持 ST_IDLE；中断信号保持但不响应</td><td>TC-CLIC-BC03</td></tr>
+    <tr><td>BC-004</td><td>中断在 LATENCY 计数期间消失</td><td>latch_id/latch_level 已锁存，FSM 继续执行到 PENDING；不影响已锁存的中断</td><td>TC-CLIC-BC04</td></tr>
+    <tr><td>BC-005</td><td>抢占发生在 ST_PENDING 期间</td><td>新中断 level 必须严格 &gt; latch_level，回 ST_PRIORITY 重新仲裁</td><td>TC-CLIC-BC05</td></tr>
+    <tr><td>BC-006</td><td>mclick 写 (complete) 在 ST_PENDING 期间</td><td>CSR 写清除 claim_valid 和 mintstatus.mil，FSM 不受影响 (仍在 PENDING)</td><td>TC-CLIC-BC06</td></tr>
+    <tr><td>BC-007</td><td>HW_LAT = 0 (参数边界)</td><td>latency_cnt ≥ 0 始终成立，LATENCY→PENDING 立即转移 (1 cycle)</td><td>TC-CLIC-BC07</td></tr>
+    <tr><td>BC-008</td><td>mintthresh 设为 0xFF (最大值)</td><td>所有中断 level 均不大于 0xFF，无中断响应</td><td>TC-CLIC-BC08</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>非法 CSR 地址写入</td><td>clic_csr_addr 不在 {0xFB1, 0x347, 0xFB0} 范围</td><td>default 分支忽略写入 (no-op)</td></tr>
+    <tr><td>FSM 进入未定义状态</td><td>3-bit 编码中有 2 个未使用状态</td><td>default 分支回到 ST_IDLE</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><code>irq_level_packed</code> 中超出 NUM_INT×8 的高位被忽略 (RTL 未使用)</li>
+    <li><code>clic_csr_addr</code> 读取未定义地址返回 32'h0</li>
+    <li>同时在 ST_ACK 和 CSR 写 mclick 时行为取决于时序 (csr_we 和 FSM 同步更新，均为 clk↑ 触发)</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>stall</code></td><td>CLIC 模块不受流水线 stall 影响，独立运行</td><td>—</td></tr>
+    <tr><td><code>flush</code></td><td>CLIC 模块不受流水线 flush 影响</td><td>—</td></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位所有寄存器: state_reg=ST_IDLE, latency_cnt=0, latch_id/level=0, mintstatus=0, mintthresh=0, claim_valid=0</td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>NUM_INT</code></td><td>int</td><td><code>lumi_pkg::CLIC_INT_INPUTS</code> (16)</td><td>1~240</td><td>本地中断输入路数；影响 irq_local 位宽和仲裁循环次数</td></tr>
+    <tr><td><code>HW_LAT</code></td><td>int</td><td><code>lumi_pkg::CLIC_HW_LATENCY</code> (16)</td><td>0~255</td><td>硬件延时 cycle 数；影响 ST_LATENCY 持续时间和 latency_cnt 位宽</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>NUM_INT</code> 必须 &le; 240 (CLIC 规范最大中断数)，且 &gt; 0</li>
+    <li><code>HW_LAT</code> 必须 &ge; 0；<code>$clog2(HW_LAT)</code> 决定 latency_cnt 位宽，当 HW_LAT=0 时 <code>$clog2(0)</code> 行为依赖综合工具</li>
+    <li><code>NUM_INT</code> 与 <code>irq_id</code> 位宽 (8-bit) 的关系: NUM_INT &le; 256</li>
+    <li>全局参数依赖: <code>lumi_pkg::CLIC_INT_INPUTS</code>, <code>lumi_pkg::CLIC_HW_LATENCY</code></li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>Level Unpack</td><td>将 irq_level_packed 展开为 irq_level[NUM_INT] 数组</td><td><code>irq_level_packed</code>, <code>irq_level[i]</code></td></tr>
+    <tr><td>Priority Arbiter</td><td>多源中断优先级仲裁 (组合逻辑)</td><td><code>highest_pending</code>, <code>highest_id</code>, <code>highest_level</code></td></tr>
+    <tr><td>FSM + Latency Counter</td><td>6 状态 FSM + HW_LAT 计数器</td><td><code>state_reg</code>, <code>latency_cnt</code></td></tr>
+    <tr><td>CSR Register File</td><td>mintstatus/mintthresh/mclick 寄存器</td><td><code>mintstatus_r</code>, <code>mintthresh_r</code>, <code>claim_id</code></td></tr>
+    <tr><td>CSR Read Mux</td><td>CSR 地址解码和读数据多路选择</td><td><code>clic_csr_addr</code>, <code>clic_csr_rdata</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>3 (clic_state_e)</td><td>ST_IDLE</td><td>每 clk↑</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>latency_cnt</code></td><td>$clog2(HW_LAT)+1</td><td>0</td><td>ST_LATENCY 内自增；进入 LATENCY 时清零</td><td>硬件延时计数器</td></tr>
+    <tr><td><code>latch_id</code></td><td>8</td><td>0</td><td>ST_PRIORITY→ST_LATENCY 时锁存</td><td>当前处理的中断 ID</td></tr>
+    <tr><td><code>latch_level</code></td><td>8</td><td>0</td><td>ST_PRIORITY→ST_LATENCY 时锁存</td><td>当前处理的中断级别</td></tr>
+    <tr><td><code>mintstatus_r</code></td><td>32</td><td>0</td><td>ACK 时更新 mil[31:24]；CSR 写时全写</td><td>中断状态 CSR (0xFB1)</td></tr>
+    <tr><td><code>mintthresh_r</code></td><td>8</td><td>0</td><td>CSR 写 0x347 时更新</td><td>中断阈值 CSR (0x347)</td></tr>
+    <tr><td><code>claim_id</code></td><td>8</td><td>0</td><td>进入 ST_PENDING 时锁存 latch_id</td><td>mclick 读返回值</td></tr>
+    <tr><td><code>claim_valid</code></td><td>1</td><td>0</td><td>进入 ST_PENDING 置 1；ACK 或 CSR 写 mclick 清 0</td><td>Claim 有效标志</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+<pre>
+// CLIC 优先级仲裁伪代码 (always_comb)
+highest_pending = 0; highest_id = 0; highest_level = 0;
+
+// 轮1: 本地中断扫描 (逆序, 高 ID 优先)
+for i = NUM_INT-1 downto 0:
+    if irq_local[i] AND irq_level[i] > mintthresh AND irq_level[i] > current_mil:
+        if !highest_pending OR irq_level[i] > highest_level
+           OR (irq_level[i] == highest_level AND i > highest_id):
+            highest_pending = 1; highest_id = i; highest_level = irq_level[i]
+
+// 轮2: PLIC 外部中断 (level=0xFF, id=11)
+if meip_in AND 0xFF > mintthresh AND 0xFF > current_mil:
+    if !highest_pending OR 0xFF > highest_level:
+        highest_pending = 1; highest_id = 11; highest_level = 0xFF
+
+// 轮3: 定时器中断 (level=0xF0, id=7)
+if mtip_in AND 0xF0 > mintthresh AND 0xF0 > current_mil:
+    同上比较逻辑
+
+// 轮4: 软件中断 (level=0x80, id=3)
+if msip_in AND 0x80 > mintthresh AND 0x80 > current_mil:
+    同上比较逻辑
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (§2.1 F-001~F-007)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1 BC-001~BC-008)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态 (6 个状态)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全转移 (9 条转移路径)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>抢占场景 (低→高)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>CSR 读写全覆盖 (3 个地址)</td><td>100%</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>a_clic_no_irq_when_mie_off</code></td><td><code>!mie_gate |-> !irq_valid</code></td><td>MIE=0 时无中断输出</td></tr>
+    <tr><td><code>a_clic_ack_only_pending</code></td><td><code>irq_ack |-> (state_reg == ST_PENDING)</code></td><td>ACK 仅在 PENDING 状态</td></tr>
+    <tr><td><code>a_clic_preempt_higher</code></td><td><code>irq_preempt |-> (highest_level > latch_level)</code></td><td>抢占必须是更高级别</td></tr>
+    <tr><td><code>a_clic_latency_bound</code></td><td><code>state_reg==ST_LATENCY |-> latency_cnt &lt;= HW_LAT+1</code></td><td>延时计数器不超限</td></tr>
+    <tr><td><code>a_clic_fsm_no_illegal</code></td><td><code>state_reg inside {ST_IDLE,...,ST_ACK}</code></td><td>FSM 不进入非法状态</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-CLIC-001</span></td><td>CLIC 本地中断接收与 CSR 管理</td><td>§2.1 F-001/F-004, §3.1</td><td><code>irq_local</code> L14, CSR always_ff L178-188</td></tr>
+    <tr><td><span class="req-tag">LUMI-CLIC-002</span></td><td>多源优先级仲裁与 MIE 门控</td><td>§2.1 F-002/F-006, §5.1</td><td>always_comb 仲裁 L70-117, gate_open L211</td></tr>
+    <tr><td><span class="req-tag">LUMI-CLIC-003</span></td><td>优先级抢占与 Claim/Complete</td><td>§2.1 F-003/F-007, §4.3</td><td>ST_PENDING 抢占 L258-260, claim L165-168</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-003</span></td><td>中断延时 ≤16 cycle</td><td>§2.1 F-005, §5.2</td><td>HW_LAT latency_cnt L128-156</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="clic-plic.html">clic-plic.html</a> §2.3-2.5 的设计细化。HLD 中 §2.3 (CLIC 详细设计) 对应本文档 §2/§4/§5；§2.4 (中断响应时序) 对应 §5.2；§2.5 (嵌套中断规则) 对应 §4.3 抢占逻辑。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#clic">IC-CLIC</a> (CLIC CSR 直接接口 T-MS3-S2-1.5c)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD — lumi_clic CLIC 中断控制器 &mdash; v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

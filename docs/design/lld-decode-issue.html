@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD: lumi_decode_issue — Decode &amp; Issue 低层设计</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_decode_issue Low Level Design</h1>
+    <p class="subtitle">D/I 级 — RV32 解码 + DIB 缓冲 + 三发射仲裁 + 旁路网络</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-002 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="decode-issue.html">decode-issue.html</a> (LUMI-DESIGN-002)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_decode_issue.sv</code> (894 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#decode-issue">IC-D/I</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_decode_issue</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_decode_issue.sv</code> (894 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="decode-issue.html">decode-issue.html</a> (LUMI-DESIGN-002)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-002</td></tr>
+    <tr><td>依赖包</td><td><code>lumi_pkg</code> (<code>lumi_types_pkg.sv</code>)</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>Predecode 数据寄存器捕获 (pd_inst_r)</td><td>Predecode 展开逻辑 (属于 lumi_core_top)</td></tr>
+    <tr><td>DIB (32-entry FIFO) 写入/读取/bypass</td><td>取指 (属于 fetch-bpred)</td></tr>
+    <tr><td>RV32 全指令解码 + 立即数生成 (含 RV32C 展开)</td><td>FU 执行 (属于 execute-alu / FU Pool)</td></tr>
+    <tr><td>FU 分类 (fu_type_e) + FU ID 映射</td><td>寄存器堆存储阵列 (属于 regfile)</td></tr>
+    <tr><td>三发射仲裁 (程序序 + skip-stalled ERR-019)</td><td>旁路数据来源产生 (E1/E2/M/W 各级)</td></tr>
+    <tr><td>批次内 RAW 冒险检测</td><td>跨批次旁路匹配逻辑 (由外部模块提供 hit 信号)</td></tr>
+    <tr><td>旁路 mux (bypass vs. regfile 数据选择)</td><td>CSR 读写执行 (属于 writeback-csr)</td></tr>
+    <tr><td>FSM 控制 (IDLE/DECODE/STALL/FLUSH)</td><td>分支预测/重定向 (属于 fetch-bpred)</td></tr>
+    <tr><td>post_flush_block 发射抑制</td><td></td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="fetch-bpred.html">fetch-bpred</a> (predecode 输出) | <code>lumi_regfile</code> (寄存器堆读数据) | FU Pool (bypass/fu_busy)</p>
+<p><strong>下游:</strong> <a href="execute-alu.html">execute-alu</a> (发射指令包 i_issue) | <a href="regfile.html">regfile</a> (读端口地址 regfile_rs1/rs2_addr)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 — 基于 RTL M3-S1 Batch-1 (2026-07-08) 同步审查</td><td>ERR-019, ERR-057, ERR-060/061, ERR-064, ERR-093, ERR-094</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>Predecode 数据寄存</td><td>将 predecode 组合输出寄存为 pd_inst_r, 一拍延迟对齐</td><td><span class="req-tag">LUMI-DEC-001</span></td></tr>
+    <tr><td>F-002</td><td>DIB 缓冲管理</td><td>32-entry FIFO 解耦 Fetch 和 Issue, 支持 write-through bypass</td><td><span class="req-tag">LUMI-DEC-002</span></td></tr>
+    <tr><td>F-003</td><td>RV32 指令解码</td><td>R/I/S/B/U/J 全格式解码, 含 M/A/Zicbom/Zicbop/Zimop 扩展</td><td><span class="req-tag">LUMI-ISA-001</span></td></tr>
+    <tr><td>F-004</td><td>RV32C 压缩指令展开</td><td>c_ext_expand 函数: 16-bit → 32-bit 等价指令转换</td><td><span class="req-tag">LUMI-ISA-005</span></td></tr>
+    <tr><td>F-005</td><td>立即数生成</td><td>I/S/B/U/J 五种格式立即数符号扩展提取</td><td><span class="req-tag">LUMI-DEC-003</span></td></tr>
+    <tr><td>F-006</td><td>FU 分类</td><td>将指令映射到 fu_type_e (ALU/MUL/DIV/MEM/FP/BRANCH/MISC)</td><td><span class="req-tag">LUMI-DEC-004</span></td></tr>
+    <tr><td>F-007</td><td>三发射仲裁</td><td>程序序扫描, 每周期最多发射 ISSUE_WIDTH(3) 条就绪指令</td><td><span class="req-tag">LUMI-IPC-001</span></td></tr>
+    <tr><td>F-008</td><td>程序序发射约束</td><td>ERR-019: 任一指令被阻塞后, 后续指令全部停止发射</td><td><span class="req-tag">LUMI-DEC-005</span></td></tr>
+    <tr><td>F-009</td><td>批次内 RAW 冒险检测</td><td>同一发射批次内 rs1/rs2 与前序 rd 的 RAW 检查</td><td><span class="req-tag">LUMI-DEC-005</span></td></tr>
+    <tr><td>F-010</td><td>旁路 mux</td><td>bypass_hit 选择: 旁路数据优先于 RegFile 读出数据</td><td><span class="req-tag">LUMI-DEC-005</span></td></tr>
+    <tr><td>F-011</td><td>分支指令发射终止</td><td>分支指令 (FU_BRANCH) 发射后停止当前批次后续发射</td><td><span class="req-tag">LUMI-DEC-005</span></td></tr>
+    <tr><td>F-012</td><td>无效指令检测</td><td>FPU/FP-Load/FP-Store/Zicond 标记为无效指令并丢弃 (valid=0), 不触发非法指令异常</td><td><span class="req-tag">ERR-064</span> <span class="req-tag">ERR-093</span></td></tr>
+    <tr><td>F-013</td><td>FSM 控制</td><td>IDLE→DECODE→STALL→FLUSH 四态控制</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>F-014</td><td>post_flush_block</td><td>flush 后禁止发射, 直到 DIB 接收到正确路径新数据</td><td><span class="req-tag">LUMI-DEC-005</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常解码发射</td><td><code>f2_valid=1 &amp;&amp; !flush &amp;&amp; !stall_out</code></td><td>DIB 写入 + D 级解码 + I 级仲裁发射, 最多 3 条/cycle</td></tr>
+    <tr><td>Stall (背压)</td><td><code>dib_count&gt;0 &amp;&amp; issue_count==0</code></td><td>DIB 有指令但全部被阻塞 (FU busy/RAW), stall_out=1, 冻结 DIB 读取</td></tr>
+    <tr><td>Flush (冲刷)</td><td><code>flush=1</code></td><td>DIB 指针/计数清零, post_flush_block 置位, FSM→ST_FLUSH</td></tr>
+    <tr><td>部分发射</td><td>1 ≤ issue_count &lt; 3</td><td>部分指令因 FU busy 或 RAW 被阻塞, 可发射的指令继续, 后续停止 (ERR-019)</td></tr>
+    <tr><td>Post-flush 阻塞</td><td><code>post_flush_block_r=1</code></td><td>所有发射被禁止, 等待 DIB 收到新 batch 数据后解除</td></tr>
+    <tr><td>DIB 满阻塞</td><td><code>dib_not_full=0</code></td><td>DIB 剩余空间不足 FETCH_WIDTH, 上游 fetch 背压</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- Clock & Reset -->
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <!-- Predecode Input -->
+    <tr>
+        <td><code>pd_inst[FETCH_WIDTH-1:0]</code></td><td>input</td><td>32&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>valid (f2_valid)</td><td>combinational</td><td>Predecode 展开后 32-bit 指令 (组合逻辑输出)</td>
+    </tr>
+    <tr>
+        <td><code>pd_inst_valid</code></td><td>input</td><td>FETCH_WIDTH (6)</td><td>—</td>
+        <td>CLK_CORE</td><td>valid (f2_valid)</td><td>combinational</td><td>各 predecode 槽位有效标志</td>
+    </tr>
+    <tr>
+        <td><code>pd_inst_pc[FETCH_WIDTH-1:0]</code></td><td>input</td><td>32&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>valid (f2_valid)</td><td>combinational</td><td>各 predecode 槽位 PC</td>
+    </tr>
+    <tr>
+        <td><code>pd_inst_compressed</code></td><td>input</td><td>FETCH_WIDTH (6)</td><td>—</td>
+        <td>CLK_CORE</td><td>valid (f2_valid)</td><td>combinational</td><td>各槽位压缩指令标志</td>
+    </tr>
+    <tr>
+        <td><code>pd_inst_raw[FETCH_WIDTH-1:0]</code></td><td>input</td><td>16&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>valid (f2_valid)</td><td>combinational</td><td>原始 16-bit 半字 (用于调试/trace)</td>
+    </tr>
+    <tr>
+        <td><code>f2_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid</td><td>registered</td><td>上一周期 F2 数据有效 (DIB 写入使能)</td>
+    </tr>
+    <!-- D Stage Output (→ RegFile) -->
+    <tr>
+        <td><code>d_rs1_data[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>valid (i_issue_valid)</td><td>combinational</td><td>rs1 操作数 (RegFile 读出或旁路, 经 mux)</td>
+    </tr>
+    <tr>
+        <td><code>d_rs2_data[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>valid (i_issue_valid)</td><td>combinational</td><td>rs2 操作数</td>
+    </tr>
+    <!-- RegFile Read Ports -->
+    <tr>
+        <td><code>regfile_rs1_addr[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>5&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>地址输出</td><td>combinational</td><td>RegFile rs1 读端口地址</td>
+    </tr>
+    <tr>
+        <td><code>regfile_rs2_addr[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>5&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>地址输出</td><td>combinational</td><td>RegFile rs2 读端口地址</td>
+    </tr>
+    <tr>
+        <td><code>regfile_rs1_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>数据输入</td><td>combinational</td><td>RegFile rs1 读出数据</td>
+    </tr>
+    <tr>
+        <td><code>regfile_rs2_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>数据输入</td><td>combinational</td><td>RegFile rs2 读出数据</td>
+    </tr>
+    <!-- I Stage Output (→ FU) -->
+    <tr>
+        <td><code>i_issue[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>inst_pkt_t&times;3</td><td>'0</td>
+        <td>CLK_CORE</td><td>valid</td><td>combinational</td><td>发射指令包 (含 pc/inst/rd/rs1/rs2/imm/fu_type 等)</td>
+    </tr>
+    <tr>
+        <td><code>i_issue_valid</code></td><td>output</td><td>ISSUE_WIDTH (3)</td><td>0</td>
+        <td>CLK_CORE</td><td>valid</td><td>combinational</td><td>各发射槽有效标志 (issue_ready &amp;&amp; !flush)</td>
+    </tr>
+    <tr>
+        <td><code>i_fu_id[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>4&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>valid</td><td>combinational</td><td>FU ID (按 fu_type 固定映射: ALU=0, MUL=1, ...)</td>
+    </tr>
+    <!-- Bypass Input -->
+    <tr>
+        <td><code>bypass_rs1_hit</code></td><td>input</td><td>ISSUE_WIDTH (3)</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs1 旁路命中信号 (由外部匹配逻辑产生)</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs2_hit</code></td><td>input</td><td>ISSUE_WIDTH (3)</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs2 旁路命中信号</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs1_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs1 旁路数据 (来自 E1/E2/M/W)</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs2_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs2 旁路数据</td>
+    </tr>
+    <!-- FU Busy -->
+    <tr>
+        <td><code>fu_busy</code></td><td>input</td><td>10</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>FU Pool 忙信号 (按 fu_type_e 索引, bit[0..7] 有效)</td>
+    </tr>
+    <!-- Control -->
+    <tr>
+        <td><code>stall_out</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>DIB 有指令但无法发射时置 1, 反馈上游 stall</td>
+    </tr>
+    <tr>
+        <td><code>dib_not_full</code></td><td>output</td><td>1</td><td>1</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>DIB 剩余空间 ≥ FETCH_WIDTH (保守预留)</td>
+    </tr>
+    <tr>
+        <td><code>flush</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>冲刷信号 (误预测/trap), DIB 清零 + FSM→ST_FLUSH</td>
+    </tr>
+    <tr>
+        <td><code>div_busy</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>除法器忙信号 (DIV FU 额外独立 busy)</td>
+    </tr>
+    <!-- Bug#5: E1→M Load-Use Hazard Detection (RTL L56-L59) -->
+    <tr>
+        <td><code>e1m_load_pending</code></td><td>input</td><td>ISSUE_WIDTH (3)</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>E1→M load-use 冒险检测: 当 E1→M 有未完成 load 时, 依赖其结果的指令不能发射</td>
+    </tr>
+    <tr>
+        <td><code>e1m_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>E1→M load 目标寄存器号 (与 e1m_load_pending 配合使用)</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+本模块使用 <code>f2_valid</code> + <code>dib_not_full</code> 实现 Fetch→DIB 的 valid-ready 握手机制。
+DIB 写入发生在 <code>f2_valid=1 &amp;&amp; dib_wr_offset&gt;0</code> 的 clk 上升沿。
+发射侧为纯 valid 协议: <code>i_issue_valid[s]</code> 指示对应槽位数据有效。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>pipeline_if</code></td><td>D→I 级间</td><td>master</td><td>下游 Execute 级 (FU Pool)</td></tr>
+    <tr><td colspan="4"><em>注: 当前 RTL 使用扁平端口而非 interface 实例, 上述为逻辑等价映射</em></td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>无</td><td>—</td><td>—</td><td>全部信号位于 CLK_CORE 域</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Fetch (F2)
+    participant DIB as DIB (D级)
+    participant I as Issue (I级)
+    participant FU as FU Pool
+    F->>DIB: f2_valid=1, pd_inst[0..5]
+    Note over F,DIB: clk↑: 写入 DIB (dib_wr_offset 条)
+    DIB->>I: dib_read_inst/pc (组合读出)
+    I->>I: 解码 + FU分类 + 仲裁
+    I->>FU: i_issue[0..2], i_issue_valid
+    FU-->>I: fu_busy[9:0]
+    Note over I: 若 fu_busy 或 RAW → stall_out=1
+    I-->>F: stall_out / dib_not_full
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码 (logic [1:0])</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>2'b00</td><td>空闲/复位等待</td><td>reset_n=0 / default 防御</td></tr>
+    <tr><td><code>ST_DECODE</code></td><td>2'b01</td><td>正常解码发射</td><td>reset 释放后自动进入 / flush 后 / stall 解除</td></tr>
+    <tr><td><code>ST_STALL</code></td><td>2'b10</td><td>发射阻塞</td><td>stall_out=1 (DIB 有指令但无法发射)</td></tr>
+    <tr><td><code>ST_FLUSH</code></td><td>2'b11</td><td>流水线冲刷</td><td>flush=1 (分支误预测 / trap)</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset_n=0
+    ST_IDLE --> ST_DECODE : reset_n=1 (自动)
+    ST_DECODE --> ST_FLUSH : flush=1
+    ST_DECODE --> ST_STALL : stall_out=1
+    ST_DECODE --> ST_DECODE : !flush && !stall_out
+    ST_STALL --> ST_FLUSH : flush=1
+    ST_STALL --> ST_DECODE : !stall_out
+    ST_STALL --> ST_STALL : stall_out=1 && !flush
+    ST_FLUSH --> ST_DECODE : (下一 clk↑)
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_DECODE</td><td>无条件 (复位释放后)</td><td>—</td></tr>
+    <tr><td>ST_DECODE</td><td>ST_FLUSH</td><td><code>flush == 1</code></td><td>DIB 清零, post_flush_block_r=1</td></tr>
+    <tr><td>ST_DECODE</td><td>ST_STALL</td><td><code>stall_out == 1</code></td><td>冻结 DIB 读取指针</td></tr>
+    <tr><td>ST_DECODE</td><td>ST_DECODE</td><td><code>!flush &amp;&amp; !stall_out</code></td><td>正常 DIB 写入/读取/发射</td></tr>
+    <tr><td>ST_STALL</td><td>ST_FLUSH</td><td><code>flush == 1</code></td><td>DIB 清零, post_flush_block_r=1</td></tr>
+    <tr><td>ST_STALL</td><td>ST_DECODE</td><td><code>stall_out == 0</code></td><td>恢复发射</td></tr>
+    <tr><td>ST_FLUSH</td><td>ST_DECODE</td><td>无条件 (单周期 flush)</td><td>等待新 batch 进入 DIB</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> <code>flush</code> 信号可无条件打断 ST_STALL 状态 (flush 优先级 &gt; stall), 避免 FU 永久 busy 导致的死锁。ERR-057 防御性 default 确保非法编码回到 ST_IDLE。</li>
+    <li><strong>活锁防护:</strong> <code>post_flush_block_r</code> 在 DIB 收到新数据 (<code>dib_count &gt; 0</code>) 后自动清零, 不会无限阻塞。DIB <code>dib_not_full</code> 采用保守阈值 (≤ DIB_DEPTH - FETCH_WIDTH), 确保总有空间接纳新 batch。</li>
+    <li><strong>ERR-019 保护:</strong> 分支指令 (FU_BRANCH) 发射后 <code>stop_issue=1</code>, 防止推测执行带来的活锁风险。</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph TB
+    PD[Predecode 输出<br/>pd_inst/pd_inst_pc/pd_inst_valid]
+    PDR[寄存器捕获<br/>pd_inst_r pd_inst_pc_r]
+    DIB[DIB 32-entry FIFO<br/>写入/读取/write-through bypass]
+    DEC[D级解码<br/>opcode/rd/rs1/rs2/imm/fu_type]
+    ISSUE[I级仲裁<br/>程序序扫描 + FU检查 + RAW检查]
+    REGADDR[RegFile 读端口地址<br/>regfile_rs1_addr / rs2_addr]
+    BYPASS[旁路 mux<br/>bypass_hit 选择]
+    IPKT[指令包组装<br/>inst_pkt_t + fu_id]
+
+    PD --> PDR
+    PDR --> DIB
+    DIB --> DEC
+    DEC --> ISSUE
+    ISSUE --> REGADDR
+    ISSUE --> BYPASS
+    ISSUE --> IPKT
+    IPKT --> FU[→ Execute FU]
+</pre>
+
+<h3>5.1.1 DIB 数据流细节</h3>
+<p>DIB (Decoded Instruction Buffer) 是一个 32-entry 环形 FIFO, 解耦 Fetch 与 Issue:</p>
+<ul>
+    <li><strong>写入:</strong> <code>f2_valid=1</code> 时, 将 <code>pd_inst_r</code> 中的有效条目 (≤ FETCH_WIDTH) 写入 <code>dib[dib_wr_ptr + i]</code>, 更新 <code>dib_wr_ptr += dib_wr_offset</code></li>
+    <li><strong>读取:</strong> 组合逻辑从 <code>dib[dib_rd_ptr + s]</code> 读出 FETCH_WIDTH 条, 含 write-through bypass (同周期写入位置直接转发)</li>
+    <li><strong>计数:</strong> <code>dib_count</code> 6-bit (0~32), 每周期原子更新: <code>+dib_wr_offset(f2_valid) - issue_count</code></li>
+    <li><strong>Flush:</strong> <code>flush=1</code> 时三个指针全部清零</li>
+</ul>
+
+<h3>5.1.2 D 级解码数据流</h3>
+<p>从 DIB 读出的指令经过以下处理链:</p>
+<ol>
+    <li><strong>压缩指令展开:</strong> 若 <code>inst[1:0] != 2'b11</code>, 调用 <code>c_ext_expand()</code> 将 16-bit 转为 32-bit 等价指令</li>
+    <li><strong>字段提取:</strong> opcode/rd/funct3/rs1/rs2/funct7 直接从展开后 32-bit 指令截取</li>
+    <li><strong>立即数生成:</strong> 按 R/I/S/B/U/J 格式提取并符号扩展至 32-bit</li>
+    <li><strong>FU 分类:</strong> 根据 opcode 和 funct7 映射到 <code>fu_type_e</code> (ALU/MUL/DIV/MEM/FP/BRANCH/MISC)</li>
+    <li><strong>无效指令标记:</strong> FPU 指令 (ERR-064) / Zicond (ERR-093) 设置 <code>valid=0</code>, 标记为无效并丢弃, 不触发非法指令异常</li>
+</ol>
+
+<h3>5.1.3 三发射仲裁逻辑</h3>
+<p>I 级采用 <strong>程序序扫描</strong> 算法, 遍历 DIB 读出的 FETCH_WIDTH 条指令, 为 ISSUE_WIDTH 个发射槽分配指令:</p>
+<pre>
+for slot s = 0..ISSUE_WIDTH-1:
+    if stop_issue: break  // ERR-019: 前序阻塞, 后续全停
+    for qi = 0..FETCH_WIDTH-1:
+        if dec[qi].valid AND not_already_selected:
+            fu_avail = !fu_busy[dec[qi].fu_type]
+            if fu_type==FU_DIV: fu_avail &= !div_busy
+            if fu_type==FU_MUL: 检查同批次无其他MUL
+            batch_raw = 检查与前序已发射指令的RAW依赖
+            if fu_avail AND !batch_raw:
+                issue_sel[s] = qi, issue_ready[s] = 1
+                issue_count++
+                if fu_type==FU_BRANCH: stop_issue = 1
+                break
+            else:
+                stop_issue = 1  // ERR-019: 阻塞后全停
+                break
+</pre>
+<div class="warn"><strong>无效指令处理:</strong> FPU/FP-Load/FP-Store (ERR-064) 和 Zicond (ERR-093) 指令在解码阶段被标记为 <code>valid=0</code>。在发射仲裁中, <code>dec[qi].valid=0</code> 的指令被直接跳过 (不发射), 静默丢弃, <strong>不触发</strong>非法指令异常。仅当 <code>opcode==7'b0 &amp;&amp; !dib_read_valid</code> 时, I 级组装 <code>exc_valid=1, exc_cause=EXC_ILLEGAL_INST</code> (RTL L803-L807)。</div>
+
+<h2>5.2 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td>pd_inst (predecode 组合)</td><td>pd_inst_r 锁存前一拍</td><td>DIB 写入 (f2_valid=1)</td><td>pd_inst 为组合逻辑, 需寄存一拍</td></tr>
+    <tr><td>T+1</td><td>pd_inst_r (已寄存)</td><td>DIB 读出 (组合) → dec[] 解码</td><td>i_issue[0..2] 发射</td><td>解码 + 仲裁全组合, 同周期完成</td></tr>
+    <tr><td>T+2</td><td>下一批 pd_inst</td><td>上一批指令已发射, DIB rd_ptr 推进</td><td>RegFile 数据 + 旁路 mux</td><td>连续流水线模式</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>DIB 读取 → 解码 → FU 分类 → 发射仲裁 → i_issue</td><td>4 级 (mux+case+cmp+assign)</td><td>~100ps</td><td>最长路径, 含 FETCH_WIDTH=6 条遍历</td></tr>
+    <tr><td>旁路 mux (bypass_hit → d_rs1_data)</td><td>1 级 (2→1 mux, 32-bit)</td><td>~30ps</td><td>由外部 hit 信号驱动</td></tr>
+    <tr><td>DIB 写入偏移计算 (dib_wr_offset)</td><td>FETCH_WIDTH 级联比较</td><td>~50ps</td><td>6 条有效位串行累加</td></tr>
+    <tr><td>发射仲裁 (3 slot × 6 候选扫描)</td><td>嵌套循环展开</td><td>~80ps</td><td>ISSUE_WIDTH × FETCH_WIDTH = 18 次比较</td></tr>
+    <tr><td>FSM 下一状态 (state_next)</td><td>1 级 (case)</td><td>~10ps</td><td>2-bit 编码, 4 态</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>批次内 RAW</td><td>同批第 j 条 rs 依赖第 i 条 rd (i&lt;j)</td><td><code>tmp_batch_raw=1</code>, 第 j 条不发射, ERR-019 停止后续</td><td>1+ cycle (等待下一批)</td></tr>
+    <tr><td>跨批次 RAW</td><td>当前批 rs 依赖前批未写回 rd</td><td>外部 <code>bypass_rs1/rs2_hit</code> 旁路转发</td><td>0 cycle (旁路命中时)</td></tr>
+    <tr><td>FU 冲突</td><td>fu_busy[fu_type]=1 (该类 FU 全部占用)</td><td>指令阻塞, ERR-019 停止后续发射</td><td>1+ cycle</td></tr>
+    <tr><td>DIV 长占用</td><td>div_busy=1 (除法器 9 cycle 占用)</td><td>DIV 指令阻塞, 但 ERR-019 导致后续全停</td><td>1~9 cycle</td></tr>
+    <tr><td>MUL 互斥</td><td>同批次两条 MUL (SA-CM-003)</td><td>第二条 MUL 的 <code>tmp_fu_available=0</code>, 阻塞</td><td>1 cycle</td></tr>
+    <tr><td>分支后指令</td><td>分支指令发射后, 后续指令不可推测</td><td><code>stop_issue=1</code>, 等待分支退休后重定向</td><td>直到分支退休</td></tr>
+    <tr><td>控制冒险 (flush)</td><td>分支误预测 / trap</td><td>DIB 清零 + post_flush_block_r 置位</td><td>2+ cycle (flush + 重取)</td></tr>
+</table>
+
+<h2>5.5 旁路网络</h2>
+<p>旁路 mux 位于 I 级输出端, 为每个发射槽的 rs1/rs2 选择正确数据源:</p>
+<pre>
+// 每个发射槽 s 的旁路选择:
+if bypass_rs1_hit[s]:
+    d_rs1_data[s] = bypass_rs1_data[s]    // 旁路优先 (E1/E2/M/W)
+else:
+    d_rs1_data[s] = regfile_rs1_data[s]   // RegFile 读出值
+
+// 特殊覆盖:
+if issue_ready[s] AND !dec[issue_sel[s]].has_rs1:
+    d_rs1_data[s] = 32'h0                 // LUI/AUIPC 等无 rs1 指令
+
+// rs2 同理
+</pre>
+<div class="warn"><strong>旁路优先级:</strong> bypass_hit 由外部模块 (lumi_core_top) 产生, 已按 E1 &gt; E2 &gt; M &gt; W 优先级编码。本模块仅做最终 2→1 mux 选择。</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>RTL 实现位置</th></tr>
+    <tr>
+        <td>BC-001</td>
+        <td><strong>部分发射 (Partial Issue):</strong> DIB 有 6 条指令, 但仅 1~2 条可发射 (FU busy 或 RAW 阻塞)</td>
+        <td>ERR-019 程序序约束: 被阻塞指令后的所有指令均停止发射。<code>issue_count</code> 反映实际发射数, <code>dib_rd_ptr</code> 仅推进 <code>issue_count</code> 条</td>
+        <td>L670-L728 (issue 仲裁循环)</td>
+    </tr>
+    <tr>
+        <td>BC-002</td>
+        <td><strong>Stall 传播:</strong> DIB 有有效指令但 issue_count=0 (全部被阻塞), stall_out 传播到上游 fetch</td>
+        <td><code>stall_out=1</code> 当 <code>dib_count&gt;0 &amp;&amp; issue_count==0 &amp;&amp; !post_flush_block_r</code>。FSM 进入 ST_STALL, DIB 读指针冻结</td>
+        <td>L732-L736 (stall 判断)</td>
+    </tr>
+    <tr>
+        <td>BC-003</td>
+        <td><strong>批次内 RAW 冒险:</strong> 同一批次 (≤6 条) 中, 第 j 条的 rs1/rs2 等于第 i 条的 rd (i&lt;j, rd≠0)</td>
+        <td><code>tmp_batch_raw=1</code>, 第 j 条指令不发射, 触发 <code>stop_issue=1</code> 停止后续。等待下一周期第 i 条结果可通过旁路获取</td>
+        <td>L696-L708 (RAW 检查内循环)</td>
+    </tr>
+    <tr>
+        <td>BC-004</td>
+        <td><strong>DIB Write-Through Bypass:</strong> 同一周期 DIB 写入和读取指向相同地址 (DIB 为空或近空时)</td>
+        <td><code>dib_bp_hit</code> 检测写入位置与读取位置重叠, 直接转发 <code>pd_inst_r</code> 数据, 消除 1 周期读延迟</td>
+        <td>L218-L251 (DIB 读取组合逻辑)</td>
+    </tr>
+    <tr>
+        <td>BC-005</td>
+        <td><strong>Flush 后发射抑制:</strong> flush 信号到达后, DIB 已清零, 但新 batch 尚未到达</td>
+        <td><code>post_flush_block_r=1</code> 禁止所有发射, 直到 <code>dib_count&gt;0</code> (新 batch 进入 DIB) 后清零</td>
+        <td>L884-L891 (post_flush_block 寄存器)</td>
+    </tr>
+    <tr>
+        <td>BC-006</td>
+        <td><strong>DIB 满保护:</strong> DIB 剩余空间不足 FETCH_WIDTH, 无法安全写入整个 batch</td>
+        <td><code>dib_not_full=0</code> (保守阈值: <code>dib_count ≤ DIB_DEPTH - FETCH_WIDTH = 26</code>), 上游 fetch 背压</td>
+        <td>L124 (dib_not_full 赋值)</td>
+    </tr>
+    <tr>
+        <td>BC-007</td>
+        <td><strong>DIB 写入偏移保守计算:</strong> 部分 slot valid, 需确保所有有效 slot 都有空间写入</td>
+        <td><code>dib_wr_offset</code> 逐条检查, 若剩余空间不足以写入当前及后续所有 valid 条目, 停止累加。仅写入 <code>i &lt; dib_wr_offset</code> 的条目</td>
+        <td>L156-L163 (写入偏移计算)</td>
+    </tr>
+    <tr>
+        <td>BC-008</td>
+        <td><strong>分支指令后停止发射:</strong> FU_BRANCH 类型指令发射后, 后续指令不可推测执行</td>
+        <td><code>stop_issue=1</code>, 当前批次后续 slot 全部为空</td>
+        <td>L717-L718 (分支停止)</td>
+    </tr>
+    <tr>
+        <td>BC-009</td>
+        <td><strong>MUL 同批互斥 (SA-CM-003):</strong> 同一批次中两条 MUL 指令竞争唯一乘法器</td>
+        <td>第二条 MUL 的 <code>tmp_fu_available=0</code>, 触发 ERR-019 停止</td>
+        <td>L688-L693 (MUL 互斥检查)</td>
+    </tr>
+    <tr>
+        <td>BC-010</td>
+        <td><strong>无效指令与非法指令处理:</strong> FPU/FP-Load/FP-Store (ERR-064), Zicond (ERR-093), 未知 opcode (opcode==0)</td>
+        <td>FPU/Zicond: 解码阶段设置 <code>dec[i].valid=0</code>, 发射仲裁中跳过并丢弃, <strong>不触发</strong>非法指令异常。未知 opcode (<code>opcode==7'b0 &amp;&amp; !dib_read_valid</code>): I 级组装 <code>exc_valid=1, exc_cause=EXC_ILLEGAL_INST</code></td>
+        <td>L544-L567 (FPU valid=0), L457-L480 (Zicond valid=0), L803-L807 (exc_valid 组装)</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>非法指令 (opcode==7'b0)</td><td>I 级检查 <code>opcode==7'b0 &amp;&amp; !dib_read_valid</code></td><td>设置 <code>exc_valid=1, exc_cause=EXC_ILLEGAL_INST(4'd2)</code>, 由退休级触发 trap</td></tr>
+    <tr><td>FPU 指令 (FPU 未实现, ERR-064)</td><td>OP_FLOAD/OP_FSTORE/OP_FP 解码分支</td><td><code>valid=0</code>, 标记为无效并丢弃, <strong>不触发</strong>非法指令异常</td></tr>
+    <tr><td>Zicond 指令 (未实现, ERR-093)</td><td><code>funct7=7'b0000111 &amp;&amp; funct3=3'b011</code></td><td><code>valid=0</code>, 标记为无效并丢弃, <strong>不触发</strong>非法指令异常</td></tr>
+    <tr><td>DIB 溢出</td><td><code>dib_wr_offset</code> 保守计算限制</td><td>丢弃超出空间的条目, 下一周期重试 (dib_not_full 背压)</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>OP_CUSTOM0 (Zimop):</strong> 编码为 <code>7'b0001011</code> 的指令当前作为 NOP 处理 (FU_MISC, 无 rs1/rs2/rd), 不触发异常 (ERR-094)。未来实现可能改变行为。</li>
+    <li><strong>CBO 指令 (Zicbom/Zicbop/Zicboz):</strong> OP_FENCE 下 funct3=010/110 的 CBO/PREFETCH 作为 NOP 处理, 不触发异常。无 cache 层级时功能正确。</li>
+    <li><strong>压缩指令保留编码:</strong> <code>c_ext_expand</code> 对未定义的压缩编码返回 <code>32'h0000_0000</code>, 将被解码为非法指令。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>stall_out</code></td><td>DIB 读指针冻结, 不消耗指令; FSM→ST_STALL; 发射输出保持当前组合值</td><td>同 cycle 生效 (组合输出)</td></tr>
+    <tr><td><code>flush</code></td><td>DIB wr_ptr/rd_ptr/count 全部清零; <code>post_flush_block_r</code> 置 1; FSM→ST_FLUSH; <code>i_issue_valid</code> 全部清零</td><td>下一 clk↑ 生效 (DIB/寄存器), flush 当周期 i_issue_valid=0 (组合)</td></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: pd_inst_r 清零, DIB 全清零, FSM→ST_IDLE, post_flush_block_r=0</td><td>异步 (negedge reset_n)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>int</td><td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td><td>发射宽度: 决定 i_issue/regfile 端口/bypass 数组大小, 以及发射仲裁循环上界</td></tr>
+    <tr><td><code>FETCH_WIDTH</code></td><td>int</td><td><code>lumi_pkg::FETCH_WIDTH</code> (6)</td><td>4, 6, 8</td><td>取指宽度: 决定 pd_inst 数组大小, DIB 解码循环上界, dib_not_full 阈值</td></tr>
+</table>
+
+<h3>内部 localparam</h3>
+<table>
+    <tr><th>参数名</th><th>类型</th><th>值</th><th>描述</th></tr>
+    <tr><td><code>DIB_DEPTH</code></td><td>int</td><td>32</td><td>DIB FIFO 深度 (固定 32 条目)</td></tr>
+    <tr><td><code>DIB_PTR_W</code></td><td>int</td><td>5 ($clog2(32))</td><td>DIB 指针位宽</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>FETCH_WIDTH</code> 必须 ≥ <code>ISSUE_WIDTH</code> (取指宽度 ≥ 发射宽度, 保证充足供给)</li>
+    <li><code>DIB_DEPTH</code> (32) 必须 ≥ <code>FETCH_WIDTH</code> (保证至少一个完整 batch 可缓冲)</li>
+    <li><code>dib_not_full</code> 阈值 = <code>DIB_DEPTH - FETCH_WIDTH</code> = 26, 确保上游 fetch 不被虚假背压</li>
+    <li><code>fu_busy</code> 宽度固定 10-bit, 但仅 bit[0..7] 对应 <code>fu_type_e</code> 的 8 种类型</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块 (逻辑块)</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>Predecode 寄存器 (pd_inst_r)</td><td>捕获 predecode 组合输出, 一拍延迟对齐</td><td>pd_inst_r, pd_inst_valid_r, pd_inst_pc_r</td></tr>
+    <tr><td>DIB (Decoded Instruction Buffer)</td><td>32-entry 环形 FIFO, 解耦 Fetch 和 Issue</td><td>dib[], dib_wr_ptr, dib_rd_ptr, dib_count</td></tr>
+    <tr><td>DIB Write-Through Bypass</td><td>同周期写/读地址重叠时直接转发</td><td>dib_bp_hit, dib_bp_idx, dib_read_inst</td></tr>
+    <tr><td>RV32C 展开器 (c_ext_expand)</td><td>16-bit 压缩指令 → 32-bit 等价指令</td><td>tmp_inst (组合中间变量)</td></tr>
+    <tr><td>解码器 (decode always_comb)</td><td>opcode 解码 + 立即数 + FU 分类</td><td>dec[FETCH_WIDTH-1:0] (decode_t 结构体)</td></tr>
+    <tr><td>发射仲裁器</td><td>程序序扫描 + FU 检查 + RAW 检查 + ERR-019</td><td>issue_sel, issue_ready, issue_count, stop_issue</td></tr>
+    <tr><td>旁路 mux</td><td>bypass_hit 选择: 旁路 vs. RegFile</td><td>d_rs1_data, d_rs2_data</td></tr>
+    <tr><td>指令包组装器</td><td>组装 inst_pkt_t + FU ID 映射</td><td>i_issue, i_issue_valid, i_fu_id</td></tr>
+    <tr><td>FSM</td><td>IDLE/DECODE/STALL/FLUSH 四态控制</td><td>state_reg, state_next</td></tr>
+    <tr><td>Post-flush Block</td><td>flush 后发射抑制</td><td>post_flush_block_r</td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>2 (dec_state_e)</td><td>ST_IDLE</td><td>每 clk↑</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>post_flush_block_r</code></td><td>1</td><td>0</td><td>flush=1 置位; dib_count&gt;0 清零</td><td>flush 后发射禁止标志</td></tr>
+    <tr><td><code>dib_wr_ptr</code></td><td>5 (DIB_PTR_W)</td><td>0</td><td>f2_valid &amp;&amp; wr_offset&gt;0</td><td>DIB 写指针</td></tr>
+    <tr><td><code>dib_rd_ptr</code></td><td>5</td><td>0</td><td>issue_count&gt;0</td><td>DIB 读指针</td></tr>
+    <tr><td><code>dib_count</code></td><td>6 (DIB_PTR_W+1)</td><td>0</td><td>每 clk↑ 原子更新</td><td>DIB 条目计数 (0~32)</td></tr>
+    <tr><td><code>dib[32]</code></td><td>dib_entry_t × 32</td><td>'{default:'0}</td><td>f2_valid 时写入</td><td>DIB 存储阵列 (valid/inst/pc/compressed/raw)</td></tr>
+    <tr><td><code>pd_inst_r[6]</code></td><td>32 × 6</td><td>0</td><td>每 clk↑</td><td>Predecode 指令寄存</td></tr>
+    <tr><td><code>pd_inst_valid_r</code></td><td>6</td><td>0</td><td>每 clk↑</td><td>Predecode valid 寄存</td></tr>
+    <tr><td><code>pd_inst_pc_r[6]</code></td><td>32 × 6</td><td>0</td><td>每 clk↑</td><td>Predecode PC 寄存</td></tr>
+    <tr><td><code>pd_inst_compressed_r</code></td><td>6</td><td>0</td><td>每 clk↑</td><td>Predecode 压缩标志寄存</td></tr>
+    <tr><td><code>pd_inst_raw_r[6]</code></td><td>16 × 6</td><td>0</td><td>每 clk↑</td><td>Predecode 原始半字寄存</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+
+<h3>8.3.1 DIB 写入偏移计算</h3>
+<pre>
+dib_wr_offset = 0
+for i = 0..FETCH_WIDTH-1:
+    if pd_inst_valid_r[i] AND
+       (dib_count + dib_wr_offset + (FETCH_WIDTH-1-i) &lt; DIB_DEPTH):
+        dib_wr_offset += 1
+// 保守策略: 确保从 i 到最后一个 valid 条目都能写入, 否则截断
+</pre>
+
+<h3>8.3.2 FU ID 固定映射表</h3>
+<table>
+    <tr><th>fu_type_e</th><th>枚举值</th><th>i_fu_id</th><th>FU 实例</th></tr>
+    <tr><td>FU_ALU</td><td>4'd0</td><td>4'd0</td><td>LumiIntFU (×4)</td></tr>
+    <tr><td>FU_MUL</td><td>4'd1</td><td>4'd1</td><td>LumiIntMulFU (×1)</td></tr>
+    <tr><td>FU_DIV</td><td>4'd2</td><td>4'd2</td><td>MinorDefaultIntDivFU (×1)</td></tr>
+    <tr><td>FU_MEM</td><td>4'd3</td><td>4'd3</td><td>MinorDefaultMemFU (×2)</td></tr>
+    <tr><td>FU_FP</td><td>4'd4</td><td>4'd4</td><td>MinorDefaultFloatSimdFU (×1, 未实现)</td></tr>
+    <tr><td>FU_VEC</td><td>4'd5</td><td>—</td><td>(当前未使用)</td></tr>
+    <tr><td>FU_BRANCH</td><td>4'd6</td><td>4'd6</td><td>LumiIntFU 复用 (×4)</td></tr>
+    <tr><td>FU_MISC</td><td>4'd7</td><td>4'd7</td><td>MinorDefaultMiscFU (×1)</td></tr>
+</table>
+
+<h3>8.3.3 RV32C 压缩指令展开覆盖</h3>
+<table>
+    <tr><th>Quadrant</th><th>指令</th><th>展开目标</th></tr>
+    <tr><td>C0 (opcode=00)</td><td>C.ADDI4SPN, C.LW, C.SW</td><td>ADDI, LW, SW</td></tr>
+    <tr><td>C1 (opcode=01)</td><td>C.NOP/C.ADDI, C.JAL, C.LI, C.ADDI16SP/C.LUI, C.SRLI, C.SRAI, C.ANDI, C.SUB/XOR/OR/AND, C.J, C.BEQZ, C.BNEZ</td><td>ADDI, JAL, ADDI, ADDI/LUI, SRLI, SRAI, ANDI, SUB/XOR/OR/AND, JAL, BEQ, BNE</td></tr>
+    <tr><td>C2 (opcode=10)</td><td>C.SLLI, C.LWSP, C.JR/C.MV/C.EBREAK/C.JALR/C.ADD, C.SWSP</td><td>SLLI, LW, JALR/ADD/EBREAK/JALR/ADD, SW</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>全指令解码 (§2.1 F-003/F-004)</td><td>所有 RV32IMAC + Zicbom/Zicbop/Zimop opcode 覆盖</td><td>P0</td></tr>
+    <tr><td>三发射全满</td><td>3 条不同 FU 类型指令同时发射 (issue_count=3)</td><td>P0</td></tr>
+    <tr><td>ERR-019 程序序</td><td>阻塞指令后所有后续指令停止 (stop_issue 传播)</td><td>P0</td></tr>
+    <tr><td>批次内 RAW</td><td>同批 rs=前序 rd 时正确阻塞</td><td>P0</td></tr>
+    <tr><td>旁路 mux 全路径</td><td>bypass_hit=1/0 各路径覆盖</td><td>P0</td></tr>
+    <tr><td>FSM 全状态/全转移</td><td>IDLE/DECODE/STALL/FLUSH 四态及所有转移</td><td>P0</td></tr>
+    <tr><td>DIB write-through bypass</td><td>同周期读写相同地址时数据正确</td><td>P1</td></tr>
+    <tr><td>post_flush_block</td><td>flush 后不发射, 直到新 batch 到达</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1)</td><td>BC-001 ~ BC-010 全覆盖</td><td>P0</td></tr>
+    <tr><td>非法指令异常</td><td>未知 opcode (opcode==0) → exc_valid=1; FPU/Zicond → valid=0 丢弃 (无异常)</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_issue_order</code></td><td><code>issue_ready[j] &amp;&amp; issue_ready[i] &amp;&amp; (i&lt;j) |-> issue_sel[i] &lt; issue_sel[j]</code></td><td>发射槽保持程序序</td></tr>
+    <tr><td><code>assert_no_issue_when_flush</code></td><td><code>flush |-> (i_issue_valid == 0)</code></td><td>flush 时不发射</td></tr>
+    <tr><td><code>assert_branch_stop</code></td><td><code>issue_ready[s] &amp;&amp; dec[issue_sel[s]].fu_type==FU_BRANCH &amp;&amp; (s&lt;ISSUE_WIDTH-1) |-> !issue_ready[s+1]</code></td><td>分支后 slot 不发射</td></tr>
+    <tr><td><code>assert_stall_out_correct</code></td><td><code>stall_out |-> (dib_count > 0) && (issue_count == 0)</code></td><td>stall_out 仅在有指令但无法发射时</td></tr>
+    <tr><td><code>assert_dib_count_range</code></td><td><code>dib_count &lt;= DIB_DEPTH</code></td><td>DIB 计数不越界</td></tr>
+    <tr><td><code>assert_post_flush_block</code></td><td><code>$rose(flush) |=> post_flush_block_r</code></td><td>flush 后 post_flush_block 置位</td></tr>
+    <tr><td><code>assert_mul_exclusive</code></td><td><code>issue_ready[i] &amp;&amp; issue_ready[j] &amp;&amp; (i!=j) |-> !(dec[issue_sel[i]].fu_type==FU_MUL &amp;&amp; dec[issue_sel[j]].fu_type==FU_MUL)</code></td><td>同批次 MUL 互斥</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现位置</th></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark ≥5.5 CM/MHz (三发射)</td><td>§2.1 F-007, §5.1.3</td><td><code>always_comb</code> L649-L738 (issue 仲裁)</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-001</span></td><td>RV32I 基础整数指令</td><td>§2.1 F-003, §5.1.2</td><td><code>case (opcode)</code> L446-L616</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-002</span></td><td>M 扩展 (乘除法)</td><td>§2.1 F-006, §8.3</td><td>L457-L464 (MUL/DIV 分类)</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-003</span></td><td>A 扩展 (原子操作)</td><td>§2.1 F-003</td><td>L532-L536 (OP_AMO → FU_MEM)</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-005</span></td><td>C 压缩指令</td><td>§2.1 F-004, §8.3.3</td><td><code>c_ext_expand</code> L257-L419</td></tr>
+    <tr><td><span class="req-tag">LUMI-DEC-001</span></td><td>Predecode 数据寄存</td><td>§2.1 F-001</td><td><code>always_ff</code> L133-L151</td></tr>
+    <tr><td><span class="req-tag">LUMI-DEC-002</span></td><td>DIB 缓冲管理</td><td>§2.1 F-002, §5.1.1</td><td><code>always_ff</code> L166-L202</td></tr>
+    <tr><td><span class="req-tag">LUMI-DEC-005</span></td><td>冒险检测 + ERR-019 程序序</td><td>§2.1 F-008/F-009, §5.1.3</td><td>L661-L728 (stop_issue / raw_stall)</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>流水线控制 (FSM)</td><td>§4 状态机</td><td>L842-L877 (FSM)</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="decode-issue.html">decode-issue.html</a> (LUMI-DESIGN-002) 的设计细化:</p>
+<table>
+    <tr><th>HLD 章节</th><th>LLD 章节</th><th>深化内容</th></tr>
+    <tr><td>HLD §2.1 解码逻辑</td><td>§2.1 F-003~F-006, §5.1.2</td><td>明确每条 opcode 的 fu_type/has_rs1/has_rs2/has_rd 映射</td></tr>
+    <tr><td>HLD §2.2 发射仲裁</td><td>§5.1.3</td><td>ERR-019 程序序扫描算法完整伪代码</td></tr>
+    <tr><td>HLD §2.2.2 Skip-Stalled</td><td>§5.1.3, §6.1 BC-001</td><td>RTL 实现为 ERR-019 stop_issue (非真正 skip), 阻塞后全停</td></tr>
+    <tr><td>HLD §2.2.3 旁路网络</td><td>§5.5</td><td>2→1 mux (bypass vs. regfile), hit 信号由外部产生</td></tr>
+    <tr><td>HLD §3 接口定义</td><td>§3.1</td><td>8 列完整端口表, 含复位值/握手协议/时序约束</td></tr>
+    <tr><td>HLD §4 数据通路</td><td>§5</td><td>Mermaid 数据流图 + 关键路径延迟估算</td></tr>
+</table>
+
+<div class="warn"><strong>ERR-019 与 HLD skip-stalled 差异:</strong>
+HLD §2.2.2 描述的 skip-stalled 机制 (被阻塞指令跳过, 后续独立指令继续发射) 在 RTL 中被修改为 <strong>严格程序序</strong>: 任一指令被阻塞后, <code>stop_issue=1</code> 导致所有后续指令停止。这是 ERR-019 审查修正的结果, 保证了 in-order 正确性, 但可能损失部分 IPC。</div>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#decode-issue">IC-D/I</a> (D/I 级接口契约)</p>
+
+<h2>10.4 关联 Errata</h2>
+<table>
+    <tr><th>Errata ID</th><th>描述</th><th>RTL 修复位置</th></tr>
+    <tr><td><span class="badge badge-ok">ERR-019</span></td><td>程序序发射约束: 阻塞指令后续全停</td><td>L661-L728 (stop_issue 逻辑)</td></tr>
+    <tr><td><span class="badge badge-ok">ERR-057</span></td><td>FSM 防御性 default</td><td>L875 (default: ST_IDLE)</td></tr>
+    <tr><td><span class="badge badge-ok">ERR-060/061</span></td><td>CBO/PREFETCH 解码为 NOP (非非法)</td><td>L581-L603 (OP_FENCE 分支)</td></tr>
+    <tr><td><span class="badge badge-ok">ERR-064</span></td><td>FPU 指令标记无效 (valid=0, 丢弃, 不触发异常)</td><td>L544-L567 (OP_FLOAD/OP_FSTORE/OP_FP)</td></tr>
+    <tr><td><span class="badge badge-ok">ERR-093</span></td><td>Zicond 指令标记无效 (valid=0, 丢弃, 不触发异常)</td><td>L457-L480 (OP_REG/OP_IMM)</td></tr>
+    <tr><td><span class="badge badge-ok">ERR-094</span></td><td>Zimop (OP_CUSTOM0) 作为 NOP</td><td>L572-L577</td></tr>
+    <tr><td><span class="badge badge-warn">SA-CM-003</span></td><td>MUL 同批次互斥</td><td>L688-L693</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="decode-issue.html" class="back-link">对应 HLD</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD: lumi_decode_issue &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-LLD-002 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-16<br>
+    RTL 基线: <code>src/rtl/core/lumi_decode_issue.sv</code> (M3-S1 Batch-1, 2026-07-08)<br>
+    承接: <a href="decode-issue.html">decode-issue.html</a> (LUMI-DESIGN-002) &nbsp;|&nbsp;
+    审查: <a href="../architecture/m2-s1-microarch-review-v2.html">双审融合报告 v2.0</a></p>
+</div>
+
+</body>
+</html>

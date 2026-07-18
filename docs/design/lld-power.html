@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — Power Management &amp; Reset</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a><a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a><a href="#ch2">2.功能</a><a href="#ch3">3.接口</a><a href="#ch4">4.状态机</a><a href="#ch5">5.数据通路</a><a href="#ch6">6.边界条件</a><a href="#ch7">7.参数</a><a href="#ch8">8.微架构</a><a href="#ch9">9.验证</a><a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Power Management &amp; Reset Low Level Design</h1>
+    <p class="subtitle">WFI/WRS 低功耗 + ICG 时钟门控 + 多域复位 + UPF 电源域</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-011 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="power-reset.html">power-reset.html</a> (LUMI-DESIGN-014)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/power/lumi_power_mgmt.sv</code> (211 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#power">IC-7.1 (Power/Reset)</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- §1 -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_power_mgmt</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/power/lumi_power_mgmt.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="power-reset.html">power-reset.html</a> (LUMI-DESIGN-014)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-011</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>WFI/WRS 低功耗状态机 (RUN/IDLE/SLEEP/DEEP_SLEEP/WAKEUP)</td><td>中断控制器 (属于 clic-plic)</td></tr>
+    <tr><td>ICG 时钟门控使能生成 (模块级 + Core 级)</td><td>ICG cell 物理实现</td></tr>
+    <tr><td>多域复位 (sys_reset_n → core_reset_n/bus_reset_n)</td><td>Debug Module 内部复位</td></tr>
+    <tr><td>WRS Reservation 跟踪</td><td>PLL 物理实现 (SoC 级)</td></tr>
+    <tr><td>UPF 电源状态输出映射</td><td>电压调节器 (PMU 物理 IP)</td></tr>
+    <tr><td>Idle 持续时间计数 (ERR-073)</td><td>Retention 寄存器物理实现</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> W 级 <code>wfi_req/wrs_req</code> (来自 writeback-csr) | <code>core_active</code> (流水线非空) | <code>irq_pending</code> (来自 clic-plic)</p>
+<p><strong>下游:</strong> <code>icg_en</code> → 全模块 ICG | <code>core_sleep</code> → SoC 电源管理 | <code>core_reset_n/bus_reset_n</code> → 复位网络</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查）</td><td>ERR-073 (idle_cnt)</td></tr>
+</table>
+
+<!-- §2 -->
+<h1 id="ch2">2. 功能规格</h1>
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-PWR-001</td><td>WFI 低功耗</td><td>wfi_req + !core_active → ST_IDLE, ICG 门控</td><td><span class="req-tag">LUMI-PWR-001</span></td></tr>
+    <tr><td>F-PWR-002</td><td>WRS 等待</td><td>wrs_req + reservation_valid → ST_IDLE</td><td><span class="req-tag">LUMI-PWR-002</span></td></tr>
+    <tr><td>F-PWR-003</td><td>Deep Sleep</td><td>vcc_on=0 → ST_DEEP_SLEEP, 仅 Retention 保持</td><td><span class="req-tag">LUMI-PWR-003</span></td></tr>
+    <tr><td>F-PWR-004</td><td>唤醒序列</td><td>wake_event → ST_WAKEUP, ≤8 cycle 恢复</td><td><span class="req-tag">LUMI-PWR-004</span> <span class="constraint-tag">WFI ≤8 cycle</span></td></tr>
+    <tr><td>F-PWR-005</td><td>ICG 门控</td><td>细粒度: FPU/Vector/TCM 模块级; Core 级: WFI</td><td><span class="req-tag">LUMI-CLK-002</span></td></tr>
+    <tr><td>F-PWR-006</td><td>多域复位</td><td>sys_reset_n → core_reset_n + bus_reset_n 同步输出</td><td><span class="req-tag">LUMI-CLK-003</span></td></tr>
+    <tr><td>F-PWR-007</td><td>Idle→Sleep 自动降级</td><td>ERR-073: idle_cnt ≥ 4 → ST_SLEEP (更深省电)</td><td><span class="req-tag">LUMI-PWR-003</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>ST_RUN</td><td>reset / wakeup_done</td><td>全模块运行, icg_en=0, core_sleep=0</td></tr>
+    <tr><td>ST_IDLE</td><td>wfi_req / wrs_req</td><td>ICG 门控 Core Clock, 等待唤醒事件</td></tr>
+    <tr><td>ST_SLEEP</td><td>idle_cnt ≥ 4 in IDLE</td><td>更深层低功耗, core_sleep=1, icg_en=1</td></tr>
+    <tr><td>ST_DEEP_SLEEP</td><td>vcc_on=0</td><td>PLL 关闭, 仅 vcc_ret_on 保持 Retention</td></tr>
+    <tr><td>ST_WAKEUP</td><td>wake_event</td><td>icg_en=0, 8 cycle 唤醒计数器, 流水线重填</td></tr>
+</table>
+
+<!-- §3 -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>wfi_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>pulse (1 cycle)</td><td>WFI 指令 W 级提交请求</td></tr>
+    <tr><td><code>wrs_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>pulse</td><td>WRS 指令请求</td></tr>
+    <tr><td><code>core_active</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>流水线非空 (有 in-flight 指令)</td></tr>
+    <tr><td><code>irq_pending</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>中断 pending (ERR-073 唤醒)</td></tr>
+    <tr><td><code>icg_en</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>ICG Core 级门控使能</td></tr>
+    <tr><td><code>core_sleep</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Core 进入 sleep (SLEEP/DEEP)</td></tr>
+    <tr><td><code>hart_sleep</code></td><td>output</td><td>NUM_HARTS</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Per-Hart sleep 状态</td></tr>
+    <tr><td><code>sys_reset_n</code></td><td>input</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>—</td><td>系统复位 (Cold Reset)</td></tr>
+    <tr><td><code>debug_reset_n</code></td><td>input</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>—</td><td>调试复位 (独立)</td></tr>
+    <tr><td><code>core_reset_n</code></td><td>output</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>组合透传</td><td>核心域复位 (=sys_reset_n)</td></tr>
+    <tr><td><code>bus_reset_n</code></td><td>output</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>组合透传</td><td>总线域复位 (=sys_reset_n)</td></tr>
+    <tr><td><code>vcc_on</code></td><td>input</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>—</td><td>主电源域 ON</td></tr>
+    <tr><td><code>vcc_ret_on</code></td><td>input</td><td>1</td><td>—</td><td>异步</td><td>—</td><td>—</td><td>保持域 ON (Retention)</td></tr>
+    <tr><td><code>power_state</code></td><td>output</td><td>4 (array)</td><td>RUN</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>UPF 电源状态映射</td></tr>
+</table>
+
+<h2>3.2 跨时钟域接口</h2>
+<p>无显式 CDC — <code>sys_reset_n/debug_reset_n/vcc_on/vcc_ret_on</code> 为异步信号, 直接用于组合逻辑。在物理实现中需由后端工具插入复位同步器。</p>
+
+<!-- §4 -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 主 FSM — <code>pwr_state_e</code> (3-bit, 5 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_RUN</code></td><td>3'd0</td><td>正常运行</td><td>reset / wakeup_done</td></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'd1</td><td>ICG 门控, 等待唤醒</td><td>wfi_req + !core_active</td></tr>
+    <tr><td><code>ST_SLEEP</code></td><td>3'd2</td><td>深层低功耗</td><td>idle_cnt ≥ 4 in IDLE</td></tr>
+    <tr><td><code>ST_DEEP_SLEEP</code></td><td>3'd3</td><td>PLL 关闭</td><td>!vcc_on (deep_sleep_req)</td></tr>
+    <tr><td><code>ST_WAKEUP</code></td><td>3'd4</td><td>唤醒序列 (≤8 cycle)</td><td>wake_event in IDLE/SLEEP/DEEP</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_RUN : reset
+    ST_RUN --> ST_IDLE : wfi_req && !core_active
+    ST_RUN --> ST_IDLE : wrs_req && reservation_valid
+    ST_RUN --> ST_DEEP_SLEEP : !vcc_on
+    ST_IDLE --> ST_WAKEUP : wake_event
+    ST_IDLE --> ST_SLEEP : idle_cnt >= 4
+    ST_IDLE --> ST_DEEP_SLEEP : !vcc_on
+    ST_SLEEP --> ST_WAKEUP : wake_event
+    ST_DEEP_SLEEP --> ST_WAKEUP : vcc_on && wake_event
+    ST_WAKEUP --> ST_RUN : wakeup_done (cnt>=8)
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_RUN</td><td>ST_IDLE</td><td><code>wfi_req &amp;&amp; !core_active</code></td><td>icg_en=1 (下一 cycle)</td></tr>
+    <tr><td>ST_RUN</td><td>ST_IDLE</td><td><code>wrs_req &amp;&amp; reservation_valid &amp;&amp; !core_active</code></td><td>icg_en=1</td></tr>
+    <tr><td>ST_RUN</td><td>ST_DEEP_SLEEP</td><td><code>!vcc_on</code></td><td>core_sleep=1, icg_en=1</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_WAKEUP</td><td><code>core_active || irq_pending || reservation_invalidate || !sys_reset_n</code></td><td>icg_en=0, wakeup_cnt 开始</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_SLEEP</td><td><code>idle_cnt ≥ 4 &amp;&amp; !wake_event</code></td><td>core_sleep=1</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_DEEP_SLEEP</td><td><code>!vcc_on</code></td><td>core_sleep=1</td></tr>
+    <tr><td>ST_SLEEP</td><td>ST_WAKEUP</td><td><code>wake_event</code></td><td>icg_en=0</td></tr>
+    <tr><td>ST_DEEP_SLEEP</td><td>ST_WAKEUP</td><td><code>vcc_on &amp;&amp; wake_event</code></td><td>icg_en=0</td></tr>
+    <tr><td>ST_WAKEUP</td><td>ST_RUN</td><td><code>wakeup_cnt ≥ 8</code></td><td>icg_en=0, core_sleep=0</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护 (WAKEUP):</strong> wakeup_cnt 无条件递增, wakeup_done 在 8 cycle 内必然到达</li>
+    <li><strong>死锁防护 (DEEP_SLEEP):</strong> 唤醒需要 vcc_on + wake_event 双条件; 若 SoC 不恢复 vcc_on, 则永远在 DEEP_SLEEP (预期行为)</li>
+    <li><strong>活锁防护 (IDLE):</strong> wake_event 包含 irq_pending, 中断必然唤醒; !sys_reset_n 也可唤醒 (复位退出)</li>
+</ul>
+
+<!-- §5 -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 WFI 唤醒时序</h2>
+<pre class="mermaid">
+graph LR
+    IRQ[irq_pending=1] --> WAKE[wake_event=1]
+    WAKE --> FSM[IDLE→WAKEUP]
+    FSM --> CNT[wakeup_cnt: 0→8]
+    CNT --> RUN[WAKEUP→RUN]
+    RUN --> PIPE[流水线重填 F1→W]
+</pre>
+
+<h2>5.2 WFI 唤醒 cycle 分解</h2>
+<table>
+    <tr><th>Cycle</th><th>状态</th><th>wakeup_cnt</th><th>icg_en</th><th>core_sleep</th><th>备注</th></tr>
+    <tr><td>0</td><td>ST_IDLE</td><td>0</td><td>1</td><td>0</td><td>wake_event 到达</td></tr>
+    <tr><td>1</td><td>ST_WAKEUP</td><td>0→1</td><td>0</td><td>0</td><td>clk_gate 释放</td></tr>
+    <tr><td>2</td><td>ST_WAKEUP</td><td>1→2</td><td>0</td><td>0</td><td>F1 取指开始</td></tr>
+    <tr><td>...</td><td>ST_WAKEUP</td><td>...</td><td>0</td><td>0</td><td>F2/D/I/E1/E2/M/W</td></tr>
+    <tr><td>8</td><td>ST_WAKEUP→RUN</td><td>8→0</td><td>0</td><td>0</td><td>首条指令到达 W 级</td></tr>
+</table>
+
+<h2>5.3 ICG 门控层次</h2>
+<table>
+    <tr><th>层级</th><th>信号</th><th>条件</th><th>恢复延迟</th></tr>
+    <tr><td>Core 级 (WFI)</td><td><code>icg_en</code></td><td>state ∈ {IDLE, SLEEP, DEEP}</td><td>1 cycle (WAKEUP)</td></tr>
+    <tr><td>模块级 FPU</td><td><code>icg_fpu_en</code></td><td>core_idle (= !core_active)</td><td>0 cycle</td></tr>
+    <tr><td>模块级 Vector</td><td><code>icg_vec_en</code></td><td>core_idle</td><td>0 cycle</td></tr>
+    <tr><td>模块级 TCM</td><td><code>icg_tcm_en</code></td><td>1 (默认开启)</td><td>—</td></tr>
+</table>
+
+<!-- §6 -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>WFI 时有 pending interrupt</td><td>wfi_req 但 core_active 可能仍为 1, 不进入 IDLE (WFI 作为 NOP)</td><td>cg_wfi_nop</td></tr>
+    <tr><td>BC-002</td><td>IDLE 期间 NMI 到达</td><td>wake_event 包含 irq_pending, 立即唤醒</td><td>cg_wfi_nmi_wake</td></tr>
+    <tr><td>BC-003</td><td>IDLE 期间 sys_reset_n 拉低</td><td>wake_event 包含 !sys_reset_n, 唤醒后由复位逻辑接管</td><td>cg_reset_during_sleep</td></tr>
+    <tr><td>BC-004</td><td>DEEP_SLEEP 期间 vcc_on 恢复但无 wake_event</td><td>保持在 DEEP_SLEEP, 等待 wake_event</td><td>cg_deep_sleep_partial</td></tr>
+    <tr><td>BC-005</td><td>WRS reservation 无效时 wrs_req</td><td>不进入 IDLE (WRS 作为 NOP)</td><td>cg_wrs_nop</td></tr>
+    <tr><td>BC-006</td><td>WAKEUP 期间新 wfi_req 到达</td><td>忽略 (WAKEUP 状态下不响应 wfi_req)</td><td>cg_wakeup_ignore_wfi</td></tr>
+    <tr><td>BC-007</td><td>Idle 持续时间恰好 =4 时唤醒</td><td>idle_cnt ≥ 4 触发 SLEEP, 但 wake_event 同时到达则优先 WAKEUP</td><td>cg_idle_sleep_race</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>唤醒超时 (未实现硬件看门狗)</td><td>—</td><td>依赖 SoC 级看门狗; 本模块不检测唤醒超时</td></tr>
+    <tr><td>vcc_on 毛刺</td><td>—</td><td>物理层滤波; RTL 不做去抖</td></tr>
+</table>
+
+<h2>6.3 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: state→ST_RUN, wakeup_cnt→0, hart_sleep→0, reservation→0</td><td>异步</td></tr>
+    <tr><td><code>sys_reset_n</code></td><td>core_reset_n = sys_reset_n (组合透传), bus_reset_n = sys_reset_n</td><td>组合</td></tr>
+    <tr><td>icg_en</td><td>ICG 使能后, 下游 FF 时钟被门控 (clk_gated = clk_core &amp; !icg_en)</td><td>同 cycle</td></tr>
+</table>
+
+<!-- §7 -->
+<h1 id="ch7">7. 可配置参数</h1>
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>NUM_HARTS</code></td><td>int</td><td>lumi_pkg::NUM_HARTS (1)</td><td>1~4</td><td>hart_sleep 位宽</td></tr>
+</table>
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li>唤醒延迟固定 8 cycle (wakeup_cnt ≥ 8), 不由参数控制</li>
+    <li>Idle→Sleep 降级阈值固定 4 cycle (idle_cnt ≥ 4)</li>
+</ul>
+
+<!-- §8 -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>WFI/WRS 状态机</td><td>5 态功耗管理 FSM</td><td><code>state_reg, state_next</code></td></tr>
+    <tr><td>Wakeup 计数器</td><td>4-bit, 0→8</td><td><code>wakeup_cnt, wakeup_done</code></td></tr>
+    <tr><td>Idle 计数器 (ERR-073)</td><td>4-bit, 持续 idle 计数</td><td><code>idle_cnt</code></td></tr>
+    <tr><td>WRS Reservation 跟踪</td><td>reservation_valid + invalidate 脉冲</td><td><code>reservation_valid, reservation_invalidate</code></td></tr>
+    <tr><td>Per-Hart Sleep 寄存器</td><td>NUM_HARTS 位, 每个 Hart 独立</td><td><code>hart_sleep[NUM_HARTS-1:0]</code></td></tr>
+    <tr><td>ICG 门控生成</td><td>模块级: FPU/VEC/TCM; Core 级: icg_en</td><td><code>icg_fpu_en, icg_vec_en, icg_tcm_en</code></td></tr>
+    <tr><td>UPF 状态映射</td><td>FSM 状态→power_state 4-bit array</td><td><code>power_state[3:0]</code></td></tr>
+    <tr><td>多域复位分配</td><td>sys_reset_n → core/bus_reset_n</td><td><code>core_reset_n, bus_reset_n (组合透传)</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>3</td><td>ST_RUN</td><td>每 clk↑</td><td>功耗状态</td></tr>
+    <tr><td><code>wakeup_cnt</code></td><td>4</td><td>0</td><td>ST_WAKEUP 时递增</td><td>唤醒延迟计数</td></tr>
+    <tr><td><code>idle_cnt</code></td><td>4</td><td>0</td><td>ST_IDLE 且无 wake_event 时递增</td><td>Idle 持续时间 (ERR-073)</td></tr>
+    <tr><td><code>reservation_valid</code></td><td>1</td><td>0</td><td>wrs_req 时设 1, core_active 时清 0</td><td>WRS Reservation 有效</td></tr>
+    <tr><td><code>reservation_invalidate</code></td><td>1</td><td>0</td><td>reservation_valid &amp;&amp; core_active 时脉冲</td><td>Reservation 清除事件</td></tr>
+    <tr><td><code>hart_sleep</code></td><td>NUM_HARTS</td><td>0</td><td>IDLE/SLEEP/DEEP 时设 1</td><td>Per-Hart sleep 指示</td></tr>
+</table>
+
+<!-- §9 -->
+<h1 id="ch9">9. 验证要点</h1>
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>WFI 正常进入/唤醒 (F-PWR-001)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>WFI 作为 NOP (有 pending irq)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>WRS 正常进入/唤醒 (F-PWR-002)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>唤醒延迟 ≤8 cycle (F-PWR-004)</td><td>精确 8 cycle</td><td>P0</td></tr>
+    <tr><td>IDLE→SLEEP 降级 (F-PWR-007)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>DEEP_SLEEP 进入/退出 (F-PWR-003)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>ICG 门控各级 (F-PWR-005)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>复位域独立性 (F-PWR-006)</td><td>全组合</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_wfi_latency</code></td><td>wake_event → ##[1:9] (state == ST_RUN)</td><td>唤醒 ≤9 cycle (含状态转移)</td></tr>
+    <tr><td><code>assert_icg_in_sleep</code></td><td>state ∈ {IDLE,SLEEP,DEEP} → icg_en</td><td>Sleep 状态下 ICG 必须使能</td></tr>
+    <tr><td><code>assert_no_icg_in_run</code></td><td>state == RUN → !icg_en</td><td>运行状态 ICG 必须关闭</td></tr>
+    <tr><td><code>assert_wakeup_cnt</code></td><td>WAKEUP → wakeup_cnt 递增至 8</td><td>唤醒计数器正确</td></tr>
+</table>
+
+<!-- §10 -->
+<h1 id="ch10">10. 需求追溯</h1>
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-001</span></td><td>WFI 低功耗</td><td>§2.1, §4.1</td><td><code>pwr_state_e</code> FSM</td></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-002</span></td><td>WRS 等待</td><td>§2.1, §8.1</td><td>reservation_valid 跟踪</td></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-003</span></td><td>Deep Sleep + Idle→Sleep</td><td>§2.1, §4.1</td><td>ST_DEEP_SLEEP, idle_cnt</td></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-004</span></td><td>唤醒 ≤8 cycle</td><td>§2.1, §5.2</td><td>wakeup_cnt</td></tr>
+    <tr><td><span class="req-tag">LUMI-CLK-002</span></td><td>Clock Gating 策略</td><td>§2.1, §5.3</td><td>icg_en, icg_fpu_en 等</td></tr>
+    <tr><td><span class="req-tag">LUMI-CLK-003</span></td><td>复位域划分</td><td>§2.1, §3.1</td><td>core_reset_n, bus_reset_n</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="power-reset.html">power-reset.html</a> (LUMI-DESIGN-014) 的设计细化。HLD §2.1 (低功耗) → §2.1/§4.1; HLD §2.2 (Clock Gating) → §5.3; HLD §2.4 (复位域) → §3.1/§8.1。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#power">IC-7.1 (Power/Reset)</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html">文档地图</a></p>
+    <p>LUMI-LLD-011 &nbsp;|&nbsp; Power Management &amp; Reset &nbsp;|&nbsp; Phase 5 &nbsp;|&nbsp; 2026-07-16</p>
+</div>
+
+</body>
+</html>

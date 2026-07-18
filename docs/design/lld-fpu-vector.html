@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — FPU &amp; Vector Unit</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>FPU &amp; Vector Unit Low Level Design</h1>
+    <p class="subtitle">浮点运算单元 (F/D) + RISC-V Vector Extension (V 1.0) + issue/ready 握手</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-010 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="fpu-vector.html">fpu-vector.html</a> (LUMI-DESIGN-013)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/fpu/lumi_fpu.sv</code> (230 行) · <code>src/rtl/fpu/lumi_vector.sv</code> (251 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#fpu">IC-6.1 (FPU)</a> · <a href="interface-contracts.html#vector">IC-6.2 (Vector)</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名 (FPU)</td><td><code>lumi_fpu</code></td></tr>
+    <tr><td>模块名 (Vector)</td><td><code>lumi_vector</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/fpu/lumi_fpu.sv</code> · <code>src/rtl/fpu/lumi_vector.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="fpu-vector.html">fpu-vector.html</a> (LUMI-DESIGN-013)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-010</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>FPU 运算 (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP), 多周期执行</td><td>整数 ALU/MUL/DIV (属于 execute-alu)</td></tr>
+    <tr><td>NaN-Boxing 检测, fflags 生成 (NV/DZ/OF/UF/NX)</td><td>浮点寄存器堆物理实现 (属于 regfile)</td></tr>
+    <tr><td>Vector 算术/归约/比较/掩码/Load/Store, 分步执行</td><td>向量寄存器堆物理实现 (属于 regfile)</td></tr>
+    <tr><td>issue/ready 握手 + busy 信号回传 Issue 级</td><td>Issue 级发射仲裁 (属于 decode-issue)</td></tr>
+    <tr><td>vtype 解码 (SEW/LMUL/vma/vta), V-AGU 地址生成</td><td>CSR fflags/frm/vcsr 存储 (属于 writeback-csr)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> Issue 级 <code>fpu_issue_valid/vec_issue_valid</code> (来自 decode-issue) &nbsp;|&nbsp; 寄存器堆读端口</p>
+<p><strong>下游:</strong> W 级写回 <code>fpu_result_data/vec_result</code> &nbsp;|&nbsp; <code>fpu_fflags</code> → fflags CSR 聚合</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查）</td><td>ERR-064 (FPU disabled), ERR-065 (Vector disabled)</td></tr>
+</table>
+
+<!-- ═══ §2 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 FPU 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-FPU-001</td><td>浮点算术</td><td>FADD/FMUL/FMA: 6 cycle (cycle_max=6, 流水线化模型)</td><td><span class="req-tag">LUMI-FPU-001</span></td></tr>
+    <tr><td>F-FPU-002</td><td>除法/开方</td><td>FDIV/FSQRT: 28 cycle (cycle_max=28, SRT radix-4 迭代)</td><td><span class="req-tag">LUMI-FPU-001</span></td></tr>
+    <tr><td>F-FPU-003</td><td>转换/移动/比较</td><td>FCVT: 6 cycle, FMV: 1 cycle, FCMP: 2 cycle</td><td><span class="req-tag">LUMI-FPU-002</span></td></tr>
+    <tr><td>F-FPU-004</td><td>fflags 生成</td><td>NV(bit4)/DZ(bit3)/OF(bit2)/UF(bit1)/NX(bit0)</td><td><span class="req-tag">LUMI-FPU-003</span></td></tr>
+    <tr><td>F-FPU-005</td><td>NaN-Boxing</td><td>FP32 in FP64: rs[63:32]==0xFFFFFFFF 检测</td><td><span class="req-tag">LUMI-FPU-001</span></td></tr>
+</table>
+
+<h2>2.2 Vector 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-VEC-001</td><td>向量算术</td><td>VARITH/VMUL: SIMD 分片加法, 多步执行</td><td><span class="req-tag">LUMI-VEC-001</span></td></tr>
+    <tr><td>F-VEC-002</td><td>向量归约</td><td>VREDUCE: 按 SEW=32 归约到标量 + vs1[0]</td><td><span class="req-tag">LUMI-VEC-001</span></td></tr>
+    <tr><td>F-VEC-003</td><td>向量 Load/Store</td><td>VLOAD/VSTORE: Unit-stride, V-AGU 地址生成</td><td><span class="req-tag">LUMI-VEC-002</span></td></tr>
+    <tr><td>F-VEC-004</td><td>掩码/置换/比较</td><td>VMASK/VPERM/VCMP: 掩码操作复用 ALU</td><td><span class="req-tag">LUMI-VEC-003</span></td></tr>
+    <tr><td>F-VEC-005</td><td>vtype 解码</td><td>vsew[2:0]→SEW(8/16/32/64), vlmul[2:0], vma, vta</td><td><span class="req-tag">LUMI-VEC-001</span></td></tr>
+</table>
+
+<h2>2.3 FPU 延迟配置表 (基于指令类型)</h2>
+<table>
+    <tr><th>指令类型</th><th>cycle_max</th><th>执行方式</th></tr>
+    <tr><td>FADD</td><td>6</td><td>流水线化 (opLat=6)</td></tr>
+    <tr><td>FMUL</td><td>6</td><td>流水线化</td></tr>
+    <tr><td>FMA</td><td>6</td><td>流水线化 (中间不 round)</td></tr>
+    <tr><td>FDIV</td><td>28</td><td>迭代式 SRT radix-4</td></tr>
+    <tr><td>FSQRT</td><td>28</td><td>迭代式</td></tr>
+    <tr><td>FCVT</td><td>6</td><td>格式转换</td></tr>
+    <tr><td>FMV</td><td>1</td><td>移动 (1 cycle)</td></tr>
+    <tr><td>FCMP</td><td>2</td><td>比较 (2 cycle)</td></tr>
+</table>
+
+<!-- ═══ §3 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 lumi_fpu 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>fpu_issue_valid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>Issue 级发射 FPU 指令</td></tr>
+    <tr><td><code>fpu_inst_type</code></td><td>input</td><td>6</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>FPU 指令类型 (fpu_inst_e)</td></tr>
+    <tr><td><code>fpu_fmt</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>格式 (00=FP32, 01=FP64)</td></tr>
+    <tr><td><code>fpu_rm</code></td><td>input</td><td>3</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>舍入模式 (RNE/RTZ/RDN/RUP/RMM)</td></tr>
+    <tr><td><code>fpu_rs1</code></td><td>input</td><td>64</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>源操作数 1</td></tr>
+    <tr><td><code>fpu_rs2</code></td><td>input</td><td>64</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>源操作数 2</td></tr>
+    <tr><td><code>fpu_rs3</code></td><td>input</td><td>64</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>源操作数 3 (FMA)</td></tr>
+    <tr><td><code>fpu_result_data</code></td><td>output</td><td>64</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered (ST_DONE)</td><td>FPU 运算结果</td></tr>
+    <tr><td><code>fpu_rd</code></td><td>output</td><td>5</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>目标寄存器编号</td></tr>
+    <tr><td><code>fpu_issue_ready</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational (ST_IDLE)</td><td>FPU 可接受新指令</td></tr>
+    <tr><td><code>fpu_result_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>1 cycle pulse</td><td>结果就绪脉冲 (ST_DONE)</td></tr>
+    <tr><td><code>fpu_fflags</code></td><td>output</td><td>5</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>异常标志 NV/DZ/OF/UF/NX</td></tr>
+    <tr><td><code>fpu_busy</code></td><td>output</td><td>1</td><td>1 (默认)</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>FPU 多周期占用 (ST_IDLE/DONE=0)</td></tr>
+</table>
+
+<h2>3.2 lumi_vector 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>vec_issue_valid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>Issue 级发射 Vector 指令</td></tr>
+    <tr><td><code>vec_opcode</code></td><td>input</td><td>7</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>Vector 指令类型 (vec_inst_e)</td></tr>
+    <tr><td><code>vec_rs1</code></td><td>input</td><td>VLEN</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>源向量 1</td></tr>
+    <tr><td><code>vec_rs2</code></td><td>input</td><td>VLEN</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>源向量 2</td></tr>
+    <tr><td><code>vstart</code></td><td>input</td><td>5</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>向量起始元素索引</td></tr>
+    <tr><td><code>vl</code></td><td>input</td><td>5</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>向量长度</td></tr>
+    <tr><td><code>vtype</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>vtype (vsew/vlmul/vma/vta)</td></tr>
+    <tr><td><code>vec_result</code></td><td>output</td><td>VLEN</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered (ST_DONE)</td><td>向量运算结果</td></tr>
+    <tr><td><code>vec_rd</code></td><td>output</td><td>5</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>目标寄存器编号</td></tr>
+    <tr><td><code>vec_ready</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational (ST_IDLE)</td><td>Vector FU 可接受新指令</td></tr>
+    <tr><td><code>vec_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>1 cycle pulse</td><td>结果就绪脉冲</td></tr>
+    <tr><td><code>vec_busy</code></td><td>output</td><td>1</td><td>1 (默认)</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Vector FU 多步占用</td></tr>
+    <tr><td><code>vec_mem_addr</code></td><td>output</td><td>32</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>V-AGU 生成地址</td></tr>
+    <tr><td><code>vec_mem_wdata</code></td><td>output</td><td>VLEN</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>Vector Store 数据</td></tr>
+    <tr><td><code>vec_mem_rdata</code></td><td>input</td><td>VLEN</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>Vector Load 返回数据</td></tr>
+    <tr><td><code>vec_mem_we</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>Vector Store 写使能</td></tr>
+    <tr><td><code>vec_mem_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>Vector Load/Store 请求有效</td></tr>
+    <tr><td><code>vec_mem_ready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>—</td><td>Memory 子系统就绪</td></tr>
+</table>
+
+<h2>3.3 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td>无直接 interface 使用</td><td>—</td><td>—</td><td>FPU/Vector 使用标量端口 (issue/ready 握手)</td></tr>
+</table>
+
+<h2>3.4 跨时钟域接口</h2>
+<p>无 — FPU 和 Vector 均在 CLK_CORE 域运行。</p>
+
+<!-- ═══ §4 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 FPU 主 FSM — <code>fpu_state_e</code> (4-bit, 9 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>4'd0</td><td>空闲, 接受新指令</td><td>reset / ST_DONE 完成</td></tr>
+    <tr><td><code>ST_FADD</code></td><td>4'd1</td><td>浮点加法执行 (6 cycle)</td><td>fpu_issue_valid &amp;&amp; inst=FADD</td></tr>
+    <tr><td><code>ST_FMUL</code></td><td>4'd2</td><td>浮点乘法执行 (6 cycle)</td><td>inst=FMUL</td></tr>
+    <tr><td><code>ST_FMA</code></td><td>4'd3</td><td>融合乘加 (6 cycle, 中间不 round)</td><td>inst=FMA</td></tr>
+    <tr><td><code>ST_FDIV</code></td><td>4'd4</td><td>浮点除法 (28 cycle, SRT)</td><td>inst=FDIV</td></tr>
+    <tr><td><code>ST_FSQRT</code></td><td>4'd5</td><td>浮点开方 (28 cycle)</td><td>inst=FSQRT</td></tr>
+    <tr><td><code>ST_FCVT</code></td><td>4'd6</td><td>格式转换 (6 cycle)</td><td>inst=FCVT</td></tr>
+    <tr><td><code>ST_FCMP</code></td><td>4'd7</td><td>比较 (2 cycle)</td><td>inst=FCMP</td></tr>
+    <tr><td><code>ST_DONE</code></td><td>4'd8</td><td>输出结果, 1 cycle 后回 IDLE</td><td>cnt_done</td></tr>
+</table>
+
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_FADD : issue && FADD
+    ST_IDLE --> ST_FMUL : issue && FMUL
+    ST_IDLE --> ST_FMA  : issue && FMA
+    ST_IDLE --> ST_FDIV : issue && FDIV
+    ST_IDLE --> ST_FSQRT: issue && FSQRT
+    ST_IDLE --> ST_FCVT : issue && FCVT
+    ST_IDLE --> ST_FCMP : issue && FCMP
+    ST_FADD  --> ST_DONE : cnt_done
+    ST_FMUL  --> ST_DONE : cnt_done
+    ST_FMA   --> ST_DONE : cnt_done
+    ST_FDIV  --> ST_DONE : cnt_done
+    ST_FSQRT --> ST_DONE : cnt_done
+    ST_FCVT  --> ST_DONE : cnt_done
+    ST_FCMP  --> ST_DONE : cnt_done
+    ST_DONE  --> ST_IDLE : (always, 1 cycle)
+</pre>
+
+<h2>4.2 Vector 主 FSM — <code>vec_state_e</code> (3-bit, 7 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'd0</td><td>空闲, 接受新指令</td><td>reset / ST_DONE</td></tr>
+    <tr><td><code>ST_ARITH</code></td><td>3'd1</td><td>SIMD 算术多步执行</td><td>issue &amp;&amp; VARITH/VMUL</td></tr>
+    <tr><td><code>ST_REDUCE</code></td><td>3'd2</td><td>归约操作</td><td>issue &amp;&amp; VREDUCE</td></tr>
+    <tr><td><code>ST_LOAD</code></td><td>3'd3</td><td>Vector Load (逐步内存读)</td><td>issue &amp;&amp; VLOAD</td></tr>
+    <tr><td><code>ST_STORE</code></td><td>3'd4</td><td>Vector Store (逐步内存写)</td><td>issue &amp;&amp; VSTORE</td></tr>
+    <tr><td><code>ST_MASK</code></td><td>3'd5</td><td>掩码操作 (v0 掩码)</td><td>issue &amp;&amp; VMASK</td></tr>
+    <tr><td><code>ST_DONE</code></td><td>3'd6</td><td>输出结果</td><td>step_done</td></tr>
+</table>
+
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_ARITH  : issue && VARITH/VMUL
+    ST_IDLE --> ST_REDUCE : issue && VREDUCE
+    ST_IDLE --> ST_LOAD   : issue && VLOAD
+    ST_IDLE --> ST_STORE  : issue && VSTORE
+    ST_IDLE --> ST_MASK   : issue && VMASK
+    ST_ARITH  --> ST_DONE : step_done
+    ST_REDUCE --> ST_DONE : step_done
+    ST_LOAD   --> ST_DONE : mem_ready && step_done
+    ST_STORE  --> ST_DONE : mem_ready && step_done
+    ST_MASK   --> ST_DONE : step_done
+    ST_DONE   --> ST_IDLE : (always, 1 cycle)
+</pre>
+
+<h2>4.3 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护 (FPU):</strong> cycle_cnt 无条件递增, cnt_done 必然在 cycle_max 内到达</li>
+    <li><strong>死锁防护 (Vector Load/Store):</strong> 等待 vec_mem_ready, 若 Memory 永不响应则 Vector FU 永远 busy — 依赖 Memory 子系统保证响应</li>
+    <li><strong>活锁防护:</strong> FPU/Vector busy 时, Issue 级 stall 同类指令, 其他 FU 不受影响 (DEC-007-2)</li>
+</ul>
+
+<!-- ═══ §5 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 FPU 数据通路</h2>
+<pre class="mermaid">
+graph LR
+    RS1[fpu_rs1 64b] --> LAT[操作数锁存 rs1_lat]
+    RS2[fpu_rs2 64b] --> LAT
+    RS3[fpu_rs3 64b] --> LAT
+    LAT --> NAN[NaN-Boxing 检测]
+    NAN --> EXEC[执行单元 FADD/FMUL/...]
+    EXEC --> CNT[cycle_cnt 计数器]
+    CNT -->|cnt_done| DONE[ST_DONE]
+    DONE --> RES[fpu_result_data]
+    DONE --> FLG[fpu_fflags]
+</pre>
+
+<h2>5.2 Vector 数据通路</h2>
+<pre class="mermaid">
+graph LR
+    VRS1[vec_rs1 VLEN] --> VLAT[操作数锁存]
+    VRS2[vec_rs2 VLEN] --> VLAT
+    VLAT --> VDEC[vtype 解码 SEW/LMUL]
+    VDEC --> SIMD[SIMD ALU 分片运算]
+    VDEC --> AGU[V-AGU 地址生成]
+    SIMD --> STEP[step_cnt 步数计数]
+    AGU --> MEM[vec_mem_addr/wdata]
+    STEP -->|step_done| DONE[ST_DONE]
+    DONE --> RES[vec_result VLEN]
+</pre>
+
+<h2>5.3 关键时序 — FPU FDIV 执行</h2>
+<table>
+    <tr><th>Cycle</th><th>FSM 状态</th><th>cycle_cnt</th><th>fpu_busy</th><th>fpu_issue_ready</th></tr>
+    <tr><td>0</td><td>ST_IDLE → ST_FDIV</td><td>0</td><td>0→1</td><td>1→0</td></tr>
+    <tr><td>1~27</td><td>ST_FDIV</td><td>1~27</td><td>1</td><td>0</td></tr>
+    <tr><td>28</td><td>ST_FDIV (cnt_done)</td><td>28</td><td>1</td><td>0</td></tr>
+    <tr><td>29</td><td>ST_DONE</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>30</td><td>ST_IDLE</td><td>0</td><td>0</td><td>1</td></tr>
+</table>
+
+<!-- ═══ §6 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>FPU 输入 NaN (指数=0x7FF)</td><td>fflags[4]=1 (NV), 返回 canonical NaN</td><td>cg_fpu_nan</td></tr>
+    <tr><td>BC-002</td><td>FDIV 除零 (rs2[62:0]=0)</td><td>fflags[3]=1 (DZ), 返回 ±Inf</td><td>cg_fpu_divzero</td></tr>
+    <tr><td>BC-003</td><td>FSQRT 负数 (rs1[63]=1)</td><td>fflags[4]=1 (NV)</td><td>cg_fpu_sqrt_neg</td></tr>
+    <tr><td>BC-004</td><td>Vector vl=0</td><td>total_steps=1 (最小), step_done 立即成立</td><td>cg_vec_vl_zero</td></tr>
+    <tr><td>BC-005</td><td>FDIV/FSQRT 期间新 FPU 指令到达</td><td>fpu_issue_ready=0, Issue 级 stall 后续 FPU 指令</td><td>cg_fpu_busy_stall</td></tr>
+    <tr><td>BC-006</td><td>ERR-064: FPU disabled (MISA F/D=0)</td><td>ST_IDLE 保持, fpu_issue_ready=1 但指令被 decode 拦截</td><td>cg_fpu_disabled</td></tr>
+    <tr><td>BC-007</td><td>ERR-065: Vector disabled (MISA V=0)</td><td>ST_IDLE 保持, vec_ready=1 但指令被 decode 拦截</td><td>cg_vec_disabled</td></tr>
+    <tr><td>BC-008</td><td>Vector Load 时 vec_mem_ready 持续为 0</td><td>ST_LOAD 等待, Vector FU 持续 busy (依赖 Memory 响应)</td><td>cg_vec_mem_stall</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>NaN 输入</td><td>rs[62:52]==11'h7FF</td><td>fflags NV 置位, 返回 default NaN</td></tr>
+    <tr><td>除零</td><td>rs2[62:0]==0</td><td>fflags DZ 置位</td></tr>
+    <tr><td>Inexact (FDIV/FSQRT)</td><td>cnt_done 时</td><td>fflags NX 置位</td></tr>
+</table>
+
+<h2>6.3 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>FPU: 所有锁存/计数器/FSM 复位; Vector: 同上</td><td>异步</td></tr>
+    <tr><td>流水线 flush</td><td>FPU/Vector 当前执行不受 flush 影响 (已完成 issue 的指令必须执行完毕); 结果在 ST_DONE 后若目标指令已被 flush, 写回无效</td><td>—</td></tr>
+    <tr><td>stall</td><td>Issue 级 stall 由 busy 信号控制 (非全局 stall)</td><td>同 cycle</td></tr>
+</table>
+
+<!-- ═══ §7 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>VLEN</code></td><td>int (lumi_vector)</td><td>lumi_pkg::VLEN (128)</td><td>128 / 256</td><td>向量寄存器位宽, 影响数据通路和分步数</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>VLEN</code> 必须为 2 的幂且 ≥ 128</li>
+    <li>FPU 延迟 (cycle_max) 硬编码在 always_comb 中, 不由参数控制</li>
+    <li>Vector total_steps 由 vl × SEW / VLEN 动态计算</li>
+</ul>
+
+<!-- ═══ §8 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 FPU 子模块</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>操作数锁存器</td><td>issue 时采样 rs1/rs2/rs3/inst_type/rd</td><td><code>rs1_lat, rs2_lat, rs3_lat, inst_lat</code></td></tr>
+    <tr><td>延迟配置器</td><td>根据 inst_lat 选择 cycle_max (1~28)</td><td><code>cycle_max (combinational)</code></td></tr>
+    <tr><td>多周期计数器</td><td>5-bit cycle_cnt, 0→cycle_max</td><td><code>cycle_cnt, cnt_done</code></td></tr>
+    <tr><td>NaN-Boxing 检测</td><td>rs[63:32]==0xFFFFFFFF</td><td><code>rs1_nan_box_ok, rs2_nan_box_ok</code></td></tr>
+    <tr><td>fflags 生成器</td><td>NV/DZ/OF/UF/NX 异常标志</td><td><code>fflags_next → fpu_fflags</code></td></tr>
+    <tr><td>结果计算 (骨架)</td><td>简化模型: 传递 rs1 (实际需 FP 运算器)</td><td><code>result_next → fpu_result_data</code></td></tr>
+</table>
+
+<h2>8.2 Vector 子模块</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>vtype 解码器</td><td>vsew→SEW(8/16/32/64), vlmul, vma, vta</td><td><code>sew_bits (7-bit)</code></td></tr>
+    <tr><td>步数计算器</td><td>total_steps = ceil(vl × SEW / VLEN)</td><td><code>total_steps, step_cnt, step_done</code></td></tr>
+    <tr><td>SIMD ALU</td><td>按 32-bit 分片加法 (骨架)</td><td><code>alu_result (VLEN-bit)</code></td></tr>
+    <tr><td>Reduction 单元</td><td>按 32-bit 归约到标量</td><td><code>reduce_result, reduce_acc</code></td></tr>
+    <tr><td>V-AGU</td><td>Unit-stride: addr = base + idx × (SEW/8)</td><td><code>vec_mem_addr</code></td></tr>
+</table>
+
+<!-- ═══ §9 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>全部 FPU 指令类型 × fmt (F-FPU-001~003)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>fflags 全 5 位 (F-FPU-004)</td><td>100% 组合</td><td>P0</td></tr>
+    <tr><td>NaN-Boxing 检测 (F-FPU-005)</td><td>有效/无效</td><td>P1</td></tr>
+    <tr><td>全部 Vector 指令类型 (F-VEC-001~004)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>SEW × LMUL × VL 组合 (F-VEC-005)</td><td>全组合</td><td>P0</td></tr>
+    <tr><td>Vector Load/Store 地址生成</td><td>Unit-stride 全覆盖</td><td>P1</td></tr>
+    <tr><td>FPU/Vector busy stall 交互 (DEC-007-2)</td><td>100%</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_fpu_latency</code></td><td>issue → ##[1:29] result_valid</td><td>FPU 延迟上限 29 cycle (28+1)</td></tr>
+    <tr><td><code>assert_fpu_busy</code></td><td>ST_FDIV → fpu_busy throughout</td><td>FDIV 期间 busy 持续为 1</td></tr>
+    <tr><td><code>assert_vec_steps</code></td><td>issue → ##[1:32] vec_valid</td><td>Vector 执行上限 32 step</td></tr>
+    <tr><td><code>assert_vec_mem_stall</code></td><td>ST_LOAD &amp;&amp; !mem_ready → ST_LOAD</td><td>Load 等待 memory 正确</td></tr>
+</table>
+
+<!-- ═══ §10 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-FPU-001</span></td><td>F/D 双精度浮点</td><td>§2.1, §4.1, §8.1</td><td><code>lumi_fpu</code> 全模块</td></tr>
+    <tr><td><span class="req-tag">LUMI-FPU-002</span></td><td>FCVT/FMV/FCMP</td><td>§2.1, §4.1</td><td><code>fpu_state_e</code> FCVT/FCMP states</td></tr>
+    <tr><td><span class="req-tag">LUMI-FPU-003</span></td><td>fflags 异常标志</td><td>§2.1, §8.1</td><td><code>fflags_next</code> always_comb</td></tr>
+    <tr><td><span class="req-tag">LUMI-VEC-001</span></td><td>V 向量扩展</td><td>§2.2, §4.2, §8.2</td><td><code>lumi_vector</code> 全模块</td></tr>
+    <tr><td><span class="req-tag">LUMI-VEC-002</span></td><td>Vector Load/Store</td><td>§2.2, §4.2</td><td><code>ST_LOAD/ST_STORE</code>, V-AGU</td></tr>
+    <tr><td><span class="req-tag">LUMI-VEC-003</span></td><td>VMASK/VPERM/VCMP</td><td>§2.2, §4.2</td><td><code>ST_MASK</code>, ALU 复用</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="fpu-vector.html">fpu-vector.html</a> (LUMI-DESIGN-013) 的设计细化。HLD §2.1 (FPU) → §2.1/§4.1; HLD §2.2 (Vector) → §2.2/§4.2; HLD §2.3 (DEC-007-2) → §3 busy/ready 信号。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#fpu">IC-6.1 (FPU)</a> · <a href="interface-contracts.html#vector">IC-6.2 (Vector)</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>LUMI-LLD-010 &nbsp;|&nbsp; FPU &amp; Vector Unit &nbsp;|&nbsp; Phase 5 &nbsp;|&nbsp; 2026-07-16</p>
+</div>
+
+</body>
+</html>

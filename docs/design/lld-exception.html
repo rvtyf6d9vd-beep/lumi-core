@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_exception 异常/中断处理</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_exception — 异常/中断处理 Low Level Design</h1>
+    <p class="subtitle">精确异常 + 陷阱委托 (medeleg/mideleg) + NMI (Smrnmi) + MRET/SRET/MNRET</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-EXC &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="exception-handling.html">exception-handling.html</a> §2-2.6</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/interrupt/lumi_exception.sv</code></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#exception">IC-EXC</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_exception</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/interrupt/lumi_exception.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="exception-handling.html">exception-handling.html</a> (LUMI-DESIGN-EXC)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-EXC</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>同步异常检测与编码 (取指/解码/执行级)</td>
+        <td>中断控制器 (属于 <a href="lld-clic.html">lld-clic.html</a> / <a href="lld-plic.html">lld-plic.html</a>)</td>
+    </tr>
+    <tr>
+        <td>异常优先级仲裁 (同步 &gt; NMI &gt; 中断)</td>
+        <td>PMP/PMA 权限检查 (属于 privilege-pmp.html / pma-axi.html)</td>
+    </tr>
+    <tr>
+        <td>陷阱委托判断 (medeleg/mideleg)</td>
+        <td>CSR 存储阵列 (属于 writeback-csr.html)</td>
+    </tr>
+    <tr>
+        <td>NMI 边沿锁存与 Smrnmi 进入/返回信号</td>
+        <td>Debug halt / 单步 (属于 debug-trace.html)</td>
+    </tr>
+    <tr>
+        <td>MRET/SRET/MNRET 返回信号生成</td>
+        <td>mepc/mcause/mtval 实际写入 (CSR 单元执行)</td>
+    </tr>
+    <tr>
+        <td>Trap PC 计算 (mtvec/stvec vectored/direct)</td>
+        <td>流水线 flush 实际执行 (流水线控制单元)</td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> 流水线各级异常信号 (F1/F2/D/E1/M/W) | <a href="lld-clic.html">lumi_clic</a> (irq_request/irq_id) | CSR 单元 (mtvec/mstatus/medeleg 等)</p>
+<p><strong>下游:</strong> CSR 单元 (trap_enter/mret_exec/sret_exec/nmi_enter_out 等) | 流水线控制 (trap_take/trap_pc/flush_pipe)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查，基于 lumi_exception.sv L1-317）</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>取指异常检测</td><td>exc_fetch 2-bit 解码: misaligned(cause=0), access_fault(1), page_fault(12)</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-002</td><td>解码异常检测</td><td>exc_decode 4-bit 解码: illegal(2), ecall U/S/M(8/9/11), ebreak(3)</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-003</td><td>执行异常检测</td><td>exc_exec 3-bit 解码: load_misalign(4), store_misalign(6), load_access(5), store_access(7)</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-004</td><td>异常优先级仲裁</td><td>取指 &gt; 解码 &gt; 执行 (同步异常之间)；同步 &gt; NMI &gt; 中断</td><td><span class="req-tag">LUMI-EXC-002</span></td></tr>
+    <tr><td>F-005</td><td>陷阱委托</td><td>medeleg[cause] 或 mideleg[irq_id] 委托到 S-mode (需 priv ≤ S)</td><td><span class="req-tag">LUMI-EXC-003</span></td></tr>
+    <tr><td>F-006</td><td>NMI 处理 (Smrnmi)</td><td>NMI 上升沿锁存，进入 NMI trap；MNRET 返回</td><td><span class="req-tag">LUMI-EXC-002</span></td></tr>
+    <tr><td>F-007</td><td>MRET/SRET/MNRET</td><td>返回指令信号生成 + flush 流水线 + PC 恢复</td><td><span class="req-tag">LUMI-EXC-003</span></td></tr>
+    <tr><td>F-008</td><td>Trap PC 计算</td><td>mtvec/stvec Direct/Vectored 模式: PC = BASE (+ 4×cause)</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-009</td><td>IRQ 应答</td><td>trap_take &amp;&amp; trap_is_irq &amp;&amp; !nmi_enter 时生成 irq_ack</td><td><span class="req-tag">LUMI-EXC-002</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常执行</td><td>无异常/中断/NMI</td><td>trap_take=0，流水线正常运行</td></tr>
+    <tr><td>同步异常 Trap</td><td>has_exception=1 (fetch/decode/exec 任一有效)</td><td>trap_take=1, trap_enter=1, flush_pipe=1, PC=mtvec/stvec</td></tr>
+    <tr><td>NMI Trap</td><td>nmi_latch=1 且无同步异常</td><td>trap_take=1, nmi_enter_out=1, cause=0x80000000</td></tr>
+    <tr><td>中断 Trap</td><td>irq_request &amp;&amp; mie_enabled 且无异常/NMI</td><td>trap_take=1, trap_enter=1, cause=irq_id</td></tr>
+    <tr><td>MRET 返回</td><td>is_mret=1</td><td>trap_take=1, mret_exec=1, flush_pipe=1, PC=CSR 提供 mepc</td></tr>
+    <tr><td>SRET 返回</td><td>is_sret=1</td><td>trap_take=1, sret_exec=1, flush_pipe=1, PC=CSR 提供 sepc</td></tr>
+    <tr><td>MNRET 返回</td><td>is_mnret=1 (最高优先)</td><td>trap_take=1, mnret_exec_out=1, PC=mnepc_in</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位（低有效）</td>
+    </tr>
+    <tr>
+        <td><code>exc_fetch</code></td><td>input</td><td>2</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>取指异常: 00=none, 01=misaligned, 10=access_fault, 11=page_fault</td>
+    </tr>
+    <tr>
+        <td><code>exc_decode</code></td><td>input</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>解码异常: 0001=illegal, 0010=ecall_U, 0011=ebreak, 0100=ecall_S, 0101=ecall_M</td>
+    </tr>
+    <tr>
+        <td><code>exc_exec</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>执行异常: 001=load_misalign, 010=store_misalign, 011=load_access, 100=store_access</td>
+    </tr>
+    <tr>
+        <td><code>exc_addr</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常地址 (→ mtval: 失败地址)</td>
+    </tr>
+    <tr>
+        <td><code>exc_insn</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常指令字 (→ mtval: 非法指令编码)</td>
+    </tr>
+    <tr>
+        <td><code>exc_pc</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常指令 PC (→ mepc)</td>
+    </tr>
+    <tr>
+        <td><code>nmi_signal</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>边沿</td><td>combinational (直通)</td><td>外部 NMI 信号 (RTL 简化为直通，HLD 要求 2-FF 同步)</td>
+    </tr>
+    <tr>
+        <td><code>irq_request</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>中断请求 (来自 CLIC)</td>
+    </tr>
+    <tr>
+        <td><code>irq_id</code></td><td>input</td><td>8</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>中断 ID (来自 CLIC)</td>
+    </tr>
+    <tr>
+        <td><code>irq_ack</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>→ CLIC 应答信号</td>
+    </tr>
+    <tr>
+        <td><code>mtvec_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>mtvec CSR (trap 入口地址 + 模式)</td>
+    </tr>
+    <tr>
+        <td><code>mstatus_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>mstatus CSR (MIE 位在 bit[3])</td>
+    </tr>
+    <tr>
+        <td><code>medeleg_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常委托位图 (bit=cause code)</td>
+    </tr>
+    <tr>
+        <td><code>mideleg_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>中断委托位图 (bit=irq code)</td>
+    </tr>
+    <tr>
+        <td><code>priv_mode_in</code></td><td>input</td><td>2</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>当前特权级</td>
+    </tr>
+    <tr>
+        <td><code>mnepc_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>NMI EPC CSR (Smrnmi)</td>
+    </tr>
+    <tr>
+        <td><code>mncause_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>NMI cause CSR</td>
+    </tr>
+    <tr>
+        <td><code>mnstatus_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>NMI status CSR</td>
+    </tr>
+    <tr>
+        <td><code>stvec_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>stvec CSR (S-mode trap 入口)</td>
+    </tr>
+    <tr>
+        <td><code>is_mret</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>MRET 指令标志</td>
+    </tr>
+    <tr>
+        <td><code>is_sret</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>SRET 指令标志</td>
+    </tr>
+    <tr>
+        <td><code>is_mnret</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>MNRET 指令标志</td>
+    </tr>
+    <tr>
+        <td><code>commit_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>W 级有指令提交</td>
+    </tr>
+    <tr>
+        <td><code>trap_take</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trap 触发 (flush 流水线)</td>
+    </tr>
+    <tr>
+        <td><code>trap_pc</code></td><td>output</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trap 目标 PC</td>
+    </tr>
+    <tr>
+        <td><code>trap_cause</code></td><td>output</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trap 原因码 (→ mcause/scause)</td>
+    </tr>
+    <tr>
+        <td><code>trap_epc</code></td><td>output</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常指令 PC (→ mepc/sepc)</td>
+    </tr>
+    <tr>
+        <td><code>trap_tval</code></td><td>output</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Trap 值 (→ mtval/stval)</td>
+    </tr>
+    <tr>
+        <td><code>trap_is_irq</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>1=中断, 0=异常</td>
+    </tr>
+    <tr>
+        <td><code>trap_enter</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>触发 trap 进入 (→ CSR 更新)</td>
+    </tr>
+    <tr>
+        <td><code>mret_exec</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>MRET 执行信号</td>
+    </tr>
+    <tr>
+        <td><code>sret_exec</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>SRET 执行信号</td>
+    </tr>
+    <tr>
+        <td><code>nmi_enter_out</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>NMI 进入信号</td>
+    </tr>
+    <tr>
+        <td><code>mnret_exec_out</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>MNRET 执行信号</td>
+    </tr>
+    <tr>
+        <td><code>delegated</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>1=委托到 S-mode</td>
+    </tr>
+    <tr>
+        <td><code>flush_pipe</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>flush 流水线信号</td>
+    </tr>
+</table>
+
+<blockquote><strong>接口特征:</strong>
+本模块为<strong>纯组合逻辑为主</strong>的设计 (仅 NMI 锁存使用时序逻辑)。所有输入均为 combinational 驱动，
+所有输出均为 combinational 结果。Trap 决策在 W 级单 cycle 完成，无握手延迟。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>interrupt_if</code></td><td>exc_irq_if</td><td>sink</td><td>lumi_clic (source, irq_valid→irq_request)</td></tr>
+    <tr><td><code>pipeline_if</code></td><td>exc_pipe_if</td><td>slave</td><td>W 级流水线 (master, flush)</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td><code>nmi_signal</code></td><td>外部异步</td><td>CLK_CORE</td><td>RTL 简化为直通 (HLD §2.5 要求 2-FF 同步，实际同步在 SoC 顶层或后续迭代添加)</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant PIPE as 流水线 (W级)
+    participant EXC as lumi_exception
+    participant CSR as CSR 单元
+    participant CLIC as lumi_clic
+    PIPE->>EXC: exc_fetch/decode/exec + exc_pc/addr/insn
+    Note over EXC: 组合逻辑: 优先级仲裁
+    EXC->>CSR: trap_take=1, trap_pc, trap_cause, trap_epc, trap_tval
+    EXC->>CSR: trap_enter=1 (触发 mepc/mcause/mstatus 更新)
+    EXC->>PIPE: flush_pipe=1
+    Note over PIPE: F2/D/I/E1/E2/M 级全部 flush
+    EXC->>CLIC: irq_ack=1 (中断场景)
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<p class="warn"><em>本模块无显式多状态 FSM。异常处理为单 cycle 组合逻辑决策，
+仅有 NMI 边沿锁存使用 2 个触发器 (nmi_latch, nmi_prev)。</em></p>
+
+<h2>4.1 NMI 锁存状态模型</h2>
+<table>
+    <tr><th>状态名</th><th>条件</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td>NMI_CLEAR</td><td><code>nmi_latch == 0</code></td><td>无 NMI pending</td><td>reset / NMI trap 进入 / MNRET 执行</td></tr>
+    <tr><td>NMI_LATCHED</td><td><code>nmi_latch == 1</code></td><td>NMI 已锁存，等待处理</td><td>nmi_signal 上升沿</td></tr>
+</table>
+
+<h2>4.2 NMI 锁存转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> NMI_CLEAR : reset
+    NMI_CLEAR --> NMI_LATCHED : nmi_signal 上升沿 (nmi_sync && !nmi_prev)
+    NMI_LATCHED --> NMI_CLEAR : nmi_enter_out (trap 处理) || mnret_exec_out (返回)
+    NMI_LATCHED --> NMI_LATCHED : 保持 (未处理)
+    NMI_CLEAR --> NMI_CLEAR : 无 NMI
+</pre>
+
+<h2>4.3 异常处理优先级 (隐式状态)</h2>
+<table>
+    <tr><th>优先级</th><th>事件类型</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>1 (最高)</td><td>MNRET</td><td><code>is_mnret == 1</code></td><td>trap_pc=mnepc_in, mnret_exec_out=1</td></tr>
+    <tr><td>2</td><td>MRET</td><td><code>is_mret == 1</code></td><td>mret_exec=1, trap_pc=0 (CSR 提供 mepc)</td></tr>
+    <tr><td>3</td><td>SRET</td><td><code>is_sret == 1</code></td><td>sret_exec=1, trap_pc=0 (CSR 提供 sepc)</td></tr>
+    <tr><td>4</td><td>同步异常</td><td><code>has_exception == 1</code></td><td>trap_enter=1, cause=exc_cause_sel, tval=exc_tval_sel</td></tr>
+    <tr><td>5</td><td>NMI</td><td><code>nmi_latch == 1</code></td><td>nmi_enter_out=1, cause=0x80000000</td></tr>
+    <tr><td>6 (最低)</td><td>普通中断</td><td><code>irq_request &amp;&amp; mie_enabled</code></td><td>trap_enter=1, cause=irq_id</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> 无 FSM 循环，所有 trap 事件单 cycle 完成。NMI 锁存确保不丢失脉冲信号。</li>
+    <li><strong>活锁防护:</strong> 返回指令 (MRET/SRET/MNRET) 具有最高优先级，确保 trap 返回不会被新 trap 阻塞。</li>
+    <li><strong>NMI 互斥:</strong> NMI 处理期间 (nmi_latch=1 且已进入 trap)，nmi_enter_out 或 mnret_exec_out 清除锁存，新 NMI 可被重新锁存。</li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    A[exc_fetch 2-bit] --> B[取指异常解码]
+    C[exc_decode 4-bit] --> D[解码异常解码]
+    E[exc_exec 3-bit] --> F[执行异常解码]
+    B --> G{优先级仲裁器}
+    D --> G
+    F --> G
+    G -->|has_exception| H[Trap 决策]
+    I[nmi_latch] --> H
+    J[irq_request + mie_enabled] --> H
+    K[is_mret/sret/mnret] --> H
+    H --> L[trap_take/trap_pc/trap_cause]
+    H --> M[flush_pipe/trap_enter]
+    N[mtvec_in/stvec_in] --> O[Trap PC 计算]
+    O --> L
+    P[medeleg/mideleg + priv_mode] --> Q[委托判断]
+    Q --> H
+</pre>
+
+<h3>5.1.1 异常检测与编码</h3>
+<table>
+    <tr><th>异常来源</th><th>输入编码</th><th>mcause 编码</th><th>mtval 来源</th></tr>
+    <tr><td>exc_fetch=2'b01</td><td>Instruction Misaligned</td><td>0</td><td>exc_addr</td></tr>
+    <tr><td>exc_fetch=2'b10</td><td>Instruction Access Fault</td><td>1</td><td>exc_addr</td></tr>
+    <tr><td>exc_fetch=2'b11</td><td>Instruction Page Fault</td><td>12</td><td>exc_addr</td></tr>
+    <tr><td>exc_decode=4'b0001</td><td>Illegal Instruction</td><td>2</td><td>exc_insn</td></tr>
+    <tr><td>exc_decode=4'b0010</td><td>ECALL from U-mode</td><td>8</td><td>0</td></tr>
+    <tr><td>exc_decode=4'b0011</td><td>Breakpoint (EBREAK)</td><td>3</td><td>exc_insn</td></tr>
+    <tr><td>exc_decode=4'b0100</td><td>ECALL from S-mode</td><td>9</td><td>0</td></tr>
+    <tr><td>exc_decode=4'b0101</td><td>ECALL from M-mode</td><td>11</td><td>0</td></tr>
+    <tr><td>exc_exec=3'b001</td><td>Load Address Misaligned</td><td>4</td><td>exc_addr</td></tr>
+    <tr><td>exc_exec=3'b010</td><td>Store/AMO Address Misaligned</td><td>6</td><td>exc_addr</td></tr>
+    <tr><td>exc_exec=3'b011</td><td>Load Access Fault</td><td>5</td><td>exc_addr</td></tr>
+    <tr><td>exc_exec=3'b100</td><td>Store/AMO Access Fault</td><td>7</td><td>exc_addr</td></tr>
+</table>
+
+<h3>5.1.2 Trap PC 计算逻辑</h3>
+<pre>
+// M-mode trap PC
+if mtvec[0] == 1 AND has_exception == 0:  // Vectored + 中断
+    trap_target_m = mtvec[31:2]<<2 + cause_code * 4
+else:  // Direct 或异常
+    trap_target_m = mtvec[31:2]<<2
+
+// S-mode trap PC (同样逻辑)
+if stvec[0] == 1 AND has_exception == 0:
+    trap_target_s = stvec[31:2]<<2 + cause_code * 4
+else:
+    trap_target_s = stvec[31:2]<<2
+</pre>
+
+<h2>5.2 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td>exc_fetch/decode/exec 有效</td><td>组合逻辑即时解码</td><td>has_exception=1</td><td>W 级异常检测</td></tr>
+    <tr><td>T</td><td>—</td><td>优先级仲裁 + 委托判断</td><td>trap_take=1, trap_pc, trap_cause, flush_pipe=1</td><td>同 cycle 完成</td></tr>
+    <tr><td>T+1</td><td>—</td><td>流水线 flush 生效</td><td>—</td><td>F2/D/I/E1/E2/M 级清空</td></tr>
+    <tr><td>T+1</td><td>NMI 到达</td><td>nmi_latch←1 (clk↑)</td><td>—</td><td>NMI 边沿锁存</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>exc_fetch/decode/exec → trap_cause</td><td>3 级 case 解码 + 优先级 MUX</td><td>~2-3 ns</td><td>关键路径</td></tr>
+    <tr><td>mtvec → trap_pc</td><td>2 级 (mask + add)</td><td>~1-2 ns</td><td>含委托选择 MUX</td></tr>
+    <tr><td>medeleg[cause] → delegated</td><td>1 级索引 + 比较</td><td>&lt;1 ns</td><td>动态索引</td></tr>
+    <tr><td>nmi_signal → nmi_latch</td><td>1 级 FF (边沿检测)</td><td>clk→Q</td><td>时序路径</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>多异常同时到达</td><td>fetch + decode + exec 同 cycle 有效</td><td>优先级链: fetch &gt; decode &gt; exec (if-else 链)</td><td>0 cycle</td></tr>
+    <tr><td>异常 + 中断同时</td><td>has_exception &amp;&amp; irq_request</td><td>同步异常优先于中断 (else-if 链)</td><td>0 cycle</td></tr>
+    <tr><td>返回 + 异常同时</td><td>is_mret &amp;&amp; has_exception</td><td>返回指令优先 (if-else 链最前端)</td><td>0 cycle</td></tr>
+    <tr><td>NMI + 异常同时</td><td>nmi_latch &amp;&amp; has_exception</td><td>同步异常优先于 NMI</td><td>0 cycle</td></tr>
+    <tr><td>NMI 脉冲丢失</td><td>nmi_signal 窄脉冲</td><td>上升沿锁存 (nmi_sync &amp;&amp; !nmi_prev → nmi_latch)</td><td>0 cycle</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>所有异常输入均为 0 (无异常)</td><td>has_exception=0，检查 NMI/中断/返回指令；均无则 trap_take=0</td><td>TC-EXC-BC01</td></tr>
+    <tr><td>BC-002</td><td>exc_fetch 和 exc_decode 同时有效</td><td>取指异常优先 (if-else 链顺序: fetch &gt; decode &gt; exec)</td><td>TC-EXC-BC02</td></tr>
+    <tr><td>BC-003</td><td>MIE=0 期间中断到达</td><td>mie_enabled=mstatus_in[3]=0，中断不响应；同步异常/NMI 不受 MIE 影响</td><td>TC-EXC-BC03</td></tr>
+    <tr><td>BC-004</td><td>NMI 和中断同时到达</td><td>NMI 优先 (else-if 链: 异常 &gt; NMI &gt; 中断)</td><td>TC-EXC-BC04</td></tr>
+    <tr><td>BC-005</td><td>mtvec MODE=Vectored 且异常发生</td><td>Vectored 仅用于中断 (has_exception==0)；异常走 Direct (BASE)</td><td>TC-EXC-BC05</td></tr>
+    <tr><td>BC-006</td><td>委托条件: priv_mode_in &gt; S (即 M-mode)</td><td>delegate_to_s=0 (条件要求 priv ≤ S)，trap 在 M-mode 处理</td><td>TC-EXC-BC06</td></tr>
+    <tr><td>BC-007</td><td>MNRET 和 MRET 同时有效</td><td>MNRET 优先 (if-else 链最前端: mnret &gt; mret &gt; sret)</td><td>TC-EXC-BC07</td></tr>
+    <tr><td>BC-008</td><td>NMI 在 NMI 处理期间再次到达</td><td>nmi_latch 已为 1，新 NMI 上升沿不会再锁存 (nmi_prev 已为 1)；需 MNRET 后重新使能</td><td>TC-EXC-BC08</td></tr>
+    <tr><td>BC-009</td><td>exc_decode 编码 4'b0000 (无异常) 但其他位翻转</td><td>default 分支：decode_exc_valid=0，不影响仲裁</td><td>TC-EXC-BC09</td></tr>
+    <tr><td>BC-010</td><td>irq_id 超过 mideleg 位宽 (irq_id[7:5]≠0)</td><td>mideleg_in[irq_id[4:0]] 仅索引低 5-bit；高位被忽略</td><td>TC-EXC-BC10</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>非法 exc_fetch/decode/exec 编码</td><td>case default 分支</td><td>exc_valid 保持 0，不触发 trap</td></tr>
+    <tr><td>NMI 亚稳态</td><td>HLD 要求 2-FF 同步 (RTL 简化为直通)</td><td>建议在 SoC 集成时添加 2-FF 同步器</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><code>exc_decode</code> 中 4'b0110~4'b1111 为未定义编码，decode_exc_valid=0 (default 分支)</li>
+    <li><code>exc_exec</code> 中 3'b101~3'b111 为未定义编码，exec_exc_valid=0</li>
+    <li>MRET/SRET/MNRET 与异常同时发生时，返回指令优先 (异常被忽略)。HLD 中返回指令不应在有 pending 异常时执行</li>
+    <li><code>nmi_signal</code> 为异步信号，RTL 中未同步 (直通)；亚稳态传播为未定义行为</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>stall</code></td><td>模块不受 stall 影响 (组合逻辑为主)</td><td>—</td></tr>
+    <tr><td><code>flush</code></td><td>模块输出 flush_pipe (生成端，非消费端)</td><td>—</td></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: nmi_latch=0, nmi_prev=0</td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>IW</code></td><td>int</td><td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>1~4</td><td>发射宽度；当前 RTL 未直接使用 (预留多发射异常聚合)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>IW</code> (ISSUE_WIDTH) 预留用于多发射场景下多条指令同时异常的聚合仲裁；当前实现为单异常路径</li>
+    <li>全局参数依赖: <code>lumi_pkg::ISSUE_WIDTH</code></li>
+    <li>异常编码位宽: exc_fetch(2-bit, 最大 cause=12), exc_decode(4-bit, 最大 cause=11), exc_exec(3-bit, 最大 cause=7)</li>
+    <li>cause 选择器位宽: 5-bit (<code>exc_cause_sel</code>)，可容纳 cause 0~31</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>Fetch Exception Decoder</td><td>exc_fetch 2-bit → cause 编码 + tval</td><td><code>fetch_exc_valid</code>, <code>fetch_exc_cause</code>, <code>fetch_exc_tval</code></td></tr>
+    <tr><td>Decode Exception Decoder</td><td>exc_decode 4-bit → cause 编码 + tval</td><td><code>decode_exc_valid</code>, <code>decode_exc_cause</code>, <code>decode_exc_tval</code></td></tr>
+    <tr><td>Exec Exception Decoder</td><td>exc_exec 3-bit → cause 编码 + tval</td><td><code>exec_exc_valid</code>, <code>exec_exc_cause</code>, <code>exec_exc_tval</code></td></tr>
+    <tr><td>Exception Priority Arbiter</td><td>三级异常优先级选取</td><td><code>has_exception</code>, <code>exc_cause_sel</code>, <code>exc_tval_sel</code></td></tr>
+    <tr><td>Trap PC Calculator</td><td>mtvec/stvec Direct/Vectored 计算</td><td><code>trap_target_m</code>, <code>trap_target_s</code></td></tr>
+    <tr><td>Delegation Logic</td><td>medeleg/mideleg 委托判断</td><td><code>delegate_to_s</code></td></tr>
+    <tr><td>Trap Output MUX</td><td>最终 trap 输出多路选择</td><td>所有 trap_* 输出信号</td></tr>
+    <tr><td>NMI Edge Latch</td><td>NMI 上升沿锁存 (2 FF)</td><td><code>nmi_latch</code>, <code>nmi_prev</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>nmi_latch</code></td><td>1</td><td>0</td><td>nmi 上升沿置 1; nmi_enter_out 或 mnret_exec_out 清 0</td><td>NMI 锁存 (防丢失)</td></tr>
+    <tr><td><code>nmi_prev</code></td><td>1</td><td>0</td><td>每 clk↑: nmi_prev &le; nmi_sync</td><td>NMI 边沿检测辅助</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+<pre>
+// 异常处理完整优先级链 (组合逻辑 always_comb)
+// 优先级: MNRET > MRET > SRET > 同步异常 > NMI > 中断
+
+if is_mnret:
+    trap_take=1, trap_pc=mnepc_in, mnret_exec_out=1, flush_pipe=1
+
+elif is_mret:
+    trap_take=1, trap_pc=0(CSR提供mepc), mret_exec=1, flush_pipe=1
+
+elif is_sret:
+    trap_take=1, trap_pc=0(CSR提供sepc), sret_exec=1, flush_pipe=1
+
+elif has_exception:  // 同步异常
+    trap_take=1, trap_cause={27'b0, exc_cause_sel}
+    trap_tval=exc_tval_sel, trap_epc=exc_pc
+    trap_enter=1, flush_pipe=1
+    if delegate_to_s: trap_pc=trap_target_s
+    else:             trap_pc=trap_target_m
+
+elif nmi_latch:  // NMI
+    trap_take=1, trap_cause=32'h80000000
+    trap_epc=exc_pc, nmi_enter_out=1, flush_pipe=1
+    trap_pc=trap_target_m  // NMI 始终 M-mode
+
+elif irq_request && mie_enabled:  // 普通中断
+    trap_take=1, trap_cause={24'b0, irq_id}
+    trap_epc=exc_pc, trap_enter=1, flush_pipe=1
+    if delegate_to_s: trap_pc=trap_target_s
+    else:             trap_pc=trap_target_m
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有异常原因码 (mcause 0~12)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1 BC-001~BC-010)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>异常优先级全排列 (多异常同时)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>NMI 进入/返回完整路径</td><td>100%</td><td>P0</td></tr>
+    <tr><td>MRET/SRET/MNRET 返回</td><td>100%</td><td>P0</td></tr>
+    <tr><td>陷阱委托 (M→S)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Vectored/Direct trap PC</td><td>100%</td><td>P1</td></tr>
+    <tr><td>irq_ack 生成条件</td><td>100%</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>a_exc_fetch_highest_priority</code></td><td><code>fetch_exc_valid &amp;&amp; decode_exc_valid |-> trap_cause[4:0]==fetch_exc_cause</code></td><td>取指异常优先于解码异常</td></tr>
+    <tr><td><code>a_exc_sync_over_irq</code></td><td><code>has_exception &amp;&amp; irq_request |-> trap_is_irq==0</code></td><td>同步异常优先于中断</td></tr>
+    <tr><td><code>a_exc_nmi_over_irq</code></td><td><code>nmi_latch &amp;&amp; irq_request &amp;&amp; !has_exception |-> nmi_enter_out==1</code></td><td>NMI 优先于中断</td></tr>
+    <tr><td><code>a_exc_mret_over_exception</code></td><td><code>is_mret &amp;&amp; has_exception |-> mret_exec==1</code></td><td>MRET 优先于异常</td></tr>
+    <tr><td><code>a_exc_irq_ack_correct</code></td><td><code>irq_ack == (trap_take &amp;&amp; trap_is_irq &amp;&amp; !nmi_enter_out)</code></td><td>irq_ack 生成条件正确</td></tr>
+    <tr><td><code>a_exc_nmi_latch_no_loss</code></td><td><code>$rose(nmi_signal) |-> ##1 nmi_latch</code></td><td>NMI 上升沿必定被锁存</td></tr>
+    <tr><td><code>a_exc_delegate_priv_check</code></td><td><code>delegated |-> (priv_mode_in &lt;= 2'b01)</code></td><td>委托仅在 S/U-mode</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-EXC-001</span></td><td>同步异常检测与 trap PC 计算</td><td>§2.1 F-001~F-003/F-008, §5.1</td><td>fetch/decode/exec 解码 L80-127, trap PC L178-195</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXC-002</span></td><td>异常优先级仲裁与 NMI</td><td>§2.1 F-004/F-006/F-009, §5.1.2</td><td>优先级链 L137-160, trap 输出 L221-292, NMI L299-311</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXC-003</span></td><td>陷阱委托与 MRET/SRET/MNRET</td><td>§2.1 F-005/F-007, §5.1.2</td><td>委托 L199-212, 返回 L237-252</td></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-001</span></td><td>Profile 异常处理合规</td><td>§5.1.1</td><td>全 cause 编码覆盖</td></tr>
+    <tr><td><span class="req-tag">LUMI-PROF-002</span></td><td>特权级配置 (M/S/U)</td><td>§5.1.2 委托</td><td>priv_mode_in 检查 L203/L208</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-002</span></td><td>异常入口地址 (mtvec/stvec)</td><td>§5.1.2</td><td>trap_target_m/s L178-195</td></tr>
+    <tr><td><span class="req-tag">LUMI-SYS-003</span></td><td>中断延时 ≤16 cycle</td><td>§5.2</td><td>irq_ack 生成 (组合逻辑，0 延迟)</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="exception-handling.html">exception-handling.html</a> §2-2.6 的设计细化。
+HLD §2.1 (异常原因编码) 对应 §5.1.1；§2.2 (优先级仲裁) 对应 §4.3/§5.1.2；
+§2.3 (精确异常模型) 对应 §5.4 冒险处理；§2.4 (陷阱委托) 对应 §5.1.2 委托逻辑；
+§2.5 (NMI) 对应 §4.1/§4.2 NMI 锁存；§2.6 (MRET/SRET) 对应 §4.3 优先级表。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#exception">IC-EXC</a> (异常/Trap 输出接口, NMI 输入接口)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD — lumi_exception 异常/中断处理 &mdash; v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

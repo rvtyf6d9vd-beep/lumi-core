@@ -1,0 +1,157 @@
+# LLD-RTL Consistency Check CI Pipeline
+# Lumi-Core LLD 文档与 RTL 代码一致性自动化检查
+
+name: LLD-RTL Consistency Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/rtl/**/*.sv'
+      - 'docs/design/lld-*.html'
+      - 'docs/design/interface-contracts.html'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/rtl/**/*.sv'
+      - 'docs/design/lld-*.html'
+      - 'docs/design/interface-contracts.html'
+
+jobs:
+  lld-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Extract RTL signals
+        run: |
+          python3 scripts/lld-check/lld_signal_extract.py src/rtl/ --output scripts/lld-check/rtl_ci_ports.json
+
+      - name: Check LLD-RTL port consistency
+        run: |
+          FAILED=0
+          # Explicit LLD→RTL module mapping (no inference)
+          declare -A LLD_MODULES
+          LLD_MODULES["lld-fetch-bpred.html"]="lumi_fetch lumi_predecode"
+          LLD_MODULES["lld-decode-issue.html"]="lumi_decode_issue"
+          LLD_MODULES["lld-execute-bypass.html"]="lumi_execute lumi_bypass"
+          LLD_MODULES["lld-memory-stage.html"]="lumi_memory_stage"
+          LLD_MODULES["lld-writeback.html"]="lumi_writeback"
+          LLD_MODULES["lld-csr-regfile.html"]="lumi_csr_unit lumi_regfile"
+          LLD_MODULES["lld-cache.html"]="lumi_cache"
+          LLD_MODULES["lld-tcm.html"]="lumi_tcm"
+          LLD_MODULES["lld-pma-axi.html"]="lumi_axi_wrapper lumi_pma_checker lumi_cdc_sync"
+          LLD_MODULES["lld-clic.html"]="lumi_clic"
+          LLD_MODULES["lld-plic.html"]="lumi_plic"
+          LLD_MODULES["lld-exception.html"]="lumi_exception"
+          LLD_MODULES["lld-debug-trace.html"]="lumi_debug_module lumi_trace"
+          LLD_MODULES["lld-fpu-vector.html"]="lumi_fpu lumi_vector"
+          LLD_MODULES["lld-power.html"]="lumi_power_mgmt"
+          LLD_MODULES["lld-multicore-lockstep.html"]="lumi_multicore_top lumi_lockstep"
+          LLD_MODULES["lld-dft.html"]="lumi_dft_ctrl"
+          LLD_MODULES["lld-core-top.html"]="lumi_core_top"
+          LLD_MODULES["lld-soc-top.html"]="lumi_soc_top lumi_soc_tb_stub"
+          LLD_MODULES["lld-types-pkg.html"]="lumi_pkg"
+
+          for lld_file in docs/design/lld-*.html; do
+            basename=$(basename "$lld_file")
+            if [[ "$basename" == "lld-template.html" || "$basename" == "lld-index.html" || "$basename" == "lld-baseline-review.html" ]]; then
+              continue
+            fi
+            modules="${LLD_MODULES[$basename]}"
+            if [ -z "$modules" ]; then
+              echo "::warning::No module mapping for $basename, skipping"
+              continue
+            fi
+            echo "=== Checking $basename → $modules ==="
+            for mod in $modules; do
+              python3 scripts/lld-check/lld_port_check.py \
+                --rtl-json scripts/lld-check/rtl_ci_ports.json \
+                --lld "$lld_file" \
+                --module "$mod" 2>&1 || FAILED=$((FAILED + 1))
+            done
+          done
+          if [ $FAILED -gt 0 ]; then
+            echo "::error::$FAILED LLD-RTL port consistency errors"
+            exit 1
+          fi
+
+      - name: Check FSM coverage
+        run: |
+          FAILED=0
+          declare -A LLD_MODULES
+          LLD_MODULES["lld-fetch-bpred.html"]="lumi_fetch lumi_predecode"
+          LLD_MODULES["lld-decode-issue.html"]="lumi_decode_issue"
+          LLD_MODULES["lld-execute-bypass.html"]="lumi_execute lumi_bypass"
+          LLD_MODULES["lld-memory-stage.html"]="lumi_memory_stage"
+          LLD_MODULES["lld-writeback.html"]="lumi_writeback"
+          LLD_MODULES["lld-csr-regfile.html"]="lumi_csr_unit lumi_regfile"
+          LLD_MODULES["lld-cache.html"]="lumi_cache"
+          LLD_MODULES["lld-tcm.html"]="lumi_tcm"
+          LLD_MODULES["lld-pma-axi.html"]="lumi_axi_wrapper lumi_pma_checker lumi_cdc_sync"
+          LLD_MODULES["lld-clic.html"]="lumi_clic"
+          LLD_MODULES["lld-plic.html"]="lumi_plic"
+          LLD_MODULES["lld-exception.html"]="lumi_exception"
+          LLD_MODULES["lld-debug-trace.html"]="lumi_debug_module lumi_trace"
+          LLD_MODULES["lld-fpu-vector.html"]="lumi_fpu lumi_vector"
+          LLD_MODULES["lld-power.html"]="lumi_power_mgmt"
+          LLD_MODULES["lld-multicore-lockstep.html"]="lumi_multicore_top lumi_lockstep"
+          LLD_MODULES["lld-dft.html"]="lumi_dft_ctrl"
+          LLD_MODULES["lld-core-top.html"]="lumi_core_top"
+          LLD_MODULES["lld-soc-top.html"]="lumi_soc_top lumi_soc_tb_stub"
+          LLD_MODULES["lld-types-pkg.html"]="lumi_pkg"
+
+          for lld_file in docs/design/lld-*.html; do
+            basename=$(basename "$lld_file")
+            if [[ "$basename" == "lld-template.html" || "$basename" == "lld-index.html" || "$basename" == "lld-baseline-review.html" ]]; then
+              continue
+            fi
+            modules="${LLD_MODULES[$basename]}"
+            if [ -z "$modules" ]; then
+              continue
+            fi
+            for mod in $modules; do
+              python3 scripts/lld-check/lld_fsm_check.py \
+                --rtl src/rtl/ \
+                --lld "$lld_file" \
+                --module "$mod" 2>&1 || FAILED=$((FAILED + 1))
+            done
+          done
+          if [ $FAILED -gt 0 ]; then
+            echo "::error::$FAILED FSM coverage errors"
+            exit 1
+          fi
+          echo "FSM check passed"
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          python3 scripts/lld-check/lld_signal_extract.py src/rtl/ --output scripts/lld-check/rtl_ci_ports.json
+          echo "# LLD Coverage Report" > scripts/lld-check/lld_coverage_report.md
+          echo "" >> scripts/lld-check/lld_coverage_report.md
+          echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> scripts/lld-check/lld_coverage_report.md
+          echo "" >> scripts/lld-check/lld_coverage_report.md
+          echo "## RTL Stats" >> scripts/lld-check/lld_coverage_report.md
+          python3 -c "
+          import json
+          with open('scripts/lld-check/rtl_ci_ports.json') as f:
+              d = json.load(f)
+          s = d['stats']
+          print(f'- Files: {s[\"total_files\"]}')
+          print(f'- Modules: {s[\"total_modules\"]}')
+          print(f'- Ports: {s[\"total_ports\"]}')
+          print(f'- Enums: {s[\"total_enums\"]}')
+          print(f'- States: {s[\"total_states\"]}')
+          " >> scripts/lld-check/lld_coverage_report.md
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lld-coverage-report
+          path: scripts/lld-check/lld_coverage_report.md

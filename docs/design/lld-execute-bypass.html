@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD: Execute &amp; Bypass — Lumi-Core E1/E2 级执行与旁路网络</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Execute &amp; Bypass Low Level Design</h1>
+    <p class="subtitle">E1/E2 级执行 (ALU/MUL/DIV/Branch/LSU) + 5 路旁路网络</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-004 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="execute-alu.html">execute-alu.html</a> (LUMI-DESIGN-003)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_execute.sv</code> (825 行) + <code>src/rtl/core/lumi_bypass.sv</code> (201 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#execute-bypass">IC-4.x Execute/Bypass</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_execute</code> + <code>lumi_bypass</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_execute.sv</code> (825 行), <code>src/rtl/core/lumi_bypass.sv</code> (201 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="execute-alu.html">execute-alu.html</a> (LUMI-DESIGN-003)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-004</td></tr>
+    <tr><td>需求来源</td><td><span class="req-tag">LUMI-EXE-001~006</span> <span class="req-tag">LUMI-BYP-001~002</span></td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>E1 级 ALU 组合逻辑运算 (ADD/SUB/AND/OR/XOR/SLT/SHIFT)</td><td>浮点运算 (属于 <code>lumi_fpu</code>)</td></tr>
+    <tr><td>E1 级 B 扩展位操作 (Zba: SH1/2/3ADD, Zbb: CLZ/CTZ/CPOP/MIN/MAX/ANDN/ORN/XNOR/ROL/ROR/RORI/REV8/ORC.B)</td><td>Zbs 位操作 (BSET/BCLR/BINV/BEXT, 未实现)</td></tr>
+    <tr><td>E1 级 AUIPC/LUI 特殊处理 (ERR-023)</td><td>指令发射仲裁 (属于 <code>lumi_decode_issue</code>)</td></tr>
+    <tr><td>E1 级 OPIMM 立即数运算 (ERR-024)</td><td>Load/Store 数据通路 (属于 <code>lumi_memory</code>)</td></tr>
+    <tr><td>E1 级分支条件判定 (BEQ/BNE/BLT/BGE/BLTU/BGEU)</td><td>分支预测逻辑 (属于 <code>lumi_fetch_bpred</code>)</td></tr>
+    <tr><td>E1 级 JAL/JALR 目标计算与误预测检测 (ERR-019/020/044)</td><td>BTB/RAS 更新逻辑 (属于 <code>lumi_fetch_bpred</code>)</td></tr>
+    <tr><td>E1 级 LSU 地址计算 (2x LSU 端口)</td><td>CSR 读写 (属于 <code>lumi_writeback_csr</code>)</td></tr>
+    <tr><td>E1 级 ECALL/EBREAK 异常生成</td><td>异常处理入口 (属于 <code>lumi_writeback_csr</code>)</td></tr>
+    <tr><td>E1 级 FENCE store buffer drain 等待 (ERR-055)</td><td>Store buffer 实现 (属于 <code>lumi_memory</code>)</td></tr>
+    <tr><td>E2 级 MUL 1-cycle 流水线化乘法 (MUL/MULH/MULHSU/MULHU)</td><td>向量运算 (属于 <code>lumi_vector</code>)</td></tr>
+    <tr><td>E2 级 DIV 多 cycle FSM 迭代除法 (DIV/DIVU/REM/REMU)</td><td>—</td></tr>
+    <tr><td>5 路旁路网络 (E1 &gt; M &gt; W &gt; FPU &gt; 无匹配)</td><td>—</td></tr>
+    <tr><td>x0 寄存器豁免 + 旁路流水化寄存器 (D-017)</td><td>—</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="decode-issue.html">decode-issue.html</a> (I 级发射) | <a href="regfile.html">regfile.html</a> (操作数读)</p>
+<p><strong>下游:</strong> <a href="writeback-csr.html">writeback-csr.html</a> (M/W 级写回) | <a href="fetch-bpred.html">fetch-bpred.html</a> (分支反馈) | <a href="cache.html">cache.html</a> (LSU 地址) | <a href="fpu-vector.html">fpu-vector.html</a> (FPU 旁路)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 (RTL 同步审查, 含 ERR-019/020/023/024/044/055 修复)</td><td>ERR-019, ERR-020, ERR-023, ERR-024, ERR-044, ERR-055, ERR-057, ERR-RAS</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>RV32I ALU 运算</td><td>ADD/SUB/SLL/SLT/SLTU/XOR/SRL/SRA/OR/AND 全操作, 1 cycle 完成</td><td><span class="req-tag">LUMI-EXE-001</span></td></tr>
+    <tr><td>F-002</td><td>B 扩展位操作</td><td>Zba (SH1/2/3ADD) + Zbb (CLZ/CTZ/CPOP/MIN/MAX/ANDN/ORN/XNOR/ROL/ROR/RORI/REV8/ORC.B)</td><td><span class="req-tag">LUMI-EXE-002</span></td></tr>
+    <tr><td>F-003</td><td>OPIMM/AUIPC/LUI</td><td>立即数运算与高位加载 (ERR-023/024 修复)</td><td><span class="req-tag">LUMI-EXE-001</span></td></tr>
+    <tr><td>F-004</td><td>条件分支判定</td><td>BEQ/BNE/BLT/BGE/BLTU/BGEU 在 E1 级 1 cycle 解析</td><td><span class="req-tag">LUMI-EXE-003</span></td></tr>
+    <tr><td>F-005</td><td>JAL/JALR 执行</td><td>无条件跳转 + 间接跳转 (地址对齐 &amp; ~1), 误预测检测</td><td><span class="req-tag">LUMI-EXE-003</span></td></tr>
+    <tr><td>F-006</td><td>误预测检测与 flush</td><td>比较预测方向/目标与实际, 触发 F2/D/I flush (ERR-019/020)</td><td><span class="req-tag">LUMI-EXE-004</span></td></tr>
+    <tr><td>F-007</td><td>MUL 流水线化乘法</td><td>MUL/MULH/MULHSU/MULHU, 1-cycle 延迟 (E2 寄存器输出)</td><td><span class="req-tag">LUMI-EXE-005</span></td></tr>
+    <tr><td>F-008</td><td>DIV 迭代除法</td><td>DIV/DIVU/REM/REMU, 恢复除法 FSM (32 cycle + init + done)</td><td><span class="req-tag">LUMI-EXE-006</span></td></tr>
+    <tr><td>F-009</td><td>LSU 地址计算</td><td>2x LSU 端口, 有效地址 = rs1 + imm, 支持 LOAD/STORE 区分</td><td><span class="req-tag">LUMI-EXE-001</span></td></tr>
+    <tr><td>F-010</td><td>ECALL/EBREAK 异常</td><td>FU_MISC 路径生成 EXC_ECALL_M / EXC_BREAKPOINT</td><td><span class="req-tag">LUMI-EXE-001</span></td></tr>
+    <tr><td>F-011</td><td>FENCE drain</td><td>等待 store buffer 清空后才允许 FENCE 提交 (ERR-055)</td><td><span class="req-tag">LUMI-EXE-001</span></td></tr>
+    <tr><td>F-012</td><td>5 路旁路网络</td><td>E1 &gt; M &gt; W &gt; FPU &gt; 无匹配, x0 豁免, 每槽 rs1/rs2 独立匹配</td><td><span class="req-tag">LUMI-BYP-001</span></td></tr>
+    <tr><td>F-013</td><td>旁路流水化</td><td>BYPASS_PIPE_STAGES 参数控制 E1 旁路路径流水寄存器 (D-017)</td><td><span class="req-tag">LUMI-BYP-002</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>ALU 运算</td><td><code>fu_type == FU_ALU</code></td><td>1 cycle 组合逻辑运算, 结果立即旁路</td></tr>
+    <tr><td>MUL 运算</td><td><code>fu_type == FU_MUL</code></td><td>E1 占位, E2 寄存器输出结果 (1 cycle 延迟)</td></tr>
+    <tr><td>DIV 运算</td><td><code>fu_type == FU_DIV</code></td><td>DIV FSM 启动, 除零快速路径直跳 DONE; 正常路径 32 cycle 恢复除法</td></tr>
+    <tr><td>分支解析</td><td><code>fu_type == FU_BRANCH</code></td><td>条件比较/JAL/JALR 目标计算, 误预测检测, flush 反馈</td></tr>
+    <tr><td>LSU 地址</td><td><code>fu_type == FU_MEM</code></td><td>有效地址 = rs1 + imm, 分配到 LSU 端口 0/1</td></tr>
+    <tr><td>MISC 处理</td><td><code>fu_type == FU_MISC</code></td><td>ECALL/EBREAK 异常生成, FENCE drain, CSR pass-through</td></tr>
+    <tr><td>旁路查询</td><td>I 级查询 rs1/rs2</td><td>在 E1/M/W/FPU 四级中查找匹配, 返回最新数据</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 lumi_execute 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <tr>
+        <td><code>e1_inst[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>inst_pkt_t&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>I 级发射指令包数组 (含 pc/inst/rd/rs1/rs2/funct3/funct7/imm/fu_type 等)</td>
+    </tr>
+    <tr>
+        <td><code>e1_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>各槽指令有效标志</td>
+    </tr>
+    <tr>
+        <td><code>e1_rs1_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>rs1 操作数 (经旁路网络修正)</td>
+    </tr>
+    <tr>
+        <td><code>e1_rs2_data[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>rs2 操作数 (经旁路网络修正)</td>
+    </tr>
+    <tr>
+        <td><code>e1_pred_taken</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>F2 级预测方向 (ERR-019: 用于误预测检测)</td>
+    </tr>
+    <tr>
+        <td><code>e1_sb_empty</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Store buffer 空标志 (ERR-055: FENCE drain)</td>
+    </tr>
+    <tr>
+        <td><code>e1_pred_target</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>F2 级预测目标地址</td>
+    </tr>
+    <tr>
+        <td><code>e1_result[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>E1 级运算结果 (旁路源)</td>
+    </tr>
+    <tr>
+        <td><code>e1_rd[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>e1_valid_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>3</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-based</td><td>combinational</td><td>结果有效标志 (DIV 忙时清零对应槽)</td>
+    </tr>
+    <tr>
+        <td><code>e1_branch_taken</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>分支实际方向 (反馈 → F1)</td>
+    </tr>
+    <tr>
+        <td><code>e1_branch_target</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>分支实际目标地址</td>
+    </tr>
+    <tr>
+        <td><code>e1_branch_pc</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>分支指令 PC (ERR-019: BTB 更新用)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mispredict</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>误预测信号 (触发 F2/D/I flush)</td>
+    </tr>
+    <tr>
+        <td><code>e1_br_is_jal</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>分支类型: JAL (ERR-019: BTB 写入)</td>
+    </tr>
+    <tr>
+        <td><code>e1_br_is_jalr</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>分支类型: JALR (ERR-019: BTB 写入)</td>
+    </tr>
+    <tr>
+        <td><code>e1_br_is_call</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>call 检测 (ERR-044: rd &isin; {x1,x5})</td>
+    </tr>
+    <tr>
+        <td><code>e1_br_is_ret</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>ret 检测 (ERR-044: rs1 &isin; {x1,x5}, rd=x0)</td>
+    </tr>
+    <tr>
+        <td><code>e1_br_is_compressed</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>压缩指令标志 (ERR-RAS: 区分 PC+2/PC+4)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mem_addr[1:0]</code></td><td>output</td><td>32&times;2</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>LSU 有效地址 (2x LSU 端口)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mem_we[1:0]</code></td><td>output</td><td>1&times;2</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>LSU 写使能 (opcode[5]: STORE=1/LOAD=0)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mem_wdata[1:0]</code></td><td>output</td><td>32&times;2</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>LSU 写数据 (rs2_data)</td>
+    </tr>
+    <tr>
+        <td><code>e2_mul_result</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>MUL 低 32 位结果 (E2 寄存器)</td>
+    </tr>
+    <tr>
+        <td><code>e2_mul_result_hi</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>MUL 高 32 位结果 (MULH 系列)</td>
+    </tr>
+    <tr>
+        <td><code>e2_mul_valid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>MUL 结果有效脉冲</td>
+    </tr>
+    <tr>
+        <td><code>e2_div_result</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>DIV 运算结果</td>
+    </tr>
+    <tr>
+        <td><code>e2_div_valid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>DIV 结果有效脉冲 (FSM 完成时)</td>
+    </tr>
+    <tr>
+        <td><code>e2_div_busy</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>DIV FU 忙信号 (阻止新 DIV 发射)</td>
+    </tr>
+    <tr>
+        <td><code>e2_rd</code></td><td>output</td><td>5</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered</td><td>E2 目标寄存器号 (MUL 优先, 否则 DIV)</td>
+    </tr>
+    <tr>
+        <td><code>e1_exception[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常标志 (ECALL/EBREAK)</td>
+    </tr>
+    <tr>
+        <td><code>e1_exc_cause[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>4&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常原因码 (exc_type_e 低 4 位)</td>
+    </tr>
+</table>
+
+<h2>3.2 lumi_bypass 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <tr>
+        <td><code>e1_result[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>E1 级运算结果 (旁路源, 最高优先级)</td>
+    </tr>
+    <tr>
+        <td><code>e1_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>E1 级目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>e1_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>E1 级结果有效</td>
+    </tr>
+    <tr>
+        <td><code>m_result[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>M 级结果 (中优先级)</td>
+    </tr>
+    <tr>
+        <td><code>m_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>M 级目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>m_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>M 级结果有效</td>
+    </tr>
+    <tr>
+        <td><code>w_result[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>W 级结果 (最低优先级)</td>
+    </tr>
+    <tr>
+        <td><code>w_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>W 级目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>w_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>W 级结果有效</td>
+    </tr>
+    <tr>
+        <td><code>fpu_result</code></td><td>input</td><td>64</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>FPU 结果 (64-bit, 旁路取低 32 位)</td>
+    </tr>
+    <tr>
+        <td><code>fpu_rd</code></td><td>input</td><td>5</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>FPU 目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>fpu_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>FPU 结果有效</td>
+    </tr>
+    <tr>
+        <td><code>query_rs1[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>I 级查询 rs1 寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>query_rs2[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5&times;3</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>I 级查询 rs2 寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs1_data[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>旁路输出 rs1 数据</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs2_data[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32&times;3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>旁路输出 rs2 数据</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs1_hit[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs1 旁路命中标志</td>
+    </tr>
+    <tr>
+        <td><code>bypass_rs2_hit[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>3</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>rs2 旁路命中标志</td>
+    </tr>
+</table>
+
+<h2>3.3 SV Interface 实例映射</h2>
+<p>本模块不使用 SV Interface 封装端口, 所有信号均为显式端口声明。级间传递通过 <code>pipeline_if</code> 在顶层连接。</p>
+
+<h2>3.4 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td colspan="4" style="text-align:center;">无 CDC 接口 — 全部信号均在 CLK_CORE 域</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 DIV 除法器 FSM — 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码 (logic [2:0])</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>DIV_IDLE</code></td><td>3'b000 (默认)</td><td>空闲, 扫描发射槽中的 DIV 指令</td><td>reset / DIV_DONE 完成 / DIV_STALL 恢复</td></tr>
+    <tr><td><code>DIV_INIT</code></td><td>3'b001</td><td>初始化: quotient=0, remainder=0, cnt=32</td><td>DIV_IDLE 检测到 DIV 且除数 &ne; 0</td></tr>
+    <tr><td><code>DIV_RUNNING</code></td><td>3'b010</td><td>恢复除法迭代: 每 cycle 处理 1 bit</td><td>DIV_INIT 完成后自动进入</td></tr>
+    <tr><td><code>DIV_DONE</code></td><td>3'b011</td><td>符号修正 + 除零覆盖, 输出 valid</td><td>DIV_RUNNING cnt&le;1 / DIV_IDLE 除零快速路径</td></tr>
+    <tr><td><code>DIV_STALL</code></td><td>3'b100</td><td> stall 占位 (当前未使用, 预留)</td><td>—</td></tr>
+</table>
+
+<h2>4.2 DIV FSM 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> DIV_IDLE : reset_n
+    DIV_IDLE --> DIV_INIT : 检测到 DIV 指令 且 除数 != 0
+    DIV_IDLE --> DIV_DONE : 检测到 DIV 指令 且 除数 == 0 (SA-CM-010 快速路径)
+    DIV_INIT --> DIV_RUNNING : 自动 (1 cycle)
+    DIV_RUNNING --> DIV_RUNNING : cnt > 1 (继续迭代)
+    DIV_RUNNING --> DIV_DONE : cnt <= 1 (最后一 bit)
+    DIV_DONE --> DIV_IDLE : 自动 (1 cycle)
+    DIV_STALL --> DIV_IDLE : 恢复
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>DIV_IDLE</td><td>DIV_INIT</td><td><code>e1_valid[i] &amp;&amp; fu_type==FU_DIV &amp;&amp; rs2!=0</code></td><td><code>div_busy_r=1</code>, 加载绝对值操作数, 设置符号标志</td></tr>
+    <tr><td>DIV_IDLE</td><td>DIV_DONE</td><td><code>e1_valid[i] &amp;&amp; fu_type==FU_DIV &amp;&amp; rs2==0</code></td><td><code>div_busy_r=1</code>, 保存原始被除数 (SA-CM-010 快速路径)</td></tr>
+    <tr><td>DIV_INIT</td><td>DIV_RUNNING</td><td>自动 (always_comb)</td><td><code>quotient=0, remainder=0, cnt=32</code></td></tr>
+    <tr><td>DIV_RUNNING</td><td>DIV_RUNNING</td><td><code>div_cnt &gt; 1</code></td><td>恢复除法: 每 cycle 1 bit, cnt--</td></tr>
+    <tr><td>DIV_RUNNING</td><td>DIV_DONE</td><td><code>div_cnt &le; 1</code></td><td>最后一 bit 处理完毕</td></tr>
+    <tr><td>DIV_DONE</td><td>DIV_IDLE</td><td>自动 (always_comb)</td><td><code>div_valid_r=1, div_busy_r=0</code>, 符号修正/除零覆盖</td></tr>
+    <tr><td>DIV_STALL</td><td>DIV_IDLE</td><td>自动</td><td>恢复空闲</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> DIV FSM 的 <code>DIV_RUNNING</code> 状态由 <code>div_cnt</code> 递减保证有限性 (32 cycle 必退出)。<code>DIV_DONE</code> 无条件回到 <code>DIV_IDLE</code>。ERR-057 增加 <code>default</code> 分支: 非法编码安全回到 <code>DIV_IDLE</code>。</li>
+    <li><strong>活锁防护:</strong> <code>DIV_STALL</code> 状态当前未使用 (直接回 IDLE), 预留扩展。DIV 执行期间 <code>div_busy_r=1</code> 阻止新 DIV 发射, 但其他 FU 可并行执行 (skip-stalled)。</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 E1 级关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    A[I 级发射 e1_inst/e1_valid] --> B{fu_type 分发}
+    B -->|FU_ALU| C[ALU 组合逻辑]
+    B -->|FU_BRANCH| D[分支判定 + 误预测检测]
+    B -->|FU_MUL| E[MUL 组合逻辑]
+    B -->|FU_DIV| F[DIV FSM]
+    B -->|FU_MEM| G[LSU 地址计算]
+    B -->|FU_MISC| H[ECALL/EBREAK/FENCE]
+    C --> I[e1_result / e1_rd / e1_valid_out]
+    D --> I
+    D --> J[e1_branch_taken / e1_mispredict / e1_branch_target]
+    E --> K[E2 MUL 寄存器 e2_mul_result]
+    F --> L[E2 DIV 寄存器 e2_div_result]
+    G --> M[e1_mem_addr / e1_mem_we / e1_mem_wdata]
+    H --> N[e1_exception / e1_exc_cause]
+</pre>
+
+<h2>5.2 旁路网络数据通路</h2>
+<pre class="mermaid">
+graph TB
+    Q[query_rs1/rs2 from I 级] --> BP[bypass_match 函数]
+    E1S[E1 级结果 3 槽] --> BP
+    MS[M 级结果 3 槽] --> BP
+    WS[W 级结果 3 槽] --> BP
+    FPU[FPU 结果 64-bit] --> BP
+    BP -->|x0 豁免| X0[返回 hit=0]
+    BP -->|优先级匹配| OUT[bypass_rs1/rs2_data + hit]
+</pre>
+
+<h2>5.3 ALU 运算流程 (E1 级, 1 cycle)</h2>
+<p>ALU 运算按 opcode 分类处理:</p>
+<ol>
+    <li><strong>AUIPC</strong> (opcode=0010111): <code>result = PC + {inst[31:12], 12'h000}</code></li>
+    <li><strong>LUI</strong> (opcode=0110111): <code>result = {inst[31:12], 12'h000}</code></li>
+    <li><strong>OPIMM</strong> (opcode=0010011): 按 funct3 分发 ADDI/SLTI/SLTIU/XORI/ORI/ANDI/SLLI/SRLI/SRAI (ERR-024)</li>
+    <li><strong>OP</strong> (opcode=0110011): 按 funct7 分发:
+        <ul>
+            <li><code>funct7=0010000</code>: Zba SH1ADD/SH2ADD/SH3ADD</li>
+            <li><code>funct7=0100000</code>: Zbb ANDN/ORN/XNOR</li>
+            <li><code>funct7=0000101</code>: Zbb MIN/MAX/MINU/MAXU</li>
+            <li><code>funct7=0110000</code>: Zbb ROL/ROR/RORI + CLZ/CTZ/CPOP</li>
+            <li><code>funct7=0110100</code>: Zbb REV8</li>
+            <li><code>funct7=0010100</code>: Zbb ORC.B</li>
+            <li>default: 标准 RV32I ALU (<code>alu_compute</code> 函数)</li>
+        </ul>
+    </li>
+</ol>
+
+<pre>
+// alu_compute 函数 (组合逻辑)
+function logic [31:0] alu_compute(funct3, funct7_5, op1, op2):
+    shamt = op2[4:0]
+    case funct3:
+        000: return funct7_5 ? (op1 - op2) : (op1 + op2)   // SUB / ADD
+        001: return op1 &lt;&lt; shamt                              // SLL
+        010: return {31'h0, $signed(op1) &lt; $signed(op2)}      // SLT
+        011: return {31'h0, op1 &lt; op2}                        // SLTU
+        100: return op1 ^ op2                                  // XOR
+        101: return funct7_5 ? $unsigned($signed(op1) &gt;&gt;&gt; shamt) : (op1 &gt;&gt; shamt)  // SRA/SRL
+        110: return op1 | op2                                  // OR
+        111: return op1 &amp; op2                                  // AND
+</pre>
+
+<h2>5.4 MUL 执行流程 (E2 级, 1-cycle 延迟)</h2>
+<p>MUL 在 E1 级进行组合逻辑计算 (<code>mul_full</code> 64-bit), E2 级寄存器锁存输出:</p>
+<table>
+    <tr><th>funct3</th><th>操作</th><th>乘法类型</th><th>E2 输出</th></tr>
+    <tr><td>000 (MUL)</td><td>低 32 位</td><td>有符号 &times; 有符号</td><td><code>mul_full[31:0]</code></td></tr>
+    <tr><td>001 (MULH)</td><td>高 32 位</td><td>有符号 &times; 有符号</td><td><code>mul_full[63:32]</code></td></tr>
+    <tr><td>010 (MULHSU)</td><td>高 32 位</td><td>有符号 &times; 无符号</td><td><code>mul_full[63:32]</code></td></tr>
+    <tr><td>011 (MULHU)</td><td>高 32 位</td><td>无符号 &times; 无符号</td><td><code>mul_full[63:32]</code></td></tr>
+</table>
+
+<h2>5.5 DIV 执行流程 (FSM, 恢复除法)</h2>
+<p>DIV 采用恢复除法 (restoring division), 每 cycle 处理 1 bit, 共 32 cycle + init + done:</p>
+<pre>
+// DIV_RUNNING 单步: 恢复除法
+sub_result = {remainder[30:0], dividend[cnt-1]} - {1'b0, divisor}
+if (!sub_result[32]):  // 够减
+    remainder = sub_result[31:0]
+    quotient  = {quotient[30:0], 1'b1}
+else:                  // 不够减
+    remainder = {remainder[30:0], dividend[cnt-1]}
+    quotient  = {quotient[30:0], 1'b0}
+cnt = cnt - 1
+
+// DIV_DONE: 符号修正
+if (div_is_rem):
+    result = (div_signed &amp;&amp; div_remain_negate) ? -remainder : remainder
+else:
+    result = (div_signed &amp;&amp; div_quot_negate) ? -quotient : quotient
+
+// 除零覆盖 (SA-CM-010):
+if (divisor == 0):
+    result = div_is_rem ? dividend : 0xFFFFFFFF  // RISC-V 规范
+</pre>
+
+<h2>5.6 5 路旁路优先级矩阵</h2>
+<table>
+    <tr><th>优先级</th><th>旁路源</th><th>匹配范围</th><th>数据</th><th>覆盖规则</th></tr>
+    <tr><td>1 (最高)</td><td>E1 级槽 0</td><td><code>e1_rd[0] == query_reg &amp;&amp; e1_valid[0]</code></td><td><code>e1_result[0]</code></td><td>覆盖所有低优先级</td></tr>
+    <tr><td>2</td><td>E1 级槽 1</td><td><code>e1_rd[1] == query_reg &amp;&amp; e1_valid[1]</code></td><td><code>e1_result[1]</code></td><td>覆盖 M/W/FPU</td></tr>
+    <tr><td>3</td><td>E1 级槽 2</td><td><code>e1_rd[2] == query_reg &amp;&amp; e1_valid[2]</code></td><td><code>e1_result[2]</code></td><td>覆盖 M/W/FPU</td></tr>
+    <tr><td>4</td><td>M 级 (任意槽)</td><td><code>m_rd[j] == query_reg &amp;&amp; m_valid[j]</code></td><td><code>m_result[j]</code></td><td>覆盖 W/FPU</td></tr>
+    <tr><td>5</td><td>W 级 (任意槽)</td><td><code>w_rd[j] == query_reg &amp;&amp; w_valid[j]</code></td><td><code>w_result[j]</code></td><td>覆盖 FPU</td></tr>
+    <tr><td>6 (最低)</td><td>FPU</td><td><code>fpu_rd == query_reg &amp;&amp; fpu_valid</code></td><td><code>fpu_result[31:0]</code></td><td>仅当无整数匹配</td></tr>
+    <tr><td>—</td><td>x0 豁免</td><td><code>query_reg == 5'h0</code></td><td><code>33'h0</code> (hit=0)</td><td>零号寄存器永不旁路</td></tr>
+</table>
+
+<blockquote><strong>旁路匹配实现:</strong> <code>bypass_match()</code> 函数按 W &rarr; M &rarr; E1 顺序依次覆盖写入 <code>result</code> 变量, 后写覆盖前写, 自然实现优先级。E1 级内槽号从 ISSUE_WIDTH-1 递减到 0 遍历, 槽 0 最后写入 (最高优先级)。</blockquote>
+
+<h2>5.7 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td>I 级发射 ALU 指令, e1_valid=1</td><td>ALU 组合逻辑运算</td><td>e1_result 有效 (同 cycle)</td><td>ALU 1-cycle, 组合输出</td></tr>
+    <tr><td>T</td><td>I 级发射 MUL 指令, e1_valid=1</td><td>MUL 组合逻辑 (mul_full 64-bit)</td><td>e1_result=0 (占位)</td><td>MUL 结果在 E2 寄存器</td></tr>
+    <tr><td>T+1</td><td>—</td><td>E2 MUL 寄存器锁存</td><td>e2_mul_result 有效, e2_mul_valid=1</td><td>MUL 1-cycle 延迟</td></tr>
+    <tr><td>T</td><td>I 级发射 DIV 指令, div_busy=0</td><td>DIV_IDLE → DIV_INIT/DIV_DONE</td><td>div_busy_r=1</td><td>DIV 启动</td></tr>
+    <tr><td>T+1</td><td>—</td><td>DIV_INIT → DIV_RUNNING</td><td>quotient=0, remainder=0, cnt=32</td><td>初始化</td></tr>
+    <tr><td>T+2~T+33</td><td>—</td><td>DIV_RUNNING (32 cycle 迭代)</td><td>每 cycle 1 bit</td><td>恢复除法</td></tr>
+    <tr><td>T+34</td><td>—</td><td>DIV_DONE: 符号修正 + 除零覆盖</td><td>div_valid_r=1, div_busy_r=0</td><td>结果输出</td></tr>
+    <tr><td>T+35</td><td>—</td><td>DIV_DONE → DIV_IDLE</td><td>div_valid_r=0</td><td>回到空闲</td></tr>
+</table>
+
+<h2>5.8 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>ALU e1_rs1_data → e1_result (ADD)</td><td>1 (32-bit adder)</td><td>~40ps</td><td>简单加法</td></tr>
+    <tr><td>ALU e1_rs1_data → e1_result (SLL/SRA)</td><td>1 (barrel shifter)</td><td>~60ps</td><td>桶形移位器</td></tr>
+    <tr><td>ALU e1_rs1_data → e1_result (CLZ/CTZ)</td><td>1 (priority encoder)</td><td>~80ps</td><td>Zbb 前导零检测</td></tr>
+    <tr><td>MUL rs1 &times; rs2 → mul_full (64-bit)</td><td>1 (Wallace Tree)</td><td>~100ps</td><td>接近 125ps 预算</td></tr>
+    <tr><td>Branch evaluate → e1_mispredict</td><td>2 (compare + target check)</td><td>~50ps</td><td>条件比较 + 预测验证</td></tr>
+    <tr><td>Bypass mux (5-to-1) → bypass_rs1_data</td><td>1 (multi-level mux)</td><td>~80-100ps</td><td>RISK-011: 关键路径占比 64-80%</td></tr>
+</table>
+
+<h2>5.9 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>数据冒险 (RAW)</td><td>后续指令依赖前条 ALU 结果</td><td>5 路旁路网络 E1&rarr;I 前推</td><td>0 cycle (ALU), 1 cycle (MUL)</td></tr>
+    <tr><td>数据冒险 (RAW-DIV)</td><td>后续指令依赖 DIV 结果</td><td>stall 等待 DIV 完成, 旁路在 DIV_DONE 后可用</td><td>最多 34 cycle</td></tr>
+    <tr><td>结构冒险 (DIV FU)</td><td>DIV 忙时新 DIV 指令</td><td><code>div_busy_r</code> 阻止发射, e1_valid_out 清零</td><td>直到 DIV 完成</td></tr>
+    <tr><td>结构冒险 (LSU)</td><td>3 条 MEM 指令 (仅 2 个 LSU 端口)</td><td>第 3 条 MEM 指令未分配端口 (lsu0_occupied 标志)</td><td>需 I 级仲裁避免</td></tr>
+    <tr><td>控制冒险 (分支)</td><td>条件分支/JAL/JALR 误预测</td><td>E1 级检测 → flush F2/D/I + 重定向 PC</td><td>3 cycle (ERR-019/020)</td></tr>
+    <tr><td>控制冒险 (多槽)</td><td>多个槽同时分支</td><td>最早 slot (最低 i) 优先 redirect (ERR-020: <code>already_redirected</code>)</td><td>3 cycle</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>RTL 位置</th><th>验证覆盖</th></tr>
+    <tr>
+        <td>BC-001</td>
+        <td><strong>DIV 除零</strong>: <code>rs2 == 0</code></td>
+        <td>SA-CM-010 快速路径: DIV_IDLE 直接跳 DIV_DONE (跳过 INIT/RUNNING)。DIV/DIVU 返回 <code>0xFFFFFFFF</code> (-1); REM/REMU 返回原始被除数 <code>dividend</code> (非绝对值)。符合 RISC-V 规范。</td>
+        <td>L270-275, L336-337, L356-357</td>
+        <td>cg_div_by_zero</td>
+    </tr>
+    <tr>
+        <td>BC-002</td>
+        <td><strong>DIV 有符号溢出</strong>: <code>rs1 == 0x80000000, rs2 == 0xFFFFFFFF (DIV -1)</code></td>
+        <td>取绝对值: dividend=0x80000000, divisor=0x00000001, 商=0x80000000。符号修正: quot_negate=1 (异号), 结果=-0x80000000=0x80000000 (溢出回绕)。REM: remainder=0, remain_negate=1, 结果=-0=0。注: RTL 未做特殊路径, 依赖自然溢出行为, 结果与 RISC-V 规范一致 (商=被除数, 余数=0)。</td>
+        <td>L278-283, L330-333</td>
+        <td>cg_div_overflow</td>
+    </tr>
+    <tr>
+        <td>BC-003</td>
+        <td><strong>MUL 溢出</strong>: <code>0xFFFFFFFF * 0xFFFFFFFF</code></td>
+        <td>MUL (低 32 位): mul_full[31:0] = 0x00000001 (自然截断)。MULHU (无符号高 32 位): mul_full[63:32] = 0xFFFFFFFE。MULH (有符号): sign_extend(0xFFFFFFFF=-1) * sign_extend(0xFFFFFFFF=-1) = 1, mul_full[63:32] = 0x00000000。无溢出异常 (RISC-V M 扩展不产生溢出异常)。</td>
+        <td>L190-206</td>
+        <td>cg_mul_all_ops</td>
+    </tr>
+    <tr>
+        <td>BC-004</td>
+        <td><strong>JALR 地址对齐</strong>: <code>target = (rs1 + imm) &amp; ~1</code></td>
+        <td>位 0 强制清零, 保证目标地址半字对齐 (RV32C 压缩指令要求 2 字节对齐)。若 rs1=0x80000001, imm=0, 则 target=0x80000000。</td>
+        <td>L616</td>
+        <td>cg_jalr_resolve</td>
+    </tr>
+    <tr>
+        <td>BC-005</td>
+        <td><strong>多槽误预测优先级</strong>: 同一 cycle 多个分支槽</td>
+        <td>ERR-020: <code>already_redirected</code> 标志确保仅最早误预测 slot (最低 i) 设置 <code>e1_branch_taken/e1_branch_target/e1_branch_pc</code>。后续 slot 的误预测被忽略 (已由第一次 flush 处理)。</td>
+        <td>L145, L388, L669-684</td>
+        <td>cg_branch_mispredict</td>
+    </tr>
+    <tr>
+        <td>BC-006</td>
+        <td><strong>call/ret 检测</strong>: JAL/JALR 的 rd/rs1 特殊寄存器</td>
+        <td>ERR-044: call = (JAL|JALR) &amp;&amp; rd &isin; {x1, x5}; ret = JALR &amp;&amp; rs1 &isin; {x1, x5} &amp;&amp; rd==x0。驱动 BTB is_call/is_ret, RAS push/pop。</td>
+        <td>L661-666</td>
+        <td>cg_branch_all_types</td>
+    </tr>
+    <tr>
+        <td>BC-007</td>
+        <td><strong>FENCE store buffer 非空</strong>: FENCE 指令到达但 SB 未清空</td>
+        <td>ERR-055: <code>e1_valid_out[i] = 0</code> 阻止提交, 直到 <code>e1_sb_empty == 1</code>。</td>
+        <td>L730-733</td>
+        <td>cg_fence_drain</td>
+    </tr>
+    <tr>
+        <td>BC-008</td>
+        <td><strong>旁路 x0 豁免</strong>: 查询寄存器号为 0</td>
+        <td><code>bypass_match()</code> 第一行判断: <code>query_reg == 5'h0</code> 直接返回 <code>{hit=0, data=0}</code>, 不做任何匹配。</td>
+        <td>bypass L74-76</td>
+        <td>cg_bypass_x0</td>
+    </tr>
+    <tr>
+        <td>BC-009</td>
+        <td><strong>移位量边界</strong>: <code>shamt = 0</code> 和 <code>shamt = 31</code></td>
+        <td>SLL/SRL/SRA: <code>shamt = op2[4:0]</code>, 范围 0~31。shamt=0 时结果等于操作数本身; shamt=31 时 SRL 仅保留最高位。RORI/ROR shamt=0 时 (32-0=32) 左移 32 位结果为 0, 但或上右移 0 位 (原值), 结果正确。</td>
+        <td>L124, L512, L561</td>
+        <td>cg_alu_all_ops</td>
+    </tr>
+    <tr>
+        <td>BC-010</td>
+        <td><strong>LSU 端口地址 0x0</strong>: 有效地址恰好为 0</td>
+        <td>SA-CM-006: 使用 <code>lsu0_occupied</code> 标志替代地址 0 判断。原代码用 <code>e1_mem_addr[0]==0</code> 判断端口空闲, 但 0x0 是有效 SRAM 地址。修复后仅通过 <code>lsu0_occupied</code> 判断分配状态。</td>
+        <td>L750-751</td>
+        <td>cg_lsu_addr0</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>ECALL (M 模式)</td><td>opcode=SYSTEM(1110011), funct12=0, funct3=000</td><td><code>e1_exception=1, e1_exc_cause=EXC_ECALL_M</code>, 由 Writeback 级处理 trap</td></tr>
+    <tr><td>EBREAK</td><td>opcode=SYSTEM(1110011), funct12=1, funct3=000</td><td><code>e1_exception=1, e1_exc_cause=EXC_BREAKPOINT</code>, 由 Writeback 级处理</td></tr>
+    <tr><td>DIV FSM 非法状态</td><td>ERR-057: <code>default</code> 分支</td><td>div_state_next = DIV_IDLE (安全恢复)</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>DIV_STALL 状态:</strong> 当前未使用, 进入后直接回 DIV_IDLE。若未来扩展 stall 逻辑, 需确保有退出路径。</li>
+    <li><strong>3 条 MEM 指令同时发射:</strong> 仅 2 个 LSU 端口, 第 3 条 MEM 不会被分配到任何端口 (地址/数据保持 0)。I 级应避免此类发射。</li>
+    <li><strong>FPU 旁路命名空间:</strong> <code>fpu_rd</code> 与整数 <code>rd</code> 共享 5-bit 编码空间。当 FPU 使用独立 FRF 时, 需外部逻辑区分, 否则可能产生虚假旁路。</li>
+    <li><strong>CLZ/CTZ/CPOP 选择:</strong> R-type 使用 rs2 field 区分 (00000=CLZ, 00001=CTZ, 00010=CPOP), 其他 rs2 值在 funct3=001 路径下: R-type default 分支为 ROL (rs2[0]=1), I-type default 分支为 <code>alu_compute</code>。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: DIV FSM → DIV_IDLE, div_busy_r=0, div_valid_r=0; E2 MUL 寄存器清零; 旁路流水寄存器清零</td><td>异步 (negedge reset_n)</td></tr>
+    <tr><td><code>div_busy_r</code> (内部 stall)</td><td>DIV FU 占用期间, 新 DIV 指令的 <code>e1_valid_out[i]</code> 清零, 阻止提交</td><td>同 cycle (combinational)</td></tr>
+    <tr><td><code>e1_mispredict</code> (flush)</td><td>触发 F2/D/I 级 flush, 重定向 PC 到正确目标 (由 Fetch 级处理)</td><td>同 cycle (combinational)</td></tr>
+    <tr><td><code>e1_sb_empty</code> (FENCE stall)</td><td>FENCE 指令等待 SB 清空, <code>e1_valid_out[i]=0</code></td><td>同 cycle (combinational)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>所属模块</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr>
+        <td><code>ISSUE_WIDTH</code></td><td>lumi_execute</td><td>int</td>
+        <td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td>
+        <td>发射宽度: 控制 ALU/MUL/DIV/LSU 并行槽数。影响 e1_inst/e1_result/e1_valid 等数组维度。</td>
+    </tr>
+    <tr>
+        <td><code>ISSUE_WIDTH</code></td><td>lumi_bypass</td><td>int</td>
+        <td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td>
+        <td>发射宽度: 控制旁路查询/匹配的槽数。影响 query_rs1/rs2 和 bypass 输出数组维度。</td>
+    </tr>
+    <tr>
+        <td><code>BYPASS_PIPE_STAGES</code></td><td>lumi_bypass</td><td>int</td>
+        <td>1</td><td>1, 2, 3...</td>
+        <td>D-017: 旁路流水化级数。=1 时直接使用 E1 组合数据 (最低延迟); &gt;1 时插入流水寄存器降低关键路径, 但增加 RAW stall 周期。RISK-011 缓解措施。</td>
+    </tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>ISSUE_WIDTH</code> 必须与 <code>lumi_pkg::ISSUE_WIDTH</code> 一致 (编译期绑定)。</li>
+    <li><code>ISSUE_WIDTH=3</code> 时 LSU 端口为 2, 存在第 3 条 MEM 无法分配的结构冒险, 需 I 级仲裁保证每 cycle 最多 2 条 MEM。</li>
+    <li><code>BYPASS_PIPE_STAGES &gt; 1</code> 时, 旁路流水寄存器使用 <code>generate</code> 块实例化 (<code>gen_pipe</code>)。=1 时 <code>generate</code> 块不生成硬件。</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>所属</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>ALU 组合逻辑</td><td>lumi_execute</td><td><code>alu_compute()</code> 函数: ADD/SUB/SLL/SLT/SLTU/XOR/SRL/SRA/OR/AND</td><td>funct3, funct7_5, op1, op2 → res</td></tr>
+    <tr><td>分支判定</td><td>lumi_execute</td><td><code>branch_evaluate()</code> 函数: BEQ/BNE/BLT/BGE/BLTU/BGEU</td><td>funct3, rs1, rs2 → taken</td></tr>
+    <tr><td>MUL 组合逻辑</td><td>lumi_execute</td><td>64-bit 乘法 (有符号/无符号/MUL/MULH/MULHSU/MULHU)</td><td>e1_rs1_data, e1_rs2_data → mul_full</td></tr>
+    <tr><td>MUL E2 寄存器</td><td>lumi_execute</td><td>锁存 MUL 结果, 1-cycle 延迟输出</td><td>e2_mul_result_r, e2_mul_hi_r, e2_mul_valid_r</td></tr>
+    <tr><td>DIV FSM</td><td>lumi_execute</td><td>恢复除法状态机 (IDLE/INIT/RUNNING/DONE/STALL)</td><td>div_state_reg, div_cnt, div_quotient, div_remainder</td></tr>
+    <tr><td>E1 主循环</td><td>lumi_execute</td><td>每槽 FU 分发 + 运算 + 分支误预测检测 + LSU 分配</td><td>e1_result, e1_valid_out, e1_mispredict</td></tr>
+    <tr><td>LSU 地址分配</td><td>lumi_execute</td><td>2x LSU 端口分配 (lsu0_occupied 标志)</td><td>e1_mem_addr, e1_mem_we, e1_mem_wdata</td></tr>
+    <tr><td>旁路匹配函数</td><td>lumi_bypass</td><td><code>bypass_match()</code>: 5 路优先级匹配</td><td>query_reg → {hit, data}</td></tr>
+    <tr><td>旁路流水寄存器</td><td>lumi_bypass</td><td>BYPASS_PIPE_STAGES &gt; 1 时 E1 路径流水化</td><td>pipe_e1_result, pipe_e1_rd, pipe_e1_valid</td></tr>
+</table>
+
+<h2>8.2 内部寄存器 (lumi_execute)</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>div_state_reg</code></td><td>3 (div_state_e)</td><td>DIV_IDLE</td><td>clk↑ (div_state_next)</td><td>DIV FSM 当前状态</td></tr>
+    <tr><td><code>div_dividend</code></td><td>32</td><td>0</td><td>DIV_IDLE 加载</td><td>被除数 (绝对值或原始值)</td></tr>
+    <tr><td><code>div_divisor</code></td><td>32</td><td>0</td><td>DIV_IDLE 加载</td><td>除数 (绝对值或 0)</td></tr>
+    <tr><td><code>div_quotient</code></td><td>32</td><td>0</td><td>DIV_INIT=0, DIV_RUNNING 每 cycle</td><td>商 (逐位构建)</td></tr>
+    <tr><td><code>div_remainder</code></td><td>32</td><td>0</td><td>DIV_INIT=0, DIV_RUNNING 每 cycle</td><td>余数 (恢复除法)</td></tr>
+    <tr><td><code>div_cnt</code></td><td>6</td><td>0</td><td>DIV_INIT=32, DIV_RUNNING --</td><td>迭代计数器</td></tr>
+    <tr><td><code>div_signed</code></td><td>1</td><td>0</td><td>DIV_IDLE</td><td>有符号除法标志 (DIV/REM)</td></tr>
+    <tr><td><code>div_is_rem</code></td><td>1</td><td>0</td><td>DIV_IDLE</td><td>结果选择: 余数 vs 商</td></tr>
+    <tr><td><code>div_rd_reg</code></td><td>5</td><td>0</td><td>DIV_IDLE</td><td>DIV 目标寄存器号</td></tr>
+    <tr><td><code>div_result_r</code></td><td>32</td><td>0</td><td>DIV_DONE</td><td>DIV 最终结果 (符号修正后)</td></tr>
+    <tr><td><code>div_valid_r</code></td><td>1</td><td>0</td><td>DIV_DONE=1, 其他=0</td><td>DIV 结果有效脉冲</td></tr>
+    <tr><td><code>div_busy_r</code></td><td>1</td><td>0</td><td>DIV_IDLE 检测=1, DIV_DONE=0</td><td>DIV FU 忙标志</td></tr>
+    <tr><td><code>div_quot_negate</code></td><td>1</td><td>0</td><td>DIV_IDLE</td><td>商符号: rs1[31] XOR rs2[31] (SA-CM-002)</td></tr>
+    <tr><td><code>div_remain_negate</code></td><td>1</td><td>0</td><td>DIV_IDLE</td><td>余数符号: rs1[31] (SA-CM-002)</td></tr>
+    <tr><td><code>e2_mul_result_r</code></td><td>32</td><td>0</td><td>mul_active clk↑</td><td>MUL 低 32 位结果</td></tr>
+    <tr><td><code>e2_mul_hi_r</code></td><td>32</td><td>0</td><td>mul_active clk↑</td><td>MUL 高 32 位结果</td></tr>
+    <tr><td><code>e2_mul_valid_r</code></td><td>1</td><td>0</td><td>mul_active=1, 否则=0</td><td>MUL 结果有效</td></tr>
+    <tr><td><code>e2_mul_rd_r</code></td><td>5</td><td>0</td><td>mul_active clk↑</td><td>MUL 目标寄存器号</td></tr>
+</table>
+
+<h2>8.3 内部寄存器 (lumi_bypass)</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>pipe_e1_result[i][s]</code></td><td>32 &times; ISSUE_WIDTH &times; (STAGES-1)</td><td>0</td><td>clk↑ (BYPASS_PIPE_STAGES &gt; 1)</td><td>E1 旁路流水寄存器 (各级各槽)</td></tr>
+    <tr><td><code>pipe_e1_rd[i][s]</code></td><td>5 &times; ISSUE_WIDTH &times; (STAGES-1)</td><td>0</td><td>clk↑</td><td>E1 旁路流水 rd 寄存器</td></tr>
+    <tr><td><code>pipe_e1_valid[s]</code></td><td>ISSUE_WIDTH &times; (STAGES-1)</td><td>0</td><td>clk↑</td><td>E1 旁路流水 valid 寄存器</td></tr>
+</table>
+
+<h2>8.4 关键常量 (localparam)</h2>
+<table>
+    <tr><th>常量</th><th>值</th><th>用途</th></tr>
+    <tr><td><code>FN_ADD/FN_SUB</code></td><td>3'b000</td><td>ALU funct3: ADD (funct7[5]=0) / SUB (funct7[5]=1)</td></tr>
+    <tr><td><code>FN_SLL</code></td><td>3'b001</td><td>逻辑左移</td></tr>
+    <tr><td><code>FN_SLT/FN_SLTU</code></td><td>3'b010/3'b011</td><td>有符号/无符号比较</td></tr>
+    <tr><td><code>FN_XOR</code></td><td>3'b100</td><td>按位异或</td></tr>
+    <tr><td><code>FN_SRL/FN_SRA</code></td><td>3'b101</td><td>逻辑右移 (funct7[5]=0) / 算术右移 (funct7[5]=1)</td></tr>
+    <tr><td><code>FN_OR/FN_AND</code></td><td>3'b110/3'b111</td><td>按位或/与</td></tr>
+    <tr><td><code>BR_BEQ~BR_BGEU</code></td><td>000~111</td><td>分支 funct3 编码</td></tr>
+    <tr><td><code>MUL_MUL~MUL_REMU</code></td><td>000~111</td><td>MUL/DIV funct3 编码</td></tr>
+    <tr><td><code>LS_B/H/W/BU/HU</code></td><td>000~101</td><td>LOAD/STORE funct3 编码</td></tr>
+    <tr><td><code>OP_FENCE_OPCODE</code></td><td>7'b0001111</td><td>FENCE 指令 opcode</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>全 ALU 操作 (ADD/SUB/SLL/SLT/SLTU/XOR/SRL/SRA/OR/AND)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>全 B 扩展操作 (Zba: SH1/2/3ADD, Zbb: CLZ/CTZ/CPOP/MIN/MAX/ANDN/ORN/XNOR/ROL/ROR/RORI/REV8/ORC.B)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>全 MUL 操作 (MUL/MULH/MULHSU/MULHU)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>全 DIV 操作 (DIV/DIVU/REM/REMU)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>DIV 除零 + 有符号溢出 (BC-001, BC-002)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>全分支类型 (BEQ/BNE/BLT/BGE/BLTU/BGEU) + JAL + JALR</td><td>100%</td><td>P0</td></tr>
+    <tr><td>分支误预测 (taken/not-taken &times; predicted/not-predicted)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>DIV FSM 全状态 (IDLE/INIT/RUNNING/DONE/STALL)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>DIV FSM 全转移 (含除零快速路径 IDLE→DONE)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>旁路全优先级路径 (E1/M/W/FPU/无匹配)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>旁路 x0 豁免 (BC-008)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>AUIPC/LUI/OPIMM (ERR-023/024)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>多槽误预测优先级 (BC-005)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>call/ret 检测 (BC-006)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>FENCE drain (BC-007)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>LSU 地址 0x0 (BC-010)</td><td>100%</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>div_busy_no_new_div</code></td><td><code>div_busy_r |-> !(e1_valid[i] &amp;&amp; fu_type==FU_DIV)</code></td><td>DIV 忙时不接受新 DIV</td></tr>
+    <tr><td><code>div_done_returns_idle</code></td><td><code>(div_state_reg==DIV_DONE) |=> (div_state_reg==DIV_IDLE)</code></td><td>DIV_DONE 必须回 IDLE</td></tr>
+    <tr><td><code>div_cnt_bounds</code></td><td><code>(div_state_reg==DIV_RUNNING) |-> (div_cnt &lt;= 32 &amp;&amp; div_cnt > 0)</code></td><td>RUNNING 状态 cnt 有界</td></tr>
+    <tr><td><code>bypass_x0_no_hit</code></td><td><code>(query_rs1[i]==0) |-> (bypass_rs1_hit[i]==0)</code></td><td>x0 查询永不命中</td></tr>
+    <tr><td><code>mul_valid_one_cycle</code></td><td><code>e2_mul_valid_r |=> !e2_mul_valid_r</code> (无连续 MUL 时)</td><td>MUL valid 脉冲单 cycle</td></tr>
+    <tr><td><code>single_mispredict_redirect</code></td><td><code>e1_mispredict |-> $countones({already_redirected}) == 1</code></td><td>仅一个槽触发 redirect</td></tr>
+    <tr><td><code>div_zero_fast_path</code></td><td><code>(div_state_reg==DIV_IDLE &amp;&amp; new_div &amp;&amp; rs2==0) |=> (div_state_reg==DIV_DONE)</code></td><td>除零跳过 INIT/RUNNING</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-001</span></td><td>RV32I 整数 ALU + OPIMM + AUIPC/LUI</td><td>§2.1 F-001/F-003, §5.3</td><td><code>alu_compute()</code> L116-137, OPIMM L416-434, AUIPC/LUI L409-415</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-002</span></td><td>B 扩展位操作 (Zba/Zbb)</td><td>§2.1 F-002, §5.3</td><td>Zba L441-448, Zbb L449-588</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-003</span></td><td>分支条件判定 + JAL/JALR</td><td>§2.1 F-004/F-005, §5.3</td><td><code>branch_evaluate()</code> L147-161, JAL L608-611, JALR L614-617</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-004</span></td><td>误预测检测与 flush</td><td>§2.1 F-006, §5.7</td><td>ERR-019 L635-649, ERR-020 L669-684, ERR-044 L661-666</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-005</span></td><td>MUL 流水线化乘法</td><td>§2.1 F-007, §5.4</td><td>MUL 组合 L174-212, E2 寄存器 L787-815</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXE-006</span></td><td>DIV 迭代除法</td><td>§2.1 F-008, §4.1-4.3, §5.5</td><td>DIV FSM L217-370</td></tr>
+    <tr><td><span class="req-tag">LUMI-BYP-001</span></td><td>5 路旁路网络</td><td>§2.1 F-012, §5.6</td><td><code>bypass_match()</code> bypass L55-106</td></tr>
+    <tr><td><span class="req-tag">LUMI-BYP-002</span></td><td>旁路流水化 (D-017)</td><td>§2.1 F-013, §8.3</td><td>pipe_e1_* bypass L114-147</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="execute-alu.html">execute-alu.html</a> (LUMI-DESIGN-003) 的 RTL 级设计细化:</p>
+<table>
+    <tr><th>HLD 章节</th><th>LLD 章节</th><th>深化内容</th></tr>
+    <tr><td>HLD §2.1 ALU 操作集</td><td>LLD §5.3 + §8.4</td><td>具体 funct3/funct7 编码, opcode 分支逻辑, Zba/Zbb 实现细节</td></tr>
+    <tr><td>HLD §2.1.3 分支判断</td><td>LLD §5.3 + §6.1 BC-005/BC-006</td><td>ERR-019/020/044 修复, already_redirected 机制, call/ret 检测</td></tr>
+    <tr><td>HLD §2.2.1 MUL 流水线化</td><td>LLD §5.4 + §8.2</td><td>E2 寄存器锁存, mul_full 64-bit 组合逻辑</td></tr>
+    <tr><td>HLD §2.2.2 DIV 迭代式</td><td>LLD §4.1-4.3 + §5.5</td><td>完整 FSM 定义, 恢复除法算法, SA-CM-002/010 修复</td></tr>
+    <tr><td>HLD §4.3 旁路网络</td><td>LLD §5.6</td><td>5 路优先级矩阵, x0 豁免, BYPASS_PIPE_STAGES 参数</td></tr>
+</table>
+
+<h2>10.3 Errata 修复追溯</h2>
+<table>
+    <tr><th>Errata</th><th>问题描述</th><th>修复方案</th><th>RTL 位置</th></tr>
+    <tr><td>ERR-019</td><td>无条件认为所有 taken 分支为误预测</td><td>比较预测方向+目标与实际, 正确预测不 flush</td><td>L635-649</td></tr>
+    <tr><td>ERR-020</td><td>多槽误预测同时 redirect</td><td><code>already_redirected</code> 标志, 最早 slot 优先</td><td>L145, L388, L669-684</td></tr>
+    <tr><td>ERR-023</td><td>AUIPC/LUI 走 ALU default 路径</td><td>opcode 判断: AUIPC=PC+imm, LUI=imm</td><td>L409-415</td></tr>
+    <tr><td>ERR-024</td><td>OPIMM funct7_5 误用 (imm 高位非 funct7)</td><td>OPIMM 显式实现, SRAI 用 inst[30] 区分</td><td>L416-434</td></tr>
+    <tr><td>ERR-044</td><td>缺少 call/ret 检测</td><td>rd/rs1 &isin; {x1,x5} 检测, 驱动 RAS</td><td>L661-666</td></tr>
+    <tr><td>ERR-055</td><td>FENCE 不等待 store buffer drain</td><td>e1_sb_empty 检查, valid_out 清零</td><td>L730-733</td></tr>
+    <tr><td>ERR-057</td><td>DIV FSM 非法状态无恢复</td><td>default → DIV_IDLE</td><td>L368</td></tr>
+    <tr><td>ERR-RAS</td><td>RAS 不区分压缩指令 PC+2/PC+4</td><td>e1_br_is_compressed 输出</td><td>L666</td></tr>
+    <tr><td>SA-CM-002</td><td>DIV 符号修正用绝对值 bit[31] (错误)</td><td>保存原始符号 quot_negate/remain_negate</td><td>L282-283, L330-333</td></tr>
+    <tr><td>SA-CM-006</td><td>LSU 端口用地址 0 判断空闲</td><td>lsu0_occupied 标志替代</td><td>L750-751</td></tr>
+    <tr><td>SA-CM-009</td><td>DIV FSM 状态转移在 always_ff 中 (latch)</td><td>移至 always_comb (div_state_next)</td><td>L349-370</td></tr>
+    <tr><td>SA-CM-010</td><td>DIV 除零走完整 32-cycle 路径</td><td>IDLE→DONE 快速路径 (跳过 INIT/RUNNING)</td><td>L270-275, L356-357</td></tr>
+</table>
+
+<h2>10.4 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#execute-bypass">IC-4.x Execute/Bypass</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD: Execute &amp; Bypass &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-LLD-004 &nbsp;|&nbsp; 对应 HLD: <a href="execute-alu.html">execute-alu.html</a> (LUMI-DESIGN-003) &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-16<br>
+    RTL: <code>lumi_execute.sv</code> (825 行) + <code>lumi_bypass.sv</code> (201 行)</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — Fetch &amp; Branch Predictor (lumi_fetch + lumi_predecode)</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Fetch &amp; Branch Predictor Low Level Design</h1>
+    <p class="subtitle">F1/F2 级取指 + BTB/LTAGE/RAS 分支预测 + Predecode 指令边界扫描</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-001 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="fetch-bpred.html">fetch-bpred.html</a> (LUMI-DESIGN-001)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_fetch.sv</code> (843 行) + <code>src/rtl/core/lumi_predecode.sv</code> (237 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#fetch">IC-Fetch</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>主模块名</td><td><code>lumi_fetch</code></td></tr>
+    <tr><td>子模块名</td><td><code>lumi_predecode</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_fetch.sv</code> (843 行)</td></tr>
+    <tr><td>子模块 SV 文件</td><td><code>src/rtl/core/lumi_predecode.sv</code> (237 行)</td></tr>
+    <tr><td>依赖包</td><td><code>lumi_pkg</code> (<code>lumi_types_pkg.sv</code>)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="fetch-bpred.html">fetch-bpred.html</a> (LUMI-DESIGN-001)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-001</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>PC 生成与更新 (含 flush redirect)</td>
+        <td>完整指令解码 (属于 <a href="decode-issue.html">decode-issue.html</a>)</td>
+    </tr>
+    <tr>
+        <td>BTB 直接映射查找与更新 (8192 条目)</td>
+        <td>分支执行与判断 (属于 <a href="execute-alu.html">execute-alu.html</a>)</td>
+    </tr>
+    <tr>
+        <td>RAS 返回地址栈 push/pop (32 级)</td>
+        <td>ICache 存储阵列 (属于 <a href="cache.html">cache.html</a>)</td>
+    </tr>
+    <tr>
+        <td>LTAGE TAGE 分支预测 (12 表, 3-bit 饱和计数器)</td>
+        <td>PMP/PMA 地址检查 (属于 <a href="pma-axi.html">pma-axi.html</a>)</td>
+    </tr>
+    <tr>
+        <td>F1/F2 流水线寄存器管理</td>
+        <td>DIB (Decode Issue Buffer) 管理 (属于 decode-issue)</td>
+    </tr>
+    <tr>
+        <td>Predecode 指令边界扫描 + RV32C 压缩展开</td>
+        <td>Loop Predictor (HLD 规划, RTL 尚未实现)</td>
+    </tr>
+    <tr>
+        <td>跨 cache line 边界的 carry halfword 管理</td>
+        <td></td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="cache.html">ICache</a> (<code>f2_icache_data/valid</code>), <a href="execute-alu.html">Execute E1</a> (分支反馈), <a href="writeback-csr.html">Writeback</a> (trap redirect), <a href="debug-trace.html">Debug</a> (<code>debug_halt</code>)</p>
+<p><strong>下游:</strong> <a href="decode-issue.html">Decode/Issue</a> (<code>f2_instructions</code>, <code>f2_valid</code>, predecode 接口)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 (RTL 同步审查, 含 ERR-019/042/044 及 SA-CM 系列修复)</td><td>ERR-019, ERR-042, ERR-044, ERR-BTB, ERR-RAS, SA-CM-004~008</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>PC 生成与更新</td><td>维护 32-bit PC 寄存器, 支持顺序前进、分支跳转、trap 重定向、flush redirect</td><td><span class="req-tag">LUMI-FETCH-001</span></td></tr>
+    <tr><td>F-002</td><td>BTB 查找 (F1 级)</td><td>直接映射 8192 条目, 支持 slot-0 和组级多位置查找 (ERR-BTB 修复)</td><td><span class="req-tag">LUMI-FETCH-002</span></td></tr>
+    <tr><td>F-003</td><td>LTAGE 分支预测 (F1 级)</td><td>12 张 TAGE 表, 几何历史长度, 3-bit 饱和计数器, 最长历史命中优先</td><td><span class="req-tag">LUMI-FETCH-003</span></td></tr>
+    <tr><td>F-004</td><td>RAS 返回地址栈</td><td>32 级循环栈, execute-level 非推测更新 (ERR-RAS-FIX), call push / ret pop</td><td><span class="req-tag">LUMI-FETCH-004</span></td></tr>
+    <tr><td>F-005</td><td>F1→F2 流水线</td><td>F1 送出 PC 到 ICache, F2 接收 ICache 数据并锁存预测信息</td><td><span class="req-tag">LUMI-PIPE-001</span></td></tr>
+    <tr><td>F-006</td><td>Predecode 指令边界扫描</td><td>从 128-bit fetch block 识别 RV32IMAC 指令边界, 支持 16/32-bit 混合</td><td><span class="req-tag">ERR-042</span></td></tr>
+    <tr><td>F-007</td><td>RV32C 压缩指令展开</td><td>调用 <code>lumi_pkg::c_ext_expand()</code> 将 16-bit 压缩指令展开为 32-bit</td><td><span class="req-tag">LUMI-ISA-005</span></td></tr>
+    <tr><td>F-008</td><td>跨 cache line carry</td><td>管理跨 16-byte 边界的 halfword carry (carry_hw / carry_valid)</td><td><span class="req-tag">ERR-042</span></td></tr>
+    <tr><td>F-009</td><td>误预测 flush 恢复</td><td>2-cycle flush 延迟 + PC redirect + 流水线清除 + 预测器更新</td><td><span class="req-tag">LUMI-FETCH-002</span></td></tr>
+    <tr><td>F-010</td><td>Decode back-pressure</td><td>响应 <code>dec_stall</code> 和 <code>dib_not_full</code> 信号, PC 保持不前进</td><td><span class="req-tag">ERR-019</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常取指</td><td><code>ST_FETCH</code> + <code>f2_icache_valid=1</code> + <code>!dec_stall</code></td><td>PC 按 predecode <code>bytes_consumed</code> 前进, F2 捕获 ICache 数据</td></tr>
+    <tr><td>分支预测跳转</td><td><code>f1_pred_taken_comb=1</code> + BTB hit</td><td>PC 跳转至预测目标 (BTB target 或 RAS peek), F2 截断分支后指令</td></tr>
+    <tr><td>Decode stall</td><td><code>dec_stall=1</code> 或 <code>dib_not_full=0</code></td><td>PC 保持, F2 valid 清除防止 DIB 重复写入</td></tr>
+    <tr><td>Mispredict flush</td><td><code>branch_redirect_valid</code> 上升沿</td><td>进入 ST_FLUSH (2 cycle), PC 设为 redirect PC, 清除 F2/RAS/BTB/LTAGE 错误路径</td></tr>
+    <tr><td>Trap redirect</td><td><code>trap_redirect_valid=1</code></td><td>优先级最高, 进入 ST_FLUSH, PC 设为 mtvec 地址</td></tr>
+    <tr><td>Debug halt</td><td><code>debug_halt=1</code></td><td>进入 ST_HALT, PC 冻结, F2 停止输出</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表 — <code>lumi_fetch</code></h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- Clock & Reset -->
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位, 低有效</td><td>全局异步复位</td>
+    </tr>
+    <!-- F1 输出 -->
+    <tr>
+        <td><code>f1_pc_out</code></td><td>output</td><td>32</td><td><code>RESET_VECTOR</code></td>
+        <td>CLK_CORE</td><td>无 (直连 ICache 地址)</td><td>combinational (从 FSM 组合输出)</td><td>F1 级取指地址, 送往 ICache</td>
+    </tr>
+    <!-- F2 ICache 输入 -->
+    <tr>
+        <td><code>f2_icache_data</code></td><td>input</td><td>128</td><td>—</td>
+        <td>CLK_CORE</td><td>valid 门控</td><td>combinational (V1 SRAM 旁路, 0 latency)</td><td>ICache 返回的 128-bit cache line (4 条 32-bit 指令)</td>
+    </tr>
+    <tr>
+        <td><code>f2_icache_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid 门控</td><td>combinational</td><td>ICache 数据有效指示</td>
+    </tr>
+    <!-- F2 输出 (→ Decode) -->
+    <tr>
+        <td><code>f2_instructions</code></td><td>output</td><td>32&times;6</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready (<code>f2_valid</code>/<code>dib_not_full</code>)</td><td>registered (<code>f2_data_r</code> 拆分)</td><td>展开后的 32-bit 指令数组, 最多 FETCH_WIDTH 条</td>
+    </tr>
+    <tr>
+        <td><code>f2_inst_count</code></td><td>output</td><td>$clog2(6)+1 = 4</td><td>0</td>
+        <td>CLK_CORE</td><td>同 <code>f2_valid</code></td><td>combinational (来自 predecode)</td><td>当前 F2 批次有效指令数</td>
+    </tr>
+    <tr>
+        <td><code>f2_valid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational flush override: <code>branch_redirect_valid ? 0 : f2_valid_r</code></td><td>F2 数据有效, flush 时组合清除</td>
+    </tr>
+    <tr>
+        <td><code>f2_pc_out</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>同 <code>f2_valid</code></td><td>registered</td><td>F2 级 PC (对应 F2 数据的取指地址)</td>
+    </tr>
+    <tr>
+        <td><code>f2_pred_taken</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>同 <code>f2_valid</code></td><td>registered</td><td>F2 分支预测 taken 标志</td>
+    </tr>
+    <tr>
+        <td><code>f2_pred_target</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>同 <code>f2_valid</code></td><td>registered</td><td>F2 分支预测目标地址</td>
+    </tr>
+    <!-- Predecode 接口 (ERR-042) -->
+    <tr>
+        <td><code>f2_raw_data_out</code></td><td>output</td><td>128</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连 <code>f2_icache_data</code>)</td><td>combinational</td><td>F2 原始 128-bit 数据, 送 predecode</td>
+    </tr>
+    <tr>
+        <td><code>f2_base_pc_out</code></td><td>output</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连 <code>pc_reg</code>)</td><td>combinational</td><td>当前 PC (含 offset)</td>
+    </tr>
+    <tr>
+        <td><code>f2_start_offset_out</code></td><td>output</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连 <code>pc_reg[3:0]</code>)</td><td>combinational</td><td>PC[3:0] 起始字节偏移</td>
+    </tr>
+    <tr>
+        <td><code>f2_pred_taken_out</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连 <code>f1_pred_taken_comb</code>)</td><td>combinational</td><td>F1 预测 taken, 送 predecode 用于截断</td>
+    </tr>
+    <tr>
+        <td><code>f2_carry_hw_out</code></td><td>output</td><td>16</td><td>0</td>
+        <td>CLK_CORE</td><td>同 F2 同步</td><td>registered</td><td>carry halfword: 上一 fetch block 未完成的 16-bit</td>
+    </tr>
+    <tr>
+        <td><code>f2_carry_valid_out</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>同 F2 同步</td><td>registered</td><td>carry halfword 有效标志</td>
+    </tr>
+    <tr>
+        <td><code>pred_branch_slot</code></td><td>output</td><td>4</td><td>4'hF</td>
+        <td>CLK_CORE</td><td>无 (组合逻辑)</td><td>combinational</td><td>预测分支所在 slot (0~7), 0xF=无预测</td>
+    </tr>
+    <!-- 分支反馈 (← Execute E1) -->
+    <tr>
+        <td><code>branch_redirect_pc</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲 (边沿检测)</td><td>combinational</td><td>分支误预测纠正 PC (正确目标地址)</td>
+    </tr>
+    <tr>
+        <td><code>branch_redirect_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲 (边沿检测)</td><td>combinational, 上升沿触发 flush</td><td>误预测纠正有效 (SA-CM-REDIRECT-FIX: 短脉冲)</td>
+    </tr>
+    <!-- Trap 重定向 -->
+    <tr>
+        <td><code>trap_redirect_pc</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational, 优先级高于 branch redirect</td><td>Trap 重定向地址 (mtvec)</td>
+    </tr>
+    <tr>
+        <td><code>trap_redirect_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>Trap 发生信号</td>
+    </tr>
+    <!-- LTAGE 更新 -->
+    <tr>
+        <td><code>tage_update_pc</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>valid 门控</td><td>registered (时序更新)</td><td>LTAGE 更新用 PC (分支指令地址)</td>
+    </tr>
+    <tr>
+        <td><code>tage_update_taken</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>实际分支方向 (1=taken)</td>
+    </tr>
+    <tr>
+        <td><code>tage_update_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid 门控</td><td>registered</td><td>LTAGE 更新有效</td>
+    </tr>
+    <!-- 分支类型反馈 (ERR-019/044) -->
+    <tr>
+        <td><code>br_update_is_jal</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>分支为 JAL 类型</td>
+    </tr>
+    <tr>
+        <td><code>br_update_is_jalr</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>分支为 JALR 类型</td>
+    </tr>
+    <tr>
+        <td><code>br_update_is_call</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>分支为 CALL (rd=x1/x5)</td>
+    </tr>
+    <tr>
+        <td><code>br_update_is_ret</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>分支为 RET (rs1=x1/x5, rd=x0)</td>
+    </tr>
+    <tr>
+        <td><code>br_update_is_compressed</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 <code>tage_update_valid</code></td><td>registered</td><td>分支为压缩指令 (影响 RAS push PC+2 vs PC+4)</td>
+    </tr>
+    <!-- Predecode 反馈 -->
+    <tr>
+        <td><code>predecode_bytes_consumed</code></td><td>input</td><td>5</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连 predecode 输出)</td><td>combinational</td><td>Predecode 消耗的字节数 (PC 前进量)</td>
+    </tr>
+    <tr>
+        <td><code>predecode_inst_count</code></td><td>input</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连)</td><td>combinational</td><td>Predecode 识别的有效指令数</td>
+    </tr>
+    <tr>
+        <td><code>predecode_carry_hw_out</code></td><td>input</td><td>16</td><td>—</td>
+        <td>CLK_CORE</td><td>同 F2 同步</td><td>combinational</td><td>Predecode 输出的新 carry halfword</td>
+    </tr>
+    <tr>
+        <td><code>predecode_carry_valid_out</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>同 F2 同步</td><td>combinational</td><td>Predecode carry 有效</td>
+    </tr>
+    <!-- Decode back-pressure -->
+    <tr>
+        <td><code>dec_stall</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready (反压)</td><td>combinational (FSM 使用) + registered (<code>dec_stall_r</code> 供 F2 捕获门控)</td><td>Decode 阻塞: 保持 PC 不前进</td>
+    </tr>
+    <tr>
+        <td><code>dib_not_full</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready (反压)</td><td>combinational</td><td>DIB 有空间 (替代旧的 dec_all_issued)</td>
+    </tr>
+    <!-- Debug -->
+    <tr>
+        <td><code>debug_halt</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平</td><td>combinational (FSM 判断)</td><td>Debug halt 请求</td>
+    </tr>
+</table>
+
+<h2>3.2 端口完整列表 — <code>lumi_predecode</code></h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>raw_data</code></td><td>input</td><td>128</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连)</td><td>combinational</td><td>128-bit ICache line 数据</td>
+    </tr>
+    <tr>
+        <td><code>base_pc</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>无 (组合直连)</td><td>combinational</td><td>PC (含 offset), 内部提取 16-byte 对齐基地址</td>
+    </tr>
+    <tr>
+        <td><code>start_offset</code></td><td>input</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>PC[3:0] 起始字节偏移 (0 或偶数)</td>
+    </tr>
+    <tr>
+        <td><code>carry_hw</code></td><td>input</td><td>16</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>上一 fetch block 未完成的 halfword</td>
+    </tr>
+    <tr>
+        <td><code>carry_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>carry_hw 有效</td>
+    </tr>
+    <tr>
+        <td><code>pred_taken</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>分支预测 taken</td>
+    </tr>
+    <tr>
+        <td><code>pred_branch_slot</code></td><td>input</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>预测分支所在 slot (0xF=无)</td>
+    </tr>
+    <tr>
+        <td><code>inst</code></td><td>output</td><td>32&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>展开后的 32-bit 指令数组</td>
+    </tr>
+    <tr>
+        <td><code>inst_pc</code></td><td>output</td><td>32&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>每条指令对应的 PC 地址</td>
+    </tr>
+    <tr>
+        <td><code>inst_valid</code></td><td>output</td><td>6</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>每条指令有效标志</td>
+    </tr>
+    <tr>
+        <td><code>inst_compressed</code></td><td>output</td><td>6</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>原始为 16-bit 压缩指令标志</td>
+    </tr>
+    <tr>
+        <td><code>inst_raw</code></td><td>output</td><td>16&times;6</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>原始 16-bit halfword</td>
+    </tr>
+    <tr>
+        <td><code>inst_count</code></td><td>output</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>有效指令数</td>
+    </tr>
+    <tr>
+        <td><code>bytes_consumed</code></td><td>output</td><td>5</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>PC 前进量 (字节), 仅取值 0/2/4/6/8/10/12/14/16</td>
+    </tr>
+    <tr>
+        <td><code>carry_hw_out</code></td><td>output</td><td>16</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>新的未完成 halfword (跨 cache line)</td>
+    </tr>
+    <tr>
+        <td><code>carry_valid_out</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>无</td><td>combinational</td><td>新 carry 有效</td>
+    </tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>无</td><td colspan="3">本模块所有端口均在 CLK_CORE 时钟域内, 无跨时钟域接口</td></tr>
+</table>
+
+<h2>3.4 接口时序图 — F2 数据捕获与 back-pressure</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant IC as ICache
+    participant F as lumi_fetch (F2)
+    participant PD as Predecode
+    participant D as Decode/DIB
+
+    IC->>F: f2_icache_data, f2_icache_valid=1
+    F->>PD: raw_data, base_pc, start_offset, carry_hw
+    PD-->>F: bytes_consumed, inst_count, carry_hw_out
+    F->>D: f2_valid=1, f2_instructions, f2_inst_count
+    D-->>F: dib_not_full=1, dec_stall=0
+    Note over F,D: clk↑: F2 捕获新数据, PC 前进 bytes_consumed
+
+    D-->>F: dec_stall=1
+    Note over F: PC 保持, f2_valid_r←0, carry 保持
+    D-->>F: dec_stall=0, dib_not_full=1
+    Note over F: 恢复正常取指
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码 (3-bit)</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'd0</td><td>空闲等待 (复位态)</td><td>reset_n=0 或 default 恢复</td></tr>
+    <tr><td><code>ST_FETCH</code></td><td>3'd1</td><td>正常取指</td><td>ST_IDLE 退出 / ST_FLUSH 完成 / ST_HALT 释放 / ST_STALL 恢复</td></tr>
+    <tr><td><code>ST_STALL</code></td><td>3'd2</td><td>ICache 未就绪 stall</td><td>ST_FETCH 中 <code>!f2_icache_valid</code></td></tr>
+    <tr><td><code>ST_FLUSH</code></td><td>3'd3</td><td>流水线冲刷 (2 cycle 延迟)</td><td>branch redirect 或 trap redirect</td></tr>
+    <tr><td><code>ST_HALT</code></td><td>3'd4</td><td>Debug halt 冻结</td><td><code>debug_halt=1</code></td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_FETCH : !debug_halt
+    ST_IDLE --> ST_HALT : debug_halt
+    ST_FETCH --> ST_FETCH : f2_icache_valid && !pred_taken && !post_flush_hold
+    ST_FETCH --> ST_FETCH : f2_icache_valid && pred_taken (PC←target)
+    ST_FETCH --> ST_FETCH : f2_icache_valid && post_flush_hold (PC hold)
+    ST_FETCH --> ST_FETCH : dec_stall || !dib_not_full (PC hold)
+    ST_FETCH --> ST_STALL : !f2_icache_valid
+    ST_FETCH --> ST_FLUSH : branch_redirect_valid (PC←redirect)
+    ST_FETCH --> ST_FLUSH : trap_redirect_valid (PC←mtvec)
+    ST_FETCH --> ST_HALT : debug_halt
+    ST_STALL --> ST_FETCH : f2_icache_valid (PC advance)
+    ST_STALL --> ST_STALL : dec_stall || !f2_icache_valid
+    ST_STALL --> ST_FLUSH : branch_redirect_valid
+    ST_STALL --> ST_FLUSH : trap_redirect_valid
+    ST_STALL --> ST_HALT : debug_halt
+    ST_FLUSH --> ST_FLUSH : flush_cnt > 0
+    ST_FLUSH --> ST_FETCH : flush_cnt == 0
+    ST_HALT --> ST_FETCH : !debug_halt
+    ST_HALT --> ST_HALT : debug_halt
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_FETCH</td><td><code>!debug_halt</code></td><td><code>pc_next = RESET_VECTOR</code></td></tr>
+    <tr><td>ST_IDLE</td><td>ST_HALT</td><td><code>debug_halt</code></td><td>PC 保持</td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FLUSH</td><td><code>trap_redirect_valid</code> (最高优先级)</td><td><code>pc_next = trap_redirect_pc</code>, <code>flush_cnt = 2</code></td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FLUSH</td><td><code>branch_redirect_valid</code></td><td><code>pc_next = branch_redirect_pc</code>, <code>flush_cnt = 2</code></td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FETCH</td><td><code>dec_stall || !dib_not_full</code></td><td><code>pc_next = pc_reg</code> (PC hold)</td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FETCH</td><td><code>f2_icache_valid && f1_pred_taken_comb</code></td><td><code>pc_next = f1_pred_target_comb</code></td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FETCH</td><td><code>f2_icache_valid && post_flush_hold_r</code></td><td><code>pc_next = pc_reg</code> (SA-CM-PCFIX: 保持 1 cycle)</td></tr>
+    <tr><td>ST_FETCH</td><td>ST_FETCH</td><td><code>f2_icache_valid && !pred && !hold</code></td><td><code>pc_next = pc_reg + bytes_consumed</code></td></tr>
+    <tr><td>ST_FETCH</td><td>ST_STALL</td><td><code>!f2_icache_valid</code></td><td>PC 保持</td></tr>
+    <tr><td>ST_FETCH</td><td>ST_HALT</td><td><code>debug_halt</code></td><td>PC 冻结</td></tr>
+    <tr><td>ST_STALL</td><td>ST_FLUSH</td><td><code>trap_redirect_valid</code> / <code>branch_redirect_valid</code></td><td>同 ST_FETCH flush</td></tr>
+    <tr><td>ST_STALL</td><td>ST_FETCH</td><td><code>f2_icache_valid</code></td><td>PC 前进 (pred 或 bytes_consumed)</td></tr>
+    <tr><td>ST_STALL</td><td>ST_STALL</td><td><code>dec_stall || !f2_icache_valid</code></td><td>PC 保持</td></tr>
+    <tr><td>ST_FLUSH</td><td>ST_FLUSH</td><td><code>flush_cnt > 0</code></td><td><code>flush_cnt--</code></td></tr>
+    <tr><td>ST_FLUSH</td><td>ST_FETCH</td><td><code>flush_cnt == 0</code></td><td>恢复取指</td></tr>
+    <tr><td>ST_HALT</td><td>ST_FETCH</td><td><code>!debug_halt</code></td><td>恢复取指</td></tr>
+    <tr><td>default</td><td>ST_IDLE</td><td>非法状态</td><td>安全恢复 (ERR-057)</td></tr>
+</table>
+
+<div class="warn"><strong>Branch redirect 边沿检测 (SA-CM-REDIRECT-FIX):</strong>
+<code>branch_redirect_valid</code> 是短脉冲信号, FSM override 仅在 <code>branch_redirect_valid && !branch_redirect_valid_d</code> (上升沿) 时触发, 且 <code>state_reg != ST_FLUSH</code> 时生效。flush 期间的 redirect 被忽略, 防止错误路径指令反复覆盖 PC。</div>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> <code>ST_FLUSH</code> 使用 <code>flush_cnt</code> 倒计时 (初始值 2), 保证有限步内退出。ST_STALL 在 redirect/trap 时也能跳出, 不会永久 stall。</li>
+    <li><strong>活锁防护:</strong> default 状态转移回 ST_IDLE (ERR-057), 防止 FSM 进入非法状态后死循环。Debug halt 为电平触发, 外部释放后自动恢复。</li>
+    <li><strong>Post-flush hold (SA-CM-PCFIX):</strong> <code>post_flush_hold_r</code> 保证 flush 后第一个 ST_FETCH 周期 PC 不前进, 使 predecode 用正确的 <code>start_offset</code> 处理 F2 捕获的数据。</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 F1 级数据通路 (组合逻辑, 0 cycle)</h2>
+<pre class="mermaid">
+graph LR
+    PC[pc_reg] --> BTB[BTB 查找<br/>idx=PC13:1, tag=PC31:14]
+    PC --> LTAGE[LTAGE 12表并行查找<br/>idx=PC XOR hist]
+    PC --> GRP[组级 BTB 查找<br/>grp_base + slot 1~7]
+    BTB --> DECISION[分支预测决策]
+    LTAGE --> DECISION
+    GRP --> DECISION
+    RAS[RAS peek] --> DECISION
+    DECISION --> |pred_taken| PRED_TARGET[f1_pred_target_comb]
+    DECISION --> |pred_taken| PRED_TAKEN[f1_pred_taken_comb]
+    PC --> |f1_pc_out| IC[ICache 地址]
+</pre>
+
+<p><strong>F1 关键路径:</strong> <code>pc_reg</code> → BTB/LTAGE 并行查找 → 分支决策 → <code>f1_pred_target_comb</code> / <code>pc_next</code>。BTB 和 LTAGE 均为组合逻辑, 与 PC 生成并行执行。</p>
+
+<h2>5.2 F2 级数据通路</h2>
+<pre class="mermaid">
+graph LR
+    IC[ICache 128-bit] --> F2REG[F2 流水线寄存器<br/>f2_data_r]
+    IC --> PD[Predecode 组合逻辑]
+    PD --> BC[bytes_consumed]
+    PD --> CC[inst_count]
+    PD --> CARRY[carry_hw_out]
+    F2REG --> SPLIT[指令拆分<br/>6x32-bit]
+    SPLIT --> OUT[f2_instructions]
+    BC --> PC_NEXT[pc_next 计算]
+    F1PRED[F1 预测] --> F2REG2[F2 预测寄存器]
+    F2REG2 --> OUT2[f2_pred_taken/target]
+</pre>
+
+<h2>5.3 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>F1 动作</th><th>F2 动作</th><th>PC 更新</th><th>备注</th></tr>
+    <tr><td>T</td><td><code>f1_pc_out = pc_reg</code>, BTB/LTAGE 查找</td><td>ICache 返回 <code>f2_icache_data</code> (组合, 0 latency)</td><td><code>pc_next = pc_reg + bytes_consumed</code> 或 pred target</td><td>V1 SRAM 旁路: ICache 数据对应当前 PC</td></tr>
+    <tr><td>T+1</td><td>新 PC 的 BTB/LTAGE 查找</td><td><code>f2_data_r</code> 锁存 T 周期的 ICache 数据, <code>f2_valid_r=1</code></td><td><code>pc_reg</code> 更新为 T 周期计算的 <code>pc_next</code></td><td>F2 数据与 F1 预测在同一周期捕获</td></tr>
+    <tr><td>Flush T</td><td><code>branch_redirect_valid</code> 触发</td><td><code>f2_valid</code> 组合清零</td><td><code>pc_next = branch_redirect_pc</code></td><td>进入 ST_FLUSH, flush_cnt=2</td></tr>
+    <tr><td>Flush T+1~T+2</td><td>ST_FLUSH, PC 已更新</td><td><code>f2_valid_r</code> 保持 0</td><td>PC 不变</td><td>等待流水线冲刷</td></tr>
+    <tr><td>Flush T+3</td><td>ST_FETCH, 新 PC 取指</td><td>首个有效 F2 数据 (post_flush_hold)</td><td><code>pc_next = pc_reg</code> (hold 1 cycle)</td><td>SA-CM-PCFIX: 保证 start_offset 正确</td></tr>
+</table>
+
+<h2>5.4 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>pc_reg → BTB idx/tag → BTB hit/target → pred decision → pc_next</td><td>~6 级 (MUX + CMP + MUX)</td><td>~80ps</td><td>BTB 直接映射, 单端口 SRAM 读取</td></tr>
+    <tr><td>pc_reg → LTAGE 12 表 idx/tag → 12 表并行 hit → 最长历史选择 → ltage_pred</td><td>~8 级 (XOR + CMP + priority MUX)</td><td>~100ps</td><td>12 表并行, 高索引优先选择</td></tr>
+    <tr><td>f2_icache_data → predecode → bytes_consumed → pc_next</td><td>~10 级 (扫描循环 + 展开)</td><td>~120ps</td><td>predecode 是纯组合逻辑, 6 条指令串行扫描</td></tr>
+    <tr><td>branch_redirect_valid → FSM override → pc_next → pc_reg</td><td>~4 级 (边沿检测 + MUX)</td><td>~40ps</td><td>SA-CM-REDIRECT-FIX 边沿检测</td></tr>
+</table>
+
+<h2>5.5 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>控制冒险</td><td>分支误预测</td><td>Flush F2+D+I (2 cycle), PC redirect, BTB/LTAGE 更新</td><td>3 cycle (含 flush 延迟)</td></tr>
+    <tr><td>控制冒险</td><td>JALR 间接跳转目标未知</td><td>BTB 缓存历史目标, 误预测时 execute 反馈更新 BTB</td><td>3 cycle (同分支误预测)</td></tr>
+    <tr><td>结构冒险</td><td>Decode DIB 满</td><td><code>dib_not_full=0</code> → PC hold, F2 valid 保持</td><td>0~N cycle (动态)</td></tr>
+    <tr><td>结构冒险</td><td>Decode issue stall</td><td><code>dec_stall=1</code> → PC hold, f2_valid_r←0 防重复写入</td><td>0~N cycle (动态)</td></tr>
+    <tr><td>数据冒险</td><td>跨 cache line 边界指令</td><td>carry_hw 机制: 保存未完成 halfword, 下次 fetch 拼接</td><td>0 cycle (透明处理)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>RTL 实现位置</th></tr>
+    <tr>
+        <td>BC-001</td>
+        <td><strong>Flush 期间的 redirect 忽略</strong>: 错误路径指令在 E1 继续执行并产生新的 mispredict 信号</td>
+        <td>FSM override 仅在 <code>state_reg != ST_FLUSH</code> 时接受 redirect; 边沿检测防止连续触发</td>
+        <td>L808: <code>state_reg != ST_FLUSH</code> 条件门控</td>
+    </tr>
+    <tr>
+        <td>BC-002</td>
+        <td><strong>分支误预测恢复 — RAS/BTB/LTAGE 防污染</strong>: flush 期间错误路径指令不应更新预测器</td>
+        <td>RAS push/pop 条件 <code>state_reg != ST_FLUSH</code>; BTB 写入同样门控; LTAGE 更新同样门控</td>
+        <td>L548, L559, L565: <code>state_reg != ST_FLUSH</code> 门控</td>
+    </tr>
+    <tr>
+        <td>BC-003</td>
+        <td><strong>PC 非对齐</strong>: PC[0] 必须为 0 (2-byte aligned, 支持 C 扩展)</td>
+        <td>SVA 断言 <code>pc_next[0] == 0</code>; BTB 索引跳过 bit[0] (<code>PC[13:1]</code>); 所有 PC 增量为偶数</td>
+        <td>L817-819: assertion</td>
+    </tr>
+    <tr>
+        <td>BC-004</td>
+        <td><strong>跨 cache line 边界的 32-bit 指令</strong>: 32-bit 指令的高 16-bit 在当前 block 末尾, 低 16-bit 在下一 block</td>
+        <td>carry_hw 机制: predecode 保存未完成 halfword, 下次 fetch 作为 eff_data[15:0] 拼接, PC 计算补偿 -2</td>
+        <td>predecode L146-150: carry 生成; L76-98: carry 处理</td>
+    </tr>
+    <tr>
+        <td>BC-005</td>
+        <td><strong>Post-flush PC hold (SA-CM-PCFIX)</strong>: flush 后首周期, F2 捕获 redirect 目标数据但 PC 同时前进会导致 start_offset 错误</td>
+        <td><code>post_flush_hold_r</code> 标志: 进入 FLUSH 时设置, 在 ST_FETCH 首周期清除, 期间 PC 保持不变</td>
+        <td>L493-496: hold 设置/清除; L719-727: PC hold</td>
+    </tr>
+    <tr>
+        <td>BC-006</td>
+        <td><strong>F2 重复捕获导致 DIB 重复写入</strong>: stall 时 PC 不前进, 相同 F2 数据被反复送入 DIB</td>
+        <td><code>!dec_stall</code> 条件门控 F2 捕获; stall 时 <code>f2_valid_r ← 0</code></td>
+        <td>L512: <code>!dec_stall</code> 条件; L525: valid 清除</td>
+    </tr>
+    <tr>
+        <td>BC-007</td>
+        <td><strong>RAS 溢出 (嵌套调用 &gt; 32 层)</strong>: ras_top 回绕到 0, 旧的返回地址被覆盖</td>
+        <td>循环栈设计: <code>ras_top == RAS_DEPTH-1</code> 时 push 回绕到 0; pop 时 <code>ras_top == 0</code> 回绕到 RAS_DEPTH-1</td>
+        <td>L550, L553: 回绕逻辑</td>
+    </tr>
+    <tr>
+        <td>BC-008</td>
+        <td><strong>Trap 与 branch redirect 同时发生</strong></td>
+        <td>Trap 优先级最高 (SA-CM-007): FSM case 中 trap_redirect_valid 在 branch_redirect_valid 之前判断; override 中 trap 抑制 branch</td>
+        <td>L701 vs L706: trap 优先; L808: <code>!trap_redirect_valid</code> 门控</td>
+    </tr>
+    <tr>
+        <td>BC-009</td>
+        <td><strong>组级 BTB 查找中的陈旧条目</strong>: 16-byte group 内 PC 之前的 BTB 条目被错误匹配</td>
+        <td>SA-CM-005: <code>pc_slot_in_grp</code> 计算 PC 在 group 中的位置, 仅搜索 p &gt; pc_slot_in_grp</td>
+        <td>L343, L396: slot 过滤</td>
+    </tr>
+    <tr>
+        <td>BC-010</td>
+        <td><strong>Predecode bytes_consumed 非法值</strong></td>
+        <td>SVA 断言: <code>bytes_consumed inside {0,2,4,6,8,10,12,14,16}</code></td>
+        <td>predecode L230-232: assertion</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>PC 非对齐 (PC[0]≠0)</td><td>SVA 断言 (仿真阶段)</td><td>RTL 保证增量均为偶数 (bytes_consumed 为偶数, pred target 来自 BTB 存储的正确地址)</td></tr>
+    <tr><td>FSM 非法状态</td><td>default case</td><td>自动恢复到 ST_IDLE (ERR-057)</td></tr>
+    <tr><td>bytes_consumed 非法</td><td>SVA 断言</td><td>组合逻辑保证仅产生偶数值</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><code>branch_redirect_valid</code> 和 <code>trap_redirect_valid</code> 同时为 1: 行为已定义 — trap 优先 (SA-CM-007)</li>
+    <li>BTB 索引回绕: <code>grp_base_idx + p</code> 可能超过 BTB_ENTRIES, 行为依赖 SRAM 地址回绕 (综合工具处理)</li>
+    <li>RAS 为空时 peek: <code>ras_top == 0</code> 时读取 <code>ras_stack[RAS_DEPTH-1]</code>, 若从未 push 则返回 0</li>
+    <li><code>debug_halt</code> 在 ST_FLUSH 期间拉高: flush 完成后进入 ST_FETCH, 然后检测到 halt 进入 ST_HALT</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>dec_stall</code></td><td>FSM 保持 PC 不变; <code>f2_valid_r ← 0</code> 防止 DIB 重复写入; carry 保持</td><td>同 cycle FSM 判断; F2 寄存器下一 clk↑ 生效</td></tr>
+    <tr><td><code>dib_not_full = 0</code></td><td>同 dec_stall: PC hold, F2 数据保持</td><td>同 cycle FSM 判断</td></tr>
+    <tr><td><code>branch_redirect_valid</code></td><td>组合清除 <code>f2_valid</code>; 进入 ST_FLUSH (2 cycle); PC 设为 redirect PC; carry 清零</td><td>组合立即清除 f2_valid; 状态/PC 下一 clk↑ 更新</td></tr>
+    <tr><td><code>trap_redirect_valid</code></td><td>同 branch redirect, 但优先级更高, PC 设为 mtvec</td><td>同上</td></tr>
+    <tr><td><code>reset_n = 0</code></td><td>异步复位所有寄存器: FSM→ST_IDLE, PC→RESET_VECTOR, BTB/RAS/LTAGE 全部清零</td><td>异步</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>来源</th><th>影响描述</th></tr>
+    <tr><td><code>FETCH_WIDTH</code></td><td>int</td><td>6 (= <code>lumi_pkg::FETCH_WIDTH</code>)</td><td>模块参数</td><td>每 cycle 取指条数, 影响 <code>f2_instructions</code> 数组大小和 <code>f2_inst_count</code> 位宽</td></tr>
+    <tr><td><code>BTB_ENTRIES</code></td><td>int</td><td>8192 (= <code>lumi_pkg::BTB_ENTRIES</code>)</td><td>模块参数</td><td>BTB 条目数, 决定 <code>BTB_IDX_W = $clog2(BTB_ENTRIES) = 13</code></td></tr>
+    <tr><td><code>RAS_DEPTH</code></td><td>int</td><td>32 (= <code>lumi_pkg::RAS_DEPTH</code>)</td><td>模块参数</td><td>RAS 深度, 决定 <code>RAS_PTR_W = $clog2(RAS_DEPTH) = 5</code></td></tr>
+    <tr><td><code>LTAGE_TABLES</code></td><td>int</td><td>12 (= <code>lumi_pkg::LTAGE_TABLES</code>)</td><td>模块参数</td><td>LTAGE TAGE 表数量, 影响并行查找面积和预测精度</td></tr>
+    <tr><td><code>RESET_VECTOR</code></td><td>logic [31:0]</td><td>32'h0000_0000</td><td>模块参数</td><td>复位后 PC 初始值</td></tr>
+</table>
+
+<h2>7.1 内部 localparam (由参数派生)</h2>
+<table>
+    <tr><th>参数名</th><th>值</th><th>派生公式</th><th>用途</th></tr>
+    <tr><td><code>BTB_IDX_W</code></td><td>13</td><td><code>$clog2(BTB_ENTRIES)</code></td><td>BTB 索引位宽</td></tr>
+    <tr><td><code>BTB_TAG_W</code></td><td>18</td><td><code>32 - BTB_IDX_W - 1</code></td><td>BTB tag 位宽 (排除 bit[0])</td></tr>
+    <tr><td><code>RAS_PTR_W</code></td><td>5</td><td><code>$clog2(RAS_DEPTH)</code></td><td>RAS 栈顶指针位宽</td></tr>
+    <tr><td><code>LTAGE_HIST_MAX</code></td><td>64</td><td>常量</td><td>全局分支历史最大长度 (bit)</td></tr>
+    <tr><td><code>LTAGE_CTR_W</code></td><td>3</td><td>常量</td><td>饱和计数器位宽 (3-bit: 0~7, ≥4=taken)</td></tr>
+    <tr><td><code>LTAGE_U_W</code></td><td>2</td><td>常量</td><td>useful 计数器位宽 (2-bit: 0~3)</td></tr>
+    <tr><td><code>LTAGE_ENTRIES</code></td><td>1024</td><td>常量</td><td>每张 TAGE 表的条目数</td></tr>
+    <tr><td><code>LTAGE_IDX_W</code></td><td>10</td><td><code>$clog2(LTAGE_ENTRIES)</code></td><td>LTAGE 表索引位宽</td></tr>
+    <tr><td><code>ICACHE_WORDS</code></td><td>4</td><td><code>128 / 32</code></td><td>每条 cache line 的 32-bit word 数</td></tr>
+</table>
+
+<h2>7.2 参数约束关系</h2>
+<ul>
+    <li><code>FETCH_WIDTH</code> 必须 &ge; <code>ISSUE_WIDTH</code> (lumi_pkg: ISSUE_WIDTH=3, FETCH_WIDTH=6)</li>
+    <li><code>BTB_ENTRIES</code> 必须为 2 的幂 (直接映射索引要求)</li>
+    <li><code>RAS_DEPTH</code> 必须为 2 的幂 (循环指针回绕要求)</li>
+    <li><code>LTAGE_TABLES</code> 决定几何历史长度序列, 修改时需同步调整 <code>gen_ltage_idx</code> 中的 HIST_LEN 计算</li>
+    <li><code>RESET_VECTOR</code> 必须 2-byte 对齐 (bit[0] = 0)</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块 / 逻辑块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>PC 寄存器与 FSM</td><td>PC 生成、状态机控制、flush/redirect 管理</td><td><code>pc_reg</code>, <code>state_reg</code>, <code>flush_cnt</code>, <code>post_flush_hold_r</code></td></tr>
+    <tr><td>BTB (直接映射)</td><td>8192 条目分支目标缓冲, F1 级组合查找 + execute 反馈写入</td><td><code>btb_mem[]</code>, <code>btb_hit</code>, <code>btb_target</code>, <code>btb_wr_data</code></td></tr>
+    <tr><td>RAS (循环栈)</td><td>32 级返回地址栈, execute-level 非推测 push/pop</td><td><code>ras_stack[]</code>, <code>ras_top</code>, <code>ras_peek</code></td></tr>
+    <tr><td>LTAGE (12 表 TAGE)</td><td>分支方向预测, 几何历史索引, 最长历史命中优先选择</td><td><code>ltage_tables[][]</code>, <code>branch_history</code>, <code>ltage_pred</code></td></tr>
+    <tr><td>组级 BTB 查找</td><td>ERR-BTB: 在 16-byte fetch group 内搜索 PC 之后的分支条目</td><td><code>grp_base_idx</code>, <code>grp_found</code>, <code>grp_slot</code>, <code>pc_slot_in_grp</code></td></tr>
+    <tr><td>F1/F2 流水线寄存器</td><td>级间数据锁存, 预测信息传递</td><td><code>f1_pc_r</code>, <code>f2_data_r</code>, <code>f2_valid_r</code>, <code>f2_pred_branch_slot_r</code></td></tr>
+    <tr><td>Carry 管理</td><td>跨 cache line 边界的 halfword 拼接</td><td><code>carry_hw_r</code>, <code>carry_valid_r</code></td></tr>
+    <tr><td>指令拆分与计数</td><td>从 128-bit 寄存器拆分出 6 条 32-bit 指令</td><td><code>f2_raw_inst[]</code>, <code>f2_count_comb</code></td></tr>
+    <tr><td><code>lumi_predecode</code></td><td>指令边界扫描, RV32C 展开, pred_taken 截断, carry 生成</td><td><code>eff_data[143:0]</code>, <code>bytes_consumed</code>, <code>inst_count</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>pc_reg</code></td><td>32</td><td><code>RESET_VECTOR</code></td><td>每个 clk↑: <code>pc_reg &lt;= pc_next</code></td><td>当前取指 PC</td></tr>
+    <tr><td><code>state_reg</code></td><td>3</td><td><code>ST_IDLE</code></td><td>每个 clk↑: <code>state_reg &lt;= state_next</code></td><td>FSM 状态</td></tr>
+    <tr><td><code>flush_cnt</code></td><td>2</td><td>0</td><td>每个 clk↑: <code>flush_cnt &lt;= flush_cnt_next</code></td><td>Flush 延迟计数器</td></tr>
+    <tr><td><code>dec_stall_r</code></td><td>1</td><td>0</td><td>每个 clk↑: <code>dec_stall_r &lt;= dec_stall</code></td><td>寄存版 stall 信号 (ERR-019: 避免组合环路)</td></tr>
+    <tr><td><code>branch_redirect_valid_d</code></td><td>1</td><td>0</td><td>每个 clk↑</td><td>边沿检测寄存器 (SA-CM-REDIRECT-FIX)</td></tr>
+    <tr><td><code>post_flush_hold_r</code></td><td>1</td><td>0</td><td>进入 FLUSH 时设 1, ST_FETCH 首周期清 0</td><td>Post-flush PC hold (SA-CM-PCFIX)</td></tr>
+    <tr><td><code>f1_pc_r</code></td><td>32</td><td>0</td><td><code>ST_FETCH</code> 时锁存</td><td>F1 PC 流水线寄存器</td></tr>
+    <tr><td><code>f1_pred_taken_r</code></td><td>1</td><td>0</td><td><code>ST_FETCH</code> 时锁存</td><td>F1 预测 taken 寄存器</td></tr>
+    <tr><td><code>f1_pred_target_r</code></td><td>32</td><td>0</td><td><code>ST_FETCH</code> 时锁存</td><td>F1 预测目标寄存器</td></tr>
+    <tr><td><code>f1_btb_hit_r</code></td><td>1</td><td>0</td><td><code>ST_FETCH</code> 时锁存</td><td>F1 BTB hit 寄存器</td></tr>
+    <tr><td><code>f2_data_r</code></td><td>128</td><td>0</td><td><code>ST_FETCH && f2_icache_valid && dib_not_full && !dec_stall</code></td><td>F2 ICache 数据寄存器</td></tr>
+    <tr><td><code>f2_valid_r</code></td><td>1</td><td>0</td><td>F2 捕获时设 1; flush/stall 时清 0</td><td>F2 数据有效</td></tr>
+    <tr><td><code>f2_pc_r</code></td><td>32</td><td>0</td><td>同 <code>f2_data_r</code></td><td>F2 PC (对应 ICache 数据)</td></tr>
+    <tr><td><code>f2_pred_taken_r</code></td><td>1</td><td>0</td><td>同 <code>f2_data_r</code></td><td>F2 预测 taken</td></tr>
+    <tr><td><code>f2_pred_target_r</code></td><td>32</td><td>0</td><td>同 <code>f2_data_r</code></td><td>F2 预测目标</td></tr>
+    <tr><td><code>f2_pred_branch_slot_r</code></td><td>4</td><td>4'hF</td><td>同 <code>f2_data_r</code></td><td>F2 预测分支 slot</td></tr>
+    <tr><td><code>carry_hw_r</code></td><td>16</td><td>0</td><td>与 F2 同步更新, flush 时清零</td><td>跨 cache line carry halfword</td></tr>
+    <tr><td><code>carry_valid_r</code></td><td>1</td><td>0</td><td>同 <code>carry_hw_r</code></td><td>carry 有效标志</td></tr>
+    <tr><td><code>ras_top</code></td><td>5</td><td>0</td><td>RAS push/pop 时更新</td><td>RAS 栈顶指针 (下一空位)</td></tr>
+    <tr><td><code>ras_stack[]</code></td><td>32&times;32</td><td>全 0</td><td>execute-level call push</td><td>RAS 存储阵列</td></tr>
+    <tr><td><code>btb_mem[]</code></td><td>btb_entry_t&times;8192</td><td>全 0</td><td>branch_redirect 时写入</td><td>BTB 存储阵列</td></tr>
+    <tr><td><code>branch_history</code></td><td>64</td><td>0</td><td>tage_update_valid 时左移</td><td>全局分支历史寄存器</td></tr>
+    <tr><td><code>ltage_tables[][]</code></td><td>ltage_entry_t&times;12&times;1024</td><td>全 0</td><td>tage_update_valid 时更新</td><td>LTAGE 12 张 TAGE 表</td></tr>
+</table>
+
+<h2>8.3 关键数据结构</h2>
+<h3>BTB 条目 (<code>btb_entry_t</code>)</h3>
+<pre>
+typedef struct packed {
+    logic                  valid;        // 1-bit: 条目有效
+    logic [BTB_TAG_W-1:0]  tag;          // 18-bit: PC 高位 tag
+    logic [31:0]           target;       // 32-bit: 分支目标地址
+    logic                  is_call;      // JAL/JALR with rd=x1/x5
+    logic                  is_ret;       // JALR with rs1=x1/x5, rd=x0
+    logic                  is_branch;    // conditional branch
+} btb_entry_t;                          // 总 54 bit
+</pre>
+
+<h3>LTAGE 条目 (<code>ltage_entry_t</code>)</h3>
+<pre>
+typedef struct packed {
+    logic                    valid;      // 1-bit: 条目有效
+    logic [7:0]              tag;        // 8-bit: PC XOR history tag
+    logic [LTAGE_CTR_W-1:0]  ctr;        // 3-bit: 饱和计数器 (MSB=预测方向)
+    logic [LTAGE_U_W-1:0]    useful;     // 2-bit: useful 计数器
+} ltage_entry_t;                         // 总 14 bit
+</pre>
+
+<h2>8.4 关键算法</h2>
+<h3>LTAGE 几何历史长度计算 (generate)</h3>
+<pre>
+// 每表的历史长度 (几何递增):
+// t=0: 4, t=1: 6, t=2: 9, t=3: 14
+// t=4: 21, t=5: 33, t=6: 45, t=7: 57
+// t=8: 72, t=9: 112, t=10: 152, t=11: 192
+// 截断到 LTAGE_HIST_MAX (64)
+
+// 索引 = PC[10:1] XOR branch_history[ACTUAL_HIST-1 : ACTUAL_HIST-10]
+// Tag  = PC[15:8] XOR branch_history[ACTUAL_HIST-1 : ACTUAL_HIST-8]
+</pre>
+
+<h3>分支预测决策优先级</h3>
+<pre>
+1. Slot-0 BTB hit (pc_reg 处):
+   - RET → RAS peek, ras_pop
+   - CALL + branch → LTAGE 预测, ras_push
+   - CALL + !branch → always taken, ras_push
+   - branch → LTAGE 预测
+   - other → always taken
+
+2. 组级 BTB hit (group 内 PC 之后):
+   覆盖 slot-0 结果, 同样的类型判断逻辑
+   pred_branch_slot = grp_slot (用于 predecode 截断)
+
+3. 无 BTB hit → pred_taken=0, target=pc_reg+4
+</pre>
+
+<h3>Predecode 扫描算法</h3>
+<pre>
+1. 构造 eff_data (144-bit):
+   - carry_valid: {raw_swapped[127:0], carry_hw[15:0]}, bo=2
+   - 无 carry: {16'h0, raw_swapped[127:0]}, bo=start_offset
+
+2. 主循环 (最多 FETCH_WIDTH=6 条):
+   - 检查 pred_taken 截断 (i > pred_branch_slot → stop)
+   - 读取 hw = eff_data[bo*8 +: 16]
+   - hw[1:0] != 2'b11 → 压缩指令, c_ext_expand, bo+=2
+   - hw[1:0] == 2'b11 → 32-bit 指令, 检查边界
+     - 跨边界 → carry_hw_out = hw, stop
+     - 未跨 → 读取 32-bit, bo+=4
+
+3. bytes_consumed:
+   - carry_valid 或 carry_valid_out → 16 - start_offset (跳到下一对齐块)
+   - 否则 → bo - start_offset
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (§2.1 F-001~F-010)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1 BC-001~BC-010)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态 (5 状态)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全转移 (含 default)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>BTB hit/miss × 分支类型 (call/ret/branch/jal/jalr)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>LTAGE 12 表命中模式 (单表/多表/无命中)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>RAS 嵌套深度 (1~32 + 溢出回绕)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>Predecode 指令组合 (全压缩/全 32-bit/混合/carry)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>跨 cache line carry 场景</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Post-flush hold 正确性</td><td>100%</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言 (RTL 内嵌)</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>位置</th><th>目的</th></tr>
+    <tr><td>PC alignment</td><td><code>assert (pc_next[0] == 1'b0)</code></td><td>lumi_fetch L817</td><td>保证 PC 始终 2-byte 对齐</td></tr>
+    <tr><td>bytes_consumed range</td><td><code>assert (bytes_consumed inside {0,2,4,6,8,10,12,14,16})</code></td><td>lumi_predecode L230</td><td>保证 PC 前进量为偶数</td></tr>
+</table>
+
+<h2>9.3 建议补充断言</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_flush_completes</code></td><td><code>ST_FLUSH |-> ##[1:3] ST_FETCH</code></td><td>Flush 必须在有限 cycle 内完成</td></tr>
+    <tr><td><code>assert_no_redirect_during_flush</code></td><td><code>ST_FLUSH && branch_redirect_valid |-> state_next == ST_FLUSH</code></td><td>Flush 期间忽略 redirect</td></tr>
+    <tr><td><code>assert_f2_valid_implies_data</code></td><td><code>f2_valid |-> f2_inst_count > 0</code></td><td>F2 有效时至少有 1 条指令</td></tr>
+    <tr><td><code>assert_ras_consistency</code></td><td><code>ras_top 在 push 后增 1, pop 后减 1 (mod RAS_DEPTH)</code></td><td>RAS 指针一致性</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-FETCH-001</span></td><td>PC 生成与更新</td><td>§2.1 F-001, §4, §5.1</td><td><code>pc_reg</code>, FSM <code>always_comb</code> L683-820</td></tr>
+    <tr><td><span class="req-tag">LUMI-FETCH-002</span></td><td>BTB 分支目标缓冲</td><td>§2.1 F-002, §8.1</td><td>BTB 查找 L232-240, 组级查找 L345-440, 写入 L612-635</td></tr>
+    <tr><td><span class="req-tag">LUMI-FETCH-003</span></td><td>LTAGE 分支预测</td><td>§2.1 F-003, §8.3</td><td>LTAGE 查找 L252-288, 更新 L565-600</td></tr>
+    <tr><td><span class="req-tag">LUMI-FETCH-004</span></td><td>RAS 返回地址栈</td><td>§2.1 F-004, §8.1</td><td>RAS peek L246, push/pop L548-555</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级流水线 F1/F2 级</td><td>§2.1 F-005, §5</td><td>F1/F2 寄存器 L498-526</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-005</span></td><td>C 压缩指令支持</td><td>§2.1 F-007, §8.1</td><td><code>lumi_predecode</code>, <code>c_ext_expand()</code></td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark ≥5.5 CM/MHz</td><td>§2.1 F-003</td><td>LTAGE 12 表 + BTB 8192 + RAS 32</td></tr>
+    <tr><td><span class="req-tag">ERR-019</span></td><td>F2 重复捕获修复</td><td>§6.1 BC-006</td><td><code>!dec_stall</code> 条件门控 L512</td></tr>
+    <tr><td><span class="req-tag">ERR-042</span></td><td>Predecode 指令边界</td><td>§2.1 F-006/F-008, §6.1 BC-004</td><td><code>lumi_predecode</code> 全模块, carry 管理</td></tr>
+    <tr><td><span class="req-tag">ERR-044</span></td><td>BTB call/ret 区分</td><td>§8.3</td><td><code>br_update_is_call/ret</code> → BTB 写入 L621-634</td></tr>
+    <tr><td><span class="req-tag">ERR-BTB</span></td><td>组级多位置 BTB 查找</td><td>§6.1 BC-009, §8.1</td><td>组级查找 L345-440, <code>pred_branch_slot</code></td></tr>
+    <tr><td><span class="req-tag">ERR-RAS</span></td><td>RAS execute-level 更新</td><td>§6.1 BC-002, §8.3</td><td>RAS push/pop 条件 <code>tage_update_valid && state_reg != ST_FLUSH</code></td></tr>
+    <tr><td><span class="req-tag">SA-CM-004</span></td><td>移除推测式历史更新</td><td>§8.3</td><td>branch_history 仅在 tage_update_valid 时更新 L567</td></tr>
+    <tr><td><span class="req-tag">SA-CM-005</span></td><td>组级 BTB stale entry 修复</td><td>§6.1 BC-009</td><td><code>pc_slot_in_grp</code> 过滤 L343, L396</td></tr>
+    <tr><td><span class="req-tag">SA-CM-PCFIX</span></td><td>Post-flush PC hold</td><td>§6.1 BC-005</td><td><code>post_flush_hold_r</code> L493-496, L719-727</td></tr>
+    <tr><td><span class="req-tag">SA-CM-REDIRECT-FIX</span></td><td>Redirect 边沿检测</td><td>§4.3, §6.1 BC-001</td><td><code>branch_redirect_valid_d</code> L808</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="fetch-bpred.html">fetch-bpred.html</a> (LUMI-DESIGN-001) 的 RTL 级细化:</p>
+<table>
+    <tr><th>HLD 章节</th><th>LLD 章节</th><th>差异说明</th></tr>
+    <tr><td>HLD §2.1 F1 级功能</td><td>LLD §2.1, §5.1, §8.1</td><td>LLD 增加组级 BTB 查找 (ERR-BTB 修复, HLD 未涉及)</td></tr>
+    <tr><td>HLD §2.1.2 BTB 查找</td><td>LLD §8.1 BTB, §8.3 btb_entry_t</td><td>HLD 描述 PC[14:3] 索引, RTL 实际使用 PC[13:1] (8192 条目)</td></tr>
+    <tr><td>HLD §2.2.2 LTAGE</td><td>LLD §8.3 LTAGE</td><td>RTL 简化: GHR 64-bit (非 640), 无 Loop Predictor, 无 bimodal 基础表</td></tr>
+    <tr><td>HLD §2.2.2.2 GHR 折叠</td><td>LLD §8.4 几何历史</td><td>RTL 使用 XOR 截取 (非完整 folded history), HIST_MAX=64</td></tr>
+    <tr><td>HLD §2.2.2.4 Loop Predictor</td><td>—</td><td>RTL 尚未实现 Loop Predictor</td></tr>
+    <tr><td>HLD §2.3 状态机</td><td>LLD §4</td><td>RTL 5 状态 (HLD 3 状态), 增加 ST_STALL/ST_FLUSH/ST_HALT</td></tr>
+    <tr><td>HLD §3 接口定义</td><td>LLD §3</td><td>LLD 完整覆盖 RTL 全部端口 (38 个), HLD 仅列主要接口</td></tr>
+    <tr><td>HLD §4.3 误预测恢复</td><td>LLD §5.3, §6.1 BC-001/002</td><td>RTL 增加 flush 期间预测器防污染 (HLD 未涉及)</td></tr>
+</table>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#fetch">IC-Fetch</a> (F1→ICache, F2→Decode, Execute→Fetch 反馈)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="fetch-bpred.html" class="back-link">HLD: Fetch &amp; Branch Predictor</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD: Fetch &amp; Branch Predictor &mdash; CONFIDENTIAL<br>
+    文档编号: LUMI-LLD-001 &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-16<br>
+    承接: <a href="fetch-bpred.html">fetch-bpred.html</a> (LUMI-DESIGN-001) &nbsp;|&nbsp;
+    RTL: <code>lumi_fetch.sv</code> + <code>lumi_predecode.sv</code></p>
+</div>
+
+</body>
+</html>

@@ -32,6 +32,7 @@ VM_CLASSES_FAST += \
   Vlumi_v1_tb_top___024root__3 \
   Vlumi_v1_tb_top___024root__4 \
   Vlumi_v1_tb_top___024root__5 \
+  Vlumi_v1_tb_top___024root__6 \
   Vlumi_v1_tb_top_uvm_shim__03a__03auvm_object__Vclpkg__0 \
   Vlumi_v1_tb_top_uvm_shim__03a__03auvm_component__Vclpkg__0 \
   Vlumi_v1_tb_top_uvm_shim__03a__03auvm_test__Vclpkg__0 \

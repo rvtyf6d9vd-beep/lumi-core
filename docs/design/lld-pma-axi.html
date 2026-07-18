@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — PMA 检查器 &amp; AXI 总线接口 Low Level Design</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+        .sec-hdr{background:#e3f2fd;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>PMA 检查器 &amp; AXI 总线接口 Low Level Design</h1>
+    <p class="subtitle">Physical Memory Attributes Checker + AXI4 Bus Matrix + CDC Synchronizer</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-008 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="pma-axi.html">pma-axi.html</a> (LUMI-DESIGN-008)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/bus/lumi_axi_wrapper.sv</code> · <code>lumi_pma_checker.sv</code> · <code>lumi_cdc_sync.sv</code></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#axi-bus">IC-AXI-Bus</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_axi_wrapper</code> / <code>lumi_pma_checker</code> / <code>lumi_cdc_sync</code>（含 <code>lumi_cdc_2ff_sync</code> + <code>lumi_cdc_async_fifo</code>）</td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/bus/lumi_axi_wrapper.sv</code> (671 行) · <code>lumi_pma_checker.sv</code> (193 行) · <code>lumi_cdc_sync.sv</code> (146 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="pma-axi.html">pma-axi.html</a> (LUMI-DESIGN-008)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-008</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>PMA 3 区域硬编码地址属性检查（组合逻辑）</td><td>PMP CSR 寄存器（属于 <a href="privilege-pmp.html">privilege-pmp.html</a>）</td></tr>
+    <tr><td>PMA+PMP 联合判定（AND 逻辑，PMA fail 短路）</td><td>PMP 配置软件（BSP/驱动）</td></tr>
+    <tr><td>4 路 Master 固定优先级仲裁（DC&gt;IC&gt;NC&gt;Trace）</td><td>Cache 控制器（属于 <a href="cache.html">cache.html</a>）</td></tr>
+    <tr><td>AXI4 Master 128bit 完整 5 通道接口</td><td>AXI Slave 端（SoC 侧）</td></tr>
+    <tr><td>FFP AXI4-Lite 32bit 外设接口端口</td><td>TCM DMA 从接口（属于 <a href="tcm.html">tcm.html</a>）</td></tr>
+    <tr><td>CDC 2-FF 同步器 + 异步 FIFO（格雷码指针）</td><td>PLL/时钟生成（属于 SoC 集成）</td></tr>
+    <tr><td>Trace AXI4 写出通道（单 beat）</td><td>Trace Encoder 内部（属于 <a href="debug-trace.html">debug-trace.html</a>）</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="cache.html">cache.html</a>（refill/evict 请求）| <a href="fetch-bpred.html">fetch-bpred.html</a>（IC refill）| <a href="debug-trace.html">debug-trace.html</a>（trace write）| <a href="privilege-pmp.html">privilege-pmp.html</a>（PMP 结果输入）</p>
+<p><strong>下游:</strong> SoC AXI Interconnect（主总线）| FFP 外设（<code>0xF000_0000~0xF000_FFFF</code>）</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查，M3 Batch-2）</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>PMA 地址解码</td><td>3 区域硬编码命中检测：TCM <code>0x0000_0000~0x0002_FFFF</code>、DDR <code>0x8000_0000~0xBFFF_FFFF</code>、MMIO <code>0xC000_0000~0xF000_FFFF</code></td><td><span class="req-tag">LUMI-MEM-009</span></td></tr>
+    <tr><td>F-002</td><td>PMA 属性填充</td><td>按命中区域填充 <code>pma_attr_t</code>：cacheable / executable / writable / readable / io / amo_type</td><td><span class="req-tag">LUMI-MEM-009</span></td></tr>
+    <tr><td>F-003</td><td>PMA 访问校验</td><td>NX 检查（FETCH on non-executable）、AMO 检查、对齐检查、未映射区域 fault</td><td><span class="req-tag">LUMI-MEM-009</span></td></tr>
+    <tr><td>F-004</td><td>PMA+PMP 联合</td><td>PMA pass 时才请求 PMP 检查（短路优化），AND 逻辑最终判定</td><td><span class="constraint-tag">PMA+PMP 联合</span></td></tr>
+    <tr><td>F-005</td><td>路由输出</td><td><code>route_tcm</code> / <code>route_cache</code> / <code>route_mmio</code>：PMA pass 且命中对应区域时拉高</td><td><span class="req-tag">LUMI-MEM-009</span></td></tr>
+    <tr><td>F-006</td><td>4 路仲裁</td><td>固定优先级 DC&gt;IC&gt;NC&gt;Trace；仲裁选中后锁定至 burst 完成</td><td><span class="req-tag">LUMI-IF-001</span></td></tr>
+    <tr><td>F-007</td><td>AXI4 主总线</td><td>完整 5 通道 Master 接口：AW/W/B（写）+ AR/R（读），INCR burst</td><td><span class="req-tag">LUMI-IF-001</span></td></tr>
+    <tr><td>F-008</td><td>FFP 外设接口</td><td>AXI4-Lite 32bit 端口，<code>0xF000_0000~0xF000_FFFF</code></td><td><span class="req-tag">LUMI-IF-002</span></td></tr>
+    <tr><td>F-009</td><td>CDC 跨时钟域</td><td>5 通道异步 FIFO 桥接 <code>clk_core</code>↔<code>clk_bus</code>，格雷码指针同步</td><td><span class="req-tag">LUMI-BUS-005</span></td></tr>
+    <tr><td>F-010</td><td>Trace 写出</td><td>128bit 单 beat AXI 写出（ID=0x3），完成后 ACK</td><td><span class="req-tag">LUMI-FEAT-003</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>IC Refill</td><td><code>ic_refill_req=1</code> 且仲裁选中</td><td>AR burst (4 beat × 16B = 64B)，ID=0x0，完成后 <code>ic_refill_ack</code> 脉冲</td></tr>
+    <tr><td>DC Refill</td><td><code>dc_refill_req=1</code> 且仲裁选中</td><td>AR burst (4 beat × 16B = 64B)，ID=0x1，完成后 <code>dc_refill_ack</code> 脉冲</td></tr>
+    <tr><td>DC Evict</td><td><code>dc_evict_req=1</code> 且仲裁选中</td><td>AW burst + W 4 beat（<code>dc_evict_data</code> 写出），ID=0x1，B 响应后 ACK</td></tr>
+    <tr><td>NC Read</td><td><code>nc_access_req=1, nc_access_we=0</code></td><td>AR 单 beat (4B)，ID=0x2，R 数据锁存至 <code>nc_rdata_reg</code></td></tr>
+    <tr><td>NC Write</td><td><code>nc_access_req=1, nc_access_we=1</code></td><td>AW + W 单 beat (4B)，wstrb={4'hF,12'h0}，ID=0x2，B 响应后 ACK</td></tr>
+    <tr><td>Trace Write</td><td><code>trace_write_req=1</code> 且仲裁选中</td><td>AW + W 单 beat (16B)，ID=0x3，B 响应后 ACK</td></tr>
+    <tr><td>PMA Check</td><td><code>pma_addr</code> / <code>pma_access_type</code> 有效</td><td>组合逻辑 0 cycle：地址解码 → 属性填充 → 校验 → 路由输出</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表（三模块全端口 8 列）</h2>
+
+<h3>3.1.1 lumi_axi_wrapper 端口</h3>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+<tr class="sec-hdr"><td colspan="8">时钟与复位</td></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+<tr><td><code>clk_bus</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>—</td><td>—</td><td>总线时钟（可异步于 core）</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0（异步）</td><td>双域</td><td>—</td><td>异步低有效</td><td>全局异步复位</td></tr>
+<tr class="sec-hdr"><td colspan="8">内部 Master 请求接口（← Cache/TCM/PMA）</td></tr>
+<tr><td><code>ic_refill_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>ICache refill 请求</td></tr>
+<tr><td><code>ic_refill_ack</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>req/ack</td><td>registered</td><td>ICache refill 完成脉冲</td></tr>
+<tr><td><code>ic_refill_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>ICache refill 地址</td></tr>
+<tr><td><code>dc_refill_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>DCache refill 请求</td></tr>
+<tr><td><code>dc_refill_ack</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>req/ack</td><td>registered</td><td>DCache refill 完成脉冲</td></tr>
+<tr><td><code>dc_refill_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>DCache refill 地址</td></tr>
+<tr><td><code>dc_evict_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>DCache evict 请求</td></tr>
+<tr><td><code>dc_evict_ack</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>req/ack</td><td>registered</td><td>DCache evict 完成脉冲</td></tr>
+<tr><td><code>dc_evict_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>DCache evict 地址</td></tr>
+<tr><td><code>dc_evict_data</code></td><td>input</td><td>128</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>DCache evict 数据</td></tr>
+<tr><td><code>nc_access_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>Non-cacheable 访问请求</td></tr>
+<tr><td><code>nc_access_ack</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>req/ack</td><td>registered</td><td>NC 访问完成脉冲</td></tr>
+<tr><td><code>nc_access_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>NC 访问地址</td></tr>
+<tr><td><code>nc_access_we</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>NC 写使能</td></tr>
+<tr><td><code>nc_access_wdata</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>NC 写数据</td></tr>
+<tr><td><code>nc_access_rdata</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>NC 读数据（低 32bit）</td></tr>
+<tr><td><code>trace_write_req</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>Trace 写出请求</td></tr>
+<tr><td><code>trace_write_ack</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>req/ack</td><td>registered</td><td>Trace 写出完成脉冲</td></tr>
+<tr><td><code>trace_write_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>Trace 写出地址</td></tr>
+<tr><td><code>trace_write_data</code></td><td>input</td><td>128</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>Trace 写出数据</td></tr>
+<tr class="sec-hdr"><td colspan="8">AXI4 主总线 Master 接口 — AW 通道（128bit data）</td></tr>
+<tr><td><code>m_axi_awid</code></td><td>output</td><td>AXI_ID_W</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>写事务 ID</td></tr>
+<tr><td><code>m_axi_awaddr</code></td><td>output</td><td>AXI_ADDR_W</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>写地址</td></tr>
+<tr><td><code>m_axi_awlen</code></td><td>output</td><td>8</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 长度（0-indexed）</td></tr>
+<tr><td><code>m_axi_awsize</code></td><td>output</td><td>3</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 大小（2^n byte）</td></tr>
+<tr><td><code>m_axi_awburst</code></td><td>output</td><td>2</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 类型（INCR=01）</td></tr>
+<tr><td><code>m_axi_awlock</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Exclusive（V1 tied-off 0）</td></tr>
+<tr><td><code>m_axi_awcache</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Cache 属性（V1=4'b0000）</td></tr>
+<tr><td><code>m_axi_awprot</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>保护属性（V1=3'b000）</td></tr>
+<tr><td><code>m_axi_awvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>combinational</td><td>=!aw_empty</td></tr>
+<tr><td><code>m_axi_awready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>Slave 写地址就绪</td></tr>
+<tr class="sec-hdr"><td colspan="8">AXI4 — W 通道</td></tr>
+<tr><td><code>m_axi_wdata</code></td><td>output</td><td>AXI_DATA_W</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>写数据</td></tr>
+<tr><td><code>m_axi_wstrb</code></td><td>output</td><td>AXI_DATA_W/8</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>字节使能</td></tr>
+<tr><td><code>m_axi_wlast</code></td><td>output</td><td>1</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 最后 beat</td></tr>
+<tr><td><code>m_axi_wvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>combinational</td><td>=!w_empty</td></tr>
+<tr><td><code>m_axi_wready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>Slave 写数据就绪</td></tr>
+<tr class="sec-hdr"><td colspan="8">AXI4 — B 通道</td></tr>
+<tr><td><code>m_axi_bid</code></td><td>input</td><td>AXI_ID_W</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>写响应 ID</td></tr>
+<tr><td><code>m_axi_bresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>写响应（OKAY/SLVERR/DECERR）</td></tr>
+<tr><td><code>m_axi_bvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>写响应有效</td></tr>
+<tr><td><code>m_axi_bready</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>combinational</td><td>=!b_full</td></tr>
+<tr class="sec-hdr"><td colspan="8">AXI4 — AR 通道</td></tr>
+<tr><td><code>m_axi_arid</code></td><td>output</td><td>AXI_ID_W</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>读事务 ID</td></tr>
+<tr><td><code>m_axi_araddr</code></td><td>output</td><td>AXI_ADDR_W</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>读地址</td></tr>
+<tr><td><code>m_axi_arlen</code></td><td>output</td><td>8</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 长度</td></tr>
+<tr><td><code>m_axi_arsize</code></td><td>output</td><td>3</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 大小</td></tr>
+<tr><td><code>m_axi_arburst</code></td><td>output</td><td>2</td><td>FIFO empty</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Burst 类型</td></tr>
+<tr><td><code>m_axi_arlock</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Exclusive（V1 tied-off 0）</td></tr>
+<tr><td><code>m_axi_arcache</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>Cache 属性（V1=4'b0000）</td></tr>
+<tr><td><code>m_axi_arprot</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>FIFO 读出</td><td>保护属性（V1=3'b000）</td></tr>
+<tr><td><code>m_axi_arvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>combinational</td><td>=!ar_empty</td></tr>
+<tr><td><code>m_axi_arready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>Slave 读地址就绪</td></tr>
+<tr class="sec-hdr"><td colspan="8">AXI4 — R 通道</td></tr>
+<tr><td><code>m_axi_rid</code></td><td>input</td><td>AXI_ID_W</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>读响应 ID</td></tr>
+<tr><td><code>m_axi_rdata</code></td><td>input</td><td>AXI_DATA_W</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>读数据</td></tr>
+<tr><td><code>m_axi_rresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>读响应</td></tr>
+<tr><td><code>m_axi_rlast</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>Burst 最后 beat</td></tr>
+<tr><td><code>m_axi_rvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>valid/ready</td><td>—</td><td>读数据有效</td></tr>
+<tr><td><code>m_axi_rready</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>valid/ready</td><td>combinational</td><td>=!r_full</td></tr>
+<tr class="sec-hdr"><td colspan="8">FFP AXI4-Lite 外设接口（32bit data）</td></tr>
+<tr><td><code>m_ffp_awaddr</code></td><td>output</td><td>AXI_ADDR_W</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 写地址</td></tr>
+<tr><td><code>m_ffp_awvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 写地址有效</td></tr>
+<tr><td><code>m_ffp_awready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 写地址就绪</td></tr>
+<tr><td><code>m_ffp_wdata</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 写数据</td></tr>
+<tr><td><code>m_ffp_wstrb</code></td><td>output</td><td>4</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 字节使能</td></tr>
+<tr><td><code>m_ffp_wvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 写数据有效</td></tr>
+<tr><td><code>m_ffp_wready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 写数据就绪</td></tr>
+<tr><td><code>m_ffp_bresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 写响应</td></tr>
+<tr><td><code>m_ffp_bvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 写响应有效</td></tr>
+<tr><td><code>m_ffp_bready</code></td><td>output</td><td>1</td><td>1</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 写响应就绪</td></tr>
+<tr><td><code>m_ffp_araddr</code></td><td>output</td><td>AXI_ADDR_W</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 读地址</td></tr>
+<tr><td><code>m_ffp_arvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 读地址有效</td></tr>
+<tr><td><code>m_ffp_arready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 读地址就绪</td></tr>
+<tr><td><code>m_ffp_rdata</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 读数据</td></tr>
+<tr><td><code>m_ffp_rresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 读响应</td></tr>
+<tr><td><code>m_ffp_rvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid/ready</td><td>—</td><td>FFP 读数据有效</td></tr>
+<tr><td><code>m_ffp_rready</code></td><td>output</td><td>1</td><td>1</td><td>CLK_CORE</td><td>valid/ready</td><td>combinational</td><td>FFP 读数据就绪</td></tr>
+</table>
+
+<h3>3.1.2 lumi_pma_checker 端口</h3>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+<tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+<tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0（异步）</td><td>CLK_CORE</td><td>—</td><td>异步低有效</td><td>全局异步复位</td></tr>
+<tr><td><code>pma_addr</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>待检查物理地址</td></tr>
+<tr><td><code>pma_access_type</code></td><td>input</td><td>3</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>000=FETCH, 001=LOAD, 010=STORE, 011=AMO</td></tr>
+<tr><td><code>pma_privilege</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>特权级 M=11, S=01, U=00</td></tr>
+<tr><td><code>pma_result</code></td><td>output</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>PMA_PASS(00)/PMA_FAULT(01)/PMA_MISALIGNED(10)</td></tr>
+<tr><td><code>pma_attrs</code></td><td>output</td><td>7 (packed struct)</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td><code>pma_attr_t</code>: cacheable/executable/writable/readable/io/amo_type[1:0]</td></tr>
+<tr><td><code>pmp_check_req</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>=pma_pass（PMA 通过时才请求 PMP）</td></tr>
+<tr><td><code>pmp_check_addr</code></td><td>output</td><td>32</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>=pma_addr（直传）</td></tr>
+<tr><td><code>pmp_check_type</code></td><td>output</td><td>3</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>R(010)/W(100)/X(001)/R+W(110) 映射</td></tr>
+<tr><td><code>pmp_result</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>req/ack</td><td>combinational</td><td>PMP 结果 PASS(00)/FAULT(01)</td></tr>
+<tr><td><code>route_tcm</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>hit_tcm &amp;&amp; pma_pass</td></tr>
+<tr><td><code>route_cache</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>hit_ddr &amp;&amp; pma_pass</td></tr>
+<tr><td><code>route_mmio</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>hit_mmio &amp;&amp; pma_pass</td></tr>
+</table>
+
+<h3>3.1.3 lumi_cdc_2ff_sync 端口</h3>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+<tr><td><code>clk_dst</code></td><td>input</td><td>1</td><td>—</td><td>目标时钟</td><td>—</td><td>—</td><td>目标时钟域</td></tr>
+<tr><td><code>rst_n</code></td><td>input</td><td>1</td><td>0（异步）</td><td>目标时钟</td><td>—</td><td>异步低有效</td><td>异步复位</td></tr>
+<tr><td><code>din</code></td><td>input</td><td>1</td><td>—</td><td>源时钟</td><td>—</td><td>多级 FF 输入</td><td>单 bit 输入</td></tr>
+<tr><td><code>dout</code></td><td>output</td><td>1</td><td>0</td><td>目标时钟</td><td>—</td><td>registered (STAGES 级延迟)</td><td>同步后输出</td></tr>
+</table>
+
+<h3>3.1.4 lumi_cdc_async_fifo 端口</h3>
+<table>
+<tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+<tr><td><code>clk_wr</code></td><td>input</td><td>1</td><td>—</td><td>写时钟域</td><td>—</td><td>—</td><td>写时钟</td></tr>
+<tr><td><code>rst_n_wr</code></td><td>input</td><td>1</td><td>0（异步）</td><td>写时钟域</td><td>—</td><td>异步低有效</td><td>写域复位</td></tr>
+<tr><td><code>wr_en</code></td><td>input</td><td>1</td><td>—</td><td>写时钟域</td><td>—</td><td>combinational</td><td>写使能（需 !wr_full）</td></tr>
+<tr><td><code>wr_data</code></td><td>input</td><td>DATA_WIDTH</td><td>—</td><td>写时钟域</td><td>—</td><td>combinational</td><td>写数据</td></tr>
+<tr><td><code>wr_full</code></td><td>output</td><td>1</td><td>0</td><td>写时钟域</td><td>—</td><td>combinational（格雷码比较）</td><td>FIFO 满标志</td></tr>
+<tr><td><code>clk_rd</code></td><td>input</td><td>1</td><td>—</td><td>读时钟域</td><td>—</td><td>—</td><td>读时钟</td></tr>
+<tr><td><code>rst_n_rd</code></td><td>input</td><td>1</td><td>0（异步）</td><td>读时钟域</td><td>—</td><td>异步低有效</td><td>读域复位</td></tr>
+<tr><td><code>rd_en</code></td><td>input</td><td>1</td><td>—</td><td>读时钟域</td><td>—</td><td>combinational</td><td>读使能（需 !rd_empty）</td></tr>
+<tr><td><code>rd_data</code></td><td>output</td><td>DATA_WIDTH</td><td>—</td><td>读时钟域</td><td>—</td><td>combinational（mem 直读）</td><td>读数据</td></tr>
+<tr><td><code>rd_empty</code></td><td>output</td><td>1</td><td>1</td><td>读时钟域</td><td>—</td><td>combinational（格雷码比较）</td><td>FIFO 空标志</td></tr>
+</table>
+
+<h2>3.2 跨时钟域接口</h2>
+<table>
+<tr><th>信号/通道</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+<tr><td>AW 通道（addr+id+len+size+burst+lock+cache+prot）</td><td>CLK_CORE</td><td>CLK_BUS</td><td>异步 FIFO (DEPTH=4, 格雷码指针 2-FF 同步)</td></tr>
+<tr><td>W 通道（wdata+wstrb+wlast）</td><td>CLK_CORE</td><td>CLK_BUS</td><td>异步 FIFO (DEPTH=4)</td></tr>
+<tr><td>B 通道（bid+bresp）</td><td>CLK_BUS</td><td>CLK_CORE</td><td>异步 FIFO (DEPTH=4)</td></tr>
+<tr><td>AR 通道（addr+id+len+size+burst+lock+cache+prot）</td><td>CLK_CORE</td><td>CLK_BUS</td><td>异步 FIFO (DEPTH=4)</td></tr>
+<tr><td>R 通道（rid+rdata+rresp+rlast）</td><td>CLK_BUS</td><td>CLK_CORE</td><td>异步 FIFO (DEPTH=4)</td></tr>
+</table>
+
+<blockquote><strong>CDC 设计原则:</strong>
+多 bit 数据/地址经异步 FIFO 传输，valid/ready 由 FIFO 空/满标志自然产生。
+写满判断：格雷码指针最高位与次高位取反比较（<code>wr_ptr_gray == {~rd_ptr_gray_sync1[PTR:PTR-1], rd_ptr_gray_sync1[PTR-2:0]}</code>）。
+读空判断：格雷码指针直接比较（<code>rd_ptr_gray == wr_ptr_gray_sync1</code>）。</blockquote>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 AXI FSM 状态枚举表（lumi_axi_wrapper）</h2>
+<p>FSM 类型：<code>axi_state_e</code>，<code>logic [4:0]</code> 编码，16 个有效状态。</p>
+<table>
+<tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+<tr><td><code>ST_IDLE</code></td><td>5'b00000</td><td>空闲等待仲裁</td><td>reset / burst 完成</td></tr>
+<tr><td><code>ST_IC_REFILL_AR</code></td><td>5'b00001</td><td>IC refill 读地址发送</td><td>arb_ic_grant</td></tr>
+<tr><td><code>ST_IC_REFILL_R</code></td><td>5'b00010</td><td>IC refill 读数据接收</td><td>axi_arready_core</td></tr>
+<tr><td><code>ST_DC_REFILL_AR</code></td><td>5'b00011</td><td>DC refill 读地址发送</td><td>arb_dc_grant &amp;&amp; !dc_evict_req_sync</td></tr>
+<tr><td><code>ST_DC_REFILL_R</code></td><td>5'b00100</td><td>DC refill 读数据接收</td><td>axi_arready_core</td></tr>
+<tr><td><code>ST_NC_READ_AR</code></td><td>5'b00101</td><td>NC 读地址发送</td><td>arb_nc_grant &amp;&amp; !nc_access_we</td></tr>
+<tr><td><code>ST_NC_READ_R</code></td><td>5'b00110</td><td>NC 读数据接收</td><td>axi_arready_core</td></tr>
+<tr><td><code>ST_DC_EVICT_AW</code></td><td>5'b00111</td><td>DC evict 写地址发送</td><td>arb_dc_grant &amp;&amp; dc_evict_req_sync</td></tr>
+<tr><td><code>ST_DC_EVICT_W</code></td><td>5'b01000</td><td>DC evict 写数据发送（多 beat）</td><td>axi_awready_core</td></tr>
+<tr><td><code>ST_DC_EVICT_B</code></td><td>5'b01001</td><td>DC evict 写响应等待</td><td>wlast &amp;&amp; axi_wready_core</td></tr>
+<tr><td><code>ST_NC_WRITE_AW</code></td><td>5'b01010</td><td>NC 写地址发送</td><td>arb_nc_grant &amp;&amp; nc_access_we</td></tr>
+<tr><td><code>ST_NC_WRITE_W</code></td><td>5'b01011</td><td>NC 写数据发送（单 beat）</td><td>axi_awready_core</td></tr>
+<tr><td><code>ST_NC_WRITE_B</code></td><td>5'b01100</td><td>NC 写响应等待</td><td>axi_wready_core</td></tr>
+<tr><td><code>ST_TRACE_AW</code></td><td>5'b01101</td><td>Trace 写地址发送</td><td>arb_trace_grant</td></tr>
+<tr><td><code>ST_TRACE_W</code></td><td>5'b01110</td><td>Trace 写数据发送</td><td>axi_awready_core</td></tr>
+<tr><td><code>ST_TRACE_B</code></td><td>5'b01111</td><td>Trace 写响应等待</td><td>axi_wready_core</td></tr>
+<tr><td><code>ST_FFP_ACCESS</code></td><td>5'b10000</td><td>FFP 访问（stub）</td><td>（保留，当前直连 stub）</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_DC_EVICT_AW : dc_evict
+    ST_IDLE --> ST_DC_REFILL_AR : dc_refill
+    ST_IDLE --> ST_IC_REFILL_AR : ic_refill
+    ST_IDLE --> ST_NC_WRITE_AW : nc_write
+    ST_IDLE --> ST_NC_READ_AR : nc_read
+    ST_IDLE --> ST_TRACE_AW : trace_write
+    ST_IC_REFILL_AR --> ST_IC_REFILL_R : arready
+    ST_IC_REFILL_R --> ST_IDLE : rlast
+    ST_DC_REFILL_AR --> ST_DC_REFILL_R : arready
+    ST_DC_REFILL_R --> ST_IDLE : rlast
+    ST_DC_EVICT_AW --> ST_DC_EVICT_W : awready
+    ST_DC_EVICT_W --> ST_DC_EVICT_B : wlast &amp;&amp; wready
+    ST_DC_EVICT_B --> ST_IDLE : bvalid
+    ST_NC_READ_AR --> ST_NC_READ_R : arready
+    ST_NC_READ_R --> ST_IDLE : rlast
+    ST_NC_WRITE_AW --> ST_NC_WRITE_W : awready
+    ST_NC_WRITE_W --> ST_NC_WRITE_B : wready
+    ST_NC_WRITE_B --> ST_IDLE : bvalid
+    ST_TRACE_AW --> ST_TRACE_W : awready
+    ST_TRACE_W --> ST_TRACE_B : wready
+    ST_TRACE_B --> ST_IDLE : bvalid
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+<tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+<tr><td>ST_IDLE</td><td>ST_DC_EVICT_AW</td><td><code>dc_evict_req_sync</code></td><td>锁存 addr_reg, id=ID_DC, len=3, size=16B, is_write=1</td></tr>
+<tr><td>ST_IDLE</td><td>ST_DC_REFILL_AR</td><td><code>dc_refill_req_sync &amp;&amp; !dc_evict_req_sync</code></td><td>锁存 addr_reg, id=ID_DC, len=3, size=16B, is_write=0</td></tr>
+<tr><td>ST_IDLE</td><td>ST_IC_REFILL_AR</td><td><code>arb_ic_grant</code></td><td>锁存 addr_reg, id=ID_IC, len=3, size=16B</td></tr>
+<tr><td>ST_IDLE</td><td>ST_NC_WRITE_AW / ST_NC_READ_AR</td><td><code>arb_nc_grant</code></td><td>锁存 addr_reg, id=ID_NC, len=0, size=4B, nc_wdata 扩展至 128bit</td></tr>
+<tr><td>ST_IDLE</td><td>ST_TRACE_AW</td><td><code>arb_trace_grant</code></td><td>锁存 addr_reg, id=ID_TRACE, len=0, size=16B</td></tr>
+<tr><td>ST_*_AR / ST_*_AW</td><td>ST_*_R / ST_*_W</td><td><code>axi_arready_core</code> / <code>axi_awready_core</code></td><td>地址通道握手完成</td></tr>
+<tr><td>ST_*_R</td><td>ST_IDLE</td><td><code>axi_rvalid_core &amp;&amp; axi_rlast_core</code></td><td>对应 ack 脉冲（单 cycle）</td></tr>
+<tr><td>ST_*_W</td><td>ST_*_B</td><td><code>axi_wready_core</code> (wlast 时)</td><td>数据通道完成</td></tr>
+<tr><td>ST_*_B</td><td>ST_IDLE</td><td><code>axi_bvalid_core</code></td><td>对应 ack 脉冲（单 cycle）</td></tr>
+</table>
+
+<h2>4.4 CDC 异步 FIFO 指针状态</h2>
+<p><code>lumi_cdc_async_fifo</code> 不含传统 FSM，但包含格雷码指针状态机：</p>
+<table>
+<tr><th>指针</th><th>位宽</th><th>更新条件</th><th>跨域同步</th></tr>
+<tr><td><code>wr_ptr_bin</code></td><td>PTR_WIDTH+1</td><td><code>wr_en &amp;&amp; !wr_full</code> 时 +1</td><td>经 bin2gray → 2-FF 同步到读域</td></tr>
+<tr><td><code>rd_ptr_bin</code></td><td>PTR_WIDTH+1</td><td><code>rd_en &amp;&amp; !rd_empty</code> 时 +1</td><td>经 bin2gray → 2-FF 同步到写域</td></tr>
+<tr><td><code>wr_ptr_gray</code></td><td>PTR_WIDTH+1</td><td><code>bin2gray(wr_ptr_bin)</code> 组合逻辑</td><td>→ <code>wr_ptr_gray_sync0</code> → <code>wr_ptr_gray_sync1</code> (读域)</td></tr>
+<tr><td><code>rd_ptr_gray</code></td><td>PTR_WIDTH+1</td><td><code>bin2gray(rd_ptr_bin)</code> 组合逻辑</td><td>→ <code>rd_ptr_gray_sync0</code> → <code>rd_ptr_gray_sync1</code> (写域)</td></tr>
+</table>
+
+<h2>4.5 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护（AXI FSM）:</strong> 所有传输状态均有明确的完成退出条件（arready/awready/wready/bvalid/rvalid+rlast）。AXI 协议保证 Slave 最终响应。若 Slave 挂死，FSM 将永久停留在等待状态（设计上依赖 SoC 超时机制）。</li>
+    <li><strong>活锁防护（仲裁）:</strong> 固定优先级仲裁可能导致低优先级 Master（Trace）饥饿。当前设计接受该行为，因 Trace 为异步写出、FIFO 缓冲可吸收突发。</li>
+    <li><strong>死锁防护（CDC FIFO）:</strong> FIFO DEPTH=4，满时阻止写入（<code>wr_en &amp;&amp; !wr_full</code>），空时阻止读出。格雷码指针保证跨域单 bit 跳变，避免亚稳态导致的虚假空/满。</li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 PMA 检查数据通路（lumi_pma_checker）</h2>
+<pre class="mermaid">
+graph LR
+    A[pma_addr] --> B[地址解码: hit_tcm/hit_ddr/hit_mmio]
+    B --> C[属性填充: pma_attrs]
+    C --> D{访问校验}
+    D -->|NX fault| E[PMA_FAULT]
+    D -->|AMO fault| E
+    D -->|align fault| F[PMA_MISALIGNED]
+    D -->|unmapped| E
+    D -->|pass| G[PMA_PASS]
+    G --> H[pmp_check_req=1]
+    H --> I[PMP 检查]
+    I --> J{联合判定}
+    J -->|AND pass| K[route_tcm/cache/mmio]
+    J -->|fault| E
+</pre>
+
+<h3>PMA 区域属性填充真值表</h3>
+<table>
+<tr><th>命中区域</th><th>cacheable</th><th>executable</th><th>writable</th><th>readable</th><th>io</th><th>amo_type</th><th>路由输出</th></tr>
+<tr><td>TCM (0x0000_0000~0x0002_FFFF)</td><td>0</td><td>1</td><td>1</td><td>1</td><td>0</td><td>2'b00</td><td><code>route_tcm</code></td></tr>
+<tr><td>DDR (0x8000_0000~0xBFFF_FFFF)</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td><td>2'b01</td><td><code>route_cache</code></td></tr>
+<tr><td>MMIO (0xC000_0000~0xF000_FFFF)</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>2'b00</td><td><code>route_mmio</code></td></tr>
+<tr><td>未映射</td><td colspan="5">全部清零 (pma_attrs='0)</td><td>—</td><td>PMA_FAULT</td></tr>
+</table>
+
+<h2>5.2 AXI 五通道数据通路（lumi_axi_wrapper）</h2>
+<pre class="mermaid">
+graph TB
+    subgraph CLK_CORE域
+        REQ[4路请求: DC/IC/NC/Trace]
+        ARB[优先级仲裁]
+        FSM[AXI FSM]
+        CORE_AW[AW core信号]
+        CORE_W[W core信号]
+        CORE_AR[AR core信号]
+        CORE_B[B core信号]
+        CORE_R[R core信号]
+    end
+    REQ --> ARB --> FSM
+    FSM --> CORE_AW
+    FSM --> CORE_W
+    FSM --> CORE_AR
+    subgraph CDC桥接
+        FIFO_AW[AW FIFO: core→bus]
+        FIFO_W[W FIFO: core→bus]
+        FIFO_AR[AR FIFO: core→bus]
+        FIFO_B[B FIFO: bus→core]
+        FIFO_R[R FIFO: bus→core]
+    end
+    CORE_AW --> FIFO_AW --> AXI_BUS_AW[m_axi_aw*]
+    CORE_W --> FIFO_W --> AXI_BUS_W[m_axi_w*]
+    CORE_AR --> FIFO_AR --> AXI_BUS_AR[m_axi_ar*]
+    AXI_BUS_B[m_axi_b*] --> FIFO_B --> CORE_B
+    AXI_BUS_R[m_axi_r*] --> FIFO_R --> CORE_R
+</pre>
+
+<h3>5.2.1 AXI 通道 FIFO 打包格式</h3>
+<table>
+<tr><th>CDC FIFO</th><th>DATA_WIDTH</th><th>打包字段</th><th>DEPTH</th></tr>
+<tr><td>AW (core→bus)</td><td>AXI_ADDR_W + AXI_ID_W + 8 + 3 + 2 + 1 + 4 + 3</td><td>{awaddr, awid, awlen, awsize, awburst, awlock, awcache, awprot}</td><td>4</td></tr>
+<tr><td>W (core→bus)</td><td>AXI_DATA_W + AXI_DATA_W/8 + 1</td><td>{wdata, wstrb, wlast}</td><td>4</td></tr>
+<tr><td>B (bus→core)</td><td>AXI_ID_W + 2</td><td>{bid, bresp}</td><td>4</td></tr>
+<tr><td>AR (core→bus)</td><td>AXI_ADDR_W + AXI_ID_W + 8 + 3 + 2 + 1 + 4 + 3</td><td>{araddr, arid, arlen, arsize, arburst, arlock, arcache, arprot}</td><td>4</td></tr>
+<tr><td>R (bus→core)</td><td>AXI_ID_W + AXI_DATA_W + 2 + 1</td><td>{rid, rdata, rresp, rlast}</td><td>4</td></tr>
+</table>
+
+<h2>5.3 CDC 跨时钟域同步数据通路</h2>
+<pre>
+// 异步 FIFO 格雷码同步流程 (lumi_cdc_async_fifo)
+//
+// 写域 (clk_wr):                          读域 (clk_rd):
+// ┌─────────────────────┐               ┌─────────────────────┐
+// │ wr_ptr_bin++ → wr_ptr_gray          │ rd_ptr_bin++ → rd_ptr_gray
+// │       (bin2gray)                    │       (bin2gray)
+// │                                     │
+// │ rd_ptr_gray ──2FF──→ rd_gray_sync1  │ wr_ptr_gray ──2FF──→ wr_gray_sync1
+// │                                     │
+// │ wr_full = (wr_gray ==               │ rd_empty = (rd_gray ==
+// │   {~rd_sync1[MSB:MSB-1],           │   wr_gray_sync1)
+// │    rd_sync1[MSB-2:0]})              │
+// └─────────────────────┘               └─────────────────────┘
+//
+// 延迟: 写→读数据延迟 = 2 个读时钟周期 (格雷码指针同步)
+//       满/空标志延迟 = 2 个目标时钟周期 (保守判断)
+</pre>
+
+<h2>5.4 关键路径延迟</h2>
+<table>
+<tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+<tr><td>PMA 地址解码 → pma_result</td><td>3 级（比较 + MUX + 编码）</td><td>&lt;1ns</td><td>全组合逻辑，与 Tag 比较并行</td></tr>
+<tr><td>PMA → pmp_check_req</td><td>1 级（直传 pma_pass）</td><td>&lt;0.5ns</td><td>短路优化</td></tr>
+<tr><td>FSM → axi_*_core 输出</td><td>1 级 MUX</td><td>&lt;1ns</td><td>case 选择</td></tr>
+<tr><td>CDC FIFO full/empty 判断</td><td>1 级格雷码比较</td><td>&lt;0.5ns</td><td>异步输出</td></tr>
+<tr><td>仲裁 → state_next</td><td>4 级优先级链</td><td>&lt;1ns</td><td>DC→IC→NC→Trace</td></tr>
+</table>
+
+<h2>5.5 Burst 传输时序</h2>
+<table>
+<tr><th>Cycle</th><th>FSM 状态</th><th>AXI 通道活动</th><th>内部动作</th><th>备注</th></tr>
+<tr><td>T</td><td>ST_IDLE → ST_DC_REFILL_AR</td><td>—</td><td>仲裁选中 dc_refill，锁存 addr/id/len/size</td><td>地址参数锁存</td></tr>
+<tr><td>T+1</td><td>ST_DC_REFILL_AR</td><td>arvalid=1 → FIFO 写入</td><td>arready_core=!ar_full</td><td>经 CDC FIFO</td></tr>
+<tr><td>T+2~T+3</td><td>ST_DC_REFILL_AR (等待)</td><td>CDC 同步 2 cycle</td><td>等待 arready_core</td><td>跨时钟域延迟</td></tr>
+<tr><td>T+4</td><td>ST_DC_REFILL_R</td><td>rready=1, 接收 rdata</td><td>4 beat × 16B 接收</td><td>ARLEN=3</td></tr>
+<tr><td>T+7</td><td>ST_DC_REFILL_R → ST_IDLE</td><td>rlast=1</td><td>dc_refill_ack=1（单 cycle 脉冲）</td><td>完成</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常处理 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+<tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+<tr><td>BC-001</td><td>PMA 地址落在未映射区域（如 0x0003_0000~0x7FFF_FFFF）</td><td><code>pma_result = PMA_FAULT</code>，<code>pmp_check_req=0</code>（短路跳过 PMP），<code>route_*=0</code></td><td>地址扫描 0x0003_0000, 0x4000_0000, 0x7FFF_FFFF, 0xF001_0000</td></tr>
+<tr><td>BC-002</td><td>PMA MMIO 区域 FETCH 访问（NX 保护）</td><td><code>nx_fault=1</code> → <code>PMA_FAULT</code>（对应 mcause=1 Instruction Access Fault）</td><td>pma_addr=0xC000_0000, access_type=FETCH</td></tr>
+<tr><td>BC-003</td><td>PMA TCM/MMIO 区域 AMO 访问</td><td><code>amo_fault=1</code> → <code>PMA_FAULT</code>（amo_type=2'b00 区域不支持 AMO）</td><td>pma_addr=0x0000_0000/0xC000_0000, access_type=AMO</td></tr>
+<tr><td>BC-004</td><td>PMA 地址非对齐（如半字访问奇数地址）</td><td><code>align_fault=1</code> → <code>PMA_MISALIGNED</code>（对应 mcause=0/4/6）</td><td>pma_addr[0]=1 + access_type=Halfword</td></tr>
+<tr><td>BC-005</td><td>4 路 Master 同时请求（DC + IC + NC + Trace）</td><td>固定优先级：DC 获得仲裁，其余等待。DC evict 优先于 DC refill。</td><td>全组合请求测试</td></tr>
+<tr><td>BC-006</td><td>CDC FIFO 满时 FSM 尝试发送</td><td><code>axi_awready_core = !aw_full</code>：FSM 停留在当前 *_AR/*_AW 状态，等待 FIFO 空间。</td><td>背压场景：bus 侧长时间不 ready</td></tr>
+<tr><td>BC-007</td><td>DC evict 多 beat 写（4 beat × 16B）</td><td><code>evict_beat_cnt</code> 计数 0→3，仅在 <code>beat_cnt == len_reg</code> 时 wlast=1。进入 ST_DC_EVICT_W 时清零计数。</td><td>完整 4 beat burst 验证</td></tr>
+<tr><td>BC-008</td><td>NC 写数据扩展（32bit → 128bit）</td><td><code>wdata_reg = {4{nc_access_wdata}}</code> 复制到 128bit，但 wstrb={4'hF,12'h0} 仅低 4 byte 有效。</td><td>NC write + 各字节对齐</td></tr>
+<tr><td>BC-009</td><td>PMA 区域边界地址（TCM_END=0x0003_0000, DDR_END=0xC000_0000, MMIO_END=0xF001_0000）</td><td>比较为 <code>&lt; END</code>（exclusive），0x0003_0000 不属于 TCM，0xC000_0000 属于 MMIO 不属于 DDR。</td><td>边界值 ±1 扫描</td></tr>
+<tr><td>BC-010</td><td>复位期间所有信号</td><td>FSM→ST_IDLE, ack→0, addr_reg→0, CDC FIFO 指针→0（全 0），格雷码 0→0（空状态正确）</td><td>复位后立即发起请求</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+<tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+<tr><td>PMA Access Fault（未映射区域）</td><td><code>!hit_any</code></td><td>报告 PMA_FAULT → 触发 Access Fault 异常（mcause=1/5/7）</td></tr>
+<tr><td>PMA NX Fault</td><td><code>nx_fault = FETCH &amp;&amp; !executable</code></td><td>PMA_FAULT → Instruction Access Fault</td></tr>
+<tr><td>PMA AMO Fault</td><td><code>amo_fault = AMO &amp;&amp; amo_type==00</code></td><td>PMA_FAULT → Store/AMO Access Fault</td></tr>
+<tr><td>PMA 对齐错误</td><td><code>align_fault</code>：地址低位与 access_type 不匹配</td><td>PMA_MISALIGNED → Address Misaligned 异常</td></tr>
+<tr><td>AXI SLVERR/DECERR 响应</td><td><code>bresp != 2'b00</code> 或 <code>rresp != 2'b00</code></td><td>ACK 仍然发出（当前 V1 不上报错误），后续可增加 bus_error_exception</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>pma_access_type 未使用编码（3'b100~3'b111）:</strong> RTL 中 <code>pmp_check_type</code> default 分支返回 read(3'b010)。PMA 检查不会匹配 FETCH/LOAD/STORE/AMO，故不触发 nx_fault 或 amo_fault，结果为 PMA_PASS（若地址命中合法区域）。属于未定义行为，验证应 cover。</li>
+    <li><strong>ST_FFP_ACCESS 状态:</strong> 当前 RTL 中无进入路径（ST_IDLE 不会跳转到该状态），<code>state_next = ST_IDLE</code> 直通。若因 SEU 进入，1 cycle 后恢复。</li>
+    <li><strong>DC evict + DC refill 同时请求:</strong> RTL 中 <code>arb_dc_grant = dc_refill_req_sync || dc_evict_req_sync</code>，<code>dc_evict_req_sync</code> 优先检查，故 evict 优先。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+<tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+<tr><td><code>reset_n = 0</code></td><td>AXI FSM→ST_IDLE, 所有 ack→0, addr_reg/id_reg/len_reg/size_reg/wdata_reg→0, nc_rdata_valid→0, evict_beat_cnt→0, CDC FIFO 指针→0</td><td>异步（negedge reset_n）</td></tr>
+<tr><td>CDC FIFO 满</td><td>FSM 在当前 *_AR/*_AW 状态停留，不丢失数据。backpressure 传导到上游 req 信号。</td><td>同 cycle（combinational ready）</td></tr>
+<tr><td>仲裁阻塞</td><td>低优先级请求保持 req 有效直到被仲裁选中。无超时机制。</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+<tr><th>参数名</th><th>所属模块</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+<tr><td><code>AXI_ADDR_W</code></td><td>lumi_axi_wrapper</td><td>int</td><td><code>lumi_pkg::AXI_ADDR_WIDTH</code> (32)</td><td>32</td><td>AXI 地址总线位宽</td></tr>
+<tr><td><code>AXI_DATA_W</code></td><td>lumi_axi_wrapper</td><td>int</td><td><code>lumi_pkg::AXI_DATA_WIDTH</code> (128)</td><td>64/128</td><td>AXI 数据总线位宽，影响 wstrb 宽度</td></tr>
+<tr><td><code>AXI_ID_W</code></td><td>lumi_axi_wrapper</td><td>int</td><td><code>lumi_pkg::AXI_ID_WIDTH</code> (4)</td><td>≥2</td><td>AXI ID 位宽，需 ≥2 bit 以编码 4 个 Master</td></tr>
+<tr><td><code>NUM_PMA_REGIONS</code></td><td>lumi_pma_checker</td><td>int</td><td>3</td><td>3~6</td><td>PMA 区域数量（当前 3 区域硬编码）</td></tr>
+<tr><td><code>STAGES</code></td><td>lumi_cdc_2ff_sync</td><td>int</td><td>2</td><td>2~4</td><td>同步器 FF 级数，增加降低亚稳态概率但增加延迟</td></tr>
+<tr><td><code>DATA_WIDTH</code></td><td>lumi_cdc_async_fifo</td><td>int</td><td>32</td><td>任意</td><td>FIFO 数据位宽，由实例化时指定</td></tr>
+<tr><td><code>DEPTH</code></td><td>lumi_cdc_async_fifo</td><td>int</td><td>4</td><td>2 的幂次</td><td>FIFO 深度，影响 PTR_WIDTH = $clog2(DEPTH)</td></tr>
+<tr><td><code>PTR_WIDTH</code></td><td>lumi_cdc_async_fifo</td><td>int (auto)</td><td>$clog2(DEPTH) = 2</td><td>自动计算</td><td>指针位宽（不含溢出位）</td></tr>
+</table>
+
+<h2>7.1 内部常量（localparam）</h2>
+<table>
+<tr><th>常量名</th><th>所属模块</th><th>值</th><th>用途</th></tr>
+<tr><td><code>AXI_BURST_INCR</code></td><td>lumi_axi_wrapper</td><td>2'b01</td><td>INCR burst 类型</td></tr>
+<tr><td><code>AXI_SIZE_16B</code></td><td>lumi_axi_wrapper</td><td>3'b100</td><td>16 byte = 128 bit burst size</td></tr>
+<tr><td><code>AXI_SIZE_4B</code></td><td>lumi_axi_wrapper</td><td>3'b010</td><td>4 byte = 32 bit burst size</td></tr>
+<tr><td><code>BURST_4BEAT</code></td><td>lumi_axi_wrapper</td><td>8'd3</td><td>4 beat burst (0-indexed, ARLEN=3)</td></tr>
+<tr><td><code>BURST_1BEAT</code></td><td>lumi_axi_wrapper</td><td>8'd0</td><td>1 beat burst (ARLEN=0)</td></tr>
+<tr><td><code>ID_IC / ID_DC / ID_NC / ID_TRACE</code></td><td>lumi_axi_wrapper</td><td>0/1/2/3</td><td>AXI ID 分配</td></tr>
+<tr><td><code>TCM_BASE / TCM_END</code></td><td>lumi_pma_checker</td><td>0x0000_0000 / 0x0003_0000</td><td>TCM PMA 区域边界</td></tr>
+<tr><td><code>DDR_BASE / DDR_END</code></td><td>lumi_pma_checker</td><td>0x8000_0000 / 0xC000_0000</td><td>DDR PMA 区域边界</td></tr>
+<tr><td><code>MMIO_BASE / MMIO_END</code></td><td>lumi_pma_checker</td><td>0xC000_0000 / 0xF001_0000</td><td>MMIO PMA 区域边界</td></tr>
+<tr><td><code>AT_FETCH / AT_LOAD / AT_STORE / AT_AMO</code></td><td>lumi_pma_checker</td><td>000/001/010/011</td><td>访问类型编码</td></tr>
+</table>
+
+<h2>7.2 参数约束关系</h2>
+<ul>
+    <li><code>AXI_ID_W ≥ 2</code>：需至少 2 bit 以编码 4 个 Master ID（0~3）</li>
+    <li><code>DEPTH</code> 必须为 2 的幂次：格雷码指针要求 <code>PTR_WIDTH = $clog2(DEPTH)</code></li>
+    <li><code>STAGES ≥ 2</code>：CDC 2-FF 同步器最低 2 级，低于此值无法保证亚稳态消除</li>
+    <li><code>AXI_DATA_W</code> 必须为 8 的倍数：wstrb 位宽 = AXI_DATA_W / 8</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+<tr><th>子模块</th><th>所属文件</th><th>职责</th><th>关键信号</th></tr>
+<tr><td><code>lumi_axi_wrapper</code></td><td>lumi_axi_wrapper.sv</td><td>AXI4 Master 接口 + 仲裁 + CDC 桥接</td><td>state_reg, arb_*_grant, axi_*_core</td></tr>
+<tr><td><code>lumi_pma_checker</code></td><td>lumi_pma_checker.sv</td><td>PMA 地址解码 + 属性检查 + 路由</td><td>hit_tcm/ddr/mmio, pma_attrs, pma_result</td></tr>
+<tr><td><code>lumi_cdc_2ff_sync</code></td><td>lumi_cdc_sync.sv</td><td>单 bit 多级 FF 同步器</td><td>sync_reg[STAGES-1:0]</td></tr>
+<tr><td><code>lumi_cdc_async_fifo</code> ×5</td><td>lumi_cdc_sync.sv</td><td>AXI 5 通道异步 FIFO 桥接</td><td>mem[DEPTH], wr_ptr_gray, rd_ptr_gray</td></tr>
+<tr><td><code>u_axi_aw_cdc</code></td><td>lumi_axi_wrapper.sv L568</td><td>AW 通道 CDC FIFO 实例</td><td>aw_empty, aw_full</td></tr>
+<tr><td><code>u_axi_w_cdc</code></td><td>lumi_axi_wrapper.sv L589</td><td>W 通道 CDC FIFO 实例</td><td>w_empty, w_full</td></tr>
+<tr><td><code>u_axi_b_cdc</code></td><td>lumi_axi_wrapper.sv L608</td><td>B 通道 CDC FIFO 实例</td><td>b_empty, b_full</td></tr>
+<tr><td><code>u_axi_ar_cdc</code></td><td>lumi_axi_wrapper.sv L627</td><td>AR 通道 CDC FIFO 实例</td><td>ar_empty, ar_full</td></tr>
+<tr><td><code>u_axi_r_cdc</code></td><td>lumi_axi_wrapper.sv L648</td><td>R 通道 CDC FIFO 实例</td><td>r_empty, r_full</td></tr>
+</table>
+
+<h2>8.2 内部寄存器（lumi_axi_wrapper）</h2>
+<table>
+<tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+<tr><td><code>state_reg</code></td><td>5</td><td>ST_IDLE</td><td>每个 clk_core↑</td><td>AXI FSM 当前状态</td></tr>
+<tr><td><code>addr_reg</code></td><td>AXI_ADDR_W</td><td>0</td><td>ST_IDLE → 传输态时锁存</td><td>当前 burst 地址</td></tr>
+<tr><td><code>id_reg</code></td><td>AXI_ID_W</td><td>0</td><td>ST_IDLE → 传输态时锁存</td><td>当前 AXI ID</td></tr>
+<tr><td><code>len_reg</code></td><td>8</td><td>0</td><td>ST_IDLE → 传输态时锁存</td><td>Burst 长度</td></tr>
+<tr><td><code>size_reg</code></td><td>3</td><td>0</td><td>ST_IDLE → 传输态时锁存</td><td>Burst 大小</td></tr>
+<tr><td><code>wdata_reg</code></td><td>128</td><td>0</td><td>ST_IDLE → 写传输时锁存</td><td>写数据</td></tr>
+<tr><td><code>is_write</code></td><td>1</td><td>0</td><td>ST_IDLE → 传输态时锁存</td><td>写方向标志</td></tr>
+<tr><td><code>nc_rdata_reg</code></td><td>128</td><td>0</td><td>NC read R last beat 时</td><td>NC 读数据暂存</td></tr>
+<tr><td><code>nc_rdata_valid</code></td><td>1</td><td>0</td><td>NC read 完成时置 1</td><td>NC 读数据有效</td></tr>
+<tr><td><code>evict_beat_cnt</code></td><td>3</td><td>0</td><td>ST_DC_EVICT_W 每次 wready 时 +1，进入该状态时清零</td><td>Evict 多 beat 计数</td></tr>
+<tr><td><code>ic_ack_bus</code> … <code>trace_ack_bus</code></td><td>各 1</td><td>0</td><td>每 cycle 默认清 0，传输完成时置 1（单 cycle 脉冲）</td><td>各通道完成 ACK</td></tr>
+</table>
+
+<h2>8.3 仲裁算法</h2>
+<pre>
+// 固定优先级仲裁 (lumi_axi_wrapper.sv L248~252)
+// 优先级: DC > IC > NC > Trace
+arb_dc_grant    = dc_refill_req_sync || dc_evict_req_sync
+arb_ic_grant    = ic_req_sync &amp;&amp; !arb_dc_grant
+arb_nc_grant    = nc_req_sync &amp;&amp; !arb_dc_grant &amp;&amp; !arb_ic_grant
+arb_trace_grant = trace_req_sync &amp;&amp; !arb_dc_grant &amp;&amp; !arb_ic_grant &amp;&amp; !arb_nc_grant
+
+// DC 内部: evict 优先于 refill (在 FSM ST_IDLE 中先检查 dc_evict_req_sync)
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+<tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+<tr><td>PMA 3 区域命中 + 未映射区域</td><td>100%（4 区域 × 边界值）</td><td>P0</td></tr>
+<tr><td>PMA 属性检查（NX / AMO / align）</td><td>100%（3 种 fault × 各区域）</td><td>P0</td></tr>
+<tr><td>PMA+PMP 联合（pass/fail × pass/fail）</td><td>100%（4 种组合）</td><td>P0</td></tr>
+<tr><td>AXI FSM 全状态覆盖</td><td>100%（16 状态）</td><td>P0</td></tr>
+<tr><td>AXI FSM 全转移覆盖</td><td>100%（所有合法转移路径）</td><td>P1</td></tr>
+<tr><td>4 路仲裁全覆盖</td><td>100%（单独/同时到达/优先级抢占）</td><td>P0</td></tr>
+<tr><td>CDC FIFO 满/空/正常</td><td>100%（空→写→满→读→空 完整周期）</td><td>P0</td></tr>
+<tr><td>边界条件 BC-001~BC-010</td><td>100%</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+<tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+<tr><td><code>axi_handshake_stable</code></td><td><code>axi_awvalid &amp;&amp; !axi_awready |=> axi_awvalid &amp;&amp; $stable(axi_awaddr)</code></td><td>valid 拉高后地址不可变直到 ready</td></tr>
+<tr><td><code>ack_onehot_pulse</code></td><td><code>$countones({ic_ack, dc_refill_ack, dc_evict_ack, nc_ack, trace_ack}) &lt;= 1</code></td><td>同一 cycle 最多一个 ACK</td></tr>
+<tr><td><code>fsm_no_ffp_entry</code></td><td><code>state_reg != ST_FFP_ACCESS</code></td><td>FFP 状态不可达（当前 stub）</td></tr>
+<tr><td><code>pma_unmapped_fault</code></td><td><code>!hit_any |-> pma_result == PMA_FAULT</code></td><td>未映射区域必须 fault</td></tr>
+<tr><td><code>pma_nx_mmio</code></td><td><code>hit_mmio &amp;&amp; access_type==FETCH |-> pma_result == PMA_FAULT</code></td><td>MMIO 不可执行</td></tr>
+<tr><td><code>cdc_fifo_no_overflow</code></td><td><code>wr_en &amp;&amp; wr_full |-> ##0 wr_full</code></td><td>满时写入不改变 FIFO 状态</td></tr>
+<tr><td><code>pmp_short_circuit</code></td><td><code>pma_result != PMA_PASS |-> !pmp_check_req</code></td><td>PMA fail 时不请求 PMP</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+<tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+<tr><td><span class="req-tag">LUMI-MEM-009</span></td><td>PMA 物理内存属性检查器（3 区域）</td><td>§2.1 F-001~F-005, §5.1, §6.1 BC-001~004,009</td><td><code>lumi_pma_checker.sv</code> 全文 (L84~L191)</td></tr>
+<tr><td><span class="req-tag">LUMI-IF-001</span></td><td>AMBA4 AXI 主总线（128bit）</td><td>§2.1 F-006~F-007, §3.1.1, §4.1, §5.2</td><td><code>lumi_axi_wrapper.sv</code> AW/W/B/AR/R 通道 (L50~L84)</td></tr>
+<tr><td><span class="req-tag">LUMI-IF-002</span></td><td>FFP 外设接口（AXI 32bit）</td><td>§2.1 F-008, §3.1.1 FFP 端口</td><td><code>lumi_axi_wrapper.sv</code> FFP 端口 (L87~L103)</td></tr>
+<tr><td><span class="req-tag">LUMI-FEAT-003</span></td><td>Trace AXI4 写出</td><td>§2.1 F-010, §4.3 ST_TRACE_*</td><td><code>lumi_axi_wrapper.sv</code> ST_TRACE_AW/W/B (L529~L553)</td></tr>
+<tr><td><span class="req-tag">LUMI-BUS-005</span></td><td>CDC 跨时钟域同步</td><td>§2.1 F-009, §3.2, §5.3</td><td><code>lumi_cdc_sync.sv</code> 全文 + wrapper 中 5 个 FIFO 实例</td></tr>
+<tr><td><span class="req-tag">LUMI-SYS-006</span></td><td>32bit 物理寻址</td><td>§3.1 地址宽度</td><td><code>AXI_ADDR_W = 32</code></td></tr>
+<tr><td><span class="constraint-tag">PMA+PMP 联合</span></td><td>PMA+PMP AND 联合判定</td><td>§2.1 F-004, §5.1, §6.2</td><td><code>lumi_pma_checker.sv</code> L173 (pmp_check_req = pma_pass)</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="pma-axi.html">pma-axi.html</a> 的设计细化：HLD §2.1（PMA 区域定义）→ LLD §5.1；HLD §2.3（AXI 信号列表）→ LLD §3.1.1；HLD §2.4（仲裁）→ LLD §4.1~4.3, §8.3；HLD §4.1（CDC）→ LLD §5.3。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约：<a href="interface-contracts.html#axi-bus">IC-AXI-Bus</a>（AXI4 主总线 Master 接口）、<a href="interface-contracts.html#pma-pmp">IC-PMA-PMP</a>（PMA/PMP 联合检查接口）</p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>LUMI-LLD-008 &mdash; PMA 检查器 &amp; AXI 总线接口 Low Level Design &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 日期: 2026-07-16<br>
+    承接: <a href="pma-axi.html">pma-axi.html</a> (LUMI-DESIGN-008) &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

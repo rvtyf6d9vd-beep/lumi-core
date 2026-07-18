@@ -173,10 +173,186 @@
     </div>
 </div>
 
+<!-- ═══ LLD 文档分区 ═══ -->
+<div class="section">
+    <h2>LLD 详细设计文档 <span class="batch-badge">LLD</span></h2>
+    <div class="card-grid">
+        <div class="card" style="border-left: 4px solid #2e7d32;">
+            <h3><a href="lld-index.html">LLD 文档索引</a></h3>
+            <p class="desc">详细低层设计文档集合，覆盖各子模块的 RTL 实现细节、接口约束、时序分析和验证策略。与 HLD 文档形成双层设计体系。</p>
+            <p class="doc-id">LLD-INDEX</p>
+        </div>
+        <div class="card" style="border-left: 4px solid #2e7d32;">
+            <h3><a href="interface-contracts.html">模块间接口契约</a></h3>
+            <p class="desc">全模块交互接口精确定义：流水线级间、存储、总线、中断、调试、扩展接口 + 全局信号传播矩阵。v2.1 scalar 端口版本，附录 C 列出 26 项未连接/预留接口。</p>
+            <p class="doc-id">LUMI-LLD-IC</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ HLD ↔ LLD 映射表 ═══ -->
+<div class="section">
+    <h2>HLD ↔ LLD 双向追溯映射表</h2>
+    <p style="margin-bottom:1rem;color:var(--note);font-size:0.9rem">16 份 HLD 文档映射到 20 份 LLD 文档。HLD 定义架构规格，LLD 定义 RTL 信号级实现。4 份 LLD 为新增（无直接 HLD 对应）。</p>
+    <table style="width:100%;border-collapse:collapse;font-size:0.88rem">
+        <tr style="background:var(--accent);color:#fff">
+            <th style="padding:0.5rem 0.8rem;text-align:left">HLD 文档</th>
+            <th style="padding:0.5rem 0.8rem;text-align:left">HLD 编号</th>
+            <th style="padding:0.5rem 0.8rem;text-align:left">LLD 文档</th>
+            <th style="padding:0.5rem 0.8rem;text-align:left">LLD 编号</th>
+            <th style="padding:0.5rem 0.8rem;text-align:left">RTL 模块</th>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="fetch-bpred.html">Fetch &amp; Branch Predictor</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-001</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-fetch-bpred.html">Fetch &amp; BPred LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-001</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_fetch, lumi_predecode</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="decode-issue.html">Decode &amp; Issue</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-002</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-decode-issue.html">Decode &amp; Issue LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-002</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_decode_issue</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="execute-alu.html">Execute (ALU/MUL/DIV)</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-003</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-execute-bypass.html">Execute &amp; Bypass LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-003</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_execute, lumi_bypass</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem" rowspan="2"><a href="writeback-csr.html">Writeback &amp; CSR/HPM</a><br><a href="regfile.html">Register File</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-004<br>DESIGN-005</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-writeback.html">Writeback LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-005</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_writeback</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">(同上)</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-csr-regfile.html">CSR &amp; RegFile LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-006</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_csr_unit, lumi_regfile</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem;color:#90a4ae;font-style:italic">(无直接 HLD — 从 DESIGN-003 拆分)</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem;color:#90a4ae">—</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-memory-stage.html">Memory Stage LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-004</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_memory_stage</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="cache.html">L1 Cache</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-007</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-cache.html">L1 Cache LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-007</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_cache</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="tcm.html">TCM</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-006</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-tcm.html">TCM LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-008</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_tcm</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="pma-axi.html">PMA &amp; AXI Bus</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-008</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-pma-axi.html">PMA &amp; AXI LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-009</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_axi_wrapper, lumi_pma_checker, lumi_cdc_sync</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem" rowspan="2"><a href="clic-plic.html">CLIC + PLIC</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem" rowspan="2">DESIGN-009</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-clic.html">CLIC LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-010</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_clic</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="lld-plic.html">PLIC LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-011</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_plic</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="exception-handling.html">异常处理</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-010</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-exception.html">Exception LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-012</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_exception</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="privilege-pmp.html">特权 &amp; PMP</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-011</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-csr-regfile.html">CSR &amp; RegFile LLD</a> (CSR 部分) + <a href="lld-pma-axi.html">PMA LLD</a> (PMP 部分)</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-006 / LLD-009</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_csr_unit, lumi_pma_checker</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="debug-trace.html">Debug &amp; Trace</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-012</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-debug-trace.html">Debug &amp; Trace LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-013</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_debug_module, lumi_trace</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="fpu-vector.html">FPU &amp; Vector</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-013</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-fpu-vector.html">FPU &amp; Vector LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-014</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_fpu, lumi_vector</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="power-reset.html">低功耗 &amp; 复位</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-014</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-power.html">Power Mgmt LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-015</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_power_mgmt</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem"><a href="multicore-lockstep.html">多核 &amp; 锁步</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-015</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-multicore-lockstep.html">Multicore &amp; Lockstep LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-016</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_multicore_top, lumi_lockstep</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem"><a href="dft-security.html">DFT &amp; 安全</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">DESIGN-016</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-dft.html">DFT &amp; Security LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-017</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_dft_ctrl</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem;color:#90a4ae;font-style:italic">(无直接 HLD — 顶层集成)</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem;color:#90a4ae">—</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-core-top.html">Core Top LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-018</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_core_top</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);background:#f8f9fa">
+            <td style="padding:0.4rem 0.8rem;color:#90a4ae;font-style:italic">(无直接 HLD — SoC 集成)</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem;color:#90a4ae">—</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-soc-top.html">SoC Top LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-019</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_soc_top, lumi_soc_tb_stub</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.4rem 0.8rem;color:#90a4ae;font-style:italic">(无直接 HLD — 类型/包)</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem;color:#90a4ae">—</td>
+            <td style="padding:0.4rem 0.8rem"><a href="lld-types-pkg.html">Types &amp; Pkg LLD</a></td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">LLD-020</td>
+            <td style="padding:0.4rem 0.8rem;font-family:monospace;font-size:0.8rem">lumi_types_pkg, lumi_interfaces</td>
+        </tr>
+    </table>
+</div>
+
 <div class="footer">
     <p><a href="../index.html" class="back-link">&larr; 返回主页文档地图</a></p>
-    <p>Lumi-Core Design Document Index &mdash; LUMI-DESIGN-001 ~ 016<br>
-    最后更新: 2026-07-07</p>
+    <p>Lumi-Core Design Document Index &mdash; LUMI-DESIGN-001 ~ 016 + LLD-001 ~ 020<br>
+    最后更新: 2026-07-17</p>
 </div>
 
 </body>

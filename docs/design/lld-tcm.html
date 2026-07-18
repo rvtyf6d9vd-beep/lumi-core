@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_tcm (TCM 紧耦合内存)</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_tcm Low Level Design</h1>
+    <p class="subtitle">ITCM / DTCM0 / DTCM1 + ECC SECDED + DMA Slave — M 级紧耦合内存</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-006 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="tcm.html">tcm.html</a> (LUMI-DESIGN-006)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/memory/lumi_tcm.sv</code> (491 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#tcm">IC-TCM</a> &nbsp;|&nbsp; <strong>依赖包:</strong> <code>lumi_pkg</code></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_tcm</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/memory/lumi_tcm.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="tcm.html">tcm.html</a> (LUMI-DESIGN-006)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-006</td></tr>
+    <tr><td>需求追溯</td><td><span class="req-tag">LUMI-MEM-002~005</span> <span class="req-tag">LUMI-IF-003</span></td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>ITCM 32KB / DTCM0 32KB / DTCM1 32KB SRAM 存储阵列</td><td>L1 Cache 存储阵列 (属于 <code>lumi_cache</code>)</td></tr>
+    <tr><td>ECC SECDED 编码/解码 (7-bit: 6 Hamming + 1 parity)</td><td>PMA/PMP 权限检查 (属于 <code>lumi_pma_axi</code>)</td></tr>
+    <tr><td>DMA AXI4-Lite Slave 从接口控制器</td><td>AXI 主总线接口 (属于 <code>lumi_pma_axi</code>)</td></tr>
+    <tr><td>地址解码: ITCM/DTCM0/DTCM1 区域选择</td><td>Cache-TCM 仲裁逻辑 (属于 <code>lumi_cache</code>)</td></tr>
+    <tr><td>核心-DMA 仲裁 (核心优先)</td><td>流水线级间传递 (属于 pipeline_if)</td></tr>
+    <tr><td>ECC CE 计数器 + CE/DED 中断输出</td><td>CSR 寄存器文件 (属于 <code>lumi_csr</code>)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="execute-alu.html">execute-alu</a> (M 级地址/数据) | <a href="fetch-bpred.html">fetch-bpred</a> (ITCM 取指) &nbsp;|&nbsp;
+   <strong>下游:</strong> <a href="writeback-csr.html">writeback-csr</a> (写回数据) | <a href="pma-axi.html">pma-axi</a> (DMA 通路)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 (基于 lumi_tcm.sv M3 Batch-2 实现)</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>ITCM 存储访问</td><td>32KB 指令紧耦合内存, 地址 <code>0x0000_0000~0x0000_7FFF</code>, 支持读/写/byte-enable</td><td><span class="req-tag">LUMI-MEM-002</span></td></tr>
+    <tr><td>F-002</td><td>DTCM0/DTCM1 双区存储</td><td>各 32KB 数据紧耦合内存, DTCM0: <code>0x0001_0000</code>, DTCM1: <code>0x0002_0000</code></td><td><span class="req-tag">LUMI-MEM-003</span></td></tr>
+    <tr><td>F-003</td><td>0/1 拍延迟可配</td><td><code>LATENCY_MODE=0</code> 零拍 (同 cycle 返回), <code>=1</code> 一拍 (stall 1 cycle)</td><td><span class="req-tag">LUMI-MEM-004</span></td></tr>
+    <tr><td>F-004</td><td>ECC SECDED 保护</td><td>7-bit ECC (6 Hamming + 1 overall parity), 写编码 + 读解码 + CE 回写 + DED NMI</td><td><span class="req-tag">LUMI-MEM-005</span></td></tr>
+    <tr><td>F-005</td><td>DMA Slave 接口</td><td>AXI4-Lite 从接口, 核心优先仲裁, 支持 DMA 读写 TCM</td><td><span class="req-tag">LUMI-IF-003</span></td></tr>
+    <tr><td>F-006</td><td>ECC 错误监控</td><td>CE 计数器 (<code>ecc_ce_count</code>) + CE/DED 中断输出</td><td><span class="req-tag">LUMI-MEM-005</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>零拍读 (Core Read, LATENCY=0)</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; !core_we</code>, <code>LATENCY_MODE==0</code></td><td>同 cycle 组合逻辑输出 <code>core_rdata</code>, 经 ECC 解码后返回纠正数据</td></tr>
+    <tr><td>一拍读 (Core Read, LATENCY=1)</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; !core_we</code>, <code>LATENCY_MODE==1</code></td><td>数据锁存到 <code>pending_rdata</code>, 下一 cycle <code>core_ready=1</code> 时输出</td></tr>
+    <tr><td>核心写 (Core Write)</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; core_we</code></td><td>按 <code>core_be[3:0]</code> 字节使能写入, 全字写时同步更新 ECC</td></tr>
+    <tr><td>DMA 读</td><td><code>dma_arvalid</code> 且核心空闲</td><td>锁存地址 → SRAM 读取 → ECC 解码 → <code>dma_rdata</code> 输出</td></tr>
+    <tr><td>DMA 写</td><td><code>dma_awvalid &amp;&amp; dma_wvalid</code> 且核心空闲</td><td>锁存地址+数据 → SRAM 写入 → ECC 编码 → <code>dma_bvalid</code> 响应</td></tr>
+    <tr><td>ECC 回写 (Scrub)</td><td>ECC CE 检测到单 bit 错误</td><td>纠正数据自动回写 SRAM, 同时 ECC 计数递增</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- 时钟/复位 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">时钟与复位</td></tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟 (TCM 同步访问)</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <!-- 核心侧 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">核心侧接口 (Port A — M 级访问)</td></tr>
+    <tr>
+        <td><code>core_addr</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>核心访问地址 (M 级)</td>
+    </tr>
+    <tr>
+        <td><code>core_wdata</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>核心写数据</td>
+    </tr>
+    <tr>
+        <td><code>core_rdata</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational (LAT=0) / registered (LAT=1)</td><td>核心读数据 (ECC 纠正后)</td>
+    </tr>
+    <tr>
+        <td><code>core_we</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>写使能 (1=Write, 0=Read)</td>
+    </tr>
+    <tr>
+        <td><code>core_be</code></td><td>input</td><td>4</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>字节使能 (按位选通 byte write)</td>
+    </tr>
+    <tr>
+        <td><code>core_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>核心访问有效</td>
+    </tr>
+    <tr>
+        <td><code>core_ready</code></td><td>output</td><td>1</td><td>1 (IDLE)</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational (FSM 驱动)</td><td>TCM 就绪 (零拍恒 1, 一拍延迟 1 cycle)</td>
+    </tr>
+    <tr>
+        <td><code>core_hit</code></td><td>output</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>TCM 命中 (地址在 ITCM/DTCM0/DTCM1 范围内)</td>
+    </tr>
+    <!-- DMA 侧 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">DMA 侧接口 (Port B — AXI4-Lite Slave)</td></tr>
+    <tr>
+        <td><code>dma_awaddr</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 写地址通道</td>
+    </tr>
+    <tr>
+        <td><code>dma_awvalid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 写地址有效</td>
+    </tr>
+    <tr>
+        <td><code>dma_awready</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational (FSM 驱动)</td><td>DMA 写地址就绪</td>
+    </tr>
+    <tr>
+        <td><code>dma_wdata</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 写数据</td>
+    </tr>
+    <tr>
+        <td><code>dma_wvalid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 写数据有效</td>
+    </tr>
+    <tr>
+        <td><code>dma_wready</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational (FSM 驱动)</td><td>DMA 写数据就绪</td>
+    </tr>
+    <tr>
+        <td><code>dma_araddr</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 读地址通道</td>
+    </tr>
+    <tr>
+        <td><code>dma_addr</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>DMA 锁存地址 (已锁存到 <code>dma_addr_reg</code>)</td>
+    </tr>
+    <tr>
+        <td><code>dma_arvalid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 读地址有效</td>
+    </tr>
+    <tr>
+        <td><code>dma_arready</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational (FSM 驱动)</td><td>DMA 读地址就绪</td>
+    </tr>
+    <tr>
+        <td><code>dma_rdata</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>registered (<code>dma_rdata_reg</code>)</td><td>DMA 读数据</td>
+    </tr>
+    <tr>
+        <td><code>dma_rvalid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>registered</td><td>DMA 读数据有效</td>
+    </tr>
+    <tr>
+        <td><code>dma_rready</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 读数据就绪 (master)</td>
+    </tr>
+    <tr>
+        <td><code>dma_bresp</code></td><td>output</td><td>2</td><td>2'b00</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational (恒 OKAY)</td><td>DMA 写响应 (OKAY=2'b00)</td>
+    </tr>
+    <tr>
+        <td><code>dma_bvalid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>registered (<code>dma_bvalid_reg</code>)</td><td>DMA 写响应有效</td>
+    </tr>
+    <tr>
+        <td><code>dma_bready</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>AXI4-Lite</td><td>combinational</td><td>DMA 写响应就绪 (master)</td>
+    </tr>
+    <!-- ECC 状态 -->
+    <tr><td colspan="8" style="background:#e3f2fd;font-weight:600;">ECC 状态接口</td></tr>
+    <tr>
+        <td><code>ecc_ce_irq</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>中断</td><td>combinational (FSM 驱动)</td><td>单 bit 纠正中断 (ST_ECC_CHECK 时脉冲)</td>
+    </tr>
+    <tr>
+        <td><code>ecc_ded_irq</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>中断 (NMI)</td><td>combinational (FSM 驱动)</td><td>双 bit 检测中断 (NMI 级别)</td>
+    </tr>
+    <tr>
+        <td><code>ecc_ce_count</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>registered (递增计数)</td><td>CE 错误累计计数器</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+核心侧采用 <code>valid-ready</code> 协议: <code>core_valid</code> 为 input, <code>core_ready</code> 为 combinational output (FSM 驱动)。
+数据传输发生在 <code>core_valid &amp;&amp; core_ready</code> 且 <code>any_hit</code> 时的 clk 上升沿。
+DMA 侧遵循 AXI4-Lite 规范, 各通道独立握手 (<code>awvalid/awready</code>, <code>wvalid/wready</code>, <code>arvalid/arready</code>, <code>rvalid/rready</code>, <code>bvalid/bready</code>)。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>mem_req_if</code></td><td>— (端口级直连)</td><td>responder</td><td>核心流水线 M 级</td></tr>
+    <tr><td><code>axi4_lite_if</code></td><td>— (端口级直连)</td><td>slave</td><td>DMA 控制器</td></tr>
+</table>
+<p><span class="lld-tag">LLD 注</span> 当前 RTL 未使用 SV Interface 实例化, 而是端口级展开。上表为逻辑等价映射。</p>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td colspan="4" style="text-align:center;color:#90a4ae;">无 — TCM 全部信号均在 CLK_CORE 域内</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<h3>3.4.1 核心零拍读 (LATENCY_MODE=0)</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant Core as 核心 (M 级)
+    participant TCM as lumi_tcm
+    Core->>TCM: core_valid=1, core_addr=ITCM地址, core_we=0
+    TCM-->>Core: core_ready=1, core_hit=1
+    Note over Core,TCM: 同 cycle: core_rdata = ECC解码结果
+    Core->>TCM: core_valid=0
+    TCM-->>Core: core_ready=1 (IDLE)
+</pre>
+
+<h3>3.4.2 DMA 写 (核心空闲)</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant DMA as DMA 控制器
+    participant TCM as lumi_tcm
+    DMA->>TCM: dma_awvalid=1, dma_awaddr=地址
+    DMA->>TCM: dma_wvalid=1, dma_wdata=数据
+    TCM-->>DMA: dma_awready=1, dma_wready=1
+    Note over DMA,TCM: clk↑: 地址+数据锁存, SRAM写入
+    TCM-->>DMA: dma_bvalid=1, dma_bresp=OKAY
+    DMA->>TCM: dma_bready=1
+    Note over DMA,TCM: clk↑: 写响应完成
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'b000</td><td>空闲等待, <code>core_ready=1</code></td><td>reset / 操作完成回退</td></tr>
+    <tr><td><code>ST_CORE_READ</code></td><td>3'b001</td><td>核心读: SRAM 读出 + ECC 解码</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; !core_we</code></td></tr>
+    <tr><td><code>ST_CORE_WRITE</code></td><td>3'b010</td><td>核心写: byte-enable SRAM 写入</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; core_we</code></td></tr>
+    <tr><td><code>ST_DMA_READ</code></td><td>3'b011</td><td>DMA 读: 锁存地址 → SRAM 读出</td><td><code>dma_arvalid</code> (核心空闲时)</td></tr>
+    <tr><td><code>ST_DMA_WRITE</code></td><td>3'b100</td><td>DMA 写: 锁存地址+数据 → SRAM 写入</td><td><code>dma_awvalid &amp;&amp; dma_wvalid</code> (核心空闲时)</td></tr>
+    <tr><td><code>ST_ECC_CHECK</code></td><td>3'b101</td><td>ECC 检查结果: CE 回写 / DED 中断</td><td>Core Read / DMA Read 完成后</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset_n=0
+    ST_IDLE --> ST_CORE_READ : core_valid && any_hit && !core_we
+    ST_IDLE --> ST_CORE_WRITE : core_valid && any_hit && core_we
+    ST_IDLE --> ST_DMA_READ : dma_arvalid (核心空闲)
+    ST_IDLE --> ST_DMA_WRITE : dma_awvalid && dma_wvalid (核心空闲)
+    ST_CORE_READ --> ST_ECC_CHECK : 零拍/一拍完成
+    ST_CORE_WRITE --> ST_IDLE : 写入完成
+    ST_DMA_READ --> ST_ECC_CHECK : SRAM 读出完成
+    ST_DMA_WRITE --> ST_IDLE : SRAM 写入完成
+    ST_ECC_CHECK --> ST_IDLE : 检查完成 (CE回写/DED中断)
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_CORE_READ</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; !core_we</code></td><td><code>core_ready = 1</code></td></tr>
+    <tr><td>ST_IDLE</td><td>ST_CORE_WRITE</td><td><code>core_valid &amp;&amp; any_hit &amp;&amp; core_we</code></td><td><code>core_ready = 1</code></td></tr>
+    <tr><td>ST_IDLE</td><td>ST_DMA_READ</td><td><code>dma_arvalid</code> (核心无请求)</td><td>锁存 <code>dma_addr</code> → <code>dma_addr_reg</code></td></tr>
+    <tr><td>ST_IDLE</td><td>ST_DMA_WRITE</td><td><code>dma_awvalid &amp;&amp; dma_wvalid</code> (核心无请求)</td><td>锁存 <code>dma_addr</code> + <code>dma_wdata</code></td></tr>
+    <tr><td>ST_CORE_READ</td><td>ST_ECC_CHECK</td><td>零拍: 立即; 一拍: <code>pending_valid</code></td><td><code>core_ready = 1</code> (零拍) / <code>pending_valid</code> (一拍)</td></tr>
+    <tr><td>ST_CORE_WRITE</td><td>ST_IDLE</td><td>写入完成 (1 cycle)</td><td><code>core_ready = 1</code></td></tr>
+    <tr><td>ST_DMA_READ</td><td>ST_ECC_CHECK</td><td>SRAM 读出完成</td><td><code>dma_arready = 1</code></td></tr>
+    <tr><td>ST_DMA_WRITE</td><td>ST_IDLE</td><td>SRAM 写入完成</td><td><code>dma_awready = 1; dma_wready = 1</code></td></tr>
+    <tr><td>ST_ECC_CHECK</td><td>ST_IDLE</td><td>检查完成</td><td><code>ecc_ce_irq / ecc_ded_irq</code> 脉冲; ECC CE 回写</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> 所有 FSM 状态均在 1~2 cycle 内回到 <code>ST_IDLE</code>; <code>default</code> 分支强制跳转 <code>ST_IDLE</code>, 防止非法状态锁死。</li>
+    <li><strong>活锁防护:</strong> 核心优先仲裁 — DMA 请求仅在核心空闲 (<code>!core_valid || !any_hit</code>) 时受理, 避免 DMA 持续抢占。但核心连续访问 TCM 会导致 DMA 饥饿; 软件层面应通过 burst 间隔释放总线。</li>
+    <li><strong>DMA pending 清理:</strong> <code>dma_pending</code> 在 <code>ST_DMA_WRITE</code> 或 <code>ST_ECC_CHECK</code> (DMA 读路径) 时自动清零, 防止重复访问。</li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 ITCM/DTCM 核心读数据通路</h2>
+<pre class="mermaid">
+graph LR
+    A["core_addr[31:0]"] --> B["地址解码<br/>itcm_hit / dtcm0_hit / dtcm1_hit"]
+    B --> C["bank_offset = addr[14:2]"]
+    C --> D["SRAM 阵列<br/>itcm_mem / dtcm0_mem / dtcm1_mem"]
+    D --> E["read_data_raw[31:0]<br/>read_ecc_raw[6:0]"]
+    E --> F{"ECC_EN?"}
+    F -->|Yes| G["ecc_decode_fn()<br/>syndrome 计算"]
+    F -->|No| H["直传 read_data_raw"]
+    G --> I{"ecc_ce_flag?"}
+    I -->|CE| J["ecc_corrected<br/>(纠正后数据)"]
+    I -->|No Error| K["read_data_raw"]
+    I -->|DED| L["ecc_ded_irq=1<br/>数据不可靠"]
+    J --> M["core_rdata<br/>(LAT=0 直接输出)"]
+    K --> M
+    H --> M
+    M --> N{"LATENCY_MODE?"}
+    N -->|0| O["组合输出"]
+    N -->|1| P["pending_rdata 锁存<br/>下 cycle 输出"]
+</pre>
+
+<h2>5.2 ECC 编码 + DMA 写流程</h2>
+<pre class="mermaid">
+graph LR
+    A["DMA 写请求<br/>dma_awvalid && dma_wvalid"] --> B["ST_IDLE → ST_DMA_WRITE"]
+    B --> C["dma_addr_reg 锁存<br/>dma_wdata_reg 锁存"]
+    C --> D["bank_offset 计算"]
+    D --> E["SRAM 写入<br/>mem[offset] = dma_wdata_reg"]
+    E --> F{"ECC_EN?"}
+    F -->|Yes| G["ecc_encode(dma_wdata_reg)<br/>→ ecc_mem[offset]"]
+    F -->|No| H["不写 ECC"]
+    G --> I["ST_DMA_WRITE → ST_IDLE<br/>dma_bvalid=1"]
+    H --> I
+    I --> J["dma_bready=1 → dma_bvalid=0"]
+</pre>
+
+<h2>5.3 ECC 回写 (Scrub) 流程</h2>
+<pre class="mermaid">
+graph LR
+    A["ST_ECC_CHECK<br/>ecc_ce_flag=1"] --> B["ecc_wb_req=1<br/>(组合逻辑)"]
+    B --> C["ecc_wb_data = ecc_corrected"]
+    C --> D["ecc_wb_ecc = ecc_encode(ecc_corrected)"]
+    D --> E{"bank 选择<br/>itcm/dtcm0/dtcm1"}
+    E -->|itcm| F["itcm_mem[offset] <= corrected<br/>ecc_itcm[offset] <= new_ecc"]
+    E -->|dtcm0| G["dtcm0_mem[offset] <= corrected<br/>ecc_dtcm0[offset] <= new_ecc"]
+    E -->|dtcm1| H["dtcm1_mem[offset] <= corrected<br/>ecc_dtcm1[offset] <= new_ecc"]
+    F --> I["ecc_ce_cnt <= ecc_ce_cnt + 1"]
+    G --> I
+    H --> I
+</pre>
+
+<h2>5.4 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T (LAT=0 读)</td><td><code>core_valid=1, core_addr=X, core_we=0</code></td><td>ST_IDLE → ST_CORE_READ</td><td><code>core_ready=1, core_rdata=ecc_decode(mem[X])</code></td><td>组合逻辑同 cycle</td></tr>
+    <tr><td>T+1 (LAT=0)</td><td>—</td><td>ST_CORE_READ → ST_ECC_CHECK</td><td><code>ecc_ce_irq / ecc_ded_irq</code>; CE 回写</td><td>ECC 后处理</td></tr>
+    <tr><td>T (LAT=1 读)</td><td><code>core_valid=1, core_addr=X, core_we=0</code></td><td>ST_IDLE → ST_CORE_READ</td><td><code>core_ready=0</code>; pending_rdata 锁存</td><td>数据未就绪</td></tr>
+    <tr><td>T+1 (LAT=1)</td><td>—</td><td>ST_CORE_READ → ST_ECC_CHECK</td><td><code>core_ready=1, core_rdata=pending_rdata</code></td><td>1 cycle 延迟</td></tr>
+    <tr><td>T (写)</td><td><code>core_valid=1, core_we=1, core_be=4'hF</code></td><td>ST_IDLE → ST_CORE_WRITE</td><td><code>core_ready=1</code>; SRAM + ECC 写入</td><td>写同 cycle 提交</td></tr>
+    <tr><td>T+1 (写)</td><td>—</td><td>ST_CORE_WRITE → ST_IDLE</td><td>—</td><td>恢复空闲</td></tr>
+</table>
+
+<h2>5.5 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>addr → bank_offset → SRAM read → ECC decode → core_rdata</td><td>地址解码(1) + SRAM(TBD) + ECC XOR tree(6) + MUX(1)</td><td>~1.5ns (28nm)</td><td>零拍模式关键路径</td></tr>
+    <tr><td>ECC encode (写路径)</td><td>6 级 XOR + 1 parity</td><td>~0.5ns</td><td>非关键路径 (写入不阻塞)</td></tr>
+    <tr><td>FSM next-state</td><td>case MUX + 比较器</td><td>~0.3ns</td><td>简单优先级编码</td></tr>
+</table>
+
+<h2>5.6 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>结构冲突</td><td>核心与 DMA 同 cycle 访问 SRAM</td><td>核心优先; DMA 请求暂存 <code>dma_pending</code>, 核心释放后服务</td><td>DMA: +1~N cycle</td></tr>
+    <tr><td>数据冒险</td><td>ECC CE 回写与核心读同地址</td><td>回写在 <code>always_ff</code> 时序块, 下一 cycle 可读; 不存在写后读冲突</td><td>0 cycle</td></tr>
+    <tr><td>写后读</td><td>核心写入后立即读同地址</td><td>SRAM 写入在 clk↑ 完成, 下一 cycle 读出新值</td><td>0 cycle (自然流水)</td></tr>
+    <tr><td>部分写</td><td><code>core_be != 4'hF</code> 且 ECC 使能</td><td>部分写不更新 ECC (仅全字写时更新 ECC); 读出时 ECC 可能误报</td><td>—</td></tr>
+</table>
+
+<div class="warn"><strong>部分写 ECC 限制:</strong> 当 <code>core_be != 4'hF</code> (非全字写) 且 <code>ECC_EN=1</code> 时, RTL 仅更新数据字节但<strong>不更新 ECC 校验位</strong> (L326: <code>if (ECC_EN &amp;&amp; core_be == 4'hF)</code>)。后续全字读出时 ECC 解码可能报告 DED 错误。软件应避免对 ECC 保护区执行部分写, 或在部分写后重新全字写以刷新 ECC。</div>
+
+<!-- ═══ §6 边界条件与异常处理 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr>
+        <td>BC-001</td>
+        <td><strong>地址越界:</strong> <code>core_addr</code> 不在 ITCM/DTCM0/DTCM1 任何区域</td>
+        <td><code>any_hit=0</code>, <code>core_hit=0</code>; FSM 不离开 ST_IDLE, SRAM 不被访问; <code>core_ready=1</code> (空转)</td>
+        <td>遍历间隙地址: 0x0000_8000, 0x0001_8000, 0x0002_8000, 0xFFFF_FFFF</td>
+    </tr>
+    <tr>
+        <td>BC-002</td>
+        <td><strong>bank_offset 最大边界:</strong> 访问各区域最后一个字 (offset = WORDS_PER_BANK - 1 = 8191)</td>
+        <td><code>bank_offset = addr[14:2]</code>, 32KB 时 addr[14:2] 最大 13'h1FFF = 8191, 正好覆盖</td>
+        <td>ITCM/DTCM0/DTCM1 各末地址读写</td>
+    </tr>
+    <tr>
+        <td>BC-003</td>
+        <td><strong>ECC 双 bit 错误 (DED):</strong> 存储数据发生 2-bit 翻转</td>
+        <td><code>syndrome!=0 &amp;&amp; overall_parity==0</code> → <code>ded_flag=1</code>; <code>ecc_ded_irq</code> 脉冲; 数据不纠正直接输出 (不可靠); 软件需处理 NMI</td>
+        <td>注入所有 C(39,2)=741 种双 bit 组合的代表性子集</td>
+    </tr>
+    <tr>
+        <td>BC-004</td>
+        <td><strong>ECC 使能关闭:</strong> <code>ECC_EN=0</code> 时的读写行为</td>
+        <td>写路径不调用 <code>ecc_encode()</code>; 读路径 <code>ecc_ce_flag/ecc_ded_flag</code> 恒 0; <code>ecc_ce_irq/ecc_ded_irq</code> 恒 0; <code>core_rdata = read_data_raw</code></td>
+        <td>ECC_EN=0 参数化仿真</td>
+    </tr>
+    <tr>
+        <td>BC-005</td>
+        <td><strong>DMA 与核心同 cycle 请求:</strong> <code>core_valid=1 &amp;&amp; dma_arvalid=1</code> 同时到达 ST_IDLE</td>
+        <td>FSM 优先级: <code>core_valid &amp;&amp; any_hit</code> 检查在前, DMA 检查在后; 核心获得总线, DMA 请求保持 pending 直到核心释放</td>
+        <td>同 cycle 注入 core+DMA 请求, 验证核心优先</td>
+    </tr>
+    <tr>
+        <td>BC-006</td>
+        <td><strong>DMA 读时 <code>dma_rready=0</code>:</strong> DMA master 未及时接收读数据</td>
+        <td><code>dma_rvalid_reg</code> 保持为 1, 直到 <code>dma_rready=1</code> 时清零; 数据保持 <code>dma_rdata_reg</code> 不变</td>
+        <td>DMA rready 延迟 1~10 cycle 后拉高</td>
+    </tr>
+    <tr>
+        <td>BC-007</td>
+        <td><strong>ECC syndrome 指向 bit 33 (ecc[5] 自身):</strong> Hamming 位错误</td>
+        <td>RTL 处理: <code>syndrome &gt; 6'd32</code> 且 <code>syndrome == 6'd33</code> 时翻转 <code>corrected[31]</code>; <code>syndrome &gt; 33</code> 时不纠正 (超出范围, 视为 DED)</td>
+        <td>注入 ecc[5:0] 各位单 bit 翻转</td>
+    </tr>
+    <tr>
+        <td>BC-008</td>
+        <td><strong>复位后立即访问:</strong> <code>reset_n</code> 释放后第一 cycle 发 <code>core_valid</code></td>
+        <td>FSM 复位值 <code>ST_IDLE</code>, <code>core_ready=1</code>; 所有寄存器清零; SRAM 内容不确定 (综合后为 0 或 X)</td>
+        <td>reset → 1 cycle → read, 验证 FSM 正确响应</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>单 bit 数据翻转 (CE)</td><td>ECC syndrome != 0, overall_parity = 1</td><td>自动纠正 + 回写修正值 + <code>ecc_ce_cnt++</code> + <code>ecc_ce_irq</code> 脉冲</td></tr>
+    <tr><td>双 bit 数据翻转 (DED)</td><td>ECC syndrome != 0, overall_parity = 0</td><td><code>ecc_ded_irq</code> NMI 中断; 数据不可纠正; 软件负责处理 (bus error exception)</td></tr>
+    <tr><td>ECC 位自身单 bit 翻转</td><td>syndrome = 0, overall_parity = 1</td><td>RTL 注释标注 "忽略" (不影响数据正确性)</td></tr>
+    <tr><td>非法 FSM 状态</td><td><code>default</code> 分支</td><td>强制跳转 <code>ST_IDLE</code></td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>部分写 + ECC 读出:</strong> <code>core_be != 4'hF</code> 写入后 ECC 校验位过期, 后续全字读出 ECC 解码结果<strong>未定义</strong> (可能误报 CE/DED)。</li>
+    <li><strong>core_valid 持续拉高:</strong> 若 <code>core_valid</code> 在 ST_CORE_READ/ST_CORE_WRITE 期间持续为 1, FSM 回到 ST_IDLE 后会立即重新进入, 相当于连续访问 — 这是合法行为但需确保地址/数据同步更新。</li>
+    <li><strong>DMA burst:</strong> 当前 RTL 不实现 AXI burst 计数 (无 <code>awlen</code> 端口), 每次 DMA 操作为单字 (single transfer)。HLD 中描述的 INCR burst 需在外部 DMA 控制器侧管理。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code> (异步复位)</td><td>FSM → ST_IDLE; 所有寄存器清零 (<code>ecc_ce_cnt</code>, <code>dma_*_reg</code>, <code>pending_*</code>); SRAM 内容不保证</td><td>异步 (negedge reset_n)</td></tr>
+    <tr><td>流水线 stall</td><td>TCM 模块无 stall 输入端口; stall 由上游流水线控制 <code>core_valid</code> 拉低实现</td><td>通过 core_valid 间接</td></tr>
+    <tr><td>流水线 flush</td><td>TCM 模块无 flush 输入端口; flush 由上游流水线控制 <code>core_valid</code> 拉低实现; DMA 状态不受影响</td><td>通过 core_valid 间接</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr>
+        <td><code>ITCM_SIZE</code></td><td>int</td>
+        <td><code>lumi_pkg::ITCM_SIZE</code> = 32768 (32KB)</td>
+        <td>8KB ~ 128KB (2 的幂倍数)</td>
+        <td>ITCM 存储容量 (字节); 影响 <code>WORDS_PER_BANK</code> 和 <code>bank_offset</code> 位宽; 地址范围 <code>0x0000_0000 ~ ITCM_SIZE-1</code></td>
+    </tr>
+    <tr>
+        <td><code>DTCM_SIZE</code></td><td>int</td>
+        <td><code>lumi_pkg::DTCM_SIZE</code> = 32768 (32KB)</td>
+        <td>8KB ~ 128KB (2 的幂倍数)</td>
+        <td>DTCM0/DTCM1 各区域容量; DTCM0 和 DTCM1 容量相同</td>
+    </tr>
+    <tr>
+        <td><code>ECC_EN</code></td><td>int</td>
+        <td><code>lumi_pkg::TCM_ECC_EN</code> = 1</td>
+        <td>0 (禁用) / 1 (使能)</td>
+        <td>ECC SECDED 保护总开关; 影响写编码、读解码、CE 回写、DED 中断、CE 计数全部 ECC 相关逻辑</td>
+    </tr>
+    <tr>
+        <td><code>LATENCY_MODE</code></td><td>int</td>
+        <td>0</td>
+        <td>0 (零拍) / 1 (一拍)</td>
+        <td>核心侧读延迟模式; 0 = 同 cycle 组合输出; 1 = 锁存到 <code>pending_rdata</code>, 下 cycle 输出</td>
+    </tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>ITCM_SIZE</code> 和 <code>DTCM_SIZE</code> 必须为 4 的倍数 (字对齐), 且为 2 的幂。</li>
+    <li><code>WORDS_PER_BANK = ITCM_SIZE / 4</code>, 当前固定 8192 (32KB/4); <code>bank_offset</code> 位宽 = log2(WORDS_PER_BANK) = 13 bit。</li>
+    <li>地址解码使用 <code>addr[14:2]</code> 作为 bank_offset, 隐含假设各区域 &le; 32KB (addr[14:0] = 15 bit = 32KB); 若区域 &gt; 32KB 需调整位域。</li>
+    <li>三区域总容量 = <code>ITCM_SIZE + 2 * DTCM_SIZE</code>, 默认 96KB。</li>
+    <li><code>LATENCY_MODE</code> 为 elaboration-time 参数 (非运行时 CSR); HLD 描述的运行时切换需额外包装逻辑。</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块 (逻辑块)</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>地址解码器</td><td>将 <code>active_addr</code> 映射到 itcm_hit/dtcm0_hit/dtcm1_hit + bank_offset</td><td><code>active_addr</code>, <code>bank_offset</code>, <code>any_hit</code></td></tr>
+    <tr><td>SRAM 存储阵列</td><td>3 banks × (8192 × 32bit data + 8192 × 7bit ECC)</td><td><code>itcm_mem[]</code>, <code>dtcm0_mem[]</code>, <code>dtcm1_mem[]</code>, <code>ecc_*[]</code></td></tr>
+    <tr><td>ECC 编码器</td><td><code>ecc_encode()</code>: 32bit → 7bit (6 Hamming + 1 parity)</td><td>写路径调用</td></tr>
+    <tr><td>ECC 解码器</td><td><code>ecc_decode_fn()</code>: syndrome 计算 + CE 纠正 + DED 检测</td><td><code>ecc_result[33:0]</code> = {ded, ce, corrected}</td></tr>
+    <tr><td>ECC 回写控制器</td><td>CE 纠正后自动回写 SRAM (组合逻辑触发)</td><td><code>ecc_wb_req</code>, <code>ecc_wb_data</code>, <code>ecc_wb_ecc</code></td></tr>
+    <tr><td>FSM 控制器</td><td>6 状态 FSM, 驱动 core_ready / DMA ready / IRQ</td><td><code>state_reg</code>, <code>state_next</code></td></tr>
+    <tr><td>DMA 控制器</td><td>AXI4-Lite Slave 握手 + 地址/数据锁存</td><td><code>dma_addr_reg</code>, <code>dma_wdata_reg</code>, <code>dma_pending</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>3 (tcm_state_e)</td><td>ST_IDLE</td><td>每 clk↑</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>ecc_ce_cnt</code></td><td>32</td><td>0</td><td>ST_ECC_CHECK 且 ecc_ce_flag</td><td>CE 错误累计计数器</td></tr>
+    <tr><td><code>pending_rdata</code></td><td>32</td><td>0</td><td>ST_CORE_READ 且 LATENCY_MODE==1</td><td>一拍模式读数据锁存</td></tr>
+    <tr><td><code>pending_valid</code></td><td>1</td><td>0</td><td>ST_CORE_READ 时置 1; 回 IDLE 时清 0</td><td>一拍模式数据有效标志</td></tr>
+    <tr><td><code>dma_addr_reg</code></td><td>32</td><td>0</td><td>ST_IDLE 时 DMA 请求到达</td><td>DMA 锁存地址</td></tr>
+    <tr><td><code>dma_is_write</code></td><td>1</td><td>0</td><td>ST_IDLE 时 DMA 请求到达</td><td>DMA 方向 (0=读, 1=写)</td></tr>
+    <tr><td><code>dma_pending</code></td><td>1</td><td>0</td><td>DMA 请求锁存时置 1; 服务完成后清 0</td><td>DMA 请求挂起标志</td></tr>
+    <tr><td><code>dma_wdata_reg</code></td><td>32</td><td>0</td><td>ST_IDLE 时 DMA 写请求到达</td><td>DMA 锁存写数据</td></tr>
+    <tr><td><code>dma_bvalid_reg</code></td><td>1</td><td>0</td><td>ST_DMA_WRITE 时置 1; dma_bready 时清 0</td><td>DMA 写响应有效</td></tr>
+    <tr><td><code>dma_rvalid_reg</code></td><td>1</td><td>0</td><td>ST_DMA_READ 时置 1; dma_rready 时清 0</td><td>DMA 读数据有效</td></tr>
+    <tr><td><code>dma_rdata_reg</code></td><td>32</td><td>0</td><td>ST_DMA_READ 时锁存 (ECC 纠正后)</td><td>DMA 读数据</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+
+<h3>8.3.1 ECC 编码 (Hamming SECDED)</h3>
+<pre>
+// ecc_encode: 32-bit data → 7-bit ECC
+// ecc[5:0] = 6 个 Hamming 奇偶位, 每个覆盖特定数据位子集
+// ecc[6]   = 整体奇偶位 (SECDED 扩展)
+//
+// ecc[0] covers: data bits with bit0=1 in position index
+// ecc[1] covers: data bits with bit1=1 in position index
+// ecc[2] covers: data bits with bit2=1 in position index
+// ecc[3] covers: data bits with bit3=1 in position index
+// ecc[4] covers: data bits with bit4=1 in position index
+// ecc[5] covers: data[31]
+// ecc[6] = parity(data[31:0] ^ ecc[5:0])
+</pre>
+
+<h3>8.3.2 ECC 解码与纠正</h3>
+<pre>
+// ecc_decode_fn: (data[31:0], stored_ecc[6:0]) → {ded, ce, corrected[31:0]}
+//
+// 1. 重算 syndrome[5:0] = stored_ecc[5:0] XOR recomputed_hamming(data)
+// 2. 重算 overall_parity = stored_ecc[6] XOR parity(data ++ stored_ecc[5:0])
+// 3. 判定:
+//    syndrome=0, parity=0 → 无错误
+//    syndrome=0, parity=1 → ECC 位自身错误 (忽略)
+//    syndrome≠0, parity=1 → 单 bit 错误: syndrome 值 = 错误位位置 (1~33)
+//                            syndrome ≤ 32: corrected[syndrome-1] ^= 1
+//                            syndrome = 33: corrected[31] ^= 1
+//    syndrome≠0, parity=0 → 双 bit 错误: 不可纠正, ded_flag=1
+</pre>
+
+<h3>8.3.3 地址解码</h3>
+<pre>
+// 地址解码逻辑 (active_addr 选择)
+// if FSM 处于 DMA 状态: active_addr = dma_addr_reg
+// else:                  active_addr = core_addr
+//
+// itcm_hit  = (active_addr >= 0x0000_0000) && (active_addr < 0x0000_0000 + ITCM_SIZE)
+// dtcm0_hit = (active_addr >= 0x0001_0000) && (active_addr < 0x0001_0000 + DTCM_SIZE)
+// dtcm1_hit = (active_addr >= 0x0002_0000) && (active_addr < 0x0002_0000 + DTCM_SIZE)
+//
+// bank_offset = active_addr[14:2]  // 字偏移, 13 bit for 8192 words (32KB)
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>全部 6 个功能 (§2.1 F-001~F-006)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>全部 8 个边界条件 (§6.1 BC-001~BC-008)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态覆盖 (6 状态)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全转移覆盖 (9 条转移边)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>ECC 32 个数据位单 bit CE 注入</td><td>100%</td><td>P0</td></tr>
+    <tr><td>ECC 7 个 ECC 位单 bit 注入</td><td>100%</td><td>P1</td></tr>
+    <tr><td>三区域 × 读写 × be 组合</td><td>100%</td><td>P0</td></tr>
+    <tr><td>DMA 读写 × 核心竞争场景</td><td>100%</td><td>P1</td></tr>
+    <tr><td>参数扫描: ECC_EN × LATENCY_MODE</td><td>2×2 = 4 组合</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr>
+        <td><code>assert_core_ready_in_idle</code></td>
+        <td><code>state_reg == ST_IDLE |-> core_ready == 1'b1</code></td>
+        <td>空闲时 core_ready 必须为 1</td>
+    </tr>
+    <tr>
+        <td><code>assert_fsm_valid_state</code></td>
+        <td><code>state_reg inside {ST_IDLE, ST_CORE_READ, ST_CORE_WRITE, ST_DMA_READ, ST_DMA_WRITE, ST_ECC_CHECK}</code></td>
+        <td>FSM 不进入非法状态</td>
+    </tr>
+    <tr>
+        <td><code>assert_ecc_ce_count_monotonic</code></td>
+        <td><code>(ecc_ce_cnt > $past(ecc_ce_cnt)) |-> (ecc_ce_cnt == $past(ecc_ce_cnt) + 1)</code></td>
+        <td>CE 计数器只递增不递减</td>
+    </tr>
+    <tr>
+        <td><code>assert_dma_core_priority</code></td>
+        <td><code>(state_reg == ST_IDLE) && core_valid && any_hit && dma_arvalid |-> (state_next != ST_DMA_READ)</code></td>
+        <td>核心请求时 DMA 不可获得总线</td>
+    </tr>
+    <tr>
+        <td><code>assert_ecc_wb_only_in_ecc_check</code></td>
+        <td><code>ecc_wb_req == 1'b1 |-> state_reg == ST_ECC_CHECK</code></td>
+        <td>ECC 回写仅在 ST_ECC_CHECK 状态触发</td>
+    </tr>
+    <tr>
+        <td><code>assert_dma_bresp_okay</code></td>
+        <td><code>dma_bvalid |-> dma_bresp == 2'b00</code></td>
+        <td>DMA 写响应恒为 OKAY</td>
+    </tr>
+    <tr>
+        <td><code>assert_core_hit_comb</code></td>
+        <td><code>core_hit == core_any_hit</code></td>
+        <td>core_hit 组合输出一致性</td>
+    </tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr>
+        <td><span class="req-tag">LUMI-MEM-002</span></td>
+        <td>TCM 紧耦合内存 (0~128KB)</td>
+        <td>§2.1 F-001/F-002, §7</td>
+        <td><code>ITCM_SIZE/DTCM_SIZE</code> parameter, SRAM arrays L111~L116</td>
+    </tr>
+    <tr>
+        <td><span class="req-tag">LUMI-MEM-003</span></td>
+        <td>TCM 三区域 (代码+数据双区)</td>
+        <td>§2.1 F-001/F-002, §5.1, §8.1</td>
+        <td>地址解码 L72~L104, itcm/dtcm0/dtcm1_mem</td>
+    </tr>
+    <tr>
+        <td><span class="req-tag">LUMI-MEM-004</span></td>
+        <td>TCM 0/1 拍延迟访问</td>
+        <td>§2.2 F-003, §5.4, §7</td>
+        <td><code>LATENCY_MODE</code> parameter, pending_rdata L266~L271, FSM L408~L418</td>
+    </tr>
+    <tr>
+        <td><span class="req-tag">LUMI-MEM-005</span></td>
+        <td>TCM ECC 内存保护 (SECDED)</td>
+        <td>§2.1 F-004/F-006, §5.2/5.3, §6.2, §8.3</td>
+        <td><code>ecc_encode()</code> L119~L141, <code>ecc_decode_fn()</code> L145~L193, ECC 回写 L462~L477</td>
+    </tr>
+    <tr>
+        <td><span class="req-tag">LUMI-IF-003</span></td>
+        <td>TCM DMA 从接口</td>
+        <td>§2.2 F-005, §3.1, §5.2</td>
+        <td>DMA 端口 L40~L55, DMA FSM L288~L302/L346~L357</td>
+    </tr>
+    <tr>
+        <td><span class="req-tag">LUMI-SAFE-001</span></td>
+        <td>ECC/Parity 内存保护</td>
+        <td>§6.2, §8.3</td>
+        <td>ECC SECDED 全路径</td>
+    </tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="tcm.html">tcm.html</a> (LUMI-DESIGN-006) 的 RTL 级设计细化:</p>
+<ul>
+    <li>HLD §2.1 (TCM 区域划分) → LLD §2.1 F-001/F-002, §5.1 地址解码</li>
+    <li>HLD §2.2 (访问延迟模型) → LLD §2.2 F-003, §5.4 时序表</li>
+    <li>HLD §2.3 (ECC 保护引擎) → LLD §2.1 F-004/F-006, §5.2/5.3, §8.3 ECC 算法</li>
+    <li>HLD §2.4 (DMA 从接口) → LLD §2.2 F-005, §3.4.2 DMA 时序</li>
+    <li>HLD §3 (接口定义) → LLD §3 (8 列约束表完整覆盖)</li>
+    <li>HLD §5 (可配置参数) → LLD §7 (4 个 RTL parameter)</li>
+</ul>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约:</p>
+<ul>
+    <li><a href="interface-contracts.html#tcm-core">IC-TCM-CORE</a>: 核心侧 valid-ready + byte-enable 协议</li>
+    <li><a href="interface-contracts.html#tcm-dma">IC-TCM-DMA</a>: DMA AXI4-Lite Slave 协议</li>
+    <li><a href="interface-contracts.html#tcm-ecc">IC-TCM-ECC</a>: ECC 中断与计数器接口</li>
+</ul>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="tcm.html" class="back-link">HLD: tcm.html</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>LUMI-LLD-006 &mdash; lumi_tcm Low Level Design &nbsp;|&nbsp; 版本: 1.0 &nbsp;|&nbsp; 更新: 2026-07-16<br>
+    承接: <a href="tcm.html">tcm.html</a> (LUMI-DESIGN-006) &nbsp;|&nbsp;
+    RTL: <code>src/rtl/memory/lumi_tcm.sv</code> &nbsp;|&nbsp; 负责人: hw-design</p>
+</div>
+
+</body>
+</html>

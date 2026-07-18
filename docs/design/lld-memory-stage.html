@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_memory_stage (M 级内存访问)</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_memory_stage Low Level Design</h1>
+    <p class="subtitle">M 级内存访问 — Load/Store/AMO + DCache/DTCM 仲裁 + 对齐检查 + Store Buffer</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-MEM &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="execute-alu.html">execute-alu.html</a> §4.1, <a href="writeback-csr.html">writeback-csr.html</a> §3.1</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_memory_stage.sv</code> (651 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#mem-stage">IC-MEM</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_memory_stage</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_memory_stage.sv</code> (651 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="execute-alu.html">execute-alu.html</a> (LUMI-DESIGN-MEM)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-MEM</td></tr>
+    <tr><td>流水线位置</td><td>E2 → <strong>M</strong> → W (第 6 级)</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>
+            <ul>
+                <li>Load/Store 地址对齐检查 (Byte/Halfword/Word)</li>
+                <li>Byte Enable 生成 (<code>gen_byte_enable</code>)</li>
+                <li>Load 符号/零扩展 (<code>sign_extend_load</code>)</li>
+                <li>Store 数据对齐 (<code>align_store_data</code>)</li>
+                <li>双 LSU 端口仲裁 (Port 0 优先, Port 1 延后)</li>
+                <li>Store Buffer (FIFO, 8 条目) 入队/出队/commit</li>
+                <li>E1→M1 流水线寄存器同步 (ERR-024 修复)</li>
+                <li>M 级旁路 valid 信号生成 (SA-10 修复)</li>
+                <li>Memory stall/busy 输出 (ERR-030 修复)</li>
+                <li>FSM 控制: IDLE→LOAD→STORE→WAIT→COMMIT</li>
+                <li>BYPASS_SB 直写模式 (ERR-027/028 修复)</li>
+            </ul>
+        </td>
+        <td>
+            <ul>
+                <li>DCache/DTCM SRAM 物理存储</li>
+                <li>AXI 总线事务生成</li>
+                <li>PMP/PMA 权限检查</li>
+                <li>TLB 地址翻译</li>
+                <li>AMO 原子操作执行 (RTL 当前未实现 AMO 逻辑)</li>
+                <li>FENCE.I 指令处理</li>
+            </ul>
+        </td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="lld-execute-bypass.html">lumi_execute_stage</a> (E1/E2 级, 提供 <code>e1_mem_*</code> 与 <code>m_inst</code>)
+&nbsp;|&nbsp; <strong>下游:</strong> <a href="lld-writeback-csr.html">lumi_writeback_stage</a> (W 级, 接收 <code>m_inst_out/m_result_out</code>)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 — 基于 M3-S1 Batch-1 RTL 同步审查</td><td>ERR-021/024/027/028/029/030, SA-4/6/9/10</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>地址对齐检查</td><td><code>check_alignment</code> — 根据 <code>funct3[1:0]</code> 检查 Byte(任意)/Halfword(bit0=0)/Word(4 字节对齐)</td><td><span class="req-tag">LUMI-MEM-001</span></td></tr>
+    <tr><td>F-002</td><td>Byte Enable 生成</td><td><code>gen_byte_enable</code> — 根据地址偏移与访问尺寸生成 4-bit BE 掩码</td><td><span class="req-tag">LUMI-MEM-001</span></td></tr>
+    <tr><td>F-003</td><td>Load 符号/零扩展</td><td><code>sign_extend_load</code> — LB/LH 符号扩展, LBU/LHU 零扩展, LW 直通</td><td><span class="req-tag">LUMI-MEM-002</span></td></tr>
+    <tr><td>F-004</td><td>Store 数据对齐</td><td><code>align_store_data</code> — SB/SH 数据移位到正确字节通道</td><td><span class="req-tag">LUMI-MEM-002</span></td></tr>
+    <tr><td>F-005</td><td>双 LSU 端口仲裁</td><td>同 cycle 最多 2 个内存操作; Port 0 优先, Port 1 延后 1 cycle (ERR-029)</td><td><span class="req-tag">LUMI-MEM-003</span></td></tr>
+    <tr><td>F-006</td><td>Store Buffer</td><td>FIFO 8 条目, 缓冲 Store 操作, commit 后提交到 Cache/TCM</td><td><span class="req-tag">LUMI-MEM-003</span></td></tr>
+    <tr><td>F-007</td><td>BYPASS_SB 直写模式</td><td><code>BYPASS_SB=1</code> 时 Store 直写 SRAM, 规避 SB 无 load forwarding 和 SB 满静默丢弃</td><td><span class="req-tag">ERR-027/028</span></td></tr>
+    <tr><td>F-008</td><td>E1→M1 流水线同步</td><td>寄存一拍 <code>e1_mem_*</code> → <code>m1_mem_*</code>, 使 LSU 地址与 <code>m_inst</code> 对齐</td><td><span class="req-tag">ERR-024</span></td></tr>
+    <tr><td>F-009</td><td>M 级旁路 valid</td><td>Load 仅在 <code>mem_ready_in=1</code> 时旁路有效; Store 不旁路; ALU 等总是有效</td><td><span class="req-tag">SA-10</span></td></tr>
+    <tr><td>F-010</td><td>Memory Stall</td><td><code>mem_busy</code> 输出到 decode 级 <code>fu_busy</code>, stall 流水线</td><td><span class="req-tag">ERR-030</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>Store Buffer 模式</td><td><code>BYPASS_SB = 0</code> (默认)</td><td>FSM 驱动: IDLE→LOAD→STORE→WAIT_READY→COMMIT; Store 先入 SB, 再 commit 到 SRAM</td></tr>
+    <tr><td>直写模式</td><td><code>BYPASS_SB = 1</code></td><td>Store/Load 直写/直读 SRAM, 跳过 SB; 双端口串行化: Port 0 优先, Port 1 延后</td></tr>
+    <tr><td>透传模式</td><td><code>fu_type ≠ FU_MEM</code></td><td>非内存指令直接透传 E1 结果到 W 级, 无额外延迟</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- 时钟/复位 -->
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <!-- M 级输入 -->
+    <tr>
+        <td><code>m_inst[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>inst_pkt_t × N</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered (E1→M)</td><td>M 级指令包数组 (来自 Execute E1/E2)</td>
+    </tr>
+    <tr>
+        <td><code>m_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>M 级各 slot valid 信号</td>
+    </tr>
+    <tr>
+        <td><code>m_result[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32 × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>E1 执行结果 (非 MEM 指令透传)</td>
+    </tr>
+    <tr>
+        <td><code>m_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5 × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>目标寄存器编号</td>
+    </tr>
+    <!-- LSU 接口 (← Execute E1) -->
+    <tr>
+        <td><code>e1_mem_addr[1:0]</code></td><td>input</td><td>32 × 2</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational (E1 输出)</td><td>双 LSU 端口内存地址 (E1 级组合逻辑)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mem_we[1:0]</code></td><td>input</td><td>1 × 2</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>双 LSU 端口写使能 (1=Store, 0=Load)</td>
+    </tr>
+    <tr>
+        <td><code>e1_mem_wdata[1:0]</code></td><td>input</td><td>32 × 2</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>双 LSU 端口写数据</td>
+    </tr>
+    <!-- TCM/Cache 接口 -->
+    <tr>
+        <td><code>mem_addr_out</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>内存请求地址 (→ 存储子系统)</td>
+    </tr>
+    <tr>
+        <td><code>mem_wdata_out</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>内存写数据</td>
+    </tr>
+    <tr>
+        <td><code>mem_rdata_in</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>内存读数据 (来自 DCache/DTCM)</td>
+    </tr>
+    <tr>
+        <td><code>mem_we_out</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>内存写使能</td>
+    </tr>
+    <tr>
+        <td><code>mem_be_out</code></td><td>output</td><td>4</td><td>4'hF</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>字节使能掩码</td>
+    </tr>
+    <tr>
+        <td><code>mem_valid_out</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>内存请求有效</td>
+    </tr>
+    <tr>
+        <td><code>mem_ready_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>存储子系统就绪 (SRAM 操作完成)</td>
+    </tr>
+    <tr>
+        <td><code>mem_hit_in</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Cache 命中指示</td>
+    </tr>
+    <!-- M 级输出 (→ Writeback W) -->
+    <tr>
+        <td><code>m_inst_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>inst_pkt_t × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>M 级输出指令包 (→ W 级)</td>
+    </tr>
+    <tr>
+        <td><code>m_valid_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>M 级输出 valid</td>
+    </tr>
+    <tr>
+        <td><code>m_result_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>M 级输出结果 (Load 数据 / 透传 ALU 结果)</td>
+    </tr>
+    <tr>
+        <td><code>m_rd_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>5 × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>目标寄存器编号输出</td>
+    </tr>
+    <tr>
+        <td><code>m_pc_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 × N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>PC 输出</td>
+    </tr>
+    <tr>
+        <td><code>m_exception_out[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>N</td><td>0</td>
+        <td>CLK_CORE</td><td>流水线</td><td>registered</td><td>异常标志 (RTL 中始终为 0; 未对齐访问通过拆分处理, 不触发异常)</td>
+    </tr>
+    <!-- 控制信号 -->
+    <tr>
+        <td><code>mem_busy</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Memory stall 输出 (→ decode fu_busy, ERR-030)</td>
+    </tr>
+    <tr>
+        <td><code>m_bypass_valid[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>N</td><td>0</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>M 级旁路 valid (→ core_top bypass, SA-10)</td>
+    </tr>
+    <tr>
+        <td><code>store_commit</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>req-ack</td><td>combinational</td><td>Store Buffer commit 请求</td>
+    </tr>
+    <tr>
+        <td><code>store_commit_ack</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>req-ack</td><td>combinational</td><td>Store Buffer commit 应答</td>
+    </tr>
+    <tr>
+        <td><code>sb_empty_out</code></td><td>output</td><td>1</td><td>1</td>
+        <td>CLK_CORE</td><td>—</td><td>combinational</td><td>Store Buffer 空标志 (→ FENCE 逻辑, ERR-055)</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+存储子系统接口使用 <code>valid-ready</code> 协议: <code>mem_valid_out</code> 为组合输出, <code>mem_ready_in</code> 为组合输入。
+数据传输 (SRAM 操作完成) 发生在 <code>mem_valid_out &amp;&amp; mem_ready_in</code> 的 clk↑ 时刻。
+<code>store_commit / store_commit_ack</code> 使用 req-ack 协议, commit 在两者同时为高时完成。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>mem_req_if</code></td><td>隐式端口映射</td><td>requester</td><td>DCache/DTCM 仲裁器</td></tr>
+    <tr><td><code>pipeline_if</code></td><td>E2→M, M→W</td><td>slave → master</td><td>Execute → Memory → Writeback</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td colspan="4" style="text-align:center">无 — 所有端口均在 CLK_CORE 时钟域</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant E as Execute (E1/E2)
+    participant M as Memory Stage
+    participant S as SRAM (DCache/DTCM)
+    E->>M: e1_mem_addr, e1_mem_we, e1_mem_wdata
+    Note over M: M1 寄存器寄存一拍
+    M->>S: mem_addr_out, mem_valid_out=1
+    S-->>M: mem_ready_in=0 (忙)
+    Note over M: ST_WAIT_READY, mem_busy=1
+    S-->>M: mem_ready_in=1
+    Note over M,S: clk↑: Load 数据捕获 / Store 完成
+    M->>M: m_pipe_result ← lsu_load_data
+    M-->>M: state_next = ST_IDLE
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'b000</td><td>空闲 — 等待 LSU 请求</td><td>reset / 操作完成 / 无 MEM 指令</td></tr>
+    <tr><td><code>ST_LOAD</code></td><td>3'b001</td><td>Load 请求发送</td><td>ST_IDLE 且 lsu_valid[0] &amp;&amp; !lsu_we[0] (仅 SB 模式)</td></tr>
+    <tr><td><code>ST_STORE</code></td><td>3'b010</td><td>Store 请求发送 / SB 查询</td><td>ST_LOAD 无 Load 请求时 / SB 模式直接进入</td></tr>
+    <tr><td><code>ST_WAIT_READY</code></td><td>3'b011</td><td>等待 SRAM 响应</td><td>SRAM <code>mem_ready_in = 0</code> (多周期操作)</td></tr>
+    <tr><td><code>ST_COMMIT</code></td><td>3'b100</td><td>Store Buffer commit</td><td>Store 完成 / Load 完成后 / SB 有积压</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<h3>4.2.1 Store Buffer 模式 (BYPASS_SB = 0)</h3>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_LOAD : 默认 (每 cycle)
+    ST_LOAD --> ST_WAIT_READY : lsu_valid[0] && !lsu_we[0] && !mem_ready_in
+    ST_LOAD --> ST_COMMIT : lsu_valid[0] && !lsu_we[0] && mem_ready_in
+    ST_LOAD --> ST_STORE : 无 Load 请求
+    ST_STORE --> ST_WAIT_READY : lsu_valid[0] && lsu_we[0] && !mem_ready_in
+    ST_STORE --> ST_COMMIT : lsu_valid[0] && lsu_we[0] && mem_ready_in
+    ST_STORE --> ST_COMMIT : 无 Store / SB 有积压
+    ST_WAIT_READY --> ST_COMMIT : mem_ready_in = 1
+    ST_COMMIT --> ST_IDLE : 总是 (1 cycle)
+</pre>
+
+<h3>4.2.2 直写模式 (BYPASS_SB = 1)</h3>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_IDLE : 无 LSU 操作 (batch_done)
+    ST_IDLE --> ST_WAIT_READY : Port0 Load/Store && !mem_ready_in
+    ST_IDLE --> ST_IDLE : Port0 完成 && 无 Port1 (batch_done)
+    ST_IDLE --> ST_IDLE : Port0 完成 && Port1 有效 (stall_port1, 下 cycle 处理 Port1)
+    ST_WAIT_READY --> ST_IDLE : mem_ready_in && 无 Port1 pending
+    ST_WAIT_READY --> ST_IDLE : mem_ready_in && pending_port1_r (下 cycle 处理 Port1)
+    ST_IDLE --> ST_WAIT_READY : pending_port1_r && !mem_ready_in
+    ST_IDLE --> ST_IDLE : pending_port1_r && mem_ready_in (batch_done)
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_LOAD</td><td>SB 模式, 每 cycle 自动进入</td><td>—</td></tr>
+    <tr><td>ST_LOAD</td><td>ST_WAIT_READY</td><td><code>lsu_valid[0] &amp;&amp; !lsu_we[0] &amp;&amp; !mem_ready_in</code></td><td><code>mem_valid_out=1, mem_busy=1</code></td></tr>
+    <tr><td>ST_LOAD</td><td>ST_COMMIT</td><td><code>lsu_valid[0] &amp;&amp; !lsu_we[0] &amp;&amp; mem_ready_in</code></td><td>Load 数据捕获</td></tr>
+    <tr><td>ST_LOAD</td><td>ST_STORE</td><td>无有效 Load</td><td>—</td></tr>
+    <tr><td>ST_STORE</td><td>ST_WAIT_READY</td><td><code>lsu_valid[0] &amp;&amp; lsu_we[0] &amp;&amp; !mem_ready_in</code></td><td><code>mem_valid_out=1, mem_busy=1</code></td></tr>
+    <tr><td>ST_STORE</td><td>ST_COMMIT</td><td>Store 完成 / 无 Store / SB 有积压</td><td>SB 入队</td></tr>
+    <tr><td>ST_WAIT_READY</td><td>ST_COMMIT</td><td><code>mem_ready_in = 1</code></td><td>数据捕获 / 完成</td></tr>
+    <tr><td>ST_COMMIT</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td><code>store_commit=1</code> (若 SB 非空)</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong>
+        <ul>
+            <li>ST_WAIT_READY 状态持续驱动 <code>mem_valid_out=1</code>, 保证 SRAM 最终响应 <code>mem_ready_in</code></li>
+            <li><code>pending_port1_r</code> 独立于 <code>stall_port1</code> 更新 (ERR-029 修复), 防止 Port 1 永久挂起导致 terminal deadlock</li>
+            <li>ST_COMMIT 无条件 1 cycle 后回到 ST_IDLE, 不可停留</li>
+        </ul>
+    </li>
+    <li><strong>活锁防护:</strong>
+        <ul>
+            <li>双 LSU 端口严格 Port 0 优先, Port 1 延后 — 保证有限 cycle 内完成</li>
+            <li>Store Buffer 满时 (<code>sb_full=1</code>) 拒绝入队, 反压上游</li>
+        </ul>
+    </li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    E1A[e1_mem_addr] --> M1R[M1 流水线寄存器<br/>ERR-024 同步]
+    E1W[e1_mem_wdata] --> M1R
+    E1WE[e1_mem_we] --> M1R
+    M1R --> LSU[LSU 仲裁<br/>2x Port]
+    MI[m_inst / m_valid] --> LSU
+    LSU --> ALIGN[跨边界检测<br/>needs_cross_word_split]
+    ALIGN --> SPLIT[未对齐拆分<br/>ma_active_r 两周期]
+    LSU --> BE[Byte Enable<br/>gen_byte_enable]
+    LSU --> SDA[Store 数据对齐<br/>align_store_data]
+    BE --> MUX[SRAM 接口 MUX<br/>FSM 控制]
+    SDA --> MUX
+    MUX --> MA[mem_addr_out]
+    MUX --> MW[mem_wdata_out]
+    MUX --> MBE[mem_be_out]
+    MR[mem_rdata_in] --> LSE[Load 符号扩展<br/>sign_extend_load]
+    LSE --> PR[流水线寄存器<br/>m_pipe_result]
+    PR --> MO[m_result_out]
+    MRD[m_rd] --> PRD[m_pipe_rd]
+    PRD --> MRO[m_rd_out]
+</pre>
+
+<h2>5.2 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td><code>e1_mem_addr</code> 组合有效</td><td><code>m1_mem_*</code> 寄存 (clk↑)</td><td>—</td><td>E1→M1 寄存 (ERR-024)</td></tr>
+    <tr><td>T+1</td><td><code>m_inst</code> valid, <code>m1_mem_*</code> 稳定</td><td>对齐检查 + BE + 数据对齐 (组合)</td><td><code>mem_addr_out</code>, <code>mem_valid_out</code></td><td>LSU 仲裁, FSM 启动</td></tr>
+    <tr><td>T+1 (hit)</td><td><code>mem_ready_in = 1</code></td><td>Load 符号扩展 → <code>m_pipe_result</code></td><td><code>m_result_out</code> valid</td><td>单 cycle Load</td></tr>
+    <tr><td>T+2 (miss)</td><td><code>mem_ready_in = 0</code> → <code>1</code></td><td>ST_WAIT_READY, <code>mem_busy = 1</code></td><td>SRAM 完成后捕获</td><td>多 cycle Load</td></tr>
+    <tr><td>T+1 (dual)</td><td>Port 0 + Port 1 同时有效</td><td>Port 0 处理, <code>stall_port1 = 1</code></td><td><code>mem_busy = 1</code> (stall 1 cycle)</td><td>ERR-029 串行化</td></tr>
+    <tr><td>T+2 (dual)</td><td><code>pending_port1_r = 1</code></td><td>Port 1 处理</td><td><code>batch_done = 1</code></td><td>Port 1 完成</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td><code>m1_mem_addr → needs_cross_word_split → lsu_misalign</code></td><td>2 级 MUX</td><td>~150 ps</td><td>funct3 译码 + 比较 (跨边界检测, 触发两周期拆分)</td></tr>
+    <tr><td><code>m1_mem_addr → gen_byte_enable → mem_be_out</code></td><td>2 级 MUX</td><td>~150 ps</td><td>addr_offset + funct3 → BE</td></tr>
+    <tr><td><code>mem_rdata_in → sign_extend_load → m_pipe_result</code></td><td>3 级 MUX</td><td>~250 ps</td><td>funct3 + addr_offset 选择字节 + 扩展</td></tr>
+    <tr><td><code>lsu_valid → FSM → mem_addr_out</code></td><td>4-5 级 MUX (BYPASS_SB 路径)</td><td>~400 ps</td><td>双端口仲裁 + FSM 编码 (关键路径)</td></tr>
+    <tr><td><code>m1_mem_wdata → align_store_data → mem_wdata_out</code></td><td>2 级 MUX + 移位</td><td>~200 ps</td><td>数据移位到正确字节通道</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>数据冒险 (RAW)</td><td>Load → 依赖指令</td><td><code>m_bypass_valid</code> 仅在 <code>mem_ready_in=1</code> 时有效 (SA-10); 否则 stall</td><td>0-1 cycle</td></tr>
+    <tr><td>结构冒险</td><td>双 LSU 端口同 cycle 访问 SRAM</td><td>Port 0 优先, Port 1 延后 1 cycle (<code>stall_port1</code>, ERR-029)</td><td>1 cycle</td></tr>
+    <tr><td>结构冒险</td><td>Store Buffer 满</td><td><code>sb_full</code> 时拒绝入队, 反压上游</td><td>直到 SB 有空间</td></tr>
+    <tr><td>WAW 冒险</td><td>连续 Store 到同一地址</td><td>SB FIFO 顺序保证; BYPASS_SB 模式直写顺序执行</td><td>0</td></tr>
+    <tr><td>控制冒险</td><td>分支误预测时 M 级 Load/Store</td><td>上游 flush 清除 <code>m_pipe_valid</code>; SRAM 操作无副作用 (Load 结果丢弃)</td><td>0 (flush 在 W 级处理)</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr>
+        <td>BC-001</td>
+        <td><strong>Halfword 跨 word 边界</strong> — <code>addr[1:0]=2'b11, funct3=001</code></td>
+        <td><code>needs_cross_word_split</code> 检测到跨边界 → <code>lsu_misalign=1</code> → 透明拆分为两次对齐访问 (两周期), 不触发异常 (<code>m_pipe_exception</code> 始终为 0)</td>
+        <td>directed: test_misalign_h.S</td>
+    </tr>
+    <tr>
+        <td>BC-002</td>
+        <td><strong>Word 跨 word 边界</strong> — <code>addr[1:0]≠00, funct3=010</code></td>
+        <td><code>needs_cross_word_split</code> 检测到跨边界 → <code>lsu_misalign=1</code> → 透明拆分为两次对齐访问 (两周期), 不触发异常 (<code>m_pipe_exception</code> 始终为 0)</td>
+        <td>directed: test_misalign_w.S</td>
+    </tr>
+    <tr>
+        <td>BC-003</td>
+        <td><strong>双 LSU 端口同时读写</strong> — Port 0 Load + Port 1 Store 同 cycle</td>
+        <td>ERR-029 串行化: Port 0 先执行, <code>stall_port1=1</code> stall decode 1 cycle, <code>pending_port1_r=1</code> 下 cycle 处理 Port 1</td>
+        <td>directed: test_dual_lsu.S</td>
+    </tr>
+    <tr>
+        <td>BC-004</td>
+        <td><strong>Store Buffer 满</strong> — SB 8 条目全部占用时新 Store 到达</td>
+        <td><code>sb_full=1</code> 时跳过入队 (<code>!BYPASS_SB &amp;&amp; ... &amp;&amp; !sb_full</code>); BYPASS_SB 模式无此问题 (直写)</td>
+        <td>directed: test_sb_full.S</td>
+    </tr>
+    <tr>
+        <td>BC-005</td>
+        <td><strong>多周期 Load (Cache Miss)</strong> — <code>mem_ready_in=0</code> 持续多 cycle</td>
+        <td>FSM 进入 ST_WAIT_READY, <code>mem_busy=1</code> stall 全流水线; <code>m_pipe_result</code> 保持旧值不更新; <code>m_bypass_valid=0</code> 屏蔽旁路 (SA-10)</td>
+        <td>directed: test_cache_miss.S</td>
+    </tr>
+    <tr>
+        <td>BC-006</td>
+        <td><strong>Load 后立即依赖</strong> — 下条指令需要 Load 结果</td>
+        <td><code>m_bypass_valid[i] = mem_ready_in</code> (仅 SRAM 完成时旁路有效); 若 <code>mem_ready_in=0</code>, core_top stall 逻辑阻止下条指令发射</td>
+        <td>directed: test_load_use.S</td>
+    </tr>
+    <tr>
+        <td>BC-007</td>
+        <td><strong>Store 不写 rd</strong> — Store 指令 <code>rd</code> 字段被忽略</td>
+        <td><code>m_bypass_valid[i] = 0</code> (Store 不旁路); <code>m_pipe_result = 32'h0</code></td>
+        <td>directed: test_store_nord.S</td>
+    </tr>
+    <tr>
+        <td>BC-008</td>
+        <td><strong>FENCE 等待 SB 排空</strong> — FENCE 指令需要 SB 为空</td>
+        <td><code>sb_empty_out = sb_empty</code> (ERR-055) 暴露给 FENCE 逻辑; FENCE 等待直到 <code>sb_empty_out=1</code></td>
+        <td>directed: test_fence.S</td>
+    </tr>
+    <tr>
+        <td>BC-009</td>
+        <td><strong>复位期间 LSU 请求</strong> — reset_n 拉低时有 pending 操作</td>
+        <td>异步复位: <code>state_reg=ST_IDLE</code>, <code>m_pipe_valid=0</code>, SB 全清, <code>pending_port1_r=0</code></td>
+        <td>仿真环境覆盖</td>
+    </tr>
+    <tr>
+        <td>BC-010</td>
+        <td><strong>funct3 默认值安全</strong> — <code>lsu_funct3</code> 默认为 <code>3'b000</code> (Byte)</td>
+        <td>非 MEM 指令 <code>lsu_valid=0</code>, 但 funct3 默认 Byte (永远不跨边界), 避免虚假拆分</td>
+        <td>RTL 静态分析</td>
+    </tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>Load 跨 word 边界</td><td><code>needs_cross_word_split</code> → <code>lsu_misalign[l]</code></td><td>透明拆分为两次对齐访问 (两周期), <code>m_pipe_exception</code> 始终为 0, 不触发异常</td></tr>
+    <tr><td>Store 跨 word 边界</td><td><code>needs_cross_word_split</code> → <code>lsu_misalign[l]</code></td><td>透明拆分为两次对齐访问 (两周期), <code>m_pipe_exception</code> 始终为 0, 不触发异常</td></tr>
+    <tr><td>SB 满溢出</td><td><code>sb_full</code> 标志</td><td>SB 模式: 跳过入队 (数据丢失风险 — 需上游反压); BYPASS_SB 模式: 不适用</td></tr>
+    <tr><td>SRAM 无响应</td><td><code>mem_ready_in</code> 持续为 0</td><td>FSM 停在 ST_WAIT_READY, <code>mem_busy=1</code> 反压全流水线 (无超时 — 依赖 SRAM 最终响应)</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>funct3 = 3'b011 / 3'b110 / 3'b111:</strong> 非标准 funct3 值, <code>needs_cross_word_split</code> 对 <code>funct3[1:0]=2'b11</code> 返回 <code>1'b0</code> (不拆分), <code>gen_byte_enable</code> 返回 <code>4'b1111</code> (全字节使能)。实际行为: 按全字访问, 不触发异常。</li>
+    <li><strong>SB 满时 Store:</strong> SB 模式下 Store 被静默跳过 (数据丢失) — 依赖上游反压保护。BYPASS_SB 模式下不存在此问题。</li>
+    <li><strong>funct3[2] 位 (无符号标志):</strong> <code>gen_byte_enable</code> / <code>check_alignment</code> / <code>align_store_data</code> 仅使用 <code>funct3[1:0]</code>; <code>sign_extend_load</code> 使用完整 <code>funct3[2:0]</code> 区分符号/零扩展。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>mem_busy</code> (自身输出)</td><td>stall decode 级 (fu_busy), 冻结 M1 寄存器 (<code>!mem_busy</code> 门控 E1→M1), 冻结 <code>m_pipe_*</code> (stall_port1 门控)</td><td>同 cycle 组合生效</td></tr>
+    <tr><td><code>stall_port1</code> (内部)</td><td>保持 <code>m_pipe_*</code> 寄存器, 防止 Port 0 被重复捕获</td><td>同 cycle 组合生效</td></tr>
+    <tr><td>上游 flush</td><td>清除 <code>m_pipe_valid</code>, Load 结果丢弃; SRAM 操作已完成则无副作用</td><td>下一 clk↑ 生效</td></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: <code>state_reg=ST_IDLE</code>, <code>m_pipe_valid=0</code>, <code>sb_head=sb_tail=0</code>, SB 全清, <code>pending_port1_r=0</code></td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr>
+        <td><code>ISSUE_WIDTH</code></td><td>int</td><td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td>
+        <td>发射宽度 — 决定 <code>m_inst/m_result/m_rd</code> 等数组大小, 以及流水线寄存器维度</td>
+    </tr>
+    <tr>
+        <td><code>BYPASS_SB</code></td><td>bit</td><td><code>1'b0</code></td><td>0 或 1</td>
+        <td>Store Buffer 旁路 — 1=Store/Load 直写/直读 SRAM, 跳过 SB (ERR-027/028 修复); 0=使用 SB FIFO</td>
+    </tr>
+</table>
+
+<h3>内部 localparam</h3>
+<table>
+    <tr><th>参数名</th><th>类型</th><th>值</th><th>描述</th></tr>
+    <tr><td><code>SB_DEPTH</code></td><td>int</td><td>8</td><td>Store Buffer FIFO 深度 (条目数)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>ISSUE_WIDTH</code> 必须 &ge; 2 (双 LSU 端口需要至少 2 个 slot)</li>
+    <li><code>SB_DEPTH</code> 为 2 的幂 (当前固定 8), <code>$clog2(SB_DEPTH) = 3</code> 用于 FIFO 指针位宽</li>
+    <li><code>BYPASS_SB = 1</code> 时 SB 相关逻辑 (入队/出队/commit) 被跳过, <code>store_commit</code> 永远为 0</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块 (函数/逻辑块)</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td><code>gen_byte_enable()</code></td><td>根据 addr[1:0] 和 funct3[1:0] 生成 4-bit byte enable</td><td><code>lsu_be[l]</code></td></tr>
+    <tr><td><code>check_alignment()</code></td><td>检查地址对齐: B(任意)/H(bit0=0)/W(4B 对齐) — RTL 中存在但未用于异常/拆分判定</td><td>—</td></tr>
+    <tr><td><code>needs_cross_word_split()</code></td><td>检测跨 word 边界: H(offset=3)/W(offset≠0), 触发两周期拆分</td><td><code>lsu_misalign[l]</code></td></tr>
+    <tr><td><code>sign_extend_load()</code></td><td>Load 数据符号/零扩展: LB/LBU/LH/LHU/LW</td><td><code>lsu_load_data[l]</code></td></tr>
+    <tr><td><code>align_store_data()</code></td><td>Store 数据移位到正确字节通道: SB/SH/SW</td><td><code>lsu_aligned_data[l]</code></td></tr>
+    <tr><td>E1→M1 流水线寄存器</td><td>寄存 <code>e1_mem_*</code> → <code>m1_mem_*</code> (ERR-024 同步)</td><td><code>m1_mem_addr/we/wdata[l]</code></td></tr>
+    <tr><td>LSU 仲裁逻辑</td><td>2 端口 LSU 选择 + valid/cross-word-split/be/data 生成</td><td><code>lsu_*</code> 系列信号</td></tr>
+    <tr><td>Store Buffer (FIFO)</td><td>8 条目 FIFO, 缓冲 Store 操作</td><td><code>sb_mem[]</code>, <code>sb_head/tail</code>, <code>sb_full/empty</code></td></tr>
+    <tr><td>FSM (状态机)</td><td>IDLE→LOAD→STORE→WAIT→COMMIT 控制流</td><td><code>state_reg/next</code>, <code>stall_port1</code>, <code>batch_done</code></td></tr>
+    <tr><td>旁路 valid 生成</td><td>M 级旁路有效信号 (SA-10)</td><td><code>m_bypass_valid[i]</code></td></tr>
+    <tr><td>流水线寄存器组</td><td>M 级输入 → 管道输出 (<code>m_pipe_*</code>)</td><td><code>m_pipe[]</code>, <code>m_pipe_valid</code>, <code>m_pipe_result[]</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>m1_mem_addr[1:0]</code></td><td>32 × 2</td><td>0</td><td><code>!mem_busy</code> 时 clk↑</td><td>E1→M1 地址同步 (ERR-024)</td></tr>
+    <tr><td><code>m1_mem_we[1:0]</code></td><td>1 × 2</td><td>0</td><td><code>!mem_busy</code> 时 clk↑</td><td>E1→M1 写使能同步</td></tr>
+    <tr><td><code>m1_mem_wdata[1:0]</code></td><td>32 × 2</td><td>0</td><td><code>!mem_busy</code> 时 clk↑</td><td>E1→M1 写数据同步</td></tr>
+    <tr><td><code>state_reg</code></td><td>3</td><td>ST_IDLE</td><td>clk↑</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>lsu_sel</code></td><td>2</td><td>0</td><td>clk↑</td><td>当前处理的 LSU 端口选择</td></tr>
+    <tr><td><code>pending_port1_r</code></td><td>1</td><td>0</td><td>clk↑ (独立于 stall_port1)</td><td>Port 1 等待处理标志 (ERR-029)</td></tr>
+    <tr><td><code>port0_done_r</code></td><td>1</td><td>0</td><td>clk↑</td><td>Port 0 已完成标志</td></tr>
+    <tr><td><code>m_pipe[ISSUE_WIDTH-1:0]</code></td><td>inst_pkt_t × N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>流水线指令包</td></tr>
+    <tr><td><code>m_pipe_valid[ISSUE_WIDTH-1:0]</code></td><td>N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>流水线 valid</td></tr>
+    <tr><td><code>m_pipe_result[ISSUE_WIDTH-1:0]</code></td><td>32 × N</td><td>0</td><td>MEM: <code>mem_ready_in</code> 时; 非 MEM: 总是</td><td>流水线结果 (Load 仅在 SRAM 完成时更新)</td></tr>
+    <tr><td><code>m_pipe_rd[ISSUE_WIDTH-1:0]</code></td><td>5 × N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>流水线目标寄存器</td></tr>
+    <tr><td><code>m_pipe_pc[ISSUE_WIDTH-1:0]</code></td><td>32 × N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>流水线 PC</td></tr>
+    <tr><td><code>m_pipe_inst[ISSUE_WIDTH-1:0]</code></td><td>32 × N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>显式捕获指令字</td></tr>
+    <tr><td><code>m_pipe_exception[ISSUE_WIDTH-1:0]</code></td><td>N</td><td>0</td><td><code>!stall_port1</code> 时 clk↑</td><td>异常标志 (RTL 中始终为 0, 保留字段)</td></tr>
+    <tr><td><code>sb_mem[SB_DEPTH-1:0]</code></td><td>sb_entry_t × 8</td><td>0</td><td>入队/出队时 clk↑</td><td>Store Buffer FIFO 存储</td></tr>
+    <tr><td><code>sb_head</code></td><td>3</td><td>0</td><td>出队 (commit) 时 clk↑</td><td>SB 读指针</td></tr>
+    <tr><td><code>sb_tail</code></td><td>3</td><td>0</td><td>入队时 clk↑</td><td>SB 写指针</td></tr>
+    <tr><td><code>fsm_dbg_cycle</code></td><td>32 (int)</td><td>0</td><td>clk↑ (自增)</td><td>FSM 调试周期计数器</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+<h3>8.3.1 Store Buffer FIFO 满/空判断</h3>
+<pre>
+// sb_entry_t: { valid(1), addr(32), data(32), be(4) } = 69 bits/entry
+// SB_DEPTH = 8, 指针位宽 = $clog2(8) = 3
+
+sb_empty = (sb_head == sb_tail);
+sb_full  = ((sb_tail + 1) == sb_head) ||
+           (sb_tail == 7 &amp;&amp; sb_head == 0);  // 环形缓冲回绕
+
+// 入队: sb_tail 处写入, sb_tail++
+// 出队: sb_head 处清除 valid, sb_head++
+</pre>
+
+<h3>8.3.2 双 LSU 端口串行化 (ERR-029)</h3>
+<pre>
+// 当同 cycle 两条 MEM 指令时:
+if (lsu_valid[0] &amp;&amp; lsu_valid[1]) begin
+    pending_port1_r &lt;= 1;  // 标记 Port 1 待处理
+    port0_done_r    &lt;= 1;  // Port 0 先处理
+    stall_port1     = 1;   // stall decode 1 cycle
+    mem_busy        = 1;   // 反压
+end
+// 下一 cycle: pending_port1_r=1 → 处理 Port 1 → batch_done
+</pre>
+
+<h3>8.3.3 M 级旁路 valid 逻辑 (SA-10)</h3>
+<pre>
+for each slot i:
+  if m_valid[i]:
+    if fu_type == FU_MEM &amp;&amp; !inst[5]:  // Load
+      m_bypass_valid[i] = mem_ready_in   // 仅 SRAM 完成时有效
+    elif fu_type == FU_MEM &amp;&amp; inst[5]:   // Store
+      m_bypass_valid[i] = 0              // 不旁路
+    else:                                 // ALU/MUL/DIV/BRANCH
+      m_bypass_valid[i] = 1              // 总是有效
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (§2.1 F-001~F-010)</td><td>100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+    <tr><td>所有边界条件 (§6.1 BC-001~BC-010)</td><td>100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+    <tr><td>FSM 全状态 (5 状态)</td><td>100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+    <tr><td>FSM 全转移 (8 条转移)</td><td>100%</td><td><span class="badge badge-warn">P1</span></td></tr>
+    <tr><td>BYPASS_SB 两种模式</td><td>各 100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+    <tr><td>Store Buffer FIFO 边界 (空/满/回绕)</td><td>100%</td><td><span class="badge badge-warn">P1</span></td></tr>
+    <tr><td>Load 类型覆盖 (LB/LH/LW/LBU/LHU)</td><td>100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+    <tr><td>Store 类型覆盖 (SB/SH/SW)</td><td>100%</td><td><span class="badge badge-crit">P0</span></td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr>
+        <td><code>amisalign_no_exception</code></td>
+        <td><code>m_valid[i] &amp;&amp; fu_type==FU_MEM &amp;&amp; lsu_misalign[i] |-> !m_pipe_exception[i]</code></td>
+        <td>跨边界拆分访问不产生异常 (m_pipe_exception 始终为 0)</td>
+    </tr>
+    <tr>
+        <td><code>aload_bypass_gated</code></td>
+        <td><code>fu_type==FU_MEM &amp;&amp; !inst[5] &amp;&amp; !mem_ready_in |-> !m_bypass_valid[i]</code></td>
+        <td>Load 未完成时旁路必须无效 (SA-10)</td>
+    </tr>
+    <tr>
+        <td><code>astore_no_bypass</code></td>
+        <td><code>fu_type==FU_MEM &amp;&amp; inst[5] |-> !m_bypass_valid[i]</code></td>
+        <td>Store 永远不旁路</td>
+    </tr>
+    <tr>
+        <td><code>asb_no_overflow</code></td>
+        <td><code>sb_full |-> !(lsu_valid[l] &amp;&amp; lsu_we[l] &amp;&amp; !BYPASS_SB)</code></td>
+        <td>SB 满时不可入队 (需上游反压保证)</td>
+    </tr>
+    <tr>
+        <td><code>adual_port_order</code></td>
+        <td><code>lsu_valid[0] &amp;&amp; lsu_valid[1] |-> ##1 mem_addr_out == lsu_addr[1]</code></td>
+        <td>双端口时 Port 1 必须在 Port 0 之后处理 (ERR-029)</td>
+    </tr>
+    <tr>
+        <td><code>am1_reg_stall_hold</code></td>
+        <td><code>mem_busy |-> $stable(m1_mem_addr[0])</code></td>
+        <td>mem_busy 时 M1 寄存器必须保持 (SA-9)</td>
+    </tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-001</span></td><td>Load/Store 地址对齐检查与 Byte Enable</td><td>§2.1 F-001/F-002, §5.1</td><td><code>check_alignment()</code> L94, <code>gen_byte_enable()</code> L69</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-002</span></td><td>Load 符号扩展 / Store 数据对齐</td><td>§2.1 F-003/F-004, §5.1</td><td><code>sign_extend_load()</code> L109, <code>align_store_data()</code> L152</td></tr>
+    <tr><td><span class="req-tag">LUMI-MEM-003</span></td><td>双 LSU 端口 + Store Buffer</td><td>§2.1 F-005/F-006, §4, §5</td><td>LSU 仲裁 L200, SB FIFO L179, FSM L298</td></tr>
+    <tr><td><span class="req-tag">ERR-021</span></td><td>每个 LSU 端口映射到对应 M-slot</td><td>§6.1 BC-001</td><td><code>lsu_misalign[i]</code> L280 (使用 slot i, 跨边界拆分检测)</td></tr>
+    <tr><td><span class="req-tag">ERR-024</span></td><td>E1→M1 流水线同步</td><td>§2.1 F-008, §8.2</td><td><code>m1_mem_*</code> 寄存器 L216-238</td></tr>
+    <tr><td><span class="req-tag">ERR-027/028</span></td><td>BYPASS_SB 直写模式</td><td>§2.1 F-007, §2.2</td><td><code>BYPASS_SB</code> 分支 L467-559</td></tr>
+    <tr><td><span class="req-tag">ERR-029</span></td><td>双 LSU 端口串行化</td><td>§4.2.2, §6.1 BC-003</td><td><code>pending_port1_r</code> L314, <code>stall_port1</code> L450</td></tr>
+    <tr><td><span class="req-tag">ERR-030</span></td><td>Memory stall 输出</td><td>§2.1 F-010, §6.4</td><td><code>mem_busy</code> L461</td></tr>
+    <tr><td><span class="req-tag">ERR-055</span></td><td>Store Buffer empty for FENCE</td><td>§6.1 BC-008</td><td><code>sb_empty_out</code> L648</td></tr>
+    <tr><td><span class="req-tag">SA-4</span></td><td>使用 m_pipe_valid 替代 m_valid</td><td>§5.1</td><td><code>m_valid_out = m_pipe_valid</code> L465</td></tr>
+    <tr><td><span class="req-tag">SA-6</span></td><td>stall_port1 时保持寄存器</td><td>§6.4, §8.2</td><td><code>if (!stall_port1)</code> L375</td></tr>
+    <tr><td><span class="req-tag">SA-9</span></td><td>mem_busy 时保持 M1 寄存器</td><td>§6.4, §8.2</td><td><code>if (!mem_busy)</code> L230</td></tr>
+    <tr><td><span class="req-tag">SA-10</span></td><td>M 级旁路 valid 同步</td><td>§2.1 F-009, §6.1 BC-006</td><td><code>m_bypass_valid</code> L280-296</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="execute-alu.html">execute-alu.html</a> §4.1 (M 级数据通路) 和 <a href="writeback-csr.html">writeback-csr.html</a> §3.1 (M→W 级间传递) 的设计细化。
+HLD §4 对应本文档 §5 (数据通路), HLD §5 对应本文档 §4 (FSM)。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#mem-stage">IC-MEM (Memory Stage Interface)</a>,
+<a href="interface-contracts.html#mem-req">mem_req_if</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD — lumi_memory_stage v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

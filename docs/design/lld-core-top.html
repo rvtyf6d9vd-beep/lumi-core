@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_core_top 八级流水线级联顶层</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_core_top Low Level Design</h1>
+    <p class="subtitle">八级流水线级联顶层 (F1→F2→D→I→E1→E2→M→W)</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-CORE-TOP &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="lld-baseline-review.html">lld-baseline-review.html</a></p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_core_top.sv</code> (816 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#core-top">IC-CORE-TOP</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_core_top</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_core_top.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="lld-baseline-review.html">lld-baseline-review.html</a> (LUMI-DESIGN-CORE)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-CORE-TOP</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>8 级流水线级联 (F1/F2/D/I/E1/E2/M/W)；级间寄存器 (I→E1, E1→M)；旁路网络适配与实例化；异常信号聚合输出；WFI 检测；全局 stall/flush 控制</td>
+        <td>ICache/DCache 控制器实现；CSR 寄存器堆实现；AXI 总线协议；中断优先级仲裁 (由 CLIC 负责)；Debug Module 实现</td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="lld-fetch-bpred.html">lumi_fetch</a>, <a href="lld-decode-issue.html">lumi_decode_issue</a> &nbsp;|&nbsp;
+   <strong>下游:</strong> <a href="lld-soc-top.html">lumi_soc_top</a> (SoC 顶层)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查, 含 ERR-019/022/030/042/055/095 修复）</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>8 级流水线级联</td><td>F1(PC gen)→F2(ICache)→D(Decode)→I(Issue)→E1(ALU/Branch)→E2(MUL/DIV)→M(Load/Store)→W(Writeback) 全链路连接</td><td><span class="req-tag">LUMI-CORE-001</span></td></tr>
+    <tr><td>F-002</td><td>级间寄存器管理</td><td>I→E1 和 E1→M 两组流水线寄存器, 含 flush/stall 控制</td><td><span class="req-tag">LUMI-CORE-001</span></td></tr>
+    <tr><td>F-003</td><td>旁路网络适配</td><td>E1/M/W 三级旁路源适配, 含 2W→ISSUE_WIDTH 扩展和 M 级旁路 MUX (ALU vs Load)</td><td><span class="req-tag">LUMI-CORE-001</span></td></tr>
+    <tr><td>F-004</td><td>分支误预测恢复</td><td>ERR-019 分支气泡 + ERR-022 误预测后扩展气泡, flush 推测指令</td><td><span class="req-tag">LUMI-CORE-001</span></td></tr>
+    <tr><td>F-005</td><td>异常信号聚合</td><td>从 E1/M 级收集异常信息, 输出 fetch/decode/exec 分类异常码和地址</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-006</td><td>WFI 检测</td><td>在 E1 级检测 WFI 指令 (opcode=SYSTEM, funct3=000, imm=0x105), 输出 wfi_req</td><td><span class="req-tag">LUMI-PWR-001</span></td></tr>
+    <tr><td>F-007</td><td>HPM 事件输出</td><td>从 Writeback 级输出 inst_retired/branch/branch_miss/load/store/exception 事件</td><td><span class="req-tag">LUMI-HPM-001</span></td></tr>
+    <tr><td>F-008</td><td>验证探针</td><td>V1 mon_inst/mon_rd/mon_irq 等监测信号, 供 testbench 验证</td><td><span class="req-tag">LUMI-VER-001</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常执行</td><td><code>!stall &amp;&amp; !flush &amp;&amp; !debug_halt</code></td><td>流水线各级正常捕获和执行指令</td></tr>
+    <tr><td>Stall</td><td><code>dec_stall=1</code> (DIB 满/fu_busy)</td><td>冻结 F1/F2 级, D/I 级不发射</td></tr>
+    <tr><td>Flush (误预测)</td><td><code>e1_mispredict=1</code></td><td>清除 E1 输入寄存器, M 级保留分支指令杀死推测指令</td></tr>
+    <tr><td>Flush (Trap)</td><td><code>trap_request=1</code></td><td>清除 E1 和 M 级输入, 重定向 PC 到 trap_pc</td></tr>
+    <tr><td>分支气泡</td><td><code>e1_has_branch=1</code></td><td>E1 有分支指令时, 不捕获 D/I 数据, 插入 1 周期气泡</td></tr>
+    <tr><td>Debug Halt</td><td><code>debug_halt=1</code></td><td>fetch 暂停取指</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr><th colspan="8" style="background:#37474f">时钟与复位</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">ICache 接口 (F1/F2 级)</th></tr>
+    <tr><td><code>ic_addr</code></td><td>output</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>ICache 地址 (= f1_pc)</td></tr>
+    <tr><td><code>ic_data</code></td><td>input</td><td>128</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>ICache 128-bit 数据线</td></tr>
+    <tr><td><code>ic_valid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>ICache 数据有效</td></tr>
+    <tr><td><code>ic_req_valid</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>常量 1</td><td>ICache 请求有效 (固定拉高)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">DCache/TCM 接口 (M 级)</th></tr>
+    <tr><td><code>dc_addr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>数据内存地址</td></tr>
+    <tr><td><code>dc_wdata</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>写数据</td></tr>
+    <tr><td><code>dc_rdata</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>读数据</td></tr>
+    <tr><td><code>dc_we</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>写使能</td></tr>
+    <tr><td><code>dc_be</code></td><td>output</td><td>4</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>字节使能</td></tr>
+    <tr><td><code>dc_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>请求有效</td></tr>
+    <tr><td><code>dc_ready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>下游就绪</td></tr>
+    <tr><td><code>dc_hit</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Cache/TCM 命中</td></tr>
+    <tr><th colspan="8" style="background:#37474f">中断接口</th></tr>
+    <tr><td><code>irq_request</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>中断请求 (来自 CLIC)</td></tr>
+    <tr><td><code>irq_id</code></td><td>input</td><td>8</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>中断 ID (H-003 补充)</td></tr>
+    <tr><td><code>irq_level</code></td><td>input</td><td>8</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>中断优先级 (H-003 补充)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">CSR 接口</th></tr>
+    <tr><td><code>csr_addr</code></td><td>output</td><td>12</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>CSR 地址</td></tr>
+    <tr><td><code>csr_rdata</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>CSR 读数据</td></tr>
+    <tr><td><code>csr_wdata</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>CSR 写数据</td></tr>
+    <tr><td><code>csr_we</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>CSR 写使能</td></tr>
+    <tr><td><code>csr_op</code></td><td>output</td><td>2</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>CSR 操作码</td></tr>
+    <tr><td><code>mstatus_out</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>mstatus 寄存器值</td></tr>
+    <tr><td><code>mtvec_out</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>mtvec 寄存器值</td></tr>
+    <tr><th colspan="8" style="background:#37474f">Debug / NMI</th></tr>
+    <tr><td><code>debug_halt</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>调试暂停请求</td></tr>
+    <tr><td><code>nmi_signal</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>异步</td><td>外部 NMI 信号</td></tr>
+    <tr><th colspan="8" style="background:#37474f">提交信号 (→ 锁步比较器)</th></tr>
+    <tr><td><code>commit_valid</code></td><td>output</td><td>ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>指令提交有效</td></tr>
+    <tr><td><code>commit_pc</code></td><td>output</td><td>32 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>提交 PC (unpacked array)</td></tr>
+    <tr><td><code>commit_result</code></td><td>output</td><td>32 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>提交结果 (unpacked array)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">HPM 事件输出</th></tr>
+    <tr><td><code>hpm_inst_retired</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>指令提交事件</td></tr>
+    <tr><td><code>hpm_branch</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>分支事件</td></tr>
+    <tr><td><code>hpm_branch_miss</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>分支误预测事件</td></tr>
+    <tr><td><code>hpm_load</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Load 事件</td></tr>
+    <tr><td><code>hpm_store</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Store 事件</td></tr>
+    <tr><td><code>hpm_exception</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>异常事件</td></tr>
+    <tr><th colspan="8" style="background:#37474f">异常信号输出 (ERR-095)</th></tr>
+    <tr><td><code>core_exc_fetch</code></td><td>output</td><td>2</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>F 级异常码 (暂未实现)</td></tr>
+    <tr><td><code>core_exc_decode</code></td><td>output</td><td>4</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>D 级异常码 (暂未实现)</td></tr>
+    <tr><td><code>core_exc_exec</code></td><td>output</td><td>3</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>E/M 级异常码</td></tr>
+    <tr><td><code>core_exc_addr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常访问地址</td></tr>
+    <tr><td><code>core_exc_insn</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常指令字</td></tr>
+    <tr><td><code>core_exc_pc</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>异常指令 PC</td></tr>
+    <tr><th colspan="8" style="background:#37474f">Power Management</th></tr>
+    <tr><td><code>wfi_req</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>WFI 指令检测请求</td></tr>
+    <tr><th colspan="8" style="background:#37474f">V1 验证探针</th></tr>
+    <tr><td><code>mon_inst</code></td><td>output</td><td>32 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>监测指令字</td></tr>
+    <tr><td><code>mon_inst_raw</code></td><td>output</td><td>16 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>监测原始指令</td></tr>
+    <tr><td><code>mon_rd</code></td><td>output</td><td>5 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>监测目标寄存器</td></tr>
+    <tr><td><code>mon_rd_data</code></td><td>output</td><td>32 × ISSUE_WIDTH</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>监测写回数据</td></tr>
+    <tr><td><code>mon_irq</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>监测中断标志</td></tr>
+</table>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<p>本模块未直接使用 SV Interface 端口, 级间信号通过显式 wire/reg 连接。逻辑上对应 8 个 <code>pipeline_if</code> 级间边界 (见 §8.3)。</p>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>无 (单时钟域模块)</td><td>—</td><td>—</td><td>—</td></tr>
+</table>
+
+<h2>3.4 接口时序图 — DCache valid-ready 握手</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant M as Memory Stage (M)
+    participant DC as DCache/TCM
+    M->>DC: dc_valid=1, dc_addr=X, dc_we=0
+    DC-->>M: dc_ready=1, dc_rdata=DATA
+    Note over M,DC: clk↑: Load 完成 (DATA)
+    M->>DC: dc_valid=1, dc_addr=Y, dc_we=1
+    DC-->>M: dc_ready=0
+    Note over M,DC: 等待 (mem_busy=1, stall E1→M)
+    DC-->>M: dc_ready=1
+    Note over M,DC: clk↑: Store 完成
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<p class="warn">本模块无显式 FSM。流水线控制逻辑分散在各子模块中 (fetch PC FSM, decode DIB FIFO 状态等)。级间寄存器行为由 stall/flush 条件驱动, 见 §2.2 工作模式表。</p>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    subgraph "F1/F2"
+        A[PC Gen] --> B[ICache 128b]
+    end
+    subgraph "Predecode"
+        B --> C[指令边界扫描]
+    end
+    subgraph "D/I"
+        C --> D[Decode + DIB FIFO]
+        D --> E[Issue Arbitration]
+    end
+    subgraph "E1/E2"
+        E --> F[ALU/Branch + MUL/DIV]
+    end
+    subgraph "M"
+        F --> G[Load/Store + SB]
+    end
+    subgraph "W"
+        G --> H[RegFile Writeback]
+    end
+    H -.->|Bypass W→D/I| E
+    G -.->|Bypass M→D/I| E
+    F -.->|Bypass E1→D/I| E
+</pre>
+
+<h2>5.2 流水线级间时序 (单条 ALU 指令)</h2>
+<table>
+    <tr><th>Cycle</th><th>F1</th><th>F2</th><th>D/I</th><th>E1</th><th>M</th><th>W</th></tr>
+    <tr><td>T</td><td>PC→ICache</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>T+1</td><td>PC+4</td><td>128b→Predecode</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>T+2</td><td>PC+8</td><td>下一批</td><td>Decode+Issue</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>T+3</td><td>PC+12</td><td>—</td><td>下一批</td><td>ALU 执行</td><td>—</td><td>—</td></tr>
+    <tr><td>T+4</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Pass-through</td><td>—</td></tr>
+    <tr><td>T+5</td><td>—</td><td>—</td><td>Bypass 可用</td><td>—</td><td>—</td><td>Writeback</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>I→E1 寄存器 setup</td><td>3 (decode + bypass MUX + FU assign)</td><td>~800ps</td><td>含 DIB FIFO 读 + 寄存器文件读 + bypass MUX</td></tr>
+    <tr><td>E1 分支判定</td><td>2 (比较 + target adder)</td><td>~500ps</td><td>误预测检测为关键路径</td></tr>
+    <tr><td>M→Bypass 路径</td><td>4 (MUX + fu_type decode)</td><td>~600ps</td><td>T-MS3-S3-BF.1.5: ALU 用 m_result_r, Load 用 m_result_out</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>数据冒险 (RAW)</td><td>相邻指令依赖 rd→rs</td><td>E1/M/W 三级旁路网络</td><td>0 cycle (旁路命中)</td></tr>
+    <tr><td>数据冒险 (Load-use)</td><td>Load 结果尚未返回</td><td>fu_busy[3]=mem_busy → stall Issue</td><td>1-2 cycle</td></tr>
+    <tr><td>控制冒险</td><td>分支/跳转指令</td><td>BTB+LTAGE 预测; 误预测时 flush + 气泡</td><td>1-2 cycle (误预测惩罚)</td></tr>
+    <tr><td>结构冒险</td><td>双 MEM 指令串行</td><td>mem_busy 阻塞 E1→M 捕获 (SA-6)</td><td>1 cycle</td></tr>
+    <tr><td>DIV 结构冒险</td><td>DIV 多周期执行</td><td>div_busy → stall Issue</td><td>多 cycle (直到 div_valid)</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>误预测分支写 rd≠0 (如 JAL ra)</td><td>ERR-022: M 级无条件保留分支指令; post_mispredict_bubble 插入额外 1 周期让 W bypass 有正确 ra</td><td>CoreMark call/ret 序列</td></tr>
+    <tr><td>BC-002</td><td>E1 有分支 + I 级同时发射</td><td>ERR-019: e1_has_branch → 不捕获 D/I 数据, 插入气泡</td><td>连续分支测试</td></tr>
+    <tr><td>BC-003</td><td>mem_busy 期间 E1 有新 MEM 指令</td><td>SA-6: E1→M 寄存器保持, 防止重复捕获; fu_busy[3] → stall</td><td>双 Load/Store 串行</td></tr>
+    <tr><td>BC-004</td><td>trap_request 与正常 M 级写入同时发生</td><td>ERR-020: trap 优先 flush M 级, 异常指令不提交</td><td>异常触发测试</td></tr>
+    <tr><td>BC-005</td><td>E2 MUL/DIV 结果与 E1→M 寄存器写入竞争</td><td>E1→M 寄存器 MUX: FU_MUL/DIV 时用 e2_mul_result/e2_div_result 替换 e1_result</td><td>MUL 后紧跟依赖指令</td></tr>
+    <tr><td>BC-006</td><td>WFI 指令在 E1 级检测</td><td>组合逻辑检测 opcode=SYSTEM + funct3=000 + imm=0x105, 输出 wfi_req</td><td>WFI 休眠/唤醒测试</td></tr>
+    <tr><td>BC-007</td><td>FENCE 指令执行时 Store Buffer 非空</td><td>ERR-055: 等待 sb_empty 后才允许 FENCE 提交</td><td>FENCE 一致性测试</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>ECC 可纠正 (regfile)</td><td>u_regfile.ecc_ce_irq</td><td>硬件自动纠正, 中断上报</td></tr>
+    <tr><td>ECC 不可纠正 (regfile)</td><td>u_regfile.ecc_ded_irq</td><td>NMI 触发, 软件处理</td></tr>
+    <tr><td>指令异常 (E1 级)</td><td>e1_exception[i]=1</td><td>异常指令流至 M→W, 触发 trap_request</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><code>dc_valid &amp;&amp; dc_we</code> 同时 <code>dc_ready=0</code>: 请求保持, 不写入 (等待 ready)</li>
+    <li>E1 级多条指令同时异常: 优先级由 slot 编号决定 (slot 0 优先), 实际行为依赖 Writeback 串行化</li>
+    <li>FPU/VRF 端口当前固定接 0 (TODO: 连接 FPU/Vector), 读写 x0 行为</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>dec_stall</code></td><td>F1/F2 冻结; D/I 不发射新指令; DIB FIFO 不弹出</td><td>同 cycle 生效 (combinational 到 fetch)</td></tr>
+    <tr><td><code>e1_mispredict</code></td><td>清除 E1 输入寄存器; M 级保留分支指令, 杀死推测指令; fetch 重定向到 e1_br_target</td><td>下一 clk↑ 生效</td></tr>
+    <tr><td><code>trap_request</code></td><td>清除 E1 和 M 级输入; fetch 重定向到 trap_pc</td><td>下一 clk↑ 生效</td></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位所有流水线寄存器 (valid=0, 数据清零)</td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>int</td><td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td><td>发射宽度, 决定 commit/bypass/regfile 端口数</td></tr>
+    <tr><td><code>HART_ID</code></td><td>int</td><td>0</td><td>0 ~ NUM_HARTS-1</td><td>硬件线程 ID, 用于 mhartid CSR</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>FETCH_WIDTH = ISSUE_WIDTH * 2</code> (localparam, 当前 = 6)</li>
+    <li><code>ISSUE_WIDTH</code> 必须 &le; <code>FETCH_WIDTH</code>, 且均为 2 的幂或 3</li>
+    <li><code>commit_pc</code> / <code>commit_result</code> / <code>mon_*</code> 的 unpacked array 维度由 ISSUE_WIDTH 决定</li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>实例名</th><th>模块</th><th>职责</th><th>参数</th></tr>
+    <tr><td><code>u_fetch</code></td><td><code>lumi_fetch</code></td><td>F1/F2 级: PC 生成, BTB/LTAGE 预测, RAS, ICache 接口</td><td>FETCH_WIDTH, BTB_ENTRIES, RAS_DEPTH, LTAGE_TABLES</td></tr>
+    <tr><td><code>u_predecode</code></td><td><code>lumi_predecode</code></td><td>ERR-042 指令边界扫描器: 16/32-bit 指令识别, 压缩指令展开</td><td>FETCH_WIDTH</td></tr>
+    <tr><td><code>u_decode_issue</code></td><td><code>lumi_decode_issue</code></td><td>D/I 级: 解码, DIB FIFO, FU 分配, 发射仲裁</td><td>ISSUE_WIDTH, FETCH_WIDTH</td></tr>
+    <tr><td><code>u_bypass</code></td><td><code>lumi_bypass</code></td><td>E1/M/W 三级旁路网络: rs1/rs2 数据前递</td><td>ISSUE_WIDTH, BYPASS_PIPE_STAGES=1</td></tr>
+    <tr><td><code>u_execute</code></td><td><code>lumi_execute</code></td><td>E1/E2 级: ALU, 分支判定, MUL/DIV 接口</td><td>ISSUE_WIDTH</td></tr>
+    <tr><td><code>u_memory</code></td><td><code>lumi_memory_stage</code></td><td>M 级: Load/Store, Store Buffer, DCache 接口</td><td>ISSUE_WIDTH, BYPASS_SB=1</td></tr>
+    <tr><td><code>u_writeback</code></td><td><code>lumi_writeback</code></td><td>W 级: RegFile 写入, CSR 操作, trap 生成, HPM, 验证探针</td><td>ISSUE_WIDTH</td></tr>
+    <tr><td><code>u_regfile</code></td><td><code>lumi_regfile</code></td><td>IRF/FRF/VRF 寄存器堆: 2R1W × ISSUE_WIDTH + ECC</td><td>ISSUE_WIDTH, VLEN, ECC_EN</td></tr>
+</table>
+
+<h2>8.2 内部流水线寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>e1_valid_r</code></td><td>ISSUE_WIDTH</td><td>0</td><td>clk↑, !flush &amp;&amp; !branch_bubble</td><td>I→E1 级 valid</td></tr>
+    <tr><td><code>e1_inst_r[i]</code></td><td>inst_pkt_t × N</td><td>'0</td><td>clk↑, 同上</td><td>I→E1 指令包</td></tr>
+    <tr><td><code>e1_rs1_data_r[i]</code></td><td>32 × N</td><td>0</td><td>clk↑, 同上</td><td>I→E1 rs1 数据</td></tr>
+    <tr><td><code>e1_rs2_data_r[i]</code></td><td>32 × N</td><td>0</td><td>clk↑, 同上</td><td>I→E1 rs2 数据</td></tr>
+    <tr><td><code>e1_pred_taken_r</code></td><td>1</td><td>0</td><td>clk↑, 同上</td><td>F2 预测状态 (ERR-019)</td></tr>
+    <tr><td><code>e1_pred_target_r</code></td><td>32</td><td>0</td><td>clk↑, 同上</td><td>F2 预测目标</td></tr>
+    <tr><td><code>m_valid_r</code></td><td>ISSUE_WIDTH</td><td>0</td><td>clk↑, !trap &amp;&amp; !mem_busy</td><td>E1→M 级 valid</td></tr>
+    <tr><td><code>m_inst_r[i]</code></td><td>inst_pkt_t × N</td><td>'0</td><td>clk↑, 同上</td><td>E1→M 指令包</td></tr>
+    <tr><td><code>m_result_r[i]</code></td><td>32 × N</td><td>0</td><td>clk↑, 含 E2 MUL/DIV 替换</td><td>E1→M 结果</td></tr>
+    <tr><td><code>m_rd_r[i]</code></td><td>5 × N</td><td>0</td><td>clk↑, 同上</td><td>E1→M 目标寄存器</td></tr>
+    <tr><td><code>m_exception_r</code></td><td>ISSUE_WIDTH</td><td>0</td><td>clk↑, 同上</td><td>E1→M 异常标志</td></tr>
+    <tr><td><code>post_mispredict_bubble_r</code></td><td>1</td><td>0</td><td>clk↑, 误预测+rd≠0 置位, 自动清除</td><td>ERR-022 扩展气泡</td></tr>
+</table>
+
+<h2>8.3 流水线实例化关系图 (8 级 pipeline_if)</h2>
+<pre class="mermaid">
+graph TB
+    subgraph "F1 - PC Generation"
+        F1[u_fetch: PC Gen + BTB/LTAGE/RAS]
+    end
+    subgraph "F2 - ICache Fetch"
+        F2[u_fetch: ICache 128b Read]
+    end
+    subgraph "PD - Predecode"
+        PD[u_predecode: 16/32-bit Boundary Scan]
+    end
+    subgraph "D - Decode + DIB"
+        D[u_decode_issue: Decode + DIB FIFO]
+    end
+    subgraph "I - Issue"
+        I[u_decode_issue: FU Arbitration + RegFile Read]
+    end
+    subgraph "E1 - ALU / Branch"
+        E1[u_execute: ALU + Branch Resolve]
+    end
+    subgraph "E2 - MUL / DIV"
+        E2[u_execute: Multiplier + Divider]
+    end
+    subgraph "M - Load / Store"
+        M[u_memory: LSU + Store Buffer]
+    end
+    subgraph "W - Writeback"
+        W[u_writeback: RegFile Write + CSR + Trap]
+    end
+
+    F1 -->|"pipeline_if #1: f1_pc, pred_*"| F2
+    F2 -->|"pipeline_if #2: f2_insts[6], f2_valid"| PD
+    PD -->|"pipeline_if #3: pd_inst[6], pd_inst_valid"| D
+    D -->|"pipeline_if #4: i_inst[3], i_valid"| I
+    I -->|"pipeline_if #5: e1_inst_r[3], e1_valid_r (I→E1 reg)"| E1
+    E1 -->|"pipeline_if #6: e2_mul/div (E1→E2 内部)"| E2
+    E1 -->|"pipeline_if #7: m_inst_r[3], m_valid_r (E1→M reg)"| M
+    M -->|"pipeline_if #8: m_inst_out[3], m_valid_out"| W
+
+    W -.->|"Bypass W→I: bp_w_result"| I
+    M -.->|"Bypass M→I: bp_m_result"| I
+    E1 -.->|"Bypass E1→I: bp_rs1/2_data"| I
+    E1 -->|"flush: e1_mispredict"| D
+    E1 -->|"redirect: e1_br_target"| F1
+    W -->|"trap: trap_request, trap_pc"| F1
+
+    RF[u_regfile: IRF/FRF/VRF]
+    I --> RF
+    W --> RF
+    RF --> I
+</pre>
+
+<blockquote><strong>pipeline_if 8 实例说明:</strong>
+逻辑上 8 个 <code>pipeline_if</code> 分别对应 F1→F2, F2→PD, PD→D, D→I, I→E1, E1→E2, E1→M, M→W 级间边界。
+当前 RTL 使用显式 wire/reg 连接 (Yosys 兼容), 每个边界携带 <code>valid/stall/flush</code> 控制信号和 <code>inst_pkt_t[ISSUE_WIDTH]</code> 数据包。</blockquote>
+
+<h2>8.4 全局信号分布</h2>
+<table>
+    <tr><th>信号</th><th>生成源</th><th>扇出目标</th><th>说明</th></tr>
+    <tr><td><code>clk_core</code></td><td>SoC 顶层</td><td>所有子模块</td><td>单时钟域</td></tr>
+    <tr><td><code>reset_n</code></td><td>SoC 顶层</td><td>所有子模块 (异步复位)</td><td>低有效异步复位</td></tr>
+    <tr><td><code>dec_stall</code></td><td>u_decode_issue.stall_out</td><td>u_fetch</td><td>DIB 满 / fu_busy 时暂停 fetch</td></tr>
+    <tr><td><code>dib_not_full</code></td><td>u_decode_issue.dib_not_full</td><td>u_fetch</td><td>DIB 有空间</td></tr>
+    <tr><td><code>e1_mispredict</code></td><td>u_execute.e1_mispredict</td><td>I→E1 reg, E1→M reg, u_decode_issue (flush), u_fetch (redirect)</td><td>分支误预测全局 flush</td></tr>
+    <tr><td><code>trap_request</code></td><td>u_writeback.trap_request</td><td>I→E1 reg, E1→M reg, u_fetch (redirect)</td><td>异常/trap 全局 flush + PC 重定向</td></tr>
+    <tr><td><code>mem_busy</code></td><td>u_memory.mem_busy</td><td>fu_busy_combined[3] → u_decode_issue</td><td>MEM 功能单元忙, 阻止新 MEM 发射</td></tr>
+    <tr><td><code>fu_busy_combined</code></td><td>core_top always_comb</td><td>u_decode_issue.fu_busy</td><td>10-bit 功能单元忙向量</td></tr>
+    <tr><td><code>sb_empty</code></td><td>u_memory.sb_empty_out</td><td>u_execute.e1_sb_empty</td><td>ERR-055: FENCE drain 检测</td></tr>
+</table>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (§2.1 F-001~F-008)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1 BC-001~BC-007)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>I→E1 / E1→M flush 全场景</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Bypass 全路径 (E1/M/W → I)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>E2 MUL/DIV 结果替换</td><td>100%</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_flush_no_capture</code></td><td><code>e1_mispredict |-> !e1_valid_r[0]</code></td><td>误预测后 E1 输入寄存器必须清零</td></tr>
+    <tr><td><code>assert_bubble_after_branch</code></td><td><code>e1_has_branch |-> !e1_valid_r[0] next_cycle</code></td><td>分支后必须有 1 周期气泡</td></tr>
+    <tr><td><code>assert_trap_flush_m</code></td><td><code>trap_request |-> !m_valid_r[0] next_cycle</code></td><td>trap 必须 flush M 级</td></tr>
+    <tr><td><code>assert_mem_busy_hold</code></td><td><code>mem_busy &amp;&amp; !trap |-> $stable(m_valid_r)</code></td><td>mem_busy 期间 E1→M 寄存器保持不变</td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-CORE-001</span></td><td>8 级流水线 RV32IMAC 处理器核</td><td>§2.1, §8.1, §8.3</td><td><code>lumi_core_top</code> 全模块</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXC-001</span></td><td>异常信号聚合与分类输出</td><td>§2.1 F-005, §3.1</td><td>L769-L796 always_comb</td></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-001</span></td><td>WFI 指令检测与休眠请求</td><td>§2.1 F-006, §6.1 BC-006</td><td>L800-L809 always_comb</td></tr>
+    <tr><td><span class="req-tag">LUMI-HPM-001</span></td><td>硬件性能计数器事件输出</td><td>§2.1 F-007</td><td>u_writeback 实例连接</td></tr>
+    <tr><td><span class="req-tag">LUMI-VER-001</span></td><td>V1 验证探针 (mon_*)</td><td>§2.1 F-008</td><td>u_writeback mon_* 端口</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="lld-baseline-review.html">lld-baseline-review.html</a> 的设计细化。HLD 中全部 core 子模块对应本文档 §8.1 子模块表。ERR-019/022/030/042/055/095 修复均在 RTL 中实现并映射到 §6 边界条件。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#core-top">IC-CORE-TOP</a> (ICache/DCache/CSR/IRQ/Commit 接口)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html">文档地图</a></p>
+    <p>Lumi-Core LLD — lumi_core_top &mdash; v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

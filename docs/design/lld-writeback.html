@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD: lumi_writeback — W 级写回与提交</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_writeback Low Level Design</h1>
+    <p class="subtitle">W 级写回仲裁 &middot; CSR 操作 &middot; Trap/中断处理 &middot; HPM 事件</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-008 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="writeback-csr.html">writeback-csr.html</a> (LUMI-DESIGN-004)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/core/lumi_writeback.sv</code> (461 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#writeback">IC-WB</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_writeback</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/core/lumi_writeback.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="writeback-csr.html">writeback-csr.html</a> (LUMI-DESIGN-004)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-008</td></tr>
+    <tr><td>流水线级</td><td>W (Writeback) — 第 8 级 (最后级)</td></tr>
+    <tr><td>需求追溯</td><td><span class="req-tag">LUMI-WB-001~004</span></td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>RegFile 写回仲裁 (3 发射槽 → 2W 端口)</td><td>寄存器堆存储阵列 (属于 <a href="regfile.html">regfile.html</a>)</td></tr>
+    <tr><td>CSR 指令解码与操作 (CSRRW/S/C/WI/SI/CI)</td><td>CSR 寄存器文件物理存储 (外部模块)</td></tr>
+    <tr><td>Trap/异常检测与 PC 重定向</td><td>完整异常处理流程 (属于 <a href="exception-handling.html">exception-handling.html</a>)</td></tr>
+    <tr><td>中断接受与 trap 入口</td><td>CLIC/PLIC 中断控制器 (属于 <a href="clic-plic.html">clic-plic.html</a>)</td></tr>
+    <tr><td>HPM 事件信号生成</td><td>HPM 计数器寄存器 (外部 CSR 文件)</td></tr>
+    <tr><td>E2 级 MUL/DIV 独立写回路径</td><td>MUL/DIV 运算逻辑 (属于 <a href="execute-alu.html">execute-alu.html</a>)</td></tr>
+    <tr><td>提交信号生成 (→ 锁步比较器)</td><td>锁步比较逻辑 (属于 <a href="multicore-lockstep.html">multicore-lockstep.html</a>)</td></tr>
+    <tr><td>V1 验证探针输出</td><td>Debug 模块 (属于 <a href="debug-trace.html">debug-trace.html</a>)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <a href="execute-alu.html">execute-alu</a> (E2 级 MUL/DIV 结果) | M 级流水线寄存器 (指令包/结果/异常标志)</p>
+<p><strong>下游:</strong> <a href="regfile.html">regfile</a> (2W 写端口) | CSR 文件 (csr_addr/wdata/we/op) | <a href="multicore-lockstep.html">锁步比较器</a> (commit_valid/pc/result) | 取指级 F1 (trap_pc)</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 — 基于 M3-S1 Batch-1 RTL 同步审查</td><td>SA-5, SA-CM-LD-001, ERR-017</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>RegFile 写回仲裁</td><td>3 个发射槽中选择最多 2 条写回指令，驱动 2W 端口。E2 级 MUL/DIV 独立路径抢占 W 端口 1</td><td><span class="req-tag">LUMI-WB-001</span></td></tr>
+    <tr><td>F-002</td><td>CSR 操作</td><td>CSRRW/CSRRS/CSRRC 及立即数变体 (WI/SI/CI) 的地址/数据/操作码生成</td><td><span class="req-tag">LUMI-WB-002</span></td></tr>
+    <tr><td>F-003</td><td>Trap/异常处理</td><td>异常检测 (优先级: 异常 &gt; 中断)、trap_request 生成、trap_pc = mtvec</td><td><span class="req-tag">LUMI-WB-003</span></td></tr>
+    <tr><td>F-004</td><td>HPM 事件生成</td><td>inst_retired / branch / branch_miss / load / store / exception 六类事件脉冲</td><td><span class="req-tag">LUMI-WB-004</span></td></tr>
+    <tr><td>F-005</td><td>指令提交</td><td>commit_valid/pc/result 信号输出至锁步比较器</td><td><span class="req-tag">LUMI-WB-001</span></td></tr>
+    <tr><td>F-006</td><td>Slot 延迟写回 (SA-5)</td><td>3 条指令同时有效且无 E2 抢占时，Slot 2 延迟至下周期写回</td><td><span class="lld-tag">SA-5</span></td></tr>
+    <tr><td>F-007</td><td>E2 抢占恢复 (SA-CM-LD-001)</td><td>Slot 1 被 E2 MUL/DIV 抢占时，保存数据至下周期写回</td><td><span class="lld-tag">SA-CM-LD-001</span></td></tr>
+    <tr><td>F-008</td><td>V1 验证探针</td><td>所有槽位的 inst / inst_raw / rd / rd_data / irq 监控输出</td><td><span class="lld-tag">V1-Probe</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常提交</td><td>w_valid 有效 &amp;&amp; 无异常 &amp;&amp; 无中断</td><td>写回仲裁 + commit_valid 输出 + HPM 事件计数</td></tr>
+    <tr><td>E2 抢占</td><td>e2_mul_valid || e2_div_valid</td><td>W 端口 1 分配给 E2 结果；Slot 1 数据寄存至下周期</td></tr>
+    <tr><td>3 槽冲突</td><td>Slot 0/1/2 全有效且无 E2</td><td>Slot 0→端口 0, Slot 1→端口 1, Slot 2 延迟至下周期 (SA-5)</td></tr>
+    <tr><td>异常 Trap</td><td>w_valid[i] &amp;&amp; w_exception[i]</td><td>trap_request=1, trap_pc=mtvec, 中止正常写回</td></tr>
+    <tr><td>中断 Trap</td><td>irq_request &amp;&amp; 无异常</td><td>trap_request=1, trap_pc=mtvec, trap_cause=4'd11</td></tr>
+    <tr><td>CSR 操作</td><td>FU_MISC &amp;&amp; funct3≠000</td><td>生成 csr_addr / csr_wdata / csr_op；rd 写入旧 CSR 值 (ERR-017)</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表 (8 列约束)</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <!-- 时钟/复位 -->
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td>
+    </tr>
+    <!-- W 级输入 (← M 级) -->
+    <tr>
+        <td><code>w_inst[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>inst_pkt_t &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>M 级传入指令包数组</td>
+    </tr>
+    <tr>
+        <td><code>w_valid[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>各槽位指令有效标志</td>
+    </tr>
+    <tr>
+        <td><code>w_result[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>各槽位运算/Load 结果</td>
+    </tr>
+    <tr>
+        <td><code>w_rd[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>5 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>各槽位目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>w_exception[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>各槽位异常标志</td>
+    </tr>
+    <tr>
+        <td><code>w_pc[ISSUE_WIDTH-1:0]</code></td><td>input</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>各槽位指令 PC</td>
+    </tr>
+    <!-- RegFile 写端口 (2W) -->
+    <tr>
+        <td><code>regfile_wr_en[1:0]</code></td><td>output</td><td>2</td><td>2'b00</td>
+        <td>CLK_CORE</td><td>直连 RegFile</td><td>combinational</td><td>写使能 (端口 0/1)</td>
+    </tr>
+    <tr>
+        <td><code>regfile_wr_addr[1:0]</code></td><td>output</td><td>5 &times; 2</td><td>5'h0</td>
+        <td>CLK_CORE</td><td>直连 RegFile</td><td>combinational</td><td>写地址 (端口 0/1)</td>
+    </tr>
+    <tr>
+        <td><code>regfile_wr_data[1:0]</code></td><td>output</td><td>32 &times; 2</td><td>32'h0</td>
+        <td>CLK_CORE</td><td>直连 RegFile</td><td>combinational</td><td>写数据 (端口 0/1)</td>
+    </tr>
+    <!-- 提交信号 -->
+    <tr>
+        <td><code>commit_valid[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>3</td><td>'0</td>
+        <td>CLK_CORE</td><td>直连锁步比较器</td><td>combinational</td><td>各槽位提交有效 (→ D-011)</td>
+    </tr>
+    <tr>
+        <td><code>commit_pc[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>直连锁步比较器</td><td>combinational</td><td>各槽位提交 PC</td>
+    </tr>
+    <tr>
+        <td><code>commit_result[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>直连锁步比较器</td><td>combinational</td><td>各槽位提交结果</td>
+    </tr>
+    <!-- Trap/中断 -->
+    <tr>
+        <td><code>trap_request</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>电平敏感</td><td>combinational</td><td>Trap 触发信号 (异常或中断)</td>
+    </tr>
+    <tr>
+        <td><code>irq_request</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>电平敏感</td><td>combinational</td><td>来自 CLIC 的中断请求</td>
+    </tr>
+    <tr>
+        <td><code>trap_pc</code></td><td>output</td><td>32</td><td>mtvec_out</td>
+        <td>CLK_CORE</td><td>直连取指</td><td>combinational</td><td>Trap 跳转目标 (= mtvec)</td>
+    </tr>
+    <!-- CSR 接口 -->
+    <tr>
+        <td><code>csr_addr</code></td><td>output</td><td>12</td><td>12'h0</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>CSR 地址 (来自 imm[11:0])</td>
+    </tr>
+    <tr>
+        <td><code>csr_rdata</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>CSR 读数据 (用于写回 rd)</td>
+    </tr>
+    <tr>
+        <td><code>csr_wdata</code></td><td>output</td><td>32</td><td>32'h0</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>CSR 写数据 (rs1 或 zimm)</td>
+    </tr>
+    <tr>
+        <td><code>csr_we</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>CSR 写使能 (csr_active || trap_taken)</td>
+    </tr>
+    <tr>
+        <td><code>csr_op[1:0]</code></td><td>output</td><td>2</td><td>2'b00</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>CSR 操作码: 00=NONE, 01=RW, 10=RS, 11=RC</td>
+    </tr>
+    <tr>
+        <td><code>mstatus_out</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>mstatus 当前值 (全局使用)</td>
+    </tr>
+    <tr>
+        <td><code>mtvec_out</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>直连 CSR 文件</td><td>combinational</td><td>mtvec 当前值 (trap 跳转基址)</td>
+    </tr>
+    <!-- E2 级输入 -->
+    <tr>
+        <td><code>e2_mul_result</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>E2 级乘法结果</td>
+    </tr>
+    <tr>
+        <td><code>e2_mul_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>E2 乘法结果有效</td>
+    </tr>
+    <tr>
+        <td><code>e2_div_result</code></td><td>input</td><td>32</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>E2 级除法结果</td>
+    </tr>
+    <tr>
+        <td><code>e2_div_valid</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>E2 除法结果有效</td>
+    </tr>
+    <tr>
+        <td><code>e2_rd</code></td><td>input</td><td>5</td><td>—</td>
+        <td>CLK_CORE</td><td>流水线直连</td><td>combinational</td><td>E2 级目标寄存器号</td>
+    </tr>
+    <!-- HPM 事件输出 -->
+    <tr>
+        <td><code>hpm_inst_retired</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>指令退休事件</td>
+    </tr>
+    <tr>
+        <td><code>hpm_branch</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>分支指令事件</td>
+    </tr>
+    <tr>
+        <td><code>hpm_branch_miss</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>分支误预测事件</td>
+    </tr>
+    <tr>
+        <td><code>hpm_load</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>Load 指令事件</td>
+    </tr>
+    <tr>
+        <td><code>hpm_store</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>Store 指令事件</td>
+    </tr>
+    <tr>
+        <td><code>hpm_exception</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>脉冲</td><td>combinational</td><td>异常事件</td>
+    </tr>
+    <!-- V1 验证探针 -->
+    <tr>
+        <td><code>mon_inst[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>监控</td><td>combinational</td><td>各槽位指令字 (展开后)</td>
+    </tr>
+    <tr>
+        <td><code>mon_inst_raw[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>16 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>监控</td><td>combinational</td><td>各槽位原始指令 (压缩保留低 16 位)</td>
+    </tr>
+    <tr>
+        <td><code>mon_rd[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>5 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>监控</td><td>combinational</td><td>各槽位目标寄存器号</td>
+    </tr>
+    <tr>
+        <td><code>mon_rd_data[ISSUE_WIDTH-1:0]</code></td><td>output</td><td>32 &times; 3</td><td>—</td>
+        <td>CLK_CORE</td><td>监控</td><td>combinational</td><td>各槽位写回数据</td>
+    </tr>
+    <tr>
+        <td><code>mon_irq</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>监控</td><td>combinational</td><td>IRQ 被接受标志 (trap_taken &amp;&amp; irq_request &amp;&amp; 非异常)</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+W 级为流水线最终级，无下游 valid-ready 握手。所有输入为 M 级流水线寄存器输出 (combinational)，
+所有输出为组合逻辑直驱 (combinational)。RegFile 写使能在 clk_core 上升沿被 RegFile 采样。
+<code>trap_request</code> 为电平信号，由全局 flush 逻辑在下一 clk↑ 响应。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td>—</td><td colspan="3">本模块使用离散端口而非 SV Interface 实例化 (与流水线级间 <code>pipeline_if</code> 不同)</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>无</td><td colspan="3">所有端口均在 CLK_CORE 域内，无跨时钟域信号</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<div class="warn"><strong>注意: 当前 FSM 为预留设计。</strong><code>state_reg</code> 不驱动任何功能输出。所有功能输出 (<code>trap_request</code>/<code>trap_pc</code>/<code>csr_we</code>/<code>commit_valid</code>/<code>regfile_wr_*</code>/<code>hpm_*</code>) 由独立组合逻辑驱动。ST_IRQ 和 ST_TRAP 的下一状态均为 ST_IDLE, 行为一致。RTL 依据: <code>lumi_writeback.sv</code> L387-L421, <code>state_reg</code> 仅在 <code>case</code> 中用于 <code>state_next</code> 计算, 不驱动任何 <code>assign</code> 或 <code>always_comb</code> 输出。</div>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>3'b000</td><td>空闲 / 等待指令</td><td>reset / 所有状态完成后</td></tr>
+    <tr><td><code>ST_COMMIT</code></td><td>3'b001</td><td>正常指令提交</td><td>w_valid 有效 &amp;&amp; 无 trap</td></tr>
+    <tr><td><code>ST_TRAP</code></td><td>3'b010</td><td>异常 Trap 处理</td><td>w_exception[i] 有效</td></tr>
+    <tr><td><code>ST_IRQ</code></td><td>3'b011</td><td>中断 Trap 处理</td><td>irq_request &amp;&amp; 无异常</td></tr>
+    <tr><td><code>ST_HALT</code></td><td>3'b100</td><td>停机 (预留 Debug)</td><td>当前未使用 (预留)</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset_n=0
+    ST_IDLE --> ST_COMMIT : trap_taken=0 &amp; w_valid
+    ST_IDLE --> ST_TRAP : trap_taken=1 &amp; !(irq_request &amp; cause≠11)
+    ST_IDLE --> ST_IRQ : trap_taken=1 &amp; irq_request &amp; cause=11
+    ST_COMMIT --> ST_IDLE : 1 cycle
+    ST_TRAP --> ST_IDLE : 1 cycle
+    ST_IRQ --> ST_IDLE : 1 cycle
+    ST_HALT --> ST_IDLE : 1 cycle
+</pre>
+
+<div class="warn"><strong>状态转移条件注释:</strong> 当前 <code>!trap_cause[3]</code> 条件导致 IRQ (cause=11, 4'b1011) 误入 ST_TRAP (因 <code>trap_cause[3]=1</code> 使 <code>!trap_cause[3]=0</code>, IRQ 条件不满足)。但由于 FSM 不驱动输出, 无功能影响。未来如启用 FSM 功能需修正为 <code>trap_cause==4'd11</code>。RTL 依据: <code>lumi_writeback.sv</code> L412 <code>state_next = (irq_request &amp;&amp; !trap_cause[3]) ? ST_IRQ : ST_TRAP</code>。</div>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_COMMIT</td><td><code>!trap_taken &amp;&amp; w_valid</code></td><td>RegFile 写回 + commit_valid</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_TRAP</td><td><code>trap_taken &amp;&amp; !(irq_request &amp;&amp; !trap_cause[3])</code></td><td>trap_request=1, csr_we=1</td></tr>
+    <tr><td>ST_IDLE</td><td>ST_IRQ</td><td><code>trap_taken &amp;&amp; irq_request &amp;&amp; !trap_cause[3]</code></td><td>trap_request=1, mon_irq=1</td></tr>
+    <tr><td>ST_COMMIT</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td>—</td></tr>
+    <tr><td>ST_TRAP</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td>—</td></tr>
+    <tr><td>ST_IRQ</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td>—</td></tr>
+    <tr><td>ST_HALT</td><td>ST_IDLE</td><td>无条件 (1 cycle)</td><td>— (预留)</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> 所有非 IDLE 状态均有 1 cycle 无条件回退至 ST_IDLE，不存在死锁路径。ST_HALT 同样 1 cycle 回退。</li>
+    <li><strong>活锁防护:</strong> Trap/IRQ 处理期间 <code>trap_request</code> 拉高触发全局 flush，阻止新指令进入 W 级，避免 livelock。</li>
+    <li><strong>Slot 延迟写回安全:</strong> <code>slot2_pending</code> 和 <code>slot1_pending</code> 在写入成功或无新 stall/preempt 时清除，不会无限累积。</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph TB
+    M_STAGE[M 级输出] --> SLOT0[Slot 0]
+    M_STAGE --> SLOT1[Slot 1]
+    M_STAGE --> SLOT2[Slot 2]
+    E2_MUL[E2 MUL Result] --> ARB
+    E2_DIV[E2 DIV Result] --> ARB
+
+    SLOT0 --> ARB[写回仲裁器]
+    SLOT1 --> ARB
+    SLOT2 --> ARB
+    SLOT2 --> S2_REG[slot2_pending 寄存器]
+    S2_REG --> ARB
+    SLOT1 --> S1_REG[slot1_pending 寄存器]
+    S1_REG --> ARB
+
+    ARB --> PORT0[W 端口 0 → RegFile]
+    ARB --> PORT1[W 端口 1 → RegFile]
+
+    SLOT0 --> COMMIT[提交逻辑]
+    SLOT1 --> COMMIT
+    SLOT2 --> COMMIT
+    COMMIT --> LOCKSTEP[锁步比较器]
+
+    SLOT0 --> TRAP[Trap 检测]
+    SLOT1 --> TRAP
+    SLOT2 --> TRAP
+    IRQ_IN[irq_request] --> TRAP
+    TRAP --> TRAP_PC[trap_pc = mtvec]
+    TRAP --> CSR_WE[csr_we = 1]
+
+    SLOT0 --> HPM[HPM 事件生成]
+    SLOT1 --> HPM
+    SLOT2 --> HPM
+
+    SLOT0 --> CSR[CSR 操作逻辑]
+    SLOT1 --> CSR
+    SLOT2 --> CSR
+    CSR --> CSR_OUT[csr_addr / wdata / op]
+</pre>
+
+<h2>5.2 W 级写回仲裁详细规则</h2>
+
+<p>仲裁策略 (RTL 实现, 按优先级降序):</p>
+<table>
+    <tr><th>优先级</th><th>数据源</th><th>目标端口</th><th>条件</th></tr>
+    <tr><td>1 (最高)</td><td>Slot 0 (w_valid[0])</td><td>W 端口 0</td><td><code>w_valid[0] &amp;&amp; w_rd[0]≠0 &amp;&amp; !w_exception[0]</code></td></tr>
+    <tr><td>2</td><td>E2 MUL/DIV</td><td>W 端口 1</td><td><code>e2_mul_valid || e2_div_valid</code></td></tr>
+    <tr><td>3</td><td>Slot 1 (w_valid[1])</td><td>W 端口 1</td><td><code>w_valid[1] &amp;&amp; w_rd[1]≠0 &amp;&amp; !w_exception[1] &amp;&amp; !E2</code></td></tr>
+    <tr><td>4</td><td>Slot 2 → 端口 0</td><td>W 端口 0</td><td><code>!w_valid[0] &amp;&amp; w_valid[2] &amp;&amp; w_rd[2]≠0 &amp;&amp; !w_exception[2]</code></td></tr>
+    <tr><td>5</td><td>Slot 2 → 端口 1</td><td>W 端口 1</td><td><code>!w_valid[1] &amp;&amp; !E2 &amp;&amp; w_valid[2] &amp;&amp; !wr_select[2]</code></td></tr>
+    <tr><td>6</td><td>slot1_pending (E2 抢占恢复)</td><td>端口 1 (或端口 0)</td><td><code>slot1_pending &amp;&amp; !E2 &amp;&amp; 端口空闲</code></td></tr>
+    <tr><td>7 (最低)</td><td>slot2_pending (SA-5 延迟恢复)</td><td>W 端口 1</td><td><code>slot2_pending &amp;&amp; !E2 &amp;&amp; 双端口均空闲</code></td></tr>
+</table>
+
+<div class="warn"><strong>ERR-017 修复:</strong> CSR 指令写回 rd 时，写入的是旧 CSR 值 (<code>csr_rdata</code>)，而非 rs1 pass-through 值。
+判定条件: <code>fu_type == FU_MISC &amp;&amp; funct3 != FN_ECALL</code>。此修复应用于 Slot 0/1/2 及延迟写回路径。</div>
+
+<h2>5.3 分支结果反馈</h2>
+<p>分支指令在 W 级提交时产生 HPM 事件脉冲:</p>
+<ul>
+    <li><code>hpm_branch</code>: 任意 <code>FU_BRANCH</code> 类型指令有效提交</li>
+    <li><code>hpm_branch_miss</code>: 分支指令且 <code>exc_valid</code> 标记为误预测 (简化实现)</li>
+</ul>
+<p>分支误预测的 flush 在 E1 级已完成；W 级仅做事件计数，不再触发 flush。</p>
+
+<h2>5.4 Trap 处理数据通路</h2>
+<table>
+    <tr><th>步骤</th><th>信号/动作</th><th>RTL 位置</th></tr>
+    <tr><td>1. 异常扫描</td><td>for 循环检查 w_valid[i] &amp;&amp; w_exception[i]，取第一个异常 (break)</td><td>L325-L342</td></tr>
+    <tr><td>2. 中断检查</td><td>!trap_taken &amp;&amp; irq_request → trap_cause = 4'd11</td><td>L345-L350</td></tr>
+    <tr><td>3. PC 重定向</td><td>trap_pc_comb = mtvec_out (直接模式)</td><td>L339, L349</td></tr>
+    <tr><td>4. CSR 更新</td><td>csr_we = csr_active || trap_taken</td><td>L356</td></tr>
+    <tr><td>5. Trap 请求</td><td>trap_request = 1 (全局 flush 逻辑响应)</td><td>L336</td></tr>
+</table>
+
+<div class="crit"><strong>注意:</strong> 当前 V1 实现为简化 Trap — mtval = PC (非指令字或访问地址)，trap_cause 固定 4-bit。
+完整 Trap CSR 更新 (mepc/mcause/mtval/mstatus.MPIE/MIE/MPP) 由外部 CSR 文件模块在 trap_taken + csr_we 驱动下完成。</div>
+
+<h2>5.5 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td>w_valid/inst/result 来自 M 级</td><td>slot2_pending (上周期)</td><td>regfile_wr_en/addr/data, commit_valid, trap_request</td><td>组合逻辑直驱</td></tr>
+    <tr><td>T (clk↑)</td><td>—</td><td>slot2_pending/slot1_pending 更新; FSM 状态转移</td><td>—</td><td>时序寄存器更新</td></tr>
+    <tr><td>T+1</td><td>新一批 w_valid/inst</td><td>slot2_pending (若上周期 stall)</td><td>延迟写回尝试</td><td>slot 恢复写回</td></tr>
+</table>
+
+<h2>5.6 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>w_valid → regfile_wr_en</td><td>3~4 级 (仲裁 MUX)</td><td>&lt;150 ps</td><td>最坏路径: 7 优先级仲裁</td></tr>
+    <tr><td>w_exception → trap_request</td><td>2 级 (OR 树)</td><td>&lt;80 ps</td><td>3 输入 for 循环 + break</td></tr>
+    <tr><td>w_inst.fu_type → csr_addr</td><td>3 级 (比较 + MUX)</td><td>&lt;120 ps</td><td>3 槽扫描取 CSR 指令</td></tr>
+    <tr><td>w_inst.fu_type → hpm_*</td><td>2~3 级</td><td>&lt;100 ps</td><td>3 槽并行检测</td></tr>
+</table>
+
+<h2>5.7 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>结构冒险</td><td>3 条指令同时到达 W 级且均需写回 (rd≠0)，仅 2W 端口可用</td><td>SA-5: Slot 2 寄存至下周期写回 (slot2_pending)</td><td>1 cycle (仅 Slot 2)</td></tr>
+    <tr><td>结构冒险</td><td>E2 MUL/DIV 与 Slot 1 同时竞争 W 端口 1</td><td>SA-CM-LD-001: E2 优先，Slot 1 寄存至下周期</td><td>1 cycle (仅 Slot 1)</td></tr>
+    <tr><td>数据冒险</td><td>CSR 指令读取 csr_rdata 写入 rd (ERR-017)</td><td>CSR rdata 通过组合逻辑直连到写回数据 MUX</td><td>0 cycle (同周期)</td></tr>
+    <tr><td>控制冒险</td><td>异常/中断触发 trap</td><td>trap_request → 全局 flush → 取指重定向至 trap_pc</td><td>pipeline flush 代价</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td><strong>3 槽全有效且均需写回 (rd≠0)，无 E2</strong><br>w_valid=3'b111, w_rd 均非 0, w_exception=0</td><td>SA-5: Slot 0→端口 0, Slot 1→端口 1, Slot 2 延迟。slot2_need_stall=1, 下周期 slot2_pending 尝试写回</td><td>cg_write_port_conflict</td></tr>
+    <tr><td>BC-002</td><td><strong>E2 抢占与 Slot 1 冲突</strong><br>e2_mul_valid=1 &amp;&amp; w_valid[1] &amp;&amp; w_rd[1]≠0</td><td>SA-CM-LD-001: E2 占端口 1, slot1_preempted=1, Slot 1 数据寄存至下周期</td><td>cg_e2_preempt_slot1</td></tr>
+    <tr><td>BC-003</td><td><strong>所有槽位 rd=x0 (写回 x0)</strong><br>w_rd[i] = 5'h0</td><td>regfile_wr_en 保持 0 (不写 RegFile)，但 commit_valid 仍为 1</td><td>cg_write_x0</td></tr>
+    <tr><td>BC-004</td><td><strong>异常与有效指令混合</strong><br>w_valid=3'b111, w_exception[1]=1</td><td>for 循环 break 取第一个异常 (Slot 1)；Slot 0 仍正常写回和提交；trap_taken=1 抑制 HPM inst_retired</td><td>cg_trap_mixed</td></tr>
+    <tr><td>BC-005</td><td><strong>异常与中断同时到达</strong><br>w_exception[0]=1 &amp;&amp; irq_request=1</td><td>异常优先: trap_cause = exc_cause (非 4'd11)；mon_irq = 0 (trap_cause[3] 判断非中断)。<br><strong>已知问题:</strong> 当前 FSM 状态判断与 RISC-V 语义不一致 (<code>!trap_cause[3]</code> 应为 <code>trap_cause==4'd11</code>), 但因 FSM 不驱动输出, 无功能影响。标记为已知问题, 待未来 FSM 启用时修正。</td><td>cg_exception_over_irq</td></tr>
+    <tr><td>BC-006</td><td><strong>slot2_pending 与 slot1_pending 同时为 1</strong></td><td>slot1_pending 优先级高于 slot2_pending；slot1 先尝试端口 1/0, slot2 仅在双端口均空闲时写回</td><td>cg_pending_priority</td></tr>
+    <tr><td>BC-007</td><td><strong>CSR 指令写回 rd (ERR-017)</strong><br>fu_type=FU_MISC, funct3≠000</td><td>regfile_wr_data = csr_rdata (旧 CSR 值)，而非 w_result (rs1 pass-through)</td><td>cg_csr_rd_writeback</td></tr>
+    <tr><td>BC-008</td><td><strong>ECALL 指令 (funct3=000, FU_MISC)</strong></td><td>不作为 CSR 处理 (csr_active=0)；regfile_wr_data = w_result (非 csr_rdata)；trap 由 w_exception 标记</td><td>cg_ecall_path</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>指令异常 (非法/访问/对齐)</td><td>w_exception[i] = 1 (上游 M 级标记)</td><td>trap_request → flush 全流水线 → PC=mtvec</td></tr>
+    <tr><td>ECALL 系统调用</td><td>FU_MISC &amp;&amp; funct3=FN_ECALL &amp;&amp; w_exception</td><td>同异常 trap 处理</td></tr>
+    <tr><td>中断请求</td><td>irq_request 电平信号 (CLIC 驱动)</td><td>当前指令提交后 trap → PC=mtvec</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><strong>多条 CSR 指令同周期:</strong> for 循环取最后一个有效 CSR 指令 (i=2 覆盖 i=1 覆盖 i=0)。实际调度器不应同周期发射多条 CSR 指令。</li>
+    <li><strong>slot2_pending 连续累积:</strong> 若连续多周期 3 槽全满，slot2 每个周期被 stall 一次。slot2_pending 不会叠加 (每次新 stall 覆盖旧值)。</li>
+    <li><strong>E2 MUL 与 DIV 同时有效:</strong> RTL 优先选择 MUL (<code>e2_mul_valid ? e2_mul_result : e2_div_result</code>)。实际不应出现 MUL/DIV 同周期完成。</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code> (异步)</td><td>slot2_pending/slot1_pending 清零; FSM → ST_IDLE; 所有 _r 寄存器归零</td><td>异步立即</td></tr>
+    <tr><td><code>flush</code> (trap 触发)</td><td>由 trap_request 驱动全局 flush 逻辑；W 级本身无流水线寄存器需 flush (组合输出)</td><td>下一 clk↑</td></tr>
+    <tr><td><code>stall</code></td><td>W 级无 stall 输入端口 (最后级)；Slot 延迟写回机制等效于局部 stall</td><td>—</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>int</td><td>3 (<code>lumi_pkg::ISSUE_WIDTH</code>)</td><td>2 或 3</td><td>发射宽度。决定 w_valid/w_inst 数组大小、for 循环上界、commit_valid 宽度</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>ISSUE_WIDTH</code> 必须与 <code>lumi_pkg::ISSUE_WIDTH</code> 一致 (编译期绑定)</li>
+    <li>RegFile 写端口数固定为 2 (RTL 硬编码)，不随 ISSUE_WIDTH 变化</li>
+    <li>当 ISSUE_WIDTH=2 时，Slot 2 相关逻辑 (slot2_need_stall / slot2_pending) 不生效 (w_valid[2] 恒为 0)</li>
+</ul>
+
+<h2>7.2 内部 Localparam</h2>
+<table>
+    <tr><th>名称</th><th>值</th><th>用途</th></tr>
+    <tr><td><code>CSR_OP_NONE</code></td><td>2'b00</td><td>CSR 无操作</td></tr>
+    <tr><td><code>CSR_OP_RW</code></td><td>2'b01</td><td>CSRRW / CSRRWI</td></tr>
+    <tr><td><code>CSR_OP_RS</code></td><td>2'b10</td><td>CSRRS / CSRRSI</td></tr>
+    <tr><td><code>CSR_OP_RC</code></td><td>2'b11</td><td>CSRRC / CSRRCI</td></tr>
+    <tr><td><code>FN_ECALL</code></td><td>3'b000</td><td>SYSTEM: ECALL/EBREAK</td></tr>
+    <tr><td><code>FN_CSRRW</code></td><td>3'b001</td><td>CSRRW funct3</td></tr>
+    <tr><td><code>FN_CSRRS</code></td><td>3'b010</td><td>CSRRS funct3</td></tr>
+    <tr><td><code>FN_CSRRC</code></td><td>3'b011</td><td>CSRRC funct3</td></tr>
+    <tr><td><code>FN_CSRRWI</code></td><td>3'b101</td><td>CSRRWI funct3</td></tr>
+    <tr><td><code>FN_CSRRSI</code></td><td>3'b110</td><td>CSRRSI funct3</td></tr>
+    <tr><td><code>FN_CSRRCI</code></td><td>3'b111</td><td>CSRRCI funct3</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块 (逻辑块)</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>写回仲裁器</td><td>7 优先级仲裁: Slot 0/1/2 + E2 + slot1_pending + slot2_pending → 2W 端口</td><td><code>regfile_wr_en/addr/data</code>, <code>wr_select</code></td></tr>
+    <tr><td>Slot 2 延迟寄存器 (SA-5)</td><td>寄存被 stall 的 Slot 2 数据</td><td><code>slot2_pending</code>, <code>slot2_rd_r/data_r/pc_r/inst_r/is_csr_r/csr_rdata_r</code></td></tr>
+    <tr><td>Slot 1 延迟寄存器 (SA-CM-LD-001)</td><td>寄存被 E2 抢占的 Slot 1 数据</td><td><code>slot1_pending</code>, <code>slot1_rd_r/data_r/pc_r/inst_r/is_csr_r/csr_rdata_r</code></td></tr>
+    <tr><td>CSR 操作逻辑</td><td>扫描 3 槽查找 CSR 指令，生成 addr/wdata/op</td><td><code>csr_active</code>, <code>csr_addr_comb</code>, <code>csr_wdata_comb</code>, <code>csr_op_comb</code></td></tr>
+    <tr><td>Trap 检测逻辑</td><td>异常优先扫描 + 中断检测</td><td><code>trap_taken</code>, <code>trap_cause</code>, <code>trap_pc_comb</code></td></tr>
+    <tr><td>提交逻辑</td><td>commit_valid 生成 (V1: 所有 w_valid 均提交)</td><td><code>commit_valid</code>, <code>commit_pc</code>, <code>commit_result</code></td></tr>
+    <tr><td>HPM 事件生成</td><td>6 类事件脉冲</td><td><code>hpm_inst_retired/branch/branch_miss/load/store/exception</code></td></tr>
+    <tr><td>FSM</td><td>3-bit 状态机 (IDLE/COMMIT/TRAP/IRQ/HALT)</td><td><code>state_reg</code>, <code>state_next</code></td></tr>
+    <tr><td>V1 验证探针</td><td>监控输出赋值</td><td><code>mon_inst/inst_raw/rd/rd_data/irq</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>3</td><td>ST_IDLE</td><td>每 clk↑</td><td>FSM 当前状态</td></tr>
+    <tr><td><code>slot2_pending</code></td><td>1</td><td>0</td><td>slot2_need_stall → 1; 否则 → 0</td><td>Slot 2 延迟写回标志</td></tr>
+    <tr><td><code>slot2_rd_r</code></td><td>5</td><td>0</td><td>slot2_need_stall 时锁存 w_rd[2]</td><td>Slot 2 目标寄存器</td></tr>
+    <tr><td><code>slot2_data_r</code></td><td>32</td><td>0</td><td>slot2_need_stall 时锁存 w_result[2]</td><td>Slot 2 写回数据</td></tr>
+    <tr><td><code>slot2_pc_r</code></td><td>32</td><td>0</td><td>slot2_need_stall 时锁存 w_pc[2]</td><td>Slot 2 PC (commit 跟踪)</td></tr>
+    <tr><td><code>slot2_inst_r</code></td><td>32</td><td>0</td><td>slot2_need_stall 时锁存 w_inst[2].inst</td><td>Slot 2 指令字</td></tr>
+    <tr><td><code>slot2_is_csr_r</code></td><td>1</td><td>0</td><td>slot2_need_stall 时锁存 CSR 判定</td><td>Slot 2 是否 CSR (决定写 csr_rdata 或 data)</td></tr>
+    <tr><td><code>slot2_csr_rdata_r</code></td><td>32</td><td>0</td><td>slot2_need_stall 时锁存 csr_rdata</td><td>Slot 2 的 CSR 旧值</td></tr>
+    <tr><td><code>slot1_pending</code></td><td>1</td><td>0</td><td>slot1_preempted → 1; !preempted → 0</td><td>Slot 1 E2 抢占恢复标志</td></tr>
+    <tr><td><code>slot1_rd_r</code></td><td>5</td><td>0</td><td>slot1_preempted 时锁存 w_rd[1]</td><td>Slot 1 目标寄存器</td></tr>
+    <tr><td><code>slot1_data_r</code></td><td>32</td><td>0</td><td>slot1_preempted 时锁存 w_result[1]</td><td>Slot 1 写回数据</td></tr>
+    <tr><td><code>slot1_pc_r</code></td><td>32</td><td>0</td><td>slot1_preempted 时锁存 w_pc[1]</td><td>Slot 1 PC</td></tr>
+    <tr><td><code>slot1_inst_r</code></td><td>32</td><td>0</td><td>slot1_preempted 时锁存 w_inst[1].inst</td><td>Slot 1 指令字</td></tr>
+    <tr><td><code>slot1_is_csr_r</code></td><td>1</td><td>0</td><td>slot1_preempted 时锁存 CSR 判定</td><td>Slot 1 是否 CSR</td></tr>
+    <tr><td><code>slot1_csr_rdata_r</code></td><td>32</td><td>0</td><td>slot1_preempted 时锁存 csr_rdata</td><td>Slot 1 的 CSR 旧值</td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+<pre>
+// 写回仲裁伪代码 (7 优先级)
+function writeback_arbitrate():
+    port0_busy = 0; port1_busy = 0
+
+    // P1: Slot 0 → 端口 0
+    if w_valid[0] &amp;&amp; w_rd[0]≠0 &amp;&amp; !w_exception[0]:
+        port0.write(w_rd[0], is_csr ? csr_rdata : w_result[0])
+        port0_busy = 1
+
+    // P2: E2 MUL/DIV → 端口 1
+    if e2_mul_valid || e2_div_valid:
+        port1.write(e2_rd, mul_valid ? mul_result : div_result)
+        port1_busy = 1
+    // P3: Slot 1 → 端口 1
+    else if w_valid[1] &amp;&amp; w_rd[1]≠0 &amp;&amp; !w_exception[1]:
+        port1.write(w_rd[1], is_csr ? csr_rdata : w_result[1])
+        port1_busy = 1
+
+    // P4: Slot 2 → 端口 0 (若端口 0 空闲)
+    if !port0_busy &amp;&amp; w_valid[2] &amp;&amp; w_rd[2]≠0 &amp;&amp; !w_exception[2]:
+        port0.write(w_rd[2], is_csr ? csr_rdata : w_result[2])
+        port0_busy = 1
+    // P5: Slot 2 → 端口 1 (若端口 1 空闲)
+    else if !port1_busy &amp;&amp; !e2 &amp;&amp; w_valid[2] &amp;&amp; w_rd[2]≠0:
+        port1.write(w_rd[2], is_csr ? csr_rdata : w_result[2])
+        port1_busy = 1
+
+    // P6: slot1_pending → 端口 1 (或端口 0)
+    if slot1_pending &amp;&amp; !e2:
+        if !port1_busy: port1.write(slot1_data)
+        else if !port0_busy: port0.write(slot1_data)
+
+    // P7: slot2_pending → 端口 1 (双端口均空闲)
+    if slot2_pending &amp;&amp; !port0_busy &amp;&amp; !port1_busy &amp;&amp; !e2:
+        port1.write(slot2_data)
+</pre>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>F-001: 写回仲裁全路径 (7 优先级)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>F-002: CSR 6 指令覆盖 (RW/S/C/WI/SI/CI)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>F-003: 异常 trap + 中断 trap</td><td>100%</td><td>P0</td></tr>
+    <tr><td>F-004: HPM 6 类事件脉冲</td><td>100%</td><td>P1</td></tr>
+    <tr><td>F-006/F-007: SA-5 + SA-CM-LD-001 延迟写回</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态 + 全转移</td><td>100%</td><td>P0</td></tr>
+    <tr><td>BC-001~BC-008 全边界条件</td><td>100%</td><td>P0</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_wr_port_max2</code></td><td><code>regfile_wr_en[1:0] != 2'b11 || (w_valid 最多 2 个 rd≠0)</code></td><td>确保不超过 2W 端口同时写入</td></tr>
+    <tr><td><code>assert_x0_no_write</code></td><td><code>regfile_wr_en[i] → regfile_wr_addr[i] != 5'h0</code></td><td>x0 永不被写入</td></tr>
+    <tr><td><code>assert_trap_priority</code></td><td><code>w_exception[i] &amp;&amp; irq_request → trap_cause != 4'd11</code></td><td>异常优先于中断</td></tr>
+    <tr><td><code>assert_slot2_no_loss</code></td><td><code>slot2_need_stall → ##[1:3] slot2_pending &amp;&amp; regfile_wr_en</code></td><td>Slot 2 延迟后必须在 3 周期内写回</td></tr>
+    <tr><td><code>assert_e2_preempt_recover</code></td><td><code>slot1_preempted → ##[1:3] slot1_pending &amp;&amp; regfile_wr_en</code></td><td>E2 抢占后 Slot 1 必须恢复写回</td></tr>
+    <tr><td><code>assert_csr_rd_old_value</code></td><td><code>csr_active &amp;&amp; rd≠0 → regfile_wr_data == csr_rdata</code></td><td>ERR-017: CSR 指令 rd = 旧 CSR 值</td></tr>
+    <tr><td><code>assert_fsm_no_halt_lock</code></td><td><code>state_reg != ST_HALT || state_next == ST_IDLE</code></td><td>ST_HALT 不死锁</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-WB-001</span></td><td>W 级写回与指令提交</td><td>§2.1 F-001/F-005, §5.2, §8.1</td><td><code>always_comb</code> L136-L222 (仲裁), L361-L373 (commit)</td></tr>
+    <tr><td><span class="req-tag">LUMI-WB-002</span></td><td>CSR 操作 (Zicsr)</td><td>§2.1 F-002, §5.4</td><td><code>always_comb</code> L284-L311 (CSR 解码)</td></tr>
+    <tr><td><span class="req-tag">LUMI-WB-003</span></td><td>Trap/异常/中断处理</td><td>§2.1 F-003, §5.4, §6.1 BC-004/005</td><td><code>always_comb</code> L325-L356 (trap 检测)</td></tr>
+    <tr><td><span class="req-tag">LUMI-WB-004</span></td><td>HPM 事件生成</td><td>§2.1 F-004, §5.3</td><td><code>always_comb</code> L426-L458 (HPM 事件)</td></tr>
+    <tr><td><span class="req-tag">LUMI-ISA-011</span></td><td>Zicsr CSR 指令扩展</td><td>§7.2 (CSR_OP 编码)</td><td>L78-L90 (localparam)</td></tr>
+    <tr><td><span class="req-tag">LUMI-PIPE-001</span></td><td>8 级流水线 W 级 1 cycle</td><td>§5.6 (关键路径)</td><td>全组合逻辑输出, 1 cycle FSM</td></tr>
+    <tr><td><span class="req-tag">LUMI-IPC-001</span></td><td>CoreMark ≥5.5 CM/MHz</td><td>§5.7 (冒险处理)</td><td>SA-5 / SA-CM-LD-001 最小化 stall</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="writeback-csr.html">writeback-csr.html</a> (LUMI-DESIGN-004) 的设计细化:</p>
+<ul>
+    <li>HLD §2.1 (W 级指令提交) → LLD §5.2 (写回仲裁) + §5.4 (Trap 处理)</li>
+    <li>HLD §2.1.2 (写回端口仲裁) → LLD §5.2 (7 优先级仲裁规则表)</li>
+    <li>HLD §2.2 (CSR 寄存器文件) → LLD §5.4 (CSR 操作逻辑) + §7.2 (CSR_OP 编码)</li>
+    <li>HLD §2.3 (HPM) → LLD §5.3 (HPM 事件生成) + §8.1 (子模块)</li>
+    <li>HLD §3.1 (W 级接口) → LLD §3.1 (8 列完整端口表, 36 个端口)</li>
+</ul>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#writeback">IC-WB</a> — W 级写回端口、CSR 接口、Trap/中断信号</p>
+
+<h2>10.4 Errata 关联</h2>
+<table>
+    <tr><th>Errata ID</th><th>描述</th><th>RTL 修复位置</th><th>LLD 章节</th></tr>
+    <tr><td><span class="badge badge-crit">ERR-017</span></td><td>CSR 指令 rd 应写旧 CSR 值</td><td>L149-L151, L165-L168, L179-L181, L190-L193</td><td>§5.2, §6.1 BC-007</td></tr>
+    <tr><td><span class="badge badge-warn">SA-5</span></td><td>3 槽全有效时 Slot 2 数据丢失</td><td>L127-L134 (检测), L224-L247 (寄存)</td><td>§5.2, §6.1 BC-001, §8.2</td></tr>
+    <tr><td><span class="badge badge-warn">SA-CM-LD-001</span></td><td>E2 抢占 Slot 1 时数据丢失</td><td>L120-L124 (检测), L249-L274 (寄存)</td><td>§5.2, §6.1 BC-002, §8.2</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="writeback-csr.html" class="back-link">HLD: writeback-csr</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD: lumi_writeback — LUMI-LLD-008 v1.0<br>
+    基于 RTL: <code>src/rtl/core/lumi_writeback.sv</code> (M3-S1 Batch-1) &nbsp;|&nbsp;
+    最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

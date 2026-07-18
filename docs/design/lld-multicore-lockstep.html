@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — Multicore Interconnect &amp; Lockstep</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>Multicore Interconnect &amp; Lockstep Low Level Design</h1>
+    <p class="subtitle">多核互联拓扑 (1~4 Hart) + Round-Robin AXI 仲裁 + JTAG TAP Chain + W 级双级锁步比较</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-012 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="multicore-lockstep.html">multicore-lockstep.html</a> (LUMI-DESIGN-015)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/multicore/lumi_multicore_top.sv</code> (155 行) · <code>src/rtl/multicore/lumi_lockstep.sv</code> (167 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#multicore">IC-8.1 (Multicore AXI)</a> · <a href="interface-contracts.html#lockstep">IC-8.2 (Lockstep)</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名 (Multicore Top)</td><td><code>lumi_multicore_top</code></td></tr>
+    <tr><td>模块名 (Lockstep)</td><td><code>lumi_lockstep</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/multicore/lumi_multicore_top.sv</code> (155 行)<br><code>src/rtl/multicore/lumi_lockstep.sv</code> (167 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="multicore-lockstep.html">multicore-lockstep.html</a> (LUMI-DESIGN-015)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-012</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>Per-Hart <code>lumi_core_top</code> 实例化 (generate, HART_ID 参数化)</td><td>单核流水线内部逻辑 (属于各 core 子模块)</td></tr>
+    <tr><td>Round-Robin AXI 共享总线仲裁 (dc/ic 请求复用)</td><td>AXI 总线互联 / 从设备 (属于 pma-axi)</td></tr>
+    <tr><td>JTAG TAP Chain 链式连接 (tdo_chain 串接)</td><td>JTAG TAP 状态机 (属于 dft_ctrl)</td></tr>
+    <tr><td>Per-Hart 中断路由 (meip/msip/mtip → irq_request)</td><td>中断控制器 CLIC/PLIC (属于 clic-plic)</td></tr>
+    <tr><td>锁步比较器: IW 参数化逐 slot 比较 (valid/PC/result)</td><td>锁步恢复软件处理 (属于 firmware)</td></tr>
+    <tr><td>错误日志 + 时间戳 + NMI/Reset/Log 策略输出</td><td>NMI 处理逻辑 (属于 exception-handling)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> Per-Hart <code>hart_dc_valid/hart_ic_req</code> (来自各 core 的数据/指令请求) &nbsp;|&nbsp; <code>meip/msip/mtip</code> (来自中断控制器)</p>
+<p><strong>下游:</strong> <code>axi_araddr/arvalid</code> → AXI 共享总线 &nbsp;|&nbsp; <code>lockstep_nmi/reset</code> → 异常/复位网络 &nbsp;|&nbsp; <code>tdo</code> → JTAG 链</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查）</td><td>DEC-007-3 (多核), D-011 (锁步)</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 Multicore Top 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-MC-001</td><td>Per-Hart 实例化</td><td>generate for 循环, NUM_HARTS 个 <code>lumi_core_top</code>, HART_ID=i</td><td><span class="req-tag">LUMI-MC-001</span></td></tr>
+    <tr><td>F-MC-002</td><td>AXI Round-Robin 仲裁</td><td>多核共享 AXI 总线, arb_sel 轮转选择, 每 cycle 更新</td><td><span class="req-tag">LUMI-MC-002</span></td></tr>
+    <tr><td>F-MC-003</td><td>JTAG TAP Chain</td><td><code>jtag_tdo_chain[NUM_HARTS:0]</code> 链式串接, bypass 模式</td><td><span class="req-tag">LUMI-MC-001</span></td></tr>
+    <tr><td>F-MC-004</td><td>Per-Hart 中断路由</td><td><code>hart_irq_request[i] = meip[i] || msip[i] || mtip[i]</code></td><td><span class="req-tag">LUMI-MC-003</span></td></tr>
+    <tr><td>F-MC-005</td><td>Per-Hart 内部连线</td><td>ic/dc/csr/commit 各信号数组 [NUM_HARTS-1:0]</td><td><span class="req-tag">LUMI-MC-001</span></td></tr>
+</table>
+
+<h2>2.2 Lockstep 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-LS-001</td><td>W 级双级比较</td><td>IW 参数化逐 slot: valid_mismatch + pc_mismatch + result_mismatch (D-011)</td><td><span class="req-tag">LUMI-LS-001</span> <span class="constraint-tag">D-011</span></td></tr>
+    <tr><td>F-LS-002</td><td>错误码编码</td><td>error_code[0]=valid, [1]=PC, [2]=result, [3]=mem(预留)</td><td><span class="req-tag">LUMI-LS-001</span></td></tr>
+    <tr><td>F-LS-003</td><td>时间戳日志</td><td>28-bit timestamp 计数器, lockstep_log = {PC, error_code, timestamp}</td><td><span class="req-tag">LUMI-LS-002</span></td></tr>
+    <tr><td>F-LS-004</td><td>错误处理策略</td><td>lockstep_error_mode: 00=NMI, 01=Reset, 10=Log-only</td><td><span class="req-tag">LUMI-LS-002</span></td></tr>
+    <tr><td>F-LS-005</td><td>锁步恢复</td><td>ST_MISMATCH → ST_RECOVER, 等待外部 NMI/Reset 处理后重新同步</td><td><span class="req-tag">LUMI-LS-001</span></td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 lumi_multicore_top 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟 (所有 Hart 共享)</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>meip</code></td><td>input</td><td>NUM_HARTS</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Per-Hart 外部中断 (MEIP)</td></tr>
+    <tr><td><code>msip</code></td><td>input</td><td>NUM_HARTS</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Per-Hart 软件中断 (MSIP)</td></tr>
+    <tr><td><code>mtip</code></td><td>input</td><td>NUM_HARTS</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Per-Hart 定时器中断 (MTIP)</td></tr>
+    <tr><td><code>axi_araddr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>AXI4</td><td>arb_grant 时有效</td><td>AXI 读地址 (仲裁胜出 Hart)</td></tr>
+    <tr><td><code>axi_arvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>AXI4</td><td>= arb_grant</td><td>AXI 读地址有效</td></tr>
+    <tr><td><code>axi_arready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>AXI4</td><td>—</td><td>AXI 读地址就绪 (从设备)</td></tr>
+    <tr><td><code>axi_rdata</code></td><td>input</td><td>128</td><td>—</td><td>CLK_CORE</td><td>AXI4</td><td>—</td><td>AXI 读数据 (128-bit 总线宽度)</td></tr>
+    <tr><td><code>axi_rvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>AXI4</td><td>—</td><td>AXI 读数据有效</td></tr>
+    <tr><td><code>axi_rready</code></td><td>output</td><td>1</td><td>—</td><td>CLK_CORE</td><td>AXI4</td><td>常 1</td><td>AXI 读就绪 (常 ready)</td></tr>
+    <tr><td><code>tck</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>10~50 MHz</td><td>JTAG 时钟</td></tr>
+    <tr><td><code>tms</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG TAP 状态机控制</td></tr>
+    <tr><td><code>tdi</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG 数据输入 (链首)</td></tr>
+    <tr><td><code>tdo</code></td><td>output</td><td>1</td><td>0</td><td>TCK</td><td>—</td><td>registered</td><td>JTAG 数据输出 (链尾)</td></tr>
+    <tr><td><code>debug_halt</code></td><td>input</td><td>NUM_HARTS</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Per-Hart 调试 halt 请求</td></tr>
+</table>
+
+<h2>3.2 lumi_lockstep 端口</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>commit_valid_a</code></td><td>input</td><td>IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart A 的 W 级提交 valid (per-slot)</td></tr>
+    <tr><td><code>commit_valid_b</code></td><td>input</td><td>IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart B 的 W 级提交 valid (per-slot)</td></tr>
+    <tr><td><code>commit_pc_a</code></td><td>input</td><td>32×IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart A 的 W 级提交 PC (per-slot)</td></tr>
+    <tr><td><code>commit_pc_b</code></td><td>input</td><td>32×IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart B 的 W 级提交 PC (per-slot)</td></tr>
+    <tr><td><code>commit_result_a</code></td><td>input</td><td>32×IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart A 的 W 级写回数据 (per-slot)</td></tr>
+    <tr><td><code>commit_result_b</code></td><td>input</td><td>32×IW</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Hart B 的 W 级写回数据 (per-slot)</td></tr>
+    <tr><td><code>lockstep_match</code></td><td>output</td><td>1</td><td>1</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>= !any_mismatch (实时)</td></tr>
+    <tr><td><code>lockstep_error</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>ST_MISMATCH 时</td><td>锁步错误脉冲 (1 cycle)</td></tr>
+    <tr><td><code>error_pc</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>首个 mismatch 的 PC</td></tr>
+    <tr><td><code>error_slot</code></td><td>output</td><td>4</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>首个 mismatch 的 slot 编号</td></tr>
+    <tr><td><code>lockstep_enable</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>锁步使能 (来自 CSR 或 eFuse)</td></tr>
+    <tr><td><code>lockstep_error_mode</code></td><td>input</td><td>2</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>00=NMI, 01=Reset, 10=Log-only</td></tr>
+    <tr><td><code>lockstep_nmi</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>NMI 输出 (mode=00)</td></tr>
+    <tr><td><code>lockstep_reset</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>系统复位输出 (mode=01)</td></tr>
+    <tr><td><code>lockstep_log</code></td><td>output</td><td>64</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered (MISMATCH)</td><td>{PC[31:0], error_code[3:0], timestamp[27:0]}</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<p>Multicore Top 的 JTAG 信号 (<code>tck/tms/tdi</code>) 属于 TCK 域, 通过 <code>jtag_tdo_chain</code> 链式连接至 <code>tdo</code>。Per-Hart core 内部使用 CLK_CORE, TAP 物理层由 <code>lumi_dft_ctrl</code> 管理 CDC。</p>
+
+<!-- ═══ §4 状态机 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 Lockstep 主 FSM — <code>ls_state_e</code> (2-bit, 4 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_IDLE</code></td><td>2'd0</td><td>锁步未使能, 不比较</td><td>reset / lockstep_enable=0</td></tr>
+    <tr><td><code>ST_COMPARE</code></td><td>2'd1</td><td>持续比较 W 级输出</td><td>lockstep_enable=1</td></tr>
+    <tr><td><code>ST_MISMATCH</code></td><td>2'd2</td><td>检测到不一致, 锁存错误</td><td>any_mismatch in ST_COMPARE</td></tr>
+    <tr><td><code>ST_RECOVER</code></td><td>2'd3</td><td>等待外部恢复 (NMI/Reset 处理)</td><td>从 ST_MISMATCH 自动进入</td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_IDLE : reset
+    ST_IDLE --> ST_COMPARE : lockstep_enable
+    ST_COMPARE --> ST_IDLE : !lockstep_enable
+    ST_COMPARE --> ST_MISMATCH : any_mismatch
+    ST_MISMATCH --> ST_RECOVER : 自动 (下一 cycle)
+    ST_RECOVER --> ST_IDLE : !lockstep_enable
+    ST_RECOVER --> ST_COMPARE : reset_n && !any_mismatch
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_IDLE</td><td>ST_COMPARE</td><td><code>lockstep_enable == 1</code></td><td>开始逐 cycle 比较</td></tr>
+    <tr><td>ST_COMPARE</td><td>ST_IDLE</td><td><code>lockstep_enable == 0</code></td><td>停止比较</td></tr>
+    <tr><td>ST_COMPARE</td><td>ST_MISMATCH</td><td><code>any_mismatch == 1</code></td><td>锁存 error_pc/error_slot, lockstep_error=1</td></tr>
+    <tr><td>ST_MISMATCH</td><td>ST_RECOVER</td><td>无条件 (1 cycle)</td><td>按 mode 输出 NMI/Reset/Log</td></tr>
+    <tr><td>ST_RECOVER</td><td>ST_IDLE</td><td><code>lockstep_enable == 0</code></td><td>清除错误, 回到空闲</td></tr>
+    <tr><td>ST_RECOVER</td><td>ST_COMPARE</td><td><code>reset_n &amp;&amp; !any_mismatch</code></td><td>重新同步, 继续比较</td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护 (MISMATCH→RECOVER):</strong> ST_MISMATCH 仅持续 1 cycle, 无条件转移到 ST_RECOVER</li>
+    <li><strong>死锁风险 (RECOVER):</strong> 若 NMI 处理失败且 lockstep_enable 保持 1, 同时 mismatch 条件持续, 则永远停留在 ST_RECOVER。预期行为 — 需 SoC 级看门狗兜底</li>
+    <li><strong>活锁防护:</strong> ST_COMPARE 不消耗资源, 纯组合比较; 无循环等待</li>
+</ul>
+
+<!-- ═══ §5 数据通路 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 Round-Robin AXI 仲裁流程</h2>
+<pre class="mermaid">
+graph LR
+    REQ["arb_req[i] = hart_dc_valid[i] || hart_ic_req[i]"] --> RR["Round-Robin 选择器"]
+    RR --> SEL["arb_sel (已锁定胜出 Hart)"]
+    SEL --> GRANT["arb_grant = 1"]
+    GRANT --> MUX["axi_araddr = hart_dc_addr[arb_sel]"]
+    GRANT --> RDY["hart_dc_ready[i] = (arb_sel == i)"]
+</pre>
+
+<h2>5.2 仲裁 cycle 分解</h2>
+<table>
+    <tr><th>Cycle</th><th>arb_sel</th><th>arb_req</th><th>arb_grant</th><th>axi_arvalid</th><th>备注</th></tr>
+    <tr><td>N</td><td>k</td><td>req[k]=1</td><td>1</td><td>1</td><td>Hart k 获得总线</td></tr>
+    <tr><td>N+1</td><td>(k+1)%N</td><td>req[(k+1)%N]=1</td><td>1</td><td>1</td><td>轮转到下一 Hart</td></tr>
+    <tr><td>N+1</td><td>不变</td><td>无请求</td><td>0</td><td>0</td><td>无请求时 arb_grant=0</td></tr>
+</table>
+
+<h2>5.3 Lockstep 比较数据通路</h2>
+<pre class="mermaid">
+graph LR
+    A["Hart A: commit_valid/pc/result"] --> CMP["逐 slot 比较 (IW 参数化)"]
+    B["Hart B: commit_valid/pc/result"] --> CMP
+    CMP --> MM["valid_mismatch / pc_mismatch / result_mismatch"]
+    MM --> EC["error_code[3:0] 编码"]
+    MM --> FIRST["首个 mismatch slot 锁存"]
+    EC --> LOG["lockstep_log = {PC, code, timestamp}"]
+    FIRST --> ERRPC["error_pc = commit_pc_a[mismatch_slot]"]
+</pre>
+
+<h2>5.4 Lockstep 比较时序</h2>
+<table>
+    <tr><th>信号</th><th>类型</th><th>延迟</th><th>说明</th></tr>
+    <tr><td><code>valid_mismatch[i]</code></td><td>combinational</td><td>0 cycle</td><td>XOR 比较</td></tr>
+    <tr><td><code>pc_mismatch[i]</code></td><td>combinational</td><td>0 cycle</td><td>仅双 valid 时比较</td></tr>
+    <tr><td><code>result_mismatch[i]</code></td><td>combinational</td><td>0 cycle</td><td>仅双 valid 时比较</td></tr>
+    <tr><td><code>any_mismatch</code></td><td>combinational</td><td>0 cycle</td><td>所有 mismatch OR 聚合</td></tr>
+    <tr><td><code>error_pc</code></td><td>registered</td><td>1 cycle</td><td>ST_COMPARE→ST_MISMATCH 时锁存</td></tr>
+    <tr><td><code>lockstep_log</code></td><td>registered</td><td>1 cycle</td><td>ST_MISMATCH 时写入</td></tr>
+</table>
+
+<h2>5.5 JTAG TAP Chain 连接</h2>
+<pre>
+tdi → jtag_tdo_chain[0] → Hart_0 → chain[1] → Hart_1 → ... → chain[NUM_HARTS] = tdo
+</pre>
+<p>当前 RTL 为 bypass 链 (<code>jtag_tdo_chain[i+1] = jtag_tdo_chain[i]</code>), 实际需替换为各 Hart Debug Module 的 TAP。</p>
+
+<!-- ═══ §6 边界条件 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>NUM_HARTS=1 时 Round-Robin 仲裁</td><td>arb_sel 恒为 0, arb_grant = arb_req[0]; 单核无竞争</td><td>cg_single_hart_arb</td></tr>
+    <tr><td>BC-002</td><td>多 Hart 同时请求 AXI (arb_req 全 1)</td><td>Round-Robin 轮转: 从 arb_sel 开始, 首个 valid 的 Hart 获得 grant</td><td>cg_all_hart_req</td></tr>
+    <tr><td>BC-003</td><td>无 Hart 请求 AXI (arb_req 全 0)</td><td>arb_grant=0, axi_arvalid=0, axi_araddr=0; 总线空闲</td><td>cg_no_hart_req</td></tr>
+    <tr><td>BC-004</td><td>Lockstep 双 Hart commit_valid 不一致</td><td>error_code[0]=1, 进入 ST_MISMATCH; 若 mode=NMI 则触发 NMI</td><td>cg_ls_valid_mismatch</td></tr>
+    <tr><td>BC-005</td><td>Lockstep PC 一致但 result 不一致</td><td>error_code[2]=1 (仅 result), error_code[1]=0 (PC ok); 可能为 RF 单粒子翻转</td><td>cg_ls_result_only</td></tr>
+    <tr><td>BC-006</td><td>IW=3 时 slot 2 mismatch 但 slot 0/1 正常</td><td>mismatch_slot=2, error_pc=commit_pc_a[2]; 首个 mismatch slot 优先</td><td>cg_ls_slot2_mismatch</td></tr>
+    <tr><td>BC-007</td><td>lockstep_enable 在 MISMATCH 期间被清除</td><td>ST_MISMATCH→ST_RECOVER→ST_IDLE (1+1 cycle 退出)</td><td>cg_ls_disable_during_error</td></tr>
+    <tr><td>BC-008</td><td>timestamp 28-bit 溢出 (约 2.68 亿 cycle)</td><td>自然回绕 (modulo 2^28); 日志时间戳可能不唯一</td><td>cg_ls_ts_overflow</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>W 级 valid 不一致</td><td>XOR per-slot, OR 聚合</td><td>NMI/Reset/Log (按 mode)</td></tr>
+    <tr><td>PC 不一致</td><td>双 valid 时 32-bit 比较</td><td>NMI/Reset/Log</td></tr>
+    <tr><td>Result 不一致</td><td>双 valid 时 32-bit 比较</td><td>NMI/Reset/Log</td></tr>
+    <tr><td>AXI 仲裁饥饿</td><td>— (未检测)</td><td>Round-Robin 保证公平性; 最坏延迟 = NUM_HARTS cycle</td></tr>
+</table>
+
+<h2>6.3 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: arb_sel→0, lockstep state→ST_IDLE, timestamp→0, error_pc→0, lockstep_log→0</td><td>异步</td></tr>
+    <tr><td>lockstep_enable=0</td><td>Lockstep FSM 回到 ST_IDLE, 停止比较</td><td>1 cycle</td></tr>
+    <tr><td>Per-Hart flush</td><td>不影响仲裁器; commit_valid 清零后 arb_req 对应位清 0</td><td>combinational</td></tr>
+</table>
+
+<!-- ═══ §7 参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>NUM_HARTS</code></td><td>int</td><td>lumi_pkg::NUM_HARTS (1)</td><td>1~4</td><td>Hart 实例化数量, arb_sel 位宽 = $clog2(NUM_HARTS)</td></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>int</td><td>lumi_pkg::ISSUE_WIDTH (3)</td><td>1~4</td><td>commit 并行度, Lockstep 比较 slot 数</td></tr>
+    <tr><td><code>IW</code></td><td>int</td><td>lumi_pkg::ISSUE_WIDTH</td><td>=ISSUE_WIDTH</td><td>Lockstep 参数 (等同 ISSUE_WIDTH)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>NUM_HARTS=1</code> 时 arb_sel 位宽 = $clog2(1) = 0, Round-Robin 退化为直连</li>
+    <li><code>IW</code> 决定 error_code 位宽 (固定 4-bit, [3] 预留) 和 mismatch_slot 位宽 ($clog2(IW))</li>
+    <li>error_slot 固定 4-bit, 高 2-bit 补零: <code>{2'h0, mismatch_slot}</code></li>
+</ul>
+
+<!-- ═══ §8 微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 Multicore Top 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>Per-Hart 内部连线数组</td><td>ic/dc/csr/commit/irq 各信号 [NUM_HARTS-1:0]</td><td><code>hart_ic_addr[], hart_dc_addr[]</code> 等</td></tr>
+    <tr><td>JTAG TAP Chain</td><td><code>jtag_tdo_chain[NUM_HARTS:0]</code> 链式串接</td><td><code>jtag_tdo_chain</code></td></tr>
+    <tr><td>Round-Robin 仲裁器</td><td>arb_sel 轮转, arb_req 聚合, arb_grant 输出</td><td><code>arb_sel, arb_sel_next, arb_req, arb_grant</code></td></tr>
+    <tr><td>AXI 共享总线输出 MUX</td><td>arb_grant 时选择 arb_sel Hart 的地址</td><td><code>axi_araddr = hart_dc_addr[arb_sel]</code></td></tr>
+    <tr><td>Per-Hart rdata 分发</td><td>axi_rvalid 时向所有 Hart 广播 rdata</td><td><code>hart_dc_rdata[i] = axi_rdata[31:0]</code></td></tr>
+    <tr><td>gen_hart (generate)</td><td>NUM_HARTS 个 <code>lumi_core_top</code> 实例, HART_ID=i</td><td><code>u_core</code></td></tr>
+    <tr><td>Per-Hart 中断路由</td><td><code>irq = meip || msip || mtip</code></td><td><code>hart_irq_request[i]</code></td></tr>
+</table>
+
+<h2>8.2 Lockstep 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>逐 slot 比较器</td><td>IW 路并行: valid XOR + PC 比较 + result 比较</td><td><code>valid_mismatch, pc_mismatch, result_mismatch</code></td></tr>
+    <tr><td>Error Code 编码</td><td>OR 聚合: [0]=valid, [1]=PC, [2]=result, [3]=预留</td><td><code>error_code[3:0]</code></td></tr>
+    <tr><td>时间戳计数器</td><td>28-bit 自由运行计数器, 每 cycle +1</td><td><code>timestamp[27:0]</code></td></tr>
+    <tr><td>错误日志寄存器</td><td>64-bit: {PC[31:0], error_code[3:0], timestamp[27:0]}</td><td><code>lockstep_log[63:0]</code></td></tr>
+    <tr><td>错误 PC 锁存</td><td>首个 mismatch slot 的 PC, registered</td><td><code>error_pc[31:0], error_slot[3:0]</code></td></tr>
+    <tr><td>错误处理策略输出</td><td>mode 解码: 00→NMI, 01→Reset, 10→Log</td><td><code>lockstep_nmi, lockstep_reset</code></td></tr>
+    <tr><td>主 FSM</td><td>4 态: IDLE→COMPARE→MISMATCH→RECOVER</td><td><code>state_reg (ls_state_e)</code></td></tr>
+</table>
+
+<h2>8.3 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>arb_sel</code></td><td>$clog2(NUM_HARTS)</td><td>0</td><td>arb_grant 时更新</td><td>RR 仲裁当前位置</td></tr>
+    <tr><td><code>state_reg (LS)</code></td><td>2</td><td>ST_IDLE</td><td>每 clk↑</td><td>Lockstep FSM 状态</td></tr>
+    <tr><td><code>error_pc</code></td><td>32</td><td>0</td><td>ST_COMPARE &amp;&amp; any_mismatch</td><td>首个错误 PC</td></tr>
+    <tr><td><code>error_slot</code></td><td>4</td><td>0</td><td>ST_COMPARE &amp;&amp; any_mismatch</td><td>首个错误 slot</td></tr>
+    <tr><td><code>timestamp</code></td><td>28</td><td>0</td><td>每 clk↑</td><td>自由运行时间戳</td></tr>
+    <tr><td><code>lockstep_log</code></td><td>64</td><td>0</td><td>ST_MISMATCH</td><td>错误日志</td></tr>
+</table>
+
+<!-- ═══ §9 验证 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>Per-Hart 实例化正确性 (F-MC-001)</td><td>NUM_HARTS=1/2/4 全覆盖</td><td>P0</td></tr>
+    <tr><td>Round-Robin 公平性 (F-MC-002)</td><td>每个 Hart 在 N cycle 内至少 1 次 grant</td><td>P0</td></tr>
+    <tr><td>JTAG Chain 连通性 (F-MC-003)</td><td>tdi → tdo 链路完整</td><td>P1</td></tr>
+    <tr><td>Per-Hart 中断路由 (F-MC-004)</td><td>meip/msip/mtip 各独立触发</td><td>P0</td></tr>
+    <tr><td>Lockstep 正常匹配 (F-LS-001)</td><td>双 Hart 相同输入 → match</td><td>P0</td></tr>
+    <tr><td>Lockstep valid 不一致检测</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Lockstep PC 不一致检测</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Lockstep result 不一致检测</td><td>100%</td><td>P0</td></tr>
+    <tr><td>NMI/Reset/Log 策略 (F-LS-004)</td><td>3 种 mode 全覆盖</td><td>P0</td></tr>
+    <tr><td>错误日志正确性 (F-LS-003)</td><td>PC + code + timestamp 拼接正确</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_rr_fairness</code></td><td>arb_req[i]==1 → ##[0:NUM_HARTS] arb_grant &amp;&amp; (arb_sel==i)</td><td>RR 公平性: 请求 Hart 在 N cycle 内获得 grant</td></tr>
+    <tr><td><code>assert_ls_mismatch_detect</code></td><td>any_mismatch → ##1 (state == ST_MISMATCH)</td><td>mismatch 后 1 cycle 进入 MISMATCH 态</td></tr>
+    <tr><td><code>assert_ls_error_latch</code></td><td>ST_MISMATCH → error_pc != 0 (若 PC≠0)</td><td>错误 PC 正确锁存</td></tr>
+    <tr><td><code>assert_ls_nmi_mode</code></td><td>ST_MISMATCH &amp;&amp; mode==00 → lockstep_nmi==1</td><td>NMI 模式输出正确</td></tr>
+    <tr><td><code>assert_axi_no_x</code></td><td>!$isunknown(axi_araddr) when axi_arvalid</td><td>AXI 地址无 X 态</td></tr>
+</table>
+
+<!-- ═══ §10 追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-MC-001</span></td><td>多核拓扑 (Per-Hart 实例化)</td><td>§2.1, §8.1</td><td><code>gen_hart</code> generate 块</td></tr>
+    <tr><td><span class="req-tag">LUMI-MC-002</span></td><td>AXI 共享仲裁</td><td>§2.1, §5.1</td><td>Round-Robin arb_sel/arb_grant</td></tr>
+    <tr><td><span class="req-tag">LUMI-MC-003</span></td><td>Per-Hart 中断</td><td>§2.1, §3.1</td><td>hart_irq_request[i] = meip||msip||mtip</td></tr>
+    <tr><td><span class="req-tag">LUMI-LS-001</span></td><td>锁步比较 (D-011)</td><td>§2.2, §4.1, §5.3</td><td>逐 slot 比较 + FSM</td></tr>
+    <tr><td><span class="req-tag">LUMI-LS-002</span></td><td>错误日志 + 策略</td><td>§2.2, §5.3, §8.2</td><td>lockstep_log, error_mode</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="multicore-lockstep.html">multicore-lockstep.html</a> (LUMI-DESIGN-015) 的设计细化。HLD §3.1 (多核互联) → §2.1/§5.1/§8.1; HLD §3.2 (锁步模型, DEC-007-3, D-011) → §2.2/§4.1/§5.3/§8.2。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#multicore">IC-8.1 (Multicore AXI)</a> · <a href="interface-contracts.html#lockstep">IC-8.2 (Lockstep)</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html">文档地图</a></p>
+    <p>LUMI-LLD-012 &nbsp;|&nbsp; Multicore Interconnect &amp; Lockstep &nbsp;|&nbsp; Phase 5 &nbsp;|&nbsp; 2026-07-16</p>
+</div>
+
+</body>
+</html>

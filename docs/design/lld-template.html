@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD 文档标准模板 — Lumi-Core</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+    <script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'neutral'});</script>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>[模块名称] Low Level Design</h1>
+    <p class="subtitle">[副标题 — 流水线级名 / 功能简述]</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-XXX &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="xxx.html">xxx.html</a></p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/xxx/lumi_xxx.sv</code></p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> YYYY-MM-DD</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#section">IC-X.Y</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_xxx</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/xxx/lumi_xxx.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="xxx.html">xxx.html</a> (LUMI-DESIGN-XXX)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-XXX</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td><!-- 本模块职责 --></td><td><!-- 不属于本模块的职责 --></td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <!-- 链接 --> &nbsp;|&nbsp; <strong>下游:</strong> <!-- 链接 --></p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>YYYY-MM-DD</td><td>初始版本（RTL 同步审查）</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td><!-- 功能名 --></td><td><!-- 描述 --></td><td><span class="req-tag">LUMI-XXX</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td><!-- 模式名 --></td><td><!-- 条件 --></td><td><!-- 行为 --></td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 [LLD 深化] ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr>
+        <td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟</td>
+    </tr>
+    <tr>
+        <td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td>
+        <td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位（低有效）</td>
+    </tr>
+    <!-- 示例端口行 — 替换为实际端口 -->
+    <tr>
+        <td><code>xxx_valid</code></td><td>output</td><td>1</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>数据有效信号</td>
+    </tr>
+    <tr>
+        <td><code>xxx_ready</code></td><td>input</td><td>1</td><td>—</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>combinational</td><td>下游就绪</td>
+    </tr>
+    <tr>
+        <td><code>xxx_data</code></td><td>output</td><td>32</td><td>0</td>
+        <td>CLK_CORE</td><td>valid-ready</td><td>registered</td><td>数据总线</td>
+    </tr>
+</table>
+
+<blockquote><strong>握手协议说明:</strong>
+<code>valid</code> 为 registered output（clk 上升沿更新），<code>ready</code> 为 combinational input。
+数据传输发生在 <code>valid &amp;&amp; ready</code> 的 clk 上升沿。
+<code>valid</code> 拉高后数据不可变，直到 <code>ready</code> 拉高完成传输。</blockquote>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<table>
+    <tr><th>Interface 类型</th><th>实例名</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>pipeline_if</code></td><td><!-- 实例名 --></td><td>master/slave</td><td><!-- 对端 --></td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td><!-- 若无 CDC 接口则注明 "无" --></td><td>—</td><td>—</td><td>—</td></tr>
+</table>
+
+<h2>3.4 接口时序图</h2>
+<!-- 使用 Mermaid sequenceDiagram 描述关键握手协议 -->
+<pre class="mermaid">
+sequenceDiagram
+    participant A as 上游模块
+    participant B as 本模块
+    A->>B: valid=1, data=X
+    B-->>A: ready=1
+    Note over A,B: clk↑: 数据传输 (X)
+    A->>B: valid=1, data=Y
+    B-->>A: ready=0
+    Note over A,B: 等待 ready
+    B-->>A: ready=1
+    Note over A,B: clk↑: 数据传输 (Y)
+</pre>
+
+<!-- ═══ §4 状态机定义 [LLD 深化] ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<p class="warn"><em>若模块无 FSM，本章标注 "本模块无状态机" 即可。</em></p>
+
+<h2>4.1 状态枚举表</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>S_IDLE</code></td><td>2'b00</td><td>空闲等待</td><td>reset / 操作完成</td></tr>
+    <tr><td><code>S_ACTIVE</code></td><td>2'b01</td><td><!-- 含义 --></td><td><!-- 条件 --></td></tr>
+</table>
+
+<h2>4.2 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> S_IDLE : reset
+    S_IDLE --> S_ACTIVE : start_condition
+    S_ACTIVE --> S_IDLE : done_condition
+    S_ACTIVE --> S_ACTIVE : continue_condition
+</pre>
+
+<h2>4.3 状态转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>S_IDLE</td><td>S_ACTIVE</td><td><code>start &amp;&amp; valid</code></td><td><code>busy = 1</code></td></tr>
+    <tr><td>S_ACTIVE</td><td>S_IDLE</td><td><code>done</code></td><td><code>busy = 0; result_valid = 1</code></td></tr>
+</table>
+
+<h2>4.4 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护:</strong> <!-- 描述防护策略，如超时计数器 --></li>
+    <li><strong>活锁防护:</strong> <!-- 描述防护策略 --></li>
+</ul>
+
+<!-- ═══ §5 数据通路与时序 [LLD 深化] ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<!-- Mermaid flowchart 描述数据流 -->
+<pre class="mermaid">
+graph LR
+    A[输入信号] --> B[组合逻辑]
+    B --> C[Pipeline Register]
+    C --> D[输出信号]
+</pre>
+
+<h2>5.2 流水线级间时序</h2>
+<table>
+    <tr><th>Cycle</th><th>输入</th><th>内部状态</th><th>输出</th><th>备注</th></tr>
+    <tr><td>T</td><td><!-- --></td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+    <tr><td>T+1</td><td><!-- --></td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td><!-- 关键路径 --></td><td><!-- 级数 --></td><td><!-- ps --></td><td><!-- --></td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>数据冒险</td><td><!-- --></td><td><!-- 旁路/stall --></td><td><!-- cycle --></td></tr>
+    <tr><td>结构冒险</td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+    <tr><td>控制冒险</td><td><!-- --></td><td><!-- flush/redirect --></td><td><!-- --></td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 [LLD 新增] ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td><!-- 边界条件描述 --></td><td><!-- 处理策略 --></td><td><!-- 测试用例 --></td></tr>
+    <tr><td>BC-002</td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+<blockquote><strong>裁剪规则:</strong> 纯组合逻辑模块至少 1 条边界条件；如模块无特殊边界条件，显式声明 "本模块无特殊边界条件"。复杂模块建议 5+ 条。</blockquote>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li><!-- 显式声明哪些输入组合为未定义行为，以及实际行为 --></li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>stall</code></td><td><!-- 冻结所有流水线寄存器 --></td><td>同 cycle 生效</td></tr>
+    <tr><td><code>flush</code></td><td><!-- 清除流水线寄存器，置 valid=0 --></td><td>下一 clk↑ 生效</td></tr>
+    <tr><td><code>reset_n</code></td><td><!-- 异步复位所有寄存器 --></td><td>异步</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code><!-- PARAM --></code></td><td>int</td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><!-- 如: FETCH_WIDTH 必须 &ge; ISSUE_WIDTH --></li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code><!-- reg --></code></td><td><!-- --></td><td><!-- --></td><td><!-- --></td><td><!-- --></td></tr>
+</table>
+
+<h2>8.3 关键算法</h2>
+<pre>
+// 关键算法伪代码
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>所有功能 (§2.1)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>所有边界条件 (§6.1)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全状态</td><td>100%</td><td>P0</td></tr>
+    <tr><td>FSM 全转移</td><td>100%</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code><!-- assert_name --></code></td><td><!-- property --></td><td><!-- --></td></tr>
+</table>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-XXX-001</span></td><td><!-- --></td><td>§2.1, §3.1</td><td><code>always_ff</code> L42</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="xxx.html">xxx.html</a> 的设计细化。HLD 中 §X 对应本文档 §Y。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#xxx">IC-X.Y</a></p>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD Template &mdash; v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

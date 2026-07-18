@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core 模块间接口契约</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .ic-id{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .status-todo{color:#e65100;font-weight:600}
+        .status-done{color:#2e7d32;font-weight:600}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.概述</a>
+    <a href="#ch2">2.流水线</a>
+    <a href="#ch3">3.存储</a>
+    <a href="#ch4">4.总线</a>
+    <a href="#ch5">5.中断</a>
+    <a href="#ch6">6.调试</a>
+    <a href="#ch7">7.扩展</a>
+    <a href="#ch8">8.全局信号</a>
+    <a href="#appendix">附录</a>
+</div>
+
+<div class="cover">
+    <h1>Lumi-Core 模块间接口契约</h1>
+    <p class="subtitle">Interface Contracts — 全模块交互接口精确定义</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-IC &nbsp;|&nbsp; <strong>版本:</strong> 2.1 (§1~§8 + 附录全部重写为 scalar 端口)</p>
+        <p><strong>关联 LLD:</strong> <a href="lld-index.html">LLD 文档索引</a></p>
+        <p><strong>日期:</strong> 2026-07-17 &nbsp;|&nbsp; <strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 概述与约定 ═══ -->
+<h1 id="ch1">1. 概述与约定</h1>
+
+<h2>1.1 文档目的</h2>
+<p>本文档集中定义 Lumi-Core 全部模块间的交互接口，包括信号清单、握手协议、时序约束、数据不变式和异常处理。每份 LLD 文档的 §3 接口约束表应与本文档对应章节保持一致。</p>
+
+<h2>1.2 握手协议类型定义</h2>
+<table>
+    <tr><th>协议类型</th><th>信号</th><th>行为</th><th>适用场景</th></tr>
+    <tr><td>valid-ready</td><td><code>valid</code> (reg), <code>ready</code> (comb)</td><td>传输发生在 valid&amp;&amp;ready 的 clk↑；valid 高后数据不可变</td><td>流水线级间、AXI 通道</td></tr>
+    <tr><td>req-ack</td><td><code>req</code>, <code>ack</code></td><td>req 拉高等 ack；ack 单 cycle 脉冲</td><td>中断请求、Debug halt</td></tr>
+    <tr><td>直连</td><td>—</td><td>组合逻辑直传，无握手</td><td>控制信号、CSR 读出</td></tr>
+    <tr><td>异步 FIFO</td><td><code>wr_en</code>, <code>rd_en</code>, <code>full</code>, <code>empty</code></td><td>跨时钟域 FIFO 缓冲</td><td>CDC 接口</td></tr>
+</table>
+
+<blockquote><strong>实现说明:</strong> 当前 RTL (<code>lumi_core_top.sv</code>) 全部使用 <strong>scalar 端口</strong>（独立信号线）进行模块间连接，未实例化 SystemVerilog <code>interface</code>。<code>src/rtl/include/lumi_interfaces.sv</code> 中定义的 <code>pipeline_if / axi4_if / axi4_lite_if / mem_req_if / interrupt_if / jtag_if</code> 仅作为<strong>未来重构参考</strong>保留，不影响当前综合和仿真。</blockquote>
+
+<h2>1.3 时钟域定义</h2>
+<table>
+    <tr><th>时钟域名</th><th>信号名</th><th>频率</th><th>描述</th></tr>
+    <tr><td>CLK_CORE</td><td><code>clk_core</code></td><td>≤1 GHz</td><td>核心流水线时钟</td></tr>
+    <tr><td>CLK_BUS</td><td><code>clk_bus</code></td><td>≤500 MHz</td><td>AXI 总线时钟（可选独立）</td></tr>
+    <tr><td>CLK_DEBUG</td><td><code>tck</code></td><td>≤50 MHz</td><td>JTAG 调试时钟</td></tr>
+</table>
+
+<h2>1.4 全局信号约定</h2>
+<table>
+    <tr><th>信号</th><th>类型</th><th>有效电平</th><th>传播规则</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位</td><td>低有效</td><td>全局异步，同步释放</td></tr>
+    <tr><td><code>stall</code></td><td>同步控制</td><td>高有效</td><td>见 §8.1 Stall 传播矩阵</td></tr>
+    <tr><td><code>flush</code></td><td>同步控制</td><td>高有效</td><td>见 §8.2 Flush 传播矩阵</td></tr>
+</table>
+
+<!-- ═══ §2 流水线级间接口 ═══ -->
+<h1 id="ch2">2. 流水线级间接口</h1>
+<p>本节定义 8 级流水线 (F1→F2→D→I→E1→E2→M→W) 的级间传递接口。当前 RTL 使用 <strong>scalar 端口</strong>（独立信号线）在 <code>lumi_core_top.sv</code> 中进行级间连接，每级信号在顶层 <code>always_ff</code> 块中通过流水线寄存器捕获或组合逻辑直传。控制信号包括 valid/ready/stall/flush，数据包为 <code>inst_pkt_t</code> 结构体数组。</p>
+
+<h2 id="ic-2-1">IC-2.1: F1 → F2 (Fetch1 → Fetch2)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.1</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-fetch-bpred.html">lumi_fetch</a> (F1 级: PC 生成 + 分支预测)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-fetch-bpred.html">lumi_fetch</a> (F2 级: ICache 访问) / <a href="lld-cache.html">lumi_cache</a> (ICache)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready，ready 受 DIB 空间约束（<code>dib_not_full</code>）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>valid</code></td><td>控制</td><td>1</td><td>F1→F2</td><td>F1 级输出有效标志，表示 PC 和预测信息已就绪</td></tr>
+    <tr><td><code>ready</code></td><td>控制</td><td>1</td><td>F2→F1</td><td>F2 级就绪信号（当前实现固定为 1，无 back-pressure）</td></tr>
+    <tr><td><code>stall</code></td><td>控制</td><td>1</td><td>全局→F1</td><td>全局流水线暂停信号，F1 停止生成新 PC</td></tr>
+    <tr><td><code>flush</code></td><td>控制</td><td>1</td><td>全局→F1</td><td>流水线冲刷信号（误预测/trap），F1 重定向到修正 PC</td></tr>
+    <tr><td><code>inst_pkt[0].pc</code></td><td>数据</td><td>32</td><td>F1→F2</td><td>当前取指地址（PC）</td></tr>
+    <tr><td><code>inst_pkt[0].valid</code></td><td>数据</td><td>1</td><td>F1→F2</td><td>PC 有效标志</td></tr>
+    <tr><td><code>inst_valid[0]</code></td><td>数据</td><td>1</td><td>F1→F2</td><td>单发射槽有效（F1 仅使用 slot[0]）</td></tr>
+    <tr><td><code>f1_pred_taken</code></td><td>数据</td><td>1</td><td>F1→F2</td><td>F1 级分支预测 taken 标志（传递到 F2→D→I→E1 全程）</td></tr>
+    <tr><td><code>f1_pred_target</code></td><td>数据</td><td>32</td><td>F1→F2</td><td>F1 级预测跳转目标地址</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>PC 对齐:</strong> <code>inst_pkt[0].pc[1:0]</code> 必须为 <code>2'b00</code>（32-bit 指令）或 <code>2'b10</code>（16-bit 压缩指令，偶数地址）</li>
+    <li><strong>valid 高后数据不可变:</strong> 当 <code>valid=1</code> 时，<code>inst_pkt[0]</code> 的所有字段在 <code>clk_core</code> 上升沿前保持稳定</li>
+    <li><strong>预测信息一致性:</strong> 若分支预测 taken，则 <code>f1_pred_taken=1</code> 且 <code>f1_pred_target</code> 必须为有效跳转目标地址</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1:</strong> F1 级保持当前 PC 不变，不向 F2 推送新数据；F2 级保持现有数据不更新</li>
+    <li><strong>flush=1:</strong> F1 级丢弃当前预测路径，下一周期从 <code>trap_pc</code>（trap）或 <code>e1_br_target</code>（误预测）重新取指；F2 级清除当前缓存数据</li>
+</ul>
+
+<h3>握手时序图</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F1 as F1 级 (PC Gen)
+    participant F2 as F2 级 (ICache)
+    participant ICache as ICache
+    
+    Note over F1,ICache: 正常取指流程
+    F1->>F2: valid=1, pc=0x1000, pred_taken=0
+    F1->>ICache: ic_addr=0x1000, ic_req_valid=1
+    ICache-->>F2: ic_data[127:0], ic_valid=1
+    Note over F2: F2 锁存指令数据 + 预解码
+    
+    Note over F1,ICache: 分支预测 taken
+    F1->>F2: valid=1, pc=0x2000, pred_taken=1, pred_target=0x3000
+    F1->>ICache: ic_addr=0x2000
+    
+    Note over F1,ICache: Stall 场景
+    Note right of F1: stall=1 (F2 忙)
+    F1->>F1: 保持 pc=0x2000
+    Note right of F1: stall=0
+    F1->>F2: valid=1, pc=0x2000 (重试)
+    
+    Note over F1,ICache: Flush 场景 (误预测)
+    Note right of F1: flush=1
+    F1->>F1: 丢弃预测路径
+    F1->>F2: valid=1, pc=0x4000 (修正 PC)
+</pre>
+
+<h2 id="ic-2-2">IC-2.2: F2 → D (Fetch2 → Decode)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.2</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-decode-issue.html">lumi_predecode</a> (F2 级预解码器: 指令边界扫描 + 压缩展开)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-decode-issue.html">lumi_decode_issue</a> (D 级: 指令解码 + DIB 入队)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready (DIB FIFO 有空间时 ready=1)</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>valid</code></td><td>控制</td><td>1</td><td>F2→D</td><td>F2 级输出有效，ICache 数据已锁存且预解码完成</td></tr>
+    <tr><td><code>ready</code></td><td>控制</td><td>1</td><td>D→F2</td><td>D 级就绪（DIB FIFO 未满时 <code>dib_not_full=1</code>）</td></tr>
+    <tr><td><code>stall</code></td><td>控制</td><td>1</td><td>全局→F2</td><td>全局暂停，F2 保持当前数据不向 D 级传递</td></tr>
+    <tr><td><code>flush</code></td><td>控制</td><td>1</td><td>全局→F2</td><td>冲刷 F2 级缓存数据，丢弃误预测路径的指令</td></tr>
+    <tr><td><code>pd_inst[0:5]</code></td><td>数据</td><td>32×6</td><td>F2→D</td><td>预解码后的指令字数组（最多 6 条，FETCH_WIDTH=6）</td></tr>
+    <tr><td><code>pd_inst_valid[5:0]</code></td><td>数据</td><td>6</td><td>F2→D</td><td>每条预解码指令的有效标志（位掩码）</td></tr>
+    <tr><td><code>pd_inst_pc[0:5]</code></td><td>数据</td><td>32×6</td><td>F2→D</td><td>每条指令对应的 PC 地址</td></tr>
+    <tr><td><code>pd_inst_compressed[5:0]</code></td><td>数据</td><td>6</td><td>F2→D</td><td>压缩指令标志（1=16-bit RV32C 指令）</td></tr>
+    <tr><td><code>pd_inst_raw[0:5]</code></td><td>数据</td><td>16×6</td><td>F2→D</td><td>原始 16-bit 指令字（压缩指令保留）</td></tr>
+    <tr><td><code>f2_valid</code></td><td>数据</td><td>1</td><td>F2→D</td><td>F2 级整体有效标志</td></tr>
+    <tr><td><code>f2_pred_taken</code></td><td>数据</td><td>1</td><td>F2→D</td><td>F2 级传递的分支预测 taken 标志</td></tr>
+    <tr><td><code>f2_pred_target</code></td><td>数据</td><td>32</td><td>F2→D</td><td>F2 级传递的预测跳转目标地址</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>指令边界正确性:</strong> <code>pd_inst_valid[i]=1</code> 当且仅当 <code>pd_inst[i]</code> 是完整指令（非跨 cache line 片段）</li>
+    <li><strong>PC 递增规则:</strong> 对于连续指令流，<code>pd_inst_pc[i+1] = pd_inst_pc[i] + (pd_inst_compressed[i] ? 2 : 4)</code></li>
+    <li><strong>valid 高后数据不可变:</strong> <code>f2_valid=1</code> 期间，所有 <code>pd_inst*</code> 信号保持稳定直到 <code>ready=1</code> 且 <code>clk_core</code> 上升沿</li>
+    <li><strong>预解码一致性:</strong> 若 <code>pd_inst_compressed[i]=1</code>，则 <code>pd_inst[i]</code> 必须是 32-bit 展开后的指令，<code>pd_inst_raw[i]</code> 存原始 16-bit 编码</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1 (dec_stall):</strong> D 级解码器忙或 DIB 满，F2 级保持当前预解码结果不更新；F1 级同步暂停</li>
+    <li><strong>flush=1:</strong> F2 级丢弃当前缓存的 ICache 数据和预解码结果；D 级 DIB FIFO 不清空（已入队指令继续处理）</li>
+    <li><strong>ready 生成:</strong> <code>ready = dib_not_full</code>，当 DIB FIFO 剩余空间 ≥1 时拉高</li>
+</ul>
+
+<h2 id="ic-2-3">IC-2.3: D → I (Decode → Issue)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.3</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-decode-issue.html">lumi_decode_issue</a> (D 级: 指令解码 + DIB 出队)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-decode-issue.html">lumi_decode_issue</a> (I 级: 发射仲裁 + 寄存器堆读取 + 旁路)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready (I 级 FU 可用时 ready=1)</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>valid</code></td><td>控制</td><td>1</td><td>D→I</td><td>D 级输出有效，DIB 出队指令已解码</td></tr>
+    <tr><td><code>ready</code></td><td>控制</td><td>1</td><td>I→D</td><td>I 级就绪（目标 FU 空闲且无结构冒险）</td></tr>
+    <tr><td><code>stall</code></td><td>控制</td><td>1</td><td>全局→D</td><td>全局暂停，D 级停止从 DIB 出队</td></tr>
+    <tr><td><code>flush</code></td><td>控制</td><td>1</td><td>全局→D</td><td>冲刷 D 级，清空 DIB FIFO（误预测路径指令全部丢弃）</td></tr>
+    <tr><td><code>inst_pkt[0:2]</code></td><td>数据</td><td>inst_pkt_t×3</td><td>D→I</td><td>三发射指令包数组（slot[0]=最老指令，slot[2]=最新指令）</td></tr>
+    <tr><td><code>inst_valid[2:0]</code></td><td>数据</td><td>3</td><td>D→I</td><td>每条发射槽的有效标志（位掩码，支持 1/2/3 发射）</td></tr>
+</table>
+
+<h3>三发射语义说明</h3>
+<p>D→I 接口支持最多三发射（<code>ISSUE_WIDTH=3</code>），<code>inst_pkt[0:2]</code> 和 <code>inst_valid[2:0]</code> 的含义如下：</p>
+<ul>
+    <li><strong>inst_pkt[0]:</strong> 程序序最老的指令（PC 最小），优先发射到对应 FU</li>
+    <li><strong>inst_pkt[1]:</strong> 程序序中间的指令</li>
+    <li><strong>inst_pkt[2]:</strong> 程序序最新的指令（PC 最大）</li>
+    <li><strong>inst_valid[0]=1:</strong> slot[0] 有有效指令待发射</li>
+    <li><strong>inst_valid[1]=1:</strong> slot[1] 有有效指令待发射（仅当 slot[0] 也有效时才可能）</li>
+    <li><strong>inst_valid[2]=1:</strong> slot[2] 有有效指令待发射（仅当 slot[0:1] 均有效时才可能）</li>
+    <li><strong>发射组合:</strong> 合法组合为 <code>inst_valid ∈ {3'b000, 3'b001, 3'b011, 3'b111}</code>（连续有效，不允许空洞）</li>
+</ul>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>inst_pkt_t 字段完整性:</strong> 对于 <code>inst_valid[i]=1</code> 的指令包，所有字段（<code>pc, inst, rd, rs1, rs2, funct3, funct7, imm, fu_type, fu_id, privilege</code>）必须已正确填充</li>
+    <li><strong>寄存器地址合法性:</strong> <code>rd/rs1/rs2 ∈ [0, 31]</code>，<code>rd=0</code> 表示不写寄存器（如 store/branch）</li>
+    <li><strong>fu_type 与指令匹配:</strong> <code>fu_type</code> 必须与指令操作码解码结果一致（ALU/MUL/DIV/MEM/FP/VEC/BRANCH/MISC）</li>
+    <li><strong>valid 高后数据不可变:</strong> <code>valid=1</code> 期间，<code>inst_pkt[0:2]</code> 和 <code>inst_valid[2:0]</code> 保持稳定直到 <code>ready=1</code> 且 <code>clk_core</code> 上升沿</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1 (dec_stall):</strong> I 级目标 FU 忙（<code>fu_busy[fu_type]=1</code>）或除法器忙（<code>div_busy=1</code>），D 级暂停出队，DIB FIFO 保持当前深度</li>
+    <li><strong>flush=1:</strong> D 级清空 DIB FIFO 中所有未发射指令；I 级丢弃当前发射批次；flush 信号由 <code>e1_mispredict || trap_request</code> 驱动</li>
+    <li><strong>ready 生成:</strong> <code>ready = !fu_busy[inst_pkt[0].fu_type] && !div_busy</code>（至少最老指令可发射）</li>
+</ul>
+
+<h3>握手时序图</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant D as D 级 (Decode+DIB)
+    participant I as I 级 (Issue+Arbiter)
+    participant FU as 功能单元
+    
+    Note over D,FU: 单发射场景
+    D->>I: valid=1, inst_pkt[0]=ADD, inst_valid=3'b001
+    I->>FU: 检查 FU_ALU 可用性
+    FU-->>I: fu_busy[0]=0 (空闲)
+    I->>D: ready=1
+    Note over D,I: clk↑ 锁存传输
+    
+    Note over D,FU: 三发射场景
+    D->>I: valid=1, inst_pkt[0:2]={ADD,MUL,LW}, inst_valid=3'b111
+    I->>FU: 检查 FU_ALU, FU_MUL, FU_MEM
+    FU-->>I: fu_busy[0,1,3]=0 (均空闲)
+    I->>D: ready=1
+    Note over D,I: clk↑ 三条指令同时发射
+    
+    Note over D,FU: Stall 场景 (FU 忙)
+    D->>I: valid=1, inst_pkt[0]=MUL, inst_valid=3'b001
+    I->>FU: 检查 FU_MUL
+    FU-->>I: fu_busy[1]=1 (忙)
+    I->>D: ready=0
+    Note right of D: stall=1 (dec_stall)
+    D->>D: DIB 保持，不出队
+    
+    Note over D,FU: Flush 场景 (误预测)
+    Note right of D: flush=1 (e1_mispredict)
+    D->>D: 清空 DIB FIFO
+    D->>I: valid=0 (无新指令)
+</pre>
+
+<h2 id="ic-2-4">IC-2.4: I → E1 (Issue → Execute1)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.4</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-decode-issue.html">lumi_decode_issue</a> (I 级: 发射 + 寄存器读取 + 旁路)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-execute-bypass.html">lumi_execute</a> (E1 级: ALU/Branch 执行)</td></tr>
+    <tr><td>协议类型</td><td>寄存器捕获 + 条件阻塞（分支气泡 <code>e1_has_branch</code> / memory busy <code>mem_busy</code>）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>e1_valid_r[2:0]</code></td><td>控制</td><td>3</td><td>I→E1 (寄存器)</td><td>E1 级输入流水线寄存器，每条发射槽有效标志</td></tr>
+    <tr><td><code>e1_inst_r[0:2]</code></td><td>数据</td><td>inst_pkt_t×3</td><td>I→E1 (寄存器)</td><td>E1 级输入指令包（已打拍）</td></tr>
+    <tr><td><code>e1_rs1_data_r[0:2]</code></td><td>数据</td><td>32×3</td><td>I→E1 (寄存器)</td><td>源操作数 1（已从寄存器堆或旁路获取）</td></tr>
+    <tr><td><code>e1_rs2_data_r[0:2]</code></td><td>数据</td><td>32×3</td><td>I→E1 (寄存器)</td><td>源操作数 2（已从寄存器堆或旁路获取）</td></tr>
+    <tr><td><code>e1_pred_taken_r</code></td><td>数据</td><td>1</td><td>I→E1 (寄存器)</td><td>F2 级传递的分支预测 taken 标志</td></tr>
+    <tr><td><code>e1_pred_target_r</code></td><td>数据</td><td>32</td><td>I→E1 (寄存器)</td><td>F2 级传递的预测跳转目标地址</td></tr>
+    <tr><td><code>stall</code></td><td>控制</td><td>1</td><td>全局→I</td><td>全局暂停，I→E1 寄存器保持不更新</td></tr>
+    <tr><td><code>flush</code></td><td>控制</td><td>1</td><td>全局→I</td><td>冲刷 I 级，E1 输入寄存器清零</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>操作数就绪:</strong> 对于 <code>e1_valid_r[i]=1</code> 的指令，<code>e1_rs1_data_r[i]</code> 和 <code>e1_rs2_data_r[i]</code> 必须已是最终值（寄存器堆读出或旁路命中后的结果）</li>
+    <li><strong>旁路优先级:</strong> 若旁路网络命中（<code>bp_rs1_hit[i]=1</code>），则使用旁路数据 <code>bp_rs1_data[i]</code> 而非寄存器堆读出值</li>
+    <li><strong>分支预测状态:</strong> <code>e1_pred_taken_r</code> 和 <code>e1_pred_target_r</code> 仅对 branch 类型指令有效，其他指令可忽略</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1:</strong> I→E1 流水线寄存器保持当前值不更新；E1 级继续执行当前指令但结果不向 M 级传递</li>
+    <li><strong>flush=1:</strong> I→E1 流水线寄存器全部清零（<code>e1_valid_r='0</code>）；flush 由 <code>e1_mispredict || trap_request</code> 触发</li>
+    <li><strong>分支气泡:</strong> 当 E1 级有 branch 指令时（<code>e1_has_branch=1</code>），I→E1 寄存器暂停捕获（插入气泡），防止推测指令进入 E1</li>
+</ul>
+
+<h2 id="ic-2-5">IC-2.5: E1 → E2 (Execute1 → Execute2)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.5</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-execute-bypass.html">lumi_execute</a> (E1 级: ALU/Branch 结果)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-execute-bypass.html">lumi_execute</a> (E2 级: MUL/DIV 多周期执行)</td></tr>
+    <tr><td>协议类型</td><td>多周期 valid-busy 反馈（E2 MUL/DIV 结果经 <code>e2_mul_valid/e2_div_valid</code> 反馈到 E1，<code>e2_div_busy</code> 反压 I 级）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>e1_inst_r[0:2]</code></td><td>数据</td><td>inst_pkt_t×3</td><td>E1→E2</td><td>E1 级指令包（组合逻辑直传，用于 E2 识别 MUL/DIV）</td></tr>
+    <tr><td><code>e1_valid_r[2:0]</code></td><td>控制</td><td>3</td><td>E1→E2</td><td>E1 级有效标志</td></tr>
+    <tr><td><code>e1_rs1_data_r[0:2]</code></td><td>数据</td><td>32×3</td><td>E1→E2</td><td>源操作数（用于 MUL/DIV 计算）</td></tr>
+    <tr><td><code>e1_rs2_data_r[0:2]</code></td><td>数据</td><td>32×3</td><td>E1→E2</td><td>源操作数（用于 MUL/DIV 计算）</td></tr>
+    <tr><td><code>e2_mul_result</code></td><td>数据</td><td>32</td><td>E2→E1 (反馈)</td><td>MUL 结果（低 32 位）</td></tr>
+    <tr><td><code>e2_mul_result_hi</code></td><td>数据</td><td>32</td><td>E2→E1 (反馈)</td><td>MUL 结果高 32 位（MULH 系列指令）</td></tr>
+    <tr><td><code>e2_mul_valid</code></td><td>控制</td><td>1</td><td>E2→E1 (反馈)</td><td>MUL 结果有效标志</td></tr>
+    <tr><td><code>e2_div_result</code></td><td>数据</td><td>32</td><td>E2→E1 (反馈)</td><td>DIV 结果</td></tr>
+    <tr><td><code>e2_div_valid</code></td><td>控制</td><td>1</td><td>E2→E1 (反馈)</td><td>DIV 结果有效标志</td></tr>
+    <tr><td><code>e2_div_busy</code></td><td>控制</td><td>1</td><td>E2→I (反压)</td><td>除法器忙信号（反压到 I 级）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>E2 仅处理 MUL/DIV:</strong> E2 级仅当 <code>e1_inst_r[i].fu_type == FU_MUL || FU_DIV</code> 时才产生有效输出</li>
+    <li><strong>MUL 单周期:</strong> MUL 指令在 E1 级启动，E2 级单周期完成，<code>e2_mul_valid</code> 在 E1→E2 下一周期拉高</li>
+    <li><strong>DIV 多周期:</strong> DIV 指令在 E2 级多周期执行，<code>e2_div_busy=1</code> 期间反压 I 级阻止新 DIV 发射</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1:</strong> E2 级保持当前计算状态；若 DIV 正在执行，<code>e2_div_busy</code> 保持为 1</li>
+    <li><strong>flush=1:</strong> E2 级中止当前 MUL/DIV 计算，<code>e2_mul_valid/e2_div_valid</code> 清零；DIV 状态机复位</li>
+</ul>
+
+<h2 id="ic-2-6">IC-2.6: E2 → M (Execute2 → Memory)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.6</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-execute-bypass.html">lumi_execute</a> (E1 级组合输出 + E2 MUL/DIV 结果旁路)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-memory-stage.html">lumi_memory_stage</a> (M 级: Load/Store 执行)</td></tr>
+    <tr><td>协议类型</td><td>流水线寄存器捕获（E1→M 寄存器，M 级始终接收）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>m_valid_r[2:0]</code></td><td>控制</td><td>3</td><td>E1→M (寄存器)</td><td>M 级输入流水线寄存器，每条发射槽有效标志</td></tr>
+    <tr><td><code>m_inst_r[0:2]</code></td><td>数据</td><td>inst_pkt_t×3</td><td>E1→M (寄存器)</td><td>M 级输入指令包</td></tr>
+    <tr><td><code>m_result_r[0:2]</code></td><td>数据</td><td>32×3</td><td>E1→M (寄存器)</td><td>执行结果（ALU 结果或 E2 MUL/DIV 旁路结果）</td></tr>
+    <tr><td><code>m_rd_r[0:2]</code></td><td>数据</td><td>5×3</td><td>E1→M (寄存器)</td><td>目标寄存器地址</td></tr>
+    <tr><td><code>m_exception_r[2:0]</code></td><td>控制</td><td>3</td><td>E1→M (寄存器)</td><td>异常标志（E1 级检测到的异常）</td></tr>
+    <tr><td><code>e1_mem_addr[0:1]</code></td><td>数据</td><td>32×2</td><td>E1→M (直连)</td><td>Load/Store 地址（E1 级计算，直传到 M 级）</td></tr>
+    <tr><td><code>e1_mem_we[0:1]</code></td><td>控制</td><td>2</td><td>E1→M (直连)</td><td>Store 写使能标志</td></tr>
+    <tr><td><code>e1_mem_wdata[0:1]</code></td><td>数据</td><td>32×2</td><td>E1→M (直连)</td><td>Store 写数据</td></tr>
+    <tr><td><code>stall</code></td><td>控制</td><td>1</td><td>全局→M</td><td>全局暂停，E1→M 寄存器保持不更新</td></tr>
+    <tr><td><code>flush</code></td><td>控制</td><td>1</td><td>全局→M</td><td>冲刷 M 级，M 输入寄存器清零（trap 时）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>E2 结果旁路:</strong> 对于 MUL/DIV 指令，<code>m_result_r[i]</code> 使用 E2 级输出（<code>e2_mul_result/e2_div_result</code>）而非 E1 级 ALU 结果</li>
+    <li><strong>误预测分支保留:</strong> 误预测分支指令本身（如 JAL）必须被捕获到 M 级（用于写 ra），但其后的推测指令被杀死</li>
+    <li><strong>mem_busy 保护:</strong> 当 <code>mem_busy=1</code> 时，E1→M 寄存器保持不更新，防止双 MEM 串行化期间重复捕获</li>
+    <li><strong>e1_mem_* 再寄存:</strong> <code>e1_mem_addr / e1_mem_we / e1_mem_wdata</code> 虽为 E1 级组合输出，但在 <code>lumi_memory_stage</code> 模块入口被再寄存一拍，与 <code>m_inst_r / m_valid_r</code> 对齐后用于 DCache/TCM 访问</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1 (mem_busy):</strong> M 级 Load/Store 访问未完成，E1→M 寄存器暂停捕获新数据</li>
+    <li><strong>flush=1 (trap):</strong> M 级输入寄存器全部清零，异常指令不继续流向 W 级</li>
+    <li><strong>flush=1 (mispredict):</strong> 误预测分支指令保留，其后的推测指令清零</li>
+</ul>
+
+<h2 id="ic-2-7">IC-2.7: M → W (Memory → Writeback)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.7</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-memory-stage.html">lumi_memory_stage</a> (M 级: Load/Store 完成)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-writeback.html">lumi_writeback</a> (W 级: 寄存器写回 + 提交)</td></tr>
+    <tr><td>协议类型</td><td>流水线寄存器捕获（M→W 寄存器，W 级始终接收）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>m_valid_out[2:0]</code></td><td>控制</td><td>3</td><td>M→W</td><td>M 级输出有效标志（Load 完成后拉高）</td></tr>
+    <tr><td><code>m_inst_out[0:2]</code></td><td>数据</td><td>inst_pkt_t×3</td><td>M→W</td><td>M 级输出指令包</td></tr>
+    <tr><td><code>m_result_out[0:2]</code></td><td>数据</td><td>32×3</td><td>M→W</td><td>最终结果（ALU 结果或 Load 数据）</td></tr>
+    <tr><td><code>m_rd_out[0:2]</code></td><td>数据</td><td>5×3</td><td>M→W</td><td>目标寄存器地址</td></tr>
+    <tr><td><code>m_pc_out[0:2]</code></td><td>数据</td><td>32×3</td><td>M→W</td><td>指令 PC（用于异常处理和提交记录）</td></tr>
+    <tr><td><code>m_exception_out[2:0]</code></td><td>控制</td><td>3</td><td>M→W</td><td>异常标志（M 级检测到的 Load/Store 异常）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>Load 数据就绪:</strong> 对于 Load 指令，<code>m_result_out[i]</code> 必须已是 DCache/TCM 读回的数据（经字节选择和对齐）</li>
+    <li><strong>Store 不写 rd:</strong> Store 指令的 <code>m_rd_out[i]</code> 必须为 0（不写寄存器堆）</li>
+    <li><strong>异常优先级:</strong> 若 <code>m_exception_out[i]=1</code>，则 <code>m_result_out[i]</code> 无效，W 级触发 trap 而非写寄存器</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<p>M→W 接口无 stall/flush 信号。M→W 寄存器在 <code>lumi_writeback</code> 内部无条件捕获，W 级始终接收 M 级输出。Trap 由 W 级自身检测（<code>trap_request</code>），不通过 flush 信号回传 M 级。</p>
+
+<h2 id="ic-2-8">IC-2.8: W → RF (Writeback → Register File)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-2.8</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-writeback.html">lumi_writeback</a> (W 级: 写回仲裁)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-regfile.html">lumi_regfile</a> (寄存器堆: IRF/FRF/VRF)</td></tr>
+    <tr><td>协议类型</td><td>直连（W 级直接驱动寄存器堆写端口）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE (同域)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>rf_wr_en[1:0]</code></td><td>控制</td><td>2</td><td>W→RF</td><td>寄存器堆写使能（2 个写端口）</td></tr>
+    <tr><td><code>rf_wr_addr[1:0]</code></td><td>数据</td><td>5×2</td><td>W→RF</td><td>写端口目标寄存器地址</td></tr>
+    <tr><td><code>rf_wr_data[1:0]</code></td><td>数据</td><td>32×2</td><td>W→RF</td><td>写端口数据</td></tr>
+    <tr><td><code>commit_valid[2:0]</code></td><td>控制</td><td>3</td><td>W→SoC</td><td>指令提交有效信号（用于锁步比较器）</td></tr>
+    <tr><td><code>commit_pc[0:2]</code></td><td>数据</td><td>32×3</td><td>W→SoC</td><td>提交指令 PC</td></tr>
+    <tr><td><code>commit_result[0:2]</code></td><td>数据</td><td>32×3</td><td>W→SoC</td><td>提交指令结果</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>写端口冲突避免:</strong> 若两条指令同时写同一寄存器（<code>rf_wr_addr[0] == rf_wr_addr[1]</code>），W 级必须串行化或仲裁（slot[0] 优先）</li>
+    <li><strong>rd=0 不写:</strong> 若 <code>rf_wr_addr[i]=0</code>，则 <code>rf_wr_en[i]</code> 必须为 0（x0 寄存器硬连线为 0）</li>
+    <li><strong>提交顺序:</strong> <code>commit_valid[2:0]</code> 必须按程序序提交（slot[0]→slot[1]→slot[2]）</li>
+</ul>
+
+<h3>Stall/Flush 语义</h3>
+<ul>
+    <li><strong>stall=1:</strong> W 级暂停写回和提交，<code>rf_wr_en</code> 和 <code>commit_valid</code> 保持为 0</li>
+    <li><strong>flush=1:</strong> W 级不 flush（已到达提交点），trap 由 W 级检测并触发 <code>trap_request</code></li>
+    <li><strong>trap_request:</strong> W 级检测到异常或中断时，拉高 <code>trap_request</code> 和 <code>trap_pc</code>，反压 F1 级重定向</li>
+</ul>
+
+!-- ═══ §3 存储接口 ═══ -->
+<h1 id="ch3">3. 存储接口</h1>
+<p>本节定义 Core 与存储子系统（ICache / DCache / TCM）之间的接口。当前 RTL 使用 <strong>scalar 端口</strong>进行连接，Cache 端口（<code>lumi_cache.sv</code>）和 TCM 端口（<code>lumi_tcm.sv</code>）均暴露独立的 addr/data/valid/ready/hit 信号线。</p>
+
+<h2 id="ic-3-1">IC-3.1: Core ↔ ICache</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-3.1</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-fetch-bpred.html">lumi_fetch</a> (F1 级 PC → ICache 读请求)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-cache.html">lumi_cache</a> (ICache SRAM / Tag 阵列)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready（<code>ic_valid</code> 请求，<code>ic_ready</code> 响应）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>ic_addr</code></td><td>数据</td><td>32</td><td>Core→ICache</td><td>取指地址（F1 级 PC，= <code>f1_pc</code>）</td></tr>
+    <tr><td><code>ic_valid</code></td><td>控制</td><td>1</td><td>Core→ICache</td><td>读请求有效（当前固定为 1，每周期均请求）</td></tr>
+    <tr><td><code>ic_flush</code></td><td>控制</td><td>1</td><td>Core→ICache</td><td>FENCE.I 刷新请求，ICache 清空全部 valid 行</td></tr>
+    <tr><td><code>ic_rdata</code></td><td>数据</td><td>128</td><td>ICache→Core</td><td>Cache line 数据（128-bit = 4×32bit 指令字）</td></tr>
+    <tr><td><code>ic_hit</code></td><td>状态</td><td>1</td><td>ICache→Core</td><td>Cache 命中标志（命中时同周期拉高）</td></tr>
+    <tr><td><code>ic_ready</code></td><td>控制</td><td>1</td><td>ICache→Core</td><td>ICache 就绪（命中或 miss 处理完成时拉高）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>地址对齐:</strong> <code>ic_addr[3:0]</code> 按 16B 对齐（cache line 内 128-bit 粒度），ICache 返回对齐的 128-bit 数据</li>
+    <li><strong>请求连续性:</strong> <code>ic_valid</code> 固定为 1，ICache 在 miss 时 <code>ic_ready=0</code> 且 <code>ic_hit=0</code> 直到 refill 完成</li>
+    <li><strong>数据稳定性:</strong> <code>ic_hit=1</code> 时 <code>ic_rdata</code> 在同一周期内稳定</li>
+</ul>
+
+<h3>时序说明</h3>
+<p>ICache 命中时单周期响应（<code>ic_ready=1, ic_hit=1</code>）；Miss 时 <code>ic_ready=0</code>，触发 AXI refill，期间 F1 级 stall 直到 refill 完成。<code>ic_flush</code> 用于 FENCE.I 指令全量无效化 ICache。</p>
+
+<h2 id="ic-3-2">IC-3.2: Core ↔ DCache</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-3.2</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-memory-stage.html">lumi_memory_stage</a> (M 级 Load/Store 请求)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-cache.html">lumi_cache</a> (DCache SRAM / Tag 阵列)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready（多周期，支持 stall）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>dc_addr</code></td><td>数据</td><td>32</td><td>Core→DCache</td><td>Load/Store 地址（M 级 LSU 输出）</td></tr>
+    <tr><td><code>dc_wdata</code></td><td>数据</td><td>32</td><td>Core→DCache</td><td>Store 写数据（已对齐）</td></tr>
+    <tr><td><code>dc_rdata</code></td><td>数据</td><td>32</td><td>DCache→Core</td><td>Load 读回数据</td></tr>
+    <tr><td><code>dc_we</code></td><td>控制</td><td>1</td><td>Core→DCache</td><td>写使能（1=Store, 0=Load）</td></tr>
+    <tr><td><code>dc_be</code></td><td>控制</td><td>4</td><td>Core→DCache</td><td>字节使能（byte enable, 由 <code>gen_byte_enable()</code> 生成）</td></tr>
+    <tr><td><code>dc_valid</code></td><td>控制</td><td>1</td><td>Core→DCache</td><td>请求有效</td></tr>
+    <tr><td><code>dc_ready</code></td><td>控制</td><td>1</td><td>DCache→Core</td><td>DCache 就绪（命中或写完成）</td></tr>
+    <tr><td><code>dc_hit</code></td><td>状态</td><td>1</td><td>DCache→Core</td><td>Cache 命中标志</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>valid→数据不可变:</strong> <code>dc_valid=1</code> 后，<code>dc_addr / dc_wdata / dc_we / dc_be</code> 保持不变直到 <code>dc_ready=1</code></li>
+    <li><strong>字节使能一致性:</strong> <code>dc_be</code> 必须与 <code>funct3</code>（B/H/W）和 <code>addr[1:0]</code> 匹配</li>
+    <li><strong>Load 旁路同步:</strong> <code>m_bypass_valid[i]</code> 仅在 <code>dc_ready=1</code> 时为 1，防止多周期 Load 期间旁路旧数据</li>
+</ul>
+
+<h3>时序说明</h3>
+<p>DCache 命中时单周期响应；Miss 时 <code>dc_ready=0</code>，触发 <code>mem_busy=1</code> 反压 E1→M 寄存器。双 LSU 端口同 cycle 两条 MEM 指令时，port 0 优先处理，port 1 延后 1 cycle（ERR-029 串行化）。</p>
+
+<h2 id="ic-3-3">IC-3.3: Core ↔ ITCM / DTCM</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-3.3</span></td></tr>
+    <tr><td>生产方</td><td>lumi_fetch (ITCM) / lumi_memory_stage (DTCM)</td></tr>
+    <tr><td>消费方</td><td>lumi_tcm (ITCM/DTCM SRAM 阵列 + ECC)</td></tr>
+    <tr><td>协议类型</td><td>scalar 端口（valid-ready + hit 地址译码）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE</td></tr>
+</table>
+
+<h3>信号表（lumi_tcm.sv Port A scalar 端口）</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>core_addr</code></td><td>数据</td><td>32</td><td>Core→TCM</td><td>访问地址（ITCM/DTCM0/DTCM1 统一地址空间）</td></tr>
+    <tr><td><code>core_wdata</code></td><td>数据</td><td>32</td><td>Core→TCM</td><td>写数据</td></tr>
+    <tr><td><code>core_rdata</code></td><td>数据</td><td>32</td><td>TCM→Core</td><td>读数据（ECC 纠错后）</td></tr>
+    <tr><td><code>core_we</code></td><td>控制</td><td>1</td><td>Core→TCM</td><td>写使能（1=write, 0=read）</td></tr>
+    <tr><td><code>core_be[3:0]</code></td><td>控制</td><td>4</td><td>Core→TCM</td><td>字节使能（byte enable）</td></tr>
+    <tr><td><code>core_valid</code></td><td>控制</td><td>1</td><td>Core→TCM</td><td>请求有效</td></tr>
+    <tr><td><code>core_ready</code></td><td>控制</td><td>1</td><td>TCM→Core</td><td>TCM 就绪（零拍模式空闲时即拉高）</td></tr>
+    <tr><td><code>core_hit</code></td><td>状态</td><td>1</td><td>TCM→Core</td><td>地址命中（ITCM/DTCM0/DTCM1 任一范围内）</td></tr>
+</table>
+
+<h3>地址映射</h3>
+<table>
+    <tr><th>区域</th><th>基址</th><th>范围</th><th>容量</th></tr>
+    <tr><td>ITCM</td><td><code>0x0000_0000</code></td><td>0x0000_0000 ~ 0x0000_7FFF</td><td>32 KB</td></tr>
+    <tr><td>DTCM0</td><td><code>0x0001_0000</code></td><td>0x0001_0000 ~ 0x0001_7FFF</td><td>32 KB</td></tr>
+    <tr><td>DTCM1</td><td><code>0x0002_0000</code></td><td>0x0002_0000 ~ 0x0002_7FFF</td><td>32 KB</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>ITCM 可写:</strong> ITCM 支持 Core 侧读写（<code>core_we</code> 可为 1），用于启动代码加载</li>
+    <li><strong>ECC 保护:</strong> TCM 支持可选 ECC（<code>TCM_ECC_EN</code>），单 bit 纠错 / 双 bit 检错，ECC 错误触发 <code>ecc_ce_irq / ecc_ded_irq</code></li>
+    <li><strong>延迟模式:</strong> <code>LATENCY_MODE=0</code> 零拍（同周期响应），<code>LATENCY_MODE=1</code> 一拍（额外 1 cycle）</li>
+    <li><strong>仲裁优先级:</strong> Core 请求优先于 DMA 请求，DMA 在 Core 空闲时获得访问权</li>
+</ul>
+
+<h2 id="ic-3-4">IC-3.4: Cache ↔ AXI Wrapper（Refill/Evict scalar 端口）</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-3.4</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-cache.html">lumi_cache</a> (ICache/DCache refill & DCache evict FSM)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-pma-axi.html">lumi_axi_wrapper</a> (4 路 Master 仲裁器)</td></tr>
+    <tr><td>协议类型</td><td>简化 refill/evict scalar 信号（AR/R 读 + AW/W 写，非完整 AXI5通道）</td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE</td></tr>
+</table>
+
+<h3>信号表（Refill 读通道）</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>refill_araddr</code></td><td>32</td><td>Cache→Wrapper</td><td>Refill 读地址（cache line 对齐）</td></tr>
+    <tr><td><code>refill_arvalid</code></td><td>1</td><td>Cache→Wrapper</td><td>Refill 读请求有效</td></tr>
+    <tr><td><code>refill_arready</code></td><td>1</td><td>Wrapper→Cache</td><td>Refill 读请求就绪</td></tr>
+    <tr><td><code>refill_rdata</code></td><td>128</td><td>Wrapper→Cache</td><td>Refill 读数据（128-bit/beat）</td></tr>
+    <tr><td><code>refill_rvalid</code></td><td>1</td><td>Wrapper→Cache</td><td>Refill 读数据有效</td></tr>
+    <tr><td><code>refill_rlast</code></td><td>1</td><td>Wrapper→Cache</td><td>Refill 突发最后一拍</td></tr>
+    <tr><td><code>refill_rready</code></td><td>1</td><td>Cache→Wrapper</td><td>Refill 读就绪</td></tr>
+</table>
+
+<h3>信号表（Evict 写通道）</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>evict_awaddr</code></td><td>32</td><td>Cache→Wrapper</td><td>Evict 写地址（脏行基地址）</td></tr>
+    <tr><td><code>evict_awvalid</code></td><td>1</td><td>Cache→Wrapper</td><td>Evict 写请求有效</td></tr>
+    <tr><td><code>evict_awready</code></td><td>1</td><td>Wrapper→Cache</td><td>Evict 写请求就绪</td></tr>
+    <tr><td><code>evict_awlen</code></td><td>8</td><td>Cache→Wrapper</td><td>Evict 突发长度（固定 3 = 4 beats）</td></tr>
+    <tr><td><code>evict_wdata</code></td><td>128</td><td>Cache→Wrapper</td><td>Evict 写数据（128-bit/beat）</td></tr>
+    <tr><td><code>evict_wvalid</code></td><td>1</td><td>Cache→Wrapper</td><td>Evict 写数据有效</td></tr>
+    <tr><td><code>evict_wlast</code></td><td>1</td><td>Cache→Wrapper</td><td>Evict 突发最后一拍</td></tr>
+    <tr><td><code>evict_wready</code></td><td>1</td><td>Wrapper→Cache</td><td>Evict 写就绪</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>Refill 突发:</strong> 固定 4 beats × 128-bit = 64B cache line，<code>refill_rlast</code> 在第 4 拍拉高</li>
+    <li><strong>Evict 触发:</strong> 仅 DCache miss 且 victim 行 dirty=1 时触发 evict，完成后自动进入 refill</li>
+    <li><strong>ICache 无 evict:</strong> ICache refill 仅使用 AR/R 通道，不产生 evict 写</li>
+</ul>
+
+<h2 id="ic-3-5">IC-3.5: DMA ↔ DTCM（AXI4-Lite 风格 scalar 端口）</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-3.5</span></td></tr>
+    <tr><td>生产方</td><td>SoC DMA 控制器（AXI4-Lite Master）</td></tr>
+    <tr><td>消费方</td><td><a href="lld-tcm.html">lumi_tcm</a> (DTCM Port B — DMA 侧)</td></tr>
+    <tr><td>协议类型</td><td>AXI4-Lite 风格 scalar 信号（32-bit data，无突发）</td></tr>
+    <tr><td>时钟域</td><td>CLK_BUS → CLK_CORE CDC</td></tr>
+</table>
+
+<h3>信号表（lumi_tcm.sv Port B scalar 端口）</h3>
+<table>
+    <tr><th>通道</th><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td rowspan="3">AW</td><td><code>dma_awaddr</code></td><td>32</td><td>DMA→TCM</td><td>写地址</td></tr>
+    <tr><td><code>dma_awvalid</code></td><td>1</td><td>DMA→TCM</td><td>写地址有效</td></tr>
+    <tr><td><code>dma_awready</code></td><td>1</td><td>TCM→DMA</td><td>写地址就绪</td></tr>
+    <tr><td rowspan="3">W</td><td><code>dma_wdata</code></td><td>32</td><td>DMA→TCM</td><td>写数据</td></tr>
+    <tr><td><code>dma_wvalid</code></td><td>1</td><td>DMA→TCM</td><td>写数据有效</td></tr>
+    <tr><td><code>dma_wready</code></td><td>1</td><td>TCM→DMA</td><td>写数据就绪</td></tr>
+    <tr><td rowspan="2">B</td><td><code>dma_bresp</code></td><td>2</td><td>TCM→DMA</td><td>写响应（固定 OKAY=2'b00）</td></tr>
+    <tr><td><code>dma_bvalid / dma_bready</code></td><td>1+1</td><td>TCM→DMA / DMA→TCM</td><td>写响应握手</td></tr>
+    <tr><td rowspan="3">AR</td><td><code>dma_araddr</code></td><td>32</td><td>DMA→TCM</td><td>读地址</td></tr>
+    <tr><td><code>dma_arvalid</code></td><td>1</td><td>DMA→TCM</td><td>读地址有效</td></tr>
+    <tr><td><code>dma_arready</code></td><td>1</td><td>TCM→DMA</td><td>读地址就绪</td></tr>
+    <tr><td rowspan="2">R</td><td><code>dma_rdata</code></td><td>32</td><td>TCM→DMA</td><td>读数据（ECC 纠错后）</td></tr>
+    <tr><td><code>dma_rvalid / dma_rready</code></td><td>1+1</td><td>TCM→DMA / DMA→TCM</td><td>读数据握手</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>仲裁优先级:</strong> Core 请求优先于 DMA，DMA 仅在 Core 空闲时获得访问权</li>
+    <li><strong>DMA 地址锁存:</strong> TCM FSM 在 <code>ST_IDLE</code> 且 Core 无请求时锁存 <code>dma_awaddr/dma_araddr</code> 到 <code>dma_addr_reg</code></li>
+    <li><strong>无 wstrb:</strong> DMA 写为全字写（32-bit），无字节使能</li>
+</ul>
+
+<!-- ═══ §4 总线接口 ═══ -->
+<h1 id="ch4">4. 总线接口</h1>
+<p>本节定义 AXI 总线接口。当前 RTL 使用 <strong>scalar 端口</strong>暴露全部 AXI4 五通道信号（含边带信号），<code>lumi_axi_wrapper.sv</code> 内部包含 4 路 Master 仲裁器和 CDC 桥接逻辑。</p>
+
+<h2 id="ic-4-1">IC-4.1: AXI Wrapper ↔ SoC</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-4.1</span></td></tr>
+    <tr><td>生产方</td><td>lumi_axi_wrapper (AXI4 master)</td></tr>
+    <tr><td>消费方</td><td>SoC 总线 interconnect / 外设</td></tr>
+    <tr><td>协议类型</td><td>AMBA AXI4 五通道（AW/W/B/AR/R），valid-ready 握手</td></tr>
+    <tr><td>时钟域</td><td>CLK_BUS (≤500 MHz)</td></tr>
+</table>
+
+<h3>接口参数</h3>
+<table>
+    <tr><th>参数</th><th>默认值</th><th>描述</th></tr>
+    <tr><td><code>ADDR_WIDTH</code></td><td>32</td><td>地址宽度</td></tr>
+    <tr><td><code>DATA_WIDTH</code></td><td>128</td><td>数据宽度（128-bit，匹配 cache line）</td></tr>
+    <tr><td><code>ID_WIDTH</code></td><td>4</td><td>事务 ID 宽度（支持 16 outstanding）</td></tr>
+    <tr><td><code>USER_WIDTH</code></td><td>1</td><td>用户自定义信号宽度（当前 RTL 未使用 <code>awuser/aruser</code>）</td></tr>
+    <tr><td><code>STRB_WIDTH</code></td><td>16</td><td>写选通 = DATA_WIDTH/8</td></tr>
+</table>
+
+<h3>信号表（五通道）</h3>
+<table>
+    <tr><th>通道</th><th>信号名</th><th>位宽</th><th>方向(M→S)</th><th>描述</th></tr>
+    <tr><td rowspan="9">写地址 (AW)</td><td><code>awid</code></td><td>4</td><td>output</td><td>写事务 ID</td></tr>
+    <tr><td><code>awaddr</code></td><td>32</td><td>output</td><td>写地址</td></tr>
+    <tr><td><code>awlen</code></td><td>8</td><td>output</td><td>突发长度（0=1 beat, 255=256 beats）</td></tr>
+    <tr><td><code>awsize</code></td><td>3</td><td>output</td><td>突发大小（0~7 → 1B~128B）</td></tr>
+    <tr><td><code>awburst</code></td><td>2</td><td>output</td><td>突发类型（固定 INCR=2'b01）</td></tr>
+    <tr><td><code>awlock</code></td><td>1</td><td>output</td><td>锁类型（固定 0=Normal）</td></tr>
+    <tr><td><code>awcache</code></td><td>4</td><td>output</td><td>缓存属性（由 PMA 决定，当前默认 0）</td></tr>
+    <tr><td><code>awprot</code></td><td>3</td><td>output</td><td>保护属性（当前默认 0）</td></tr>
+    <tr><td><code>awvalid / awready</code></td><td>1+1</td><td>output/input</td><td>valid-ready 握手</td></tr>
+    <tr><td rowspan="4">写数据 (W)</td><td><code>wdata</code></td><td>128</td><td>output</td><td>写数据</td></tr>
+    <tr><td><code>wstrb</code></td><td>16</td><td>output</td><td>字节写选通</td></tr>
+    <tr><td><code>wlast</code></td><td>1</td><td>output</td><td>突发最后一拍</td></tr>
+    <tr><td><code>wvalid / wready</code></td><td>1+1</td><td>output/input</td><td>valid-ready 握手</td></tr>
+    <tr><td>写响应 (B)</td><td><code>bid, bresp, bvalid/bready</code></td><td>4+2+1+1</td><td>input/output</td><td>写响应通道</td></tr>
+    <tr><td rowspan="8">读地址 (AR)</td><td><code>arid</code></td><td>4</td><td>output</td><td>读事务 ID</td></tr>
+    <tr><td><code>araddr</code></td><td>32</td><td>output</td><td>读地址</td></tr>
+    <tr><td><code>arlen / arsize</code></td><td>8+3</td><td>output</td><td>突发长度和大小</td></tr>
+    <tr><td><code>arburst</code></td><td>2</td><td>output</td><td>突发类型（固定 INCR=2'b01）</td></tr>
+    <tr><td><code>arlock</code></td><td>1</td><td>output</td><td>锁类型（固定 0=Normal）</td></tr>
+    <tr><td><code>arcache</code></td><td>4</td><td>output</td><td>缓存属性（由 PMA 决定，当前默认 0）</td></tr>
+    <tr><td><code>arprot</code></td><td>3</td><td>output</td><td>保护属性（当前默认 0）</td></tr>
+    <tr><td><code>arvalid / arready</code></td><td>1+1</td><td>output/input</td><td>valid-ready 握手</td></tr>
+    <tr><td>读数据 (R)</td><td><code>rid, rdata, rresp, rlast, rvalid/rready</code></td><td>4+128+2+1+1+1</td><td>input/output</td><td>读数据通道</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>AXI 合规:</strong> 所有通道遵循 AXI4 valid-ready 握手协议，<code>valid</code> 不依赖 <code>ready</code></li>
+    <li><strong>Cache line 对齐:</strong> ICache refill 使用 INCR4 突发（128-bit × 4 = 64B cache line），<code>araddr[5:0]=0</code></li>
+    <li><strong>事务 ID 唯一性:</strong> 同方向 outstanding 事务使用不同 <code>id</code>（IC=0x0, DC=0x1, NC=0x2, Trace=0x3）</li>
+    <li><strong>边带信号:</strong> <code>awburst/arburst</code> 固定 INCR，<code>awlock/arlock</code> 固定 Normal，<code>awcache/awprot/arcache/arprot</code> 当前默认 0（PMA 未连接）</li>
+    <li><strong>awuser/aruser:</strong> 当前 RTL 未实现（<code>lumi_interfaces.sv</code> 中定义但 <code>lumi_axi_wrapper.sv</code> 端口中不存在）</li>
+</ul>
+
+<h2 id="ic-4-2">IC-4.2: FFP AXI4-Lite 外设接口（m_ffp_* 端口）</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-4.2</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-pma-axi.html">lumi_axi_wrapper</a> (FFP AXI4-Lite Master 端口)</td></tr>
+    <tr><td>消费方</td><td>SoC FFP 外设（地址空间 0xF000_0000 ~ 0xF000_FFFF）</td></tr>
+    <tr><td>协议类型</td><td>AXI4-Lite scalar 信号（32-bit data + 32-bit addr，无突发）</td></tr>
+    <tr><td>时钟域</td><td>CLK_BUS</td></tr>
+</table>
+
+<h3>信号表（lumi_axi_wrapper.sv m_ffp_* 端口）</h3>
+<table>
+    <tr><th>通道</th><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td rowspan="3">AW</td><td><code>m_ffp_awaddr</code></td><td>32</td><td>Wrapper→FFP</td><td>写地址</td></tr>
+    <tr><td><code>m_ffp_awvalid</code></td><td>1</td><td>Wrapper→FFP</td><td>写地址有效</td></tr>
+    <tr><td><code>m_ffp_awready</code></td><td>1</td><td>FFP→Wrapper</td><td>写地址就绪</td></tr>
+    <tr><td rowspan="4">W</td><td><code>m_ffp_wdata</code></td><td>32</td><td>Wrapper→FFP</td><td>写数据</td></tr>
+    <tr><td><code>m_ffp_wstrb</code></td><td>4</td><td>Wrapper→FFP</td><td>字节写选通</td></tr>
+    <tr><td><code>m_ffp_wvalid</code></td><td>1</td><td>Wrapper→FFP</td><td>写数据有效</td></tr>
+    <tr><td><code>m_ffp_wready</code></td><td>1</td><td>FFP→Wrapper</td><td>写数据就绪</td></tr>
+    <tr><td rowspan="3">B</td><td><code>m_ffp_bresp</code></td><td>2</td><td>FFP→Wrapper</td><td>写响应</td></tr>
+    <tr><td><code>m_ffp_bvalid</code></td><td>1</td><td>FFP→Wrapper</td><td>写响应有效</td></tr>
+    <tr><td><code>m_ffp_bready</code></td><td>1</td><td>Wrapper→FFP</td><td>写响应就绪</td></tr>
+    <tr><td rowspan="3">AR</td><td><code>m_ffp_araddr</code></td><td>32</td><td>Wrapper→FFP</td><td>读地址</td></tr>
+    <tr><td><code>m_ffp_arvalid</code></td><td>1</td><td>Wrapper→FFP</td><td>读地址有效</td></tr>
+    <tr><td><code>m_ffp_arready</code></td><td>1</td><td>FFP→Wrapper</td><td>读地址就绪</td></tr>
+    <tr><td rowspan="4">R</td><td><code>m_ffp_rdata</code></td><td>32</td><td>FFP→Wrapper</td><td>读数据</td></tr>
+    <tr><td><code>m_ffp_rresp</code></td><td>2</td><td>FFP→Wrapper</td><td>读响应</td></tr>
+    <tr><td><code>m_ffp_rvalid</code></td><td>1</td><td>FFP→Wrapper</td><td>读数据有效</td></tr>
+    <tr><td><code>m_ffp_rready</code></td><td>1</td><td>Wrapper→FFP</td><td>读数据就绪</td></tr>
+</table>
+
+<div class="warn"><strong>实现状态:</strong> FFP 接口当前为 stub 直连端口，桥接逻辑在 SoC 集成时实现。CSR 读写通过 Core 内部 CSR scalar 端口（见 IC-5.4）直接完成，不经过此 FFP 接口。</div>
+
+<h2 id="ic-4-3">IC-4.3: PMA Checker ↔ AXI Wrapper</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-4.3</span></td></tr>
+    <tr><td>生产方</td><td>PMA 检查器（8 区域配置）</td></tr>
+    <tr><td>消费方</td><td>AXI Wrapper（仲裁是否发起 AXI 事务）</td></tr>
+    <tr><td>协议类型</td><td>直连（组合逻辑查询）</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">预留/未连接</span></td></tr>
+</table>
+<div class="warn"><strong>当前状态:</strong> PMA 检查器模块<strong>预留/未实例化</strong>。AXI Wrapper 的 <code>awcache/awprot/arcache/arprot</code> 输出全部固定为 0，PMA 输出信号全部悬空（未连接到任何消费方）。非法访问检测功能<strong>未实现</strong>。</div>
+<p>设计意图：PMA 检查器应根据地址查询 8 个区域的属性（Cacheable / Bufferable / Idempotent / Execute），决定 AXI 事务的 <code>ARCACHE/AWCACHE</code> 属性。非法访问触发总线错误异常。</p>
+
+<h2 id="ic-4-4">IC-4.4: CDC Sync (跨时钟域)</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-4.4</span></td></tr>
+    <tr><td>生产方</td><td>CLK_CORE 域（Cache 请求）</td></tr>
+    <tr><td>消费方</td><td>CLK_BUS 域（AXI 事务）</td></tr>
+    <tr><td>协议类型</td><td>当前为直通，异步 FIFO 待实现</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">直通</span></td></tr>
+</table>
+<div class="warn"><strong>当前状态:</strong> CDC 当前为<strong>直通</strong>（<code>clk_core = clk_bus</code> 同域）。AXI Wrapper 内部 <code>lumi_cdc_async_fifo</code> 实例已编写但异步 FIFO 桥接<strong>待实现</strong>。当 <code>CLK_CORE ≠ CLK_BUS</code> 时需启用异步 FIFO 桥接两个时钟域，FIFO 深度 ≥4。</div>
+
+<!-- ═══ §5 中断/异常接口 ═══ -->
+<h1 id="ch5">5. 中断/异常接口</h1>
+<p>本节定义 CLIC/PLIC 中断控制器、异常处理单元和 CSR 单元与流水线之间的接口。当前 RTL 实现使用 <strong>scalar 端口</strong>（非 SystemVerilog interface），所有信号以独立端口线连接。</p>
+
+<div class="warn"><strong>当前实现状态:</strong> CLIC 的 <code>irq_ack</code> 在 SoC 顶层 (<code>lumi_soc_top.sv</code>) 接 <code>1'b0</code>，即中断应答机制<strong>未实现</strong>。CLIC 输出 <code>irq_valid</code> 在 SoC 中重命名为 <code>irq_request</code> 连接到 Core。CLIC 的 <code>meip_in/seip_in/msip_in/mtip_in</code> 全部接 <code>1'b0</code>，本地中断 <code>irq_local</code> 接 <code>16'h0</code>。</div>
+
+<h2 id="ic-5-1">IC-5.1: CLIC ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-5.1</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-clic.html">lumi_clic</a> (CLIC 中断控制器，FSM 仲裁)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_exception</code> (irq_request/irq_id) / <code>lumi_core_top</code> (irq_request/irq_id/irq_level) / CSR 单元 (meip)</td></tr>
+    <tr><td>协议类型</td><td>req-ack（<code>irq_valid</code> 请求，<code>irq_ack</code> 应答）— <span class="status-todo">应答未实现</span></td></tr>
+    <tr><td>时钟域</td><td>CLK_CORE</td></tr>
+</table>
+
+<h3>接口参数</h3>
+<table>
+    <tr><th>参数</th><th>默认值</th><th>描述</th></tr>
+    <tr><td><code>NUM_INT</code></td><td><code>CLIC_INT_INPUTS</code></td><td>本地中断源数量</td></tr>
+    <tr><td><code>HW_LAT</code></td><td><code>CLIC_HW_LATENCY</code></td><td>硬件延迟 (cycles)</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>irq_local[NUM_INT-1:0]</code></td><td>input</td><td>N</td><td>外部→CLIC</td><td>本地中断输入线（SoC 中接 <code>16'h0</code>）</td></tr>
+    <tr><td><code>irq_level_packed</code></td><td>input</td><td>N×8</td><td>外部→CLIC</td><td>各中断源优先级 (8-bit/source)，SoC 中接 <code>128'h0</code></td></tr>
+    <tr><td><code>meip_in</code></td><td>input</td><td>1</td><td>PLIC→CLIC</td><td>M 模式外部中断 pending — <span class="status-todo">SoC 中接 1'b0</span>（PLIC meip 未连接，见 IC-5.2）</td></tr>
+    <tr><td><code>seip_in</code></td><td>input</td><td>1</td><td>PLIC→CLIC</td><td>S 模式外部中断 pending — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>msip_in</code></td><td>input</td><td>1</td><td>CLINT→CLIC</td><td>软件中断 pending — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>mtip_in</code></td><td>input</td><td>1</td><td>CLINT→CLIC</td><td>定时器中断 pending — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>mie_gate</code></td><td>input</td><td>1</td><td>CSR→CLIC</td><td>mstatus.MIE 全局中断使能（SoC 接 <code>mstatus_out[3]</code>）</td></tr>
+    <tr><td><code>meip</code></td><td>output</td><td>1</td><td>CLIC→CSR</td><td>外部中断 pending (写入 mip CSR)</td></tr>
+    <tr><td><code>irq_id</code></td><td>output</td><td>8</td><td>CLIC→Core</td><td>当前中断 ID (cause code)</td></tr>
+    <tr><td><code>irq_level_out</code></td><td>output</td><td>8</td><td>CLIC→Core</td><td>当前中断优先级</td></tr>
+    <tr><td><code>irq_valid</code></td><td>output</td><td>1</td><td>CLIC→Core</td><td>中断请求有效 (ST_PENDING 状态)。SoC 中重命名为 <code>irq_request</code> 连接到 Core 和 Exception 模块</td></tr>
+    <tr><td><code>irq_preempt</code></td><td>output</td><td>1</td><td>CLIC→Core</td><td>抢占标志 (新中断级别 > 当前)</td></tr>
+    <tr><td><code>irq_ack</code></td><td>input</td><td>1</td><td>Core→CLIC</td><td>CPU 中断应答 — <span class="status-todo">SoC 中接 1'b0</span>（应答未实现，CLIC FSM 无法离开 ST_ACK）</td></tr>
+</table>
+
+<h3>CLIC CSR 接口（经 lumi_csr_unit 代理）</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>clic_csr_addr</code></td><td>12</td><td>CSR Unit→CLIC</td><td>CSR 地址 (0xFB1=mintstatus, 0x347=mintthresh, 0xFB0=mclick)</td></tr>
+    <tr><td><code>clic_csr_wdata</code></td><td>32</td><td>CSR Unit→CLIC</td><td>CSR 写数据</td></tr>
+    <tr><td><code>clic_csr_rdata</code></td><td>32</td><td>CLIC→CSR Unit</td><td>CSR 读数据</td></tr>
+    <tr><td><code>clic_csr_we</code></td><td>1</td><td>CSR Unit→CLIC</td><td>CSR 写使能</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>优先级仲裁:</strong> 高级别中断优先；同级别高 ID 优先。外部中断(PLIC) cause=11 level=0xFF，定时器 cause=7 level=0xF0，软件 cause=3 level=0x80</li>
+    <li><strong>门控检查:</strong> <code>mie_gate=0</code> 时 CLIC FSM 保持 ST_IDLE，不响应任何中断</li>
+    <li><strong>抢占安全:</strong> <code>irq_preempt=1</code> 仅在 ST_PENDING 状态且新中断级别 > <code>latch_level</code> 时产生</li>
+</ul>
+
+<h3>时序说明</h3>
+<p>CLIC FSM 流程: ST_IDLE → ST_DETECT (确认 pending) → ST_PRIORITY (锁存 ID/level) → ST_LATENCY (等待 HW_LAT cycles) → ST_PENDING (发出 <code>irq_valid</code>) → ST_ACK (等待 <code>irq_ack</code>) → ST_IDLE。抢占时从 ST_PENDING 回到 ST_PRIORITY。</p>
+<div class="warn"><strong>SoC 实际行为:</strong> 由于 <code>irq_ack</code> 固定为 1'b0，CLIC FSM 在进入 ST_ACK 状态后无法正常返回 ST_IDLE（<code>state_next</code> 在 ST_ACK 时无条件跳转到 ST_IDLE，因此 FSM 实际上会返回 IDLE，但无法完成完整的中断应答握手）。中断请求 <code>irq_valid</code> 仅在 ST_PENDING 期间有效，<code>irq_request</code> 传送到 <code>lumi_exception</code> 模块参与 trap 决策。</div>
+
+<h2 id="ic-5-2">IC-5.2: PLIC ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-5.2</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_plic</code> (PLIC 外部中断控制器, 32 源 + 7 级优先级)</td></tr>
+    <tr><td>消费方</td><td>CLIC <code>meip_in</code> / CSR 单元 (<code>mip.meip</code>)</td></tr>
+    <tr><td>协议类型</td><td>直连（电平触发）+ MMIO (claim/complete)</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">预留/未连接</span> — PLIC 输出 <code>meip</code> 悬空，CLIC <code>meip_in</code> 接 <code>1'b0</code></td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>ext_irq_in</code></td><td>input</td><td>32</td><td>外部→PLIC</td><td>外部中断源 [31:0]（SoC 中接 <code>32'h0</code>）</td></tr>
+    <tr><td><code>meip</code></td><td>output</td><td>NUM_HART</td><td>PLIC→CLIC</td><td>M 模式外部中断 pending — <span class="status-todo">SoC 中悬空</span>（<code>plic_meip</code> 未连接到 CLIC <code>meip_in</code>）</td></tr>
+    <tr><td><code>irq_id</code></td><td>output</td><td>NUM_HART×5</td><td>PLIC→Core</td><td>中断 ID per hart (5-bit)（SoC 中悬空）</td></tr>
+    <tr><td><code>irq_claim</code></td><td>input</td><td>NUM_HART</td><td>Core→PLIC</td><td>Claim 应答 — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>plic_addr</code></td><td>input</td><td>12</td><td>MMIO→PLIC</td><td>MMIO 地址（SoC 中接 <code>12'h0</code>）</td></tr>
+    <tr><td><code>plic_wdata</code></td><td>input</td><td>32</td><td>MMIO→PLIC</td><td>MMIO 写数据（SoC 中接 <code>32'h0</code>）</td></tr>
+    <tr><td><code>plic_rdata</code></td><td>output</td><td>32</td><td>PLIC→MMIO</td><td>MMIO 读数据（SoC 中悬空）</td></tr>
+    <tr><td><code>plic_we</code></td><td>input</td><td>1</td><td>MMIO→PLIC</td><td>MMIO 写使能（SoC 中接 <code>1'b0</code>）</td></tr>
+</table>
+
+<h3>Claim/Complete 握手说明</h3>
+<p>PLIC 标准 claim/complete 流程如下：</p>
+<ol>
+    <li><strong>Claim:</strong> CPU 读 <code>claim/complete</code> 寄存器（MMIO 地址 <code>0x104 + h*8</code>），PLIC 返回当前最高优先级中断 ID 并锁存为 <code>claimed_src</code>，同时清除 pending 位</li>
+    <li><strong>处理:</strong> CPU 执行中断处理程序</li>
+    <li><strong>Complete:</strong> CPU 写 <code>claim/complete</code> 寄存器（写入中断 ID），PLIC 清除 <code>claimed_valid</code>，允许该中断源再次 pending</li>
+</ol>
+<div class="warn"><strong>当前状态:</strong> PLIC MMIO 接口全部接零（<code>plic_addr=12'h0, plic_wdata=32'h0, plic_we=1'b0</code>），<code>irq_claim=1'b0</code>。因此 claim/complete 握手<strong>不可用</strong>，PLIC 输出 <code>meip</code> 虽有内部逻辑但悬空未连接到 CLIC。CLIC 的 <code>meip_in</code> 直接接 <code>1'b0</code>，意味着 PLIC 外部中断路径完全未打通。</div>
+
+<h3>MMIO 地址映射</h3>
+<table>
+    <tr><th>地址范围</th><th>寄存器</th><th>描述</th></tr>
+    <tr><td><code>0x000 ~ 0x07F</code></td><td><code>priority[1..31]</code></td><td>每源 4B，低 3-bit 优先级（源 0 保留）</td></tr>
+    <tr><td><code>0x080</code></td><td><code>pending</code></td><td>位图，每 32 源 4B</td></tr>
+    <tr><td><code>0x084 + h*4</code></td><td><code>enable[h]</code></td><td>per-hart 使能位图</td></tr>
+    <tr><td><code>0x100 + h*8</code></td><td><code>threshold[h]</code></td><td>per-hart 阈值 (3-bit)</td></tr>
+    <tr><td><code>0x104 + h*8</code></td><td><code>claim/complete[h]</code></td><td>读=claim，写=complete</td></tr>
+</table>
+
+<h2 id="ic-5-3">IC-5.3: Exception Unit ↔ Pipeline</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-5.3</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_core_top</code> (E1/M 级异常收集) / CLIC (<code>irq_request</code>, <code>irq_id</code>)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_exception</code> (异常/中断 trap 决策) → CSR Unit / Core (trap_pc/flush)</td></tr>
+    <tr><td>协议类型</td><td>直连（组合逻辑输出）</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>exc_fetch</code></td><td>2</td><td>Core→Exc</td><td>F 级异常: 00=none, 01=misaligned, 10=access_fault, 11=page_fault（SoC 中接 <code>core_exc_fetch</code>，当前固定 <code>2'b00</code>）</td></tr>
+    <tr><td><code>exc_decode</code></td><td>4</td><td>Core→Exc</td><td>D 级异常: 0000=none, 0001=illegal, 0010=ecall, 0011=ebreak, 0100=ecall_s, 0101=ecall_m（SoC 中接 <code>core_exc_decode</code>，当前固定 <code>4'b0000</code>）</td></tr>
+    <tr><td><code>exc_exec</code></td><td>3</td><td>Core→Exc</td><td>E/M 级异常 — <strong>3-bit 编码，bit0 保留</strong>。SoC 中接 <code>{|e1_exception, |m_exception_r, 1'b0}</code>（bit2=E1 异常, bit1=M 级异常, bit0=保留固定 0）</td></tr>
+    <tr><td><code>exc_addr</code></td><td>32</td><td>Core→Exc</td><td>异常地址 (mtval: load/store misalign 时为访问地址 = <code>e1_result</code>)</td></tr>
+    <tr><td><code>exc_insn</code></td><td>32</td><td>Core→Exc</td><td>异常指令字 (mtval: 非法指令编码)</td></tr>
+    <tr><td><code>exc_pc</code></td><td>32</td><td>Core→Exc</td><td>异常指令 PC (→ mepc)</td></tr>
+    <tr><td><code>irq_request</code></td><td>1</td><td>CLIC→Exc</td><td>中断请求 (SoC 中 = CLIC <code>irq_valid</code>)</td></tr>
+    <tr><td><code>irq_id</code></td><td>8</td><td>CLIC→Exc</td><td>中断 ID (→ mcause cause code)</td></tr>
+    <tr><td><code>irq_ack</code></td><td>1</td><td>Exc→CLIC</td><td>中断应答 — <span class="status-todo">Exc 输出 <code>exc_irq_ack</code> 但 SoC 中未连回 CLIC</span>（CLIC irq_ack = 1'b0）</td></tr>
+    <tr><td><code>nmi_signal</code></td><td>1</td><td>SoC→Exc</td><td>外部 NMI 信号</td></tr>
+    <tr><td><code>trap_take</code></td><td>1</td><td>Exc→Core</td><td>Trap 触发 (flush 流水线)</td></tr>
+    <tr><td><code>trap_pc</code></td><td>32</td><td>Exc→Core</td><td>Trap 目标 PC (→ F1 重定向)</td></tr>
+    <tr><td><code>trap_cause</code></td><td>32</td><td>Exc→CSR</td><td>mcause 值</td></tr>
+    <tr><td><code>trap_epc</code></td><td>32</td><td>Exc→CSR</td><td>mepc 值</td></tr>
+    <tr><td><code>trap_tval</code></td><td>32</td><td>Exc→CSR</td><td>mtval 值</td></tr>
+    <tr><td><code>trap_is_irq</code></td><td>1</td><td>Exc→CSR</td><td>1=中断, 0=异常</td></tr>
+    <tr><td><code>flush_pipe</code></td><td>1</td><td>Exc→Core</td><td>flush 流水线信号</td></tr>
+</table>
+
+<h3>CSR 输入信号</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>mtvec_in</code></td><td>32</td><td>CSR→Exc</td><td>mtvec (trap 入口地址)</td></tr>
+    <tr><td><code>mstatus_in</code></td><td>32</td><td>CSR→Exc</td><td>mstatus (MIE 在 bit[3])</td></tr>
+    <tr><td><code>medeleg_in</code></td><td>32</td><td>CSR→Exc</td><td>异常委托位图（SoC 中接 <code>32'h0</code>）</td></tr>
+    <tr><td><code>mideleg_in</code></td><td>32</td><td>CSR→Exc</td><td>中断委托位图（SoC 中接 <code>32'h0</code>）</td></tr>
+    <tr><td><code>priv_mode_in</code></td><td>2</td><td>CSR→Exc</td><td>当前特权级（SoC 中接 <code>2'b11</code> = M-mode）</td></tr>
+    <tr><td><code>stvec_in</code></td><td>32</td><td>CSR→Exc</td><td>stvec（SoC 中接 <code>32'h0</code>）</td></tr>
+    <tr><td><code>mnepc_in / mncause_in / mnstatus_in</code></td><td>32×3</td><td>CSR→Exc</td><td>NMI CSR 输入（SoC 中全部接 <code>32'h0</code>）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>异常优先级:</strong> E1 级异常优先于 M 级异常输出 (遍历 slot 时先检查 e1_exception)</li>
+    <li><strong>exc_exec 编码:</strong> bit2 = E1 级异常 (<code>|e1_exception</code>)，bit1 = M 级异常 (<code>|m_exception_r</code>)，bit0 保留（固定 0）。Exception 模块内部使用 <code>exc_exec[2:1]</code> 解码具体异常类型</li>
+    <li><strong>Trap 优先级:</strong> MRET/SRET/MNRET > 同步异常 > NMI > 普通中断</li>
+    <li><strong>Load/Store 异常地址:</strong> 当 <code>exc_cause ∈ [EXC_LOAD_MISALIGN, EXC_STORE_ACCESS]</code> 时，<code>core_exc_addr</code> = <code>e1_result</code> (base+offset 计算结果)</li>
+    <li><strong>irq_ack 未回连:</strong> <code>lumi_exception</code> 输出 <code>irq_ack = trap_take && trap_is_irq && !nmi_enter_out</code>，但 SoC 中此信号未连回 CLIC 的 <code>irq_ack</code> 端口（CLIC irq_ack 固定 1'b0）</li>
+</ul>
+
+<h2 id="ic-5-4">IC-5.4: CSR Unit ↔ 各模块</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-5.4</span></td></tr>
+    <tr><td>生产方</td><td><a href="lld-writeback.html">lumi_writeback</a> (W 级 CSR 操作)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_csr_unit</code> → <code>lumi_clic</code> (CLIC CSR 代理) / Exception 模块 (mstatus/mtvec)</td></tr>
+    <tr><td>协议类型</td><td>直连（组合逻辑读写）</td></tr>
+</table>
+
+<div class="warn"><strong>CSR 接口路径:</strong> CSR 访问路径为 <code>lumi_writeback</code> (W 级) → <code>lumi_core_top</code> (scalar 端口透传) → <code>lumi_csr_unit</code> (CSR 寄存器堆)。CLIC CSR 访问由 <code>lumi_csr_unit</code> 代理转发到 <code>lumi_clic</code> 的 <code>clic_csr_*</code> 端口。Debug Module 的 CSR 访问路径预留但当前未连接。</div>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>csr_addr</code></td><td>12</td><td>WB→CSR Unit</td><td>CSR 地址（经 <code>lumi_core_top</code> 透传）</td></tr>
+    <tr><td><code>csr_rdata</code></td><td>32</td><td>CSR Unit→WB</td><td>CSR 读数据（经 <code>lumi_core_top</code> 透传）</td></tr>
+    <tr><td><code>csr_wdata</code></td><td>32</td><td>WB→CSR Unit</td><td>CSR 写数据</td></tr>
+    <tr><td><code>csr_we</code></td><td>1</td><td>WB→CSR Unit</td><td>CSR 写使能</td></tr>
+    <tr><td><code>csr_op</code></td><td>2</td><td>WB→CSR Unit</td><td>操作码 (00=NOP, 01=RW, 10=RS, 11=RC)</td></tr>
+    <tr><td><code>mstatus_out</code></td><td>32</td><td>CSR Unit→WB</td><td>mstatus 寄存器读出 (含 MIE/MPIE/MPP)，<code>mstatus[3]</code> → CLIC <code>mie_gate</code>，<code>mstatus</code> → Exception <code>mstatus_in</code></td></tr>
+    <tr><td><code>mtvec_out</code></td><td>32</td><td>CSR Unit→WB</td><td>mtvec 异常向量基址 (用于 trap_pc 生成)，→ Exception <code>mtvec_in</code></td></tr>
+    <tr><td><code>clic_csr_addr</code></td><td>12</td><td>CSR Unit→CLIC</td><td>CLIC CSR 代理地址（CSR Unit 内部解码 CLIC 地址空间后转发）</td></tr>
+    <tr><td><code>clic_csr_wdata</code></td><td>32</td><td>CSR Unit→CLIC</td><td>CLIC CSR 代理写数据</td></tr>
+    <tr><td><code>clic_csr_rdata</code></td><td>32</td><td>CLIC→CSR Unit</td><td>CLIC CSR 代理读数据</td></tr>
+    <tr><td><code>clic_csr_we</code></td><td>1</td><td>CSR Unit→CLIC</td><td>CLIC CSR 代理写使能</td></tr>
+</table>
+
+<h3>Trap 接口（Exception → CSR Unit）</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>trap_enter</code></td><td>1</td><td>Exc→CSR</td><td>触发 trap 进入（更新 mepc/mcause/mstatus）</td></tr>
+    <tr><td><code>trap_is_irq</code></td><td>1</td><td>Exc→CSR</td><td>1=中断 trap, 0=异常 trap</td></tr>
+    <tr><td><code>trap_pc_in</code></td><td>32</td><td>Exc→CSR</td><td>Trap 目标 PC</td></tr>
+    <tr><td><code>trap_cause_in</code></td><td>32</td><td>Exc→CSR</td><td>mcause 写入值</td></tr>
+    <tr><td><code>trap_tval_in</code></td><td>32</td><td>Exc→CSR</td><td>mtval 写入值</td></tr>
+    <tr><td><code>trap_priv_in</code></td><td>2</td><td>Exc→CSR</td><td>Trap 目标特权级（SoC 中接 <code>2'b11</code> = M-mode）</td></tr>
+    <tr><td><code>mret_exec / sret_exec</code></td><td>1+1</td><td>Exc→CSR</td><td>MRET/SRET 执行信号</td></tr>
+    <tr><td><code>nmi_enter / mnret_exec</code></td><td>1+1</td><td>Exc→CSR</td><td>NMI 进入/MNRET 执行信号</td></tr>
+    <tr><td><code>nmi_pc_in</code></td><td>32</td><td>Exc→CSR</td><td>NMI 恢复 PC (mnepc)</td></tr>
+</table>
+
+<!-- ═══ §6 调试接口 ═══ -->
+<h1 id="ch6">6. 调试接口</h1>
+<p>本节定义 Debug Module 与 JTAG、Core、Trace 之间的接口。当前 RTL 实现使用 <strong>scalar 端口</strong>（非 SystemVerilog interface），所有信号以独立端口线连接。</p>
+
+<h2 id="ic-6-1">IC-6.1: Debug Module ↔ JTAG</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-6.1</span></td></tr>
+    <tr><td>生产方</td><td>外部 JTAG 调试器（经 DFT Controller TAP 多路选择）</td></tr>
+    <tr><td>消费方</td><td><code>lumi_debug_module</code> (DMI 接口 + halt/resume FSM)</td></tr>
+    <tr><td>协议类型</td><td>JTAG 标准 (IEEE 1149.1) + DMI 层协议 (RISC-V Debug V1.0.0)</td></tr>
+    <tr><td>时钟域</td><td>CLK_DEBUG (tck, ≤50 MHz) → CLK_CORE (CDC 同步)</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>tck</code></td><td>input</td><td>1</td><td>JTAG→DM</td><td>JTAG 时钟</td></tr>
+    <tr><td><code>tms</code></td><td>input</td><td>1</td><td>JTAG→DM</td><td>Test Mode Select (TAP 状态机)</td></tr>
+    <tr><td><code>tdi</code></td><td>input</td><td>1</td><td>JTAG→DM</td><td>Test Data In</td></tr>
+    <tr><td><code>tdo</code></td><td>output</td><td>1</td><td>DM→JTAG</td><td>Test Data Out（简化 bypass 模式，实际由 dft_ctrl 多路选择）</td></tr>
+    <tr><td><code>trst_n</code></td><td>input</td><td>1</td><td>JTAG→DM</td><td>Test Reset (低有效)</td></tr>
+    <tr><td><code>dmi_addr</code></td><td>input</td><td>7</td><td>TAP→DM</td><td>DMI 寄存器地址 — <span class="status-todo">SoC 中接 7'h0</span></td></tr>
+    <tr><td><code>dmi_wdata</code></td><td>input</td><td>32</td><td>TAP→DM</td><td>DMI 写数据 — <span class="status-todo">SoC 中接 32'h0</span></td></tr>
+    <tr><td><code>dmi_rdata</code></td><td>output</td><td>32</td><td>DM→TAP</td><td>DMI 读数据</td></tr>
+    <tr><td><code>dmi_op</code></td><td>input</td><td>2</td><td>TAP→DM</td><td>DMI 操作码 (00=nop, 01=read, 10=write) — <span class="status-todo">SoC 中接 2'b00</span></td></tr>
+    <tr><td><code>dmi_req_valid</code></td><td>input</td><td>1</td><td>TAP→DM</td><td>DMI 请求有效 — <span class="status-todo">SoC 中接 1'b0</span>（DMI 请求未驱动）</td></tr>
+    <tr><td><code>dmi_req_ready</code></td><td>output</td><td>1</td><td>DM→TAP</td><td>DMI 就绪 — <span class="status-todo">SoC 中悬空</span></td></tr>
+</table>
+
+<h3>Abstract Command 接口</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>abs_cmd_valid</code></td><td>1</td><td>DM→Core</td><td>Abstract Command 有效（SoC 中悬空，V2 连接）</td></tr>
+    <tr><td><code>abs_cmd_data</code></td><td>32</td><td>DM→Core</td><td>Abstract Command 数据（SoC 中悬空）</td></tr>
+    <tr><td><code>abs_resp</code></td><td>2</td><td>Core→DM</td><td>Abstract Command 响应 (00=ok, 01=busy, 02=not supported, 03=exception)（SoC 中接 2'b00）</td></tr>
+</table>
+
+<h3>数据不变式</h3>
+<ul>
+    <li><strong>DMI 操作码:</strong> <code>dmi_op=00</code> NOP, <code>01</code> Read, <code>10</code> Write; 其他编码保留</li>
+    <li><strong>CDC:</strong> JTAG 时钟域 (tck) 与核心时钟域 (clk_core) 异步，Debug Module 内部使用 2-FF 同步器处理 <code>dmi_req_valid</code>，payload (addr/wdata/op) 在 <code>dmi_req_valid</code> 上升沿采样</li>
+    <li><strong>DMI 握手状态机:</strong> DMUI_IDLE → DMUI_PROC (处理请求) → DMUI_DONE (拉高 dmi_req_ready) → DMUI_IDLE</li>
+    <li><strong>当前状态:</strong> DMI 请求信号 (<code>dmi_req_valid</code>) 在 SoC 中接 1'b0，Debug Module 无法接收外部 DMI 请求。DMUI FSM 停留在 IDLE 状态</li>
+</ul>
+
+<h2 id="ic-6-2">IC-6.2: Debug Module ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-6.2</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_debug_module</code> (halt/resume FSM + Trigger Module)</td></tr>
+    <tr><td>消费方</td><td><a href="lld-fetch-bpred.html">lumi_fetch</a> (halt 停止取指) / Core commit (PC 捕获)</td></tr>
+    <tr><td>协议类型</td><td>req-ack (halt 请求 + W 级 commit 响应)</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>debug_halt_req</code></td><td>1</td><td>DM→Core</td><td>调试暂停请求 (ST_HALTED/ST_TRIGGER 状态拉高) → SoC <code>dbg_halt</code> → <code>lumi_core_top.debug_halt</code> → <code>lumi_fetch.debug_halt</code> (F1 级停止取指)</td></tr>
+    <tr><td><code>debug_resume_req</code></td><td>1</td><td>DM→Core</td><td>调试恢复请求 (ST_RESUME_REQ 状态拉高) → SoC <code>dbg_resume</code> — <span class="status-todo">SoC 中未连回 Core</span>（resume 信号悬空）</td></tr>
+    <tr><td><code>commit_pc</code></td><td>32</td><td>Core→DM</td><td>当前提交指令 PC (W 级精确 halt 捕获) — SoC 中接 <code>commit_pc[0]</code>（仅 slot0）</td></tr>
+    <tr><td><code>commit_valid</code></td><td>1</td><td>Core→DM</td><td>提交有效信号 — SoC 中接 <code>commit_valid[0]</code>（仅 slot0）</td></tr>
+    <tr><td><code>trigger_match_addr</code></td><td>32</td><td>DM→Core</td><td>Trigger 命中地址（SoC 中悬空，未连回 Core）</td></tr>
+    <tr><td><code>trigger_match_en</code></td><td>1</td><td>DM→Core</td><td>Trigger 命中使能（SoC 中悬空，未连回 Core）</td></tr>
+</table>
+
+<h3>Debug FSM 状态说明</h3>
+<p>Debug Module 主 FSM 状态: ST_RUN → ST_HALT_REQ (等待 commit) → ST_HALTED (halt 完成) → ST_RESUME_REQ (恢复) / ST_SINGLE_STEP (单步) / ST_TRIGGER (触发器命中) → ST_RUN。</p>
+<div class="warn"><strong>当前连接状态:</strong> <code>debug_halt_req</code> 已连接到 Core 的 <code>debug_halt</code> 端口（经 SoC <code>dbg_halt</code> 信号）。但 <code>debug_resume_req</code> 输出到 <code>dbg_resume</code> 信号后<strong>未连回 Core</strong>，Core 无法收到恢复请求。<code>trigger_match_addr/en</code> 输出也悬空，Trigger 命中结果未反馈到 Core。</div>
+
+<h2 id="ic-6-3">IC-6.3: Trace ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-6.3</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_writeback</code> (W 级提交信息) — <strong>仅 slot0</strong></td></tr>
+    <tr><td>消费方</td><td><code>lumi_trace</code> (Nexus Trace 编码器)</td></tr>
+    <tr><td>协议类型</td><td>直连 (提交事件流)</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>commit_pc</code></td><td>32</td><td>Core→Trace</td><td>提交指令 PC — SoC 中接 <code>commit_pc[0]</code>（仅 slot0）</td></tr>
+    <tr><td><code>commit_valid</code></td><td>1</td><td>Core→Trace</td><td>提交有效 — SoC 中接 <code>commit_valid[0]</code>（仅 slot0）</td></tr>
+    <tr><td><code>commit_type</code></td><td>2</td><td>Core→Trace</td><td>提交类型 (分支/异常等) — <span class="status-todo">SoC 中接 2'b00</span>（TODO: 从 core 传递分支/异常类型）</td></tr>
+    <tr><td><code>trace_enable</code></td><td>1</td><td>Trace→Core</td><td>Trace 使能（SoC 中接 <code>trc_enable</code> 信号）</td></tr>
+    <tr><td><code>trace_data_out</code></td><td>64</td><td>Trace→AXI</td><td>Trace 数据输出</td></tr>
+    <tr><td><code>trace_valid</code></td><td>1</td><td>Trace→AXI</td><td>Trace 数据有效</td></tr>
+    <tr><td><code>trace_axi_addr</code></td><td>32</td><td>Trace→AXI</td><td>Trace AXI 写地址</td></tr>
+    <tr><td><code>trace_axi_wdata</code></td><td>128</td><td>Trace→AXI</td><td>Trace AXI 写数据</td></tr>
+    <tr><td><code>trace_axi_valid</code></td><td>1</td><td>Trace→AXI</td><td>Trace AXI 写有效</td></tr>
+    <tr><td><code>trace_axi_ready</code></td><td>1</td><td>AXI→Trace</td><td>Trace AXI 写就绪</td></tr>
+    <tr><td><code>trace_config_en</code></td><td>1</td><td>CSR→Trace</td><td>Trace 配置使能 — <span class="status-todo">SoC 中接 1'b0</span>（TODO: 连接 CSR trace_config_en）</td></tr>
+</table>
+
+<div class="warn"><strong>仅支持 slot0:</strong> Trace 编码器仅监听 <code>commit_pc[0]</code> 和 <code>commit_valid[0]</code>（slot0），不支持多发射 slot1/slot2 的指令跟踪。三发射中 slot1 和 slot2 的提交信息不会被 Trace 捕获。</div>
+<p>Trace 编码器生成 Nexus 标准跟踪帧，经 AXI Wrapper 写入外部 Trace 存储，用于外部调试器实时跟踪指令流。</p>
+
+<!-- ═══ §7 扩展功能接口 ═══ -->
+<h1 id="ch7">7. 扩展功能接口</h1>
+<p>本节定义 FPU、Vector、电源管理、多核、锁步和 DFT 等扩展模块与核心流水线的接口。</p>
+
+<h2 id="ic-7-1">IC-7.1: FPU ↔ Pipeline</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.1</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_fpu</code> (F/D 双精度浮点单元, issue/ready + fflags)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_execute</code> (E1/E2 级) / <code>lumi_regfile</code> (FRF 寄存器堆)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready (多周期浮点运算)</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">预留/未连接</span> — FPU 所有输入端口接零，输出悬空。Bypass FPU 端口固定为 0，FRF 写端口固定为 0。MISA F/D = 0</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>fpu_issue_valid</code></td><td>input</td><td>1</td><td>Pipeline→FPU</td><td>FPU 发射有效 — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>fpu_inst_type</code></td><td>input</td><td>6</td><td>Pipeline→FPU</td><td>FPU 指令类型 (FADD/FMUL/FMA/FDIV/FSQRT/FCVT/FMV/FCMP) — <span class="status-todo">SoC 中接 6'h0</span></td></tr>
+    <tr><td><code>fpu_fmt</code></td><td>input</td><td>2</td><td>Pipeline→FPU</td><td>浮点格式 — <span class="status-todo">SoC 中接 2'b00</span></td></tr>
+    <tr><td><code>fpu_rm</code></td><td>input</td><td>3</td><td>Pipeline→FPU</td><td>舍入模式 — <span class="status-todo">SoC 中接 3'b000</span></td></tr>
+    <tr><td><code>fpu_rs1 / fpu_rs2 / fpu_rs3</code></td><td>input</td><td>64×3</td><td>Pipeline→FPU</td><td>浮点源操作数 — <span class="status-todo">SoC 中全部接 64'h0</span></td></tr>
+    <tr><td><code>fpu_result_data</code></td><td>output</td><td>64</td><td>FPU→Bypass</td><td>浮点结果数据（SoC 中连到 <code>fpu_result</code> 信号，悬空）</td></tr>
+    <tr><td><code>fpu_rd</code></td><td>output</td><td>5</td><td>FPU→RegFile</td><td>目标浮点寄存器地址（悬空）</td></tr>
+    <tr><td><code>fpu_issue_ready</code></td><td>output</td><td>1</td><td>FPU→Pipeline</td><td>FPU 就绪信号（悬空）</td></tr>
+    <tr><td><code>fpu_result_valid</code></td><td>output</td><td>1</td><td>FPU→Bypass</td><td>结果有效（悬空）</td></tr>
+    <tr><td><code>fpu_fflags</code></td><td>output</td><td>5</td><td>FPU→CSR</td><td>浮点异常标志 (NV/DZ/OF/UF/NX)（悬空）</td></tr>
+    <tr><td><code>fpu_busy</code></td><td>output</td><td>1</td><td>FPU→Pipeline</td><td>FPU 忙信号（悬空）</td></tr>
+</table>
+<div class="warn"><strong>未连接状态:</strong> FPU 模块已实例化但所有输入接零、输出悬空。FRF 寄存器堆端口也全部接零（<code>frf_rs1/rs2_addr=5'h0, frf_wr_en=1'b0, frf_wr_data=64'h0</code>）。Bypass 网络中 FPU 旁路源固定为 <code>64'h0/5'h0/1'b0</code>。FPU 指令在 decode 阶段触发非法指令异常。</div>
+
+<h2 id="ic-7-2">IC-7.2: Vector ↔ Pipeline</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.2</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_vector</code> (RVV 1.0 向量单元, VLEN 参数化)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_execute</code> / <code>lumi_regfile</code> (VRF 寄存器堆, VLEN=128)</td></tr>
+    <tr><td>协议类型</td><td>valid-ready (多周期向量运算)</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">预留/未连接</span> — Vector 所有输入端口接零，输出悬空。VRF 写端口固定为 0。MISA V = 0</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>类型</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>vec_issue_valid</code></td><td>input</td><td>1</td><td>Pipeline→Vector</td><td>向量发射有效 — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+    <tr><td><code>vec_opcode</code></td><td>input</td><td>7</td><td>Pipeline→Vector</td><td>向量操作码 (VARITH/VMUL/VREDUCE/VLOAD/VSTORE/VMASK/VPERM/VCMP) — <span class="status-todo">SoC 中接 7'h0</span></td></tr>
+    <tr><td><code>vec_rs1 / vec_rs2</code></td><td>input</td><td>VLEN×2</td><td>Pipeline→Vector</td><td>向量源操作数 — <span class="status-todo">SoC 中全部接 0</span></td></tr>
+    <tr><td><code>vstart / vl</code></td><td>input</td><td>5+5</td><td>CSR→Vector</td><td>向量起始索引/长度 — <span class="status-todo">SoC 中接 5'h0</span></td></tr>
+    <tr><td><code>vtype</code></td><td>input</td><td>32</td><td>CSR→Vector</td><td>vtype 寄存器 (vlmul/vsew/vma/vta) — <span class="status-todo">SoC 中接 32'h0</span></td></tr>
+    <tr><td><code>vec_result</code></td><td>output</td><td>VLEN</td><td>Vector→RegFile</td><td>向量结果数据（悬空）</td></tr>
+    <tr><td><code>vec_rd</code></td><td>output</td><td>5</td><td>Vector→RegFile</td><td>目标向量寄存器地址（悬空）</td></tr>
+    <tr><td><code>vec_ready / vec_valid / vec_busy</code></td><td>output</td><td>1×3</td><td>Vector→Pipeline</td><td>就绪/有效/忙信号（悬空）</td></tr>
+    <tr><td><code>vec_mem_addr</code></td><td>output</td><td>32</td><td>Vector→Mem</td><td>向量 Load/Store 地址（悬空）</td></tr>
+    <tr><td><code>vec_mem_wdata</code></td><td>output</td><td>VLEN</td><td>Vector→Mem</td><td>向量 Store 数据（悬空）</td></tr>
+    <tr><td><code>vec_mem_rdata</code></td><td>input</td><td>VLEN</td><td>Mem→Vector</td><td>向量 Load 数据 — <span class="status-todo">SoC 中接 0</span></td></tr>
+    <tr><td><code>vec_mem_we / vec_mem_valid</code></td><td>output</td><td>1+1</td><td>Vector→Mem</td><td>向量 Store 写使能/有效（悬空）</td></tr>
+    <tr><td><code>vec_mem_ready</code></td><td>input</td><td>1</td><td>Mem→Vector</td><td>向量内存就绪 — <span class="status-todo">SoC 中接 1'b0</span></td></tr>
+</table>
+<div class="warn"><strong>未连接状态:</strong> Vector 模块已实例化但所有输入接零、输出悬空。VRF 寄存器堆端口也全部接零（<code>vrf_rs1/rs2_addr=5'h0, vrf_wr_en=1'b0, vrf_wr_data=0</code>）。向量指令在 decode 阶段触发非法指令异常。</div>
+
+<h2 id="ic-7-3">IC-7.3: Power Mgmt ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.3</span></td></tr>
+    <tr><td>生产方</td><td><code>lumi_core_top</code> (WFI 检测逻辑) / <code>lumi_power_mgmt</code></td></tr>
+    <tr><td>消费方</td><td>SoC 电源管理模块 (<code>lumi_power_mgmt</code>, ICG 时钟门控 / 电源域控制)</td></tr>
+    <tr><td>协议类型</td><td>直连（电平信号）</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">部分实现</span> — wfi_req 已连接，core_sleep/hart_sleep/icg_en 输出悬空</td></tr>
+</table>
+
+<h3>Scalar 信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>wfi_req</code></td><td>1</td><td>Core→Power</td><td>WFI 指令检测请求 (E1 级识别 WFI 编码: opcode=0x73, funct3=0, imm=0x105) — <strong>已连接</strong></td></tr>
+    <tr><td><code>wrs_req</code></td><td>1</td><td>Core→Power</td><td>WRS 指令检测请求 — <span class="status-todo">SoC 中接 1'b0</span>（TODO: 连接 core_top WRS 信号，待实现）</td></tr>
+    <tr><td><code>core_active</code></td><td>1</td><td>Core→Power</td><td>Core 活跃信号 (<code>|commit_valid</code>) — 已连接</td></tr>
+    <tr><td><code>irq_pending</code></td><td>1</td><td>CLIC→Power</td><td>中断 pending 唤醒源 (<code>clic_irq_valid</code>) — 已连接</td></tr>
+    <tr><td><code>icg_en</code></td><td>1</td><td>Power→SoC</td><td>ICG 时钟门控使能 — <span class="status-todo">输出悬空</span></td></tr>
+    <tr><td><code>core_sleep</code></td><td>1</td><td>Power→SoC</td><td>Core 睡眠状态 — <span class="status-todo">输出悬空</span></td></tr>
+    <tr><td><code>hart_sleep</code></td><td>NUM_HARTS</td><td>Power→SoC</td><td>per-hart 睡眠状态 — <span class="status-todo">输出悬空</span></td></tr>
+</table>
+<p>当 WFI 指令到达 E1 级时，<code>wfi_req=1</code> 通知 <code>lumi_power_mgmt</code> 可门控时钟。中断到来时 (<code>irq_pending=1</code>) 自动唤醒。</p>
+
+<h2 id="ic-7-4">IC-7.4: Multicore ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.4</span></td></tr>
+    <tr><td>生产方</td><td>SoC 多核互联模块 (<code>lumi_multicore_top</code>, 1~4 核)</td></tr>
+    <tr><td>消费方</td><td><code>lumi_core_top</code> (多核 generate 实例化)</td></tr>
+    <tr><td>协议类型</td><td>AXI4 (Cache Coherence) + 中断互连</td></tr>
+    <tr><td>当前状态</td><td><span class="status-todo">预留</span> — 单核模式 (<code>NUM_HARTS=1</code>) 时使用 <code>lumi_core_top</code> 直接实例化</td></tr>
+</table>
+<div class="warn"><strong>HART_ID 是 parameter 而非端口:</strong> <code>HART_ID</code> 在 <code>lumi_core_top</code> 中定义为 <code>parameter int HART_ID = 0</code>，不是端口信号。SoC 顶层通过 <code>generate</code> 块为每个核实例化时传入不同的 <code>HART_ID</code> 参数值。</div>
+<p>多核互联通过 AXI4 总线实现 Cache Coherence（当前预留接口）。软件中断 (msip) 通过 CLINT MMIO 跨核触发。多核模式下 <code>lumi_multicore_top</code> 接收 meip/msip/mtip 信号并分发到各核。</p>
+
+<h2 id="ic-7-5">IC-7.5: Lockstep ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.5</span></td></tr>
+    <tr><td>生产方</td><td>lumi_core_top (W 级提交信号)</td></tr>
+    <tr><td>消费方</td><td>锁步比较器 (D-011 双级比较)</td></tr>
+    <tr><td>协议类型</td><td>直连 (同步比较)</td></tr>
+</table>
+
+<h3>信号表</h3>
+<table>
+    <tr><th>信号名</th><th>位宽</th><th>方向</th><th>描述</th></tr>
+    <tr><td><code>commit_valid[ISSUE_WIDTH-1:0]</code></td><td>N</td><td>Core→比较器</td><td>指令提交有效 (三发射)</td></tr>
+    <tr><td><code>commit_pc[0:N-1]</code></td><td>32×N</td><td>Core→比较器</td><td>提交指令 PC</td></tr>
+    <tr><td><code>commit_result[0:N-1]</code></td><td>32×N</td><td>Core→比较器</td><td>提交指令结果</td></tr>
+</table>
+<p>双核锁步模式下，两核的 commit 信号每周期比较，不匹配时触发安全异常。D-011 要求双级比较器（周期级 + 指令级）。</p>
+
+<h2 id="ic-7-6">IC-7.6: DFT ↔ Core</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>接口编号</td><td><span class="ic-id">IC-7.6</span></td></tr>
+    <tr><td>生产方</td><td>SoC DFT 控制器</td></tr>
+    <tr><td>消费方</td><td>全模块 (Scan Chain + MBIST + JTAG)</td></tr>
+    <tr><td>协议类型</td><td>JTAG (IEEE 1149.1) + Scan Chain + MBIST</td></tr>
+</table>
+<p>DFT 接口包括: Scan Chain (扫描链测试，复用功能引脚)、MBIST (Memory BIST，覆盖 SRAM 阵列)、JTAG 边界扫描。ECC 错误通过 <code>ecc_ce_irq / ecc_ded_irq</code> 上报。</p>
+
+<!-- ═══ §8 全局信号传播矩阵 ═══ -->
+<h1 id="ch8">8. 全局信号传播矩阵</h1>
+<p>本节定义 stall / flush / reset 三大全局信号的来源、传播路径和影响模块。信号传播路径基于 <code>lumi_core_top.sv</code> 实际 RTL 实现。</p>
+
+<h2>8.1 Stall 信号传播</h2>
+<table>
+    <tr><th>来源</th><th>信号名</th><th>触发条件</th><th>影响模块</th><th>传播方向</th></tr>
+    <tr><td>Decode/Issue</td><td><code>dec_stall</code></td><td>DIB FIFO 满 (<code>!dib_not_full</code>) 或目标 FU 忙 (<code>fu_busy[fu_type]=1</code>)</td><td>F1 (暂停 PC 生成), F2 (保持缓存), D/I (停止出队)</td><td>反向传播: D/I → F2 → F1</td></tr>
+    <tr><td>E2 Divider</td><td><code>e2_div_busy</code></td><td>DIV 多周期执行中</td><td>D/I (阻止新 DIV 发射，加入 dec_stall 条件)</td><td>E2 → D/I</td></tr>
+    <tr><td>Memory Stage</td><td><code>mem_busy</code></td><td>Load/Store 等待 DCache/TCM 响应 (<code>!dc_ready</code>)</td><td>E1→M 寄存器 (保持不更新), I→E1 寄存器 (冻结，Bug#5 修复), D/I (fu_busy[3]=1 stall 1 cycle)</td><td>M → E1→M reg → I→E1 reg → D/I</td></tr>
+    <tr><td>Debug Module</td><td><code>debug_halt</code></td><td>外部调试器请求暂停 (DM <code>debug_halt_req</code>)</td><td>F1 (停止取指，进入 halt 状态)</td><td>DM → F1</td></tr>
+    <tr><td>E1 Branch</td><td><code>e1_has_branch</code></td><td>E1 级有分支指令 (<code>e1_valid_r[i] && fu_type==FU_BRANCH</code>)</td><td>I→E1 寄存器 (暂停捕获，插入气泡，防止推测指令进入 E1)</td><td>E1 → I→E1 reg</td></tr>
+    <tr><td>Mispredict Bubble</td><td><code>post_mispredict_bubble</code></td><td>误预测分支写 rd≠0 (如 JAL ra)，需要额外 1 周期让 W-level bypass 有正确值 (ERR-022)</td><td>I→E1 寄存器 (插入气泡)</td><td>E1 → I→E1 reg (延迟 1 cycle)</td></tr>
+    <tr><td>E1→M Load-Use</td><td><code>e1m_load_pending</code></td><td>E1→M 有 load 指令，其结果在 M 级才产生 (Bug#5)</td><td>D/I (依赖指令不能在此 cycle 发射)</td><td>M → D/I</td></tr>
+</table>
+
+<h2>8.2 Flush 信号传播</h2>
+<table>
+    <tr><th>来源</th><th>信号名</th><th>触发条件</th><th>影响模块</th><th>传播方向</th></tr>
+    <tr><td>Execute E1</td><td><code>e1_mispredict</code></td><td>分支误预测 (实际方向 ≠ 预测方向)</td><td>F1 (重定向到 <code>e1_br_target</code>), F2 (丢弃缓存), D/I (清空 DIB), I→E1 reg (清零)</td><td>E1 → 全流水线前级</td></tr>
+    <tr><td>Writeback W</td><td><code>trap_request</code></td><td>异常/中断检测到 (W 级提交时)</td><td>F1 (重定向到 <code>trap_pc</code>), F2 (丢弃), D/I (清空), I→E1 reg (清零), E1→M reg (清零)</td><td>W → 全流水线</td></tr>
+    <tr><td>组合逻辑</td><td><code>flush</code></td><td><code>e1_mispredict || trap_request</code></td><td><code>lumi_decode_issue</code> flush 输入</td><td>全局 OR 门</td></tr>
+</table>
+
+<h3>Mispredict 特殊处理说明</h3>
+<div class="warn"><strong>E1→M 寄存器在 mispredict 时的特殊行为:</strong>
+<ul>
+    <li><strong>误预测分支保留:</strong> 当 <code>e1_mispredict=1</code> 时，E1→M 寄存器<strong>不会完全清零</strong>。误预测分支指令本身（如 JAL ra）会被保留到 M 级（<code>m_valid_r[i]=1</code> 仅对 <code>fu_type==FU_BRANCH</code> 的指令），以确保其寄存器写入（如 ra）在 W 级完成</li>
+    <li><strong>推测指令杀死:</strong> 同批次的其他非分支指令被清零（<code>m_valid_r[i]=0</code>），这些是基于错误预测路径获取的指令</li>
+    <li><strong>无条件保留:</strong> ERR-022 修复后移除了 <code>!m_valid_r[0]</code> 检查，无条件保留误预测分支，防止 JAL 的 ra 写入丢失</li>
+    <li><strong>post_mispredict_bubble:</strong> 若误预测分支写 rd≠0，额外插入 1 周期气泡（<code>post_mispredict_bubble_r</code>），让 W-level bypass 提供正确的 ra 值给紧随的依赖指令（如 RET 读 ra）</li>
+</ul>
+</div>
+<div class="warn"><strong>Trap flush 行为:</strong> <code>trap_request=1</code> 时 E1→M 寄存器<strong>完全清零</strong>（包括所有指令），异常指令不会继续流向 W 级。这与 mispredict 的保留策略不同。</div>
+
+<h2>8.3 Reset 信号分布</h2>
+<table>
+    <tr><th>模块</th><th>复位类型</th><th>复位信号</th><th>关键复位值</th></tr>
+    <tr><td>lumi_fetch</td><td>异步复位，同步释放</td><td><code>reset_n</code> (全局)</td><td>PC=mtvec, BTB 全清, RAS 清空</td></tr>
+    <tr><td>lumi_decode_issue</td><td>异步复位，同步释放</td><td><code>reset_n</code> (全局)</td><td>DIB FIFO 清空, 解码器状态复位</td></tr>
+    <tr><td>lumi_execute</td><td>异步复位，同步释放</td><td><code>reset_n</code> (全局)</td><td>MUL/DIV 状态机复位</td></tr>
+    <tr><td>I→E1 寄存器</td><td>异步复位</td><td><code>reset_n</code> (全局)</td><td>e1_valid_r='0, 所有数据清零</td></tr>
+    <tr><td>E1→M 寄存器</td><td>异步复位</td><td><code>reset_n</code> (全局)</td><td>m_valid_r='0, 所有数据清零</td></tr>
+    <tr><td>lumi_memory_stage</td><td>异步复位</td><td><code>reset_n</code> (全局)</td><td>FSM=ST_IDLE, Store Buffer 清空, sb_head/tail=0</td></tr>
+    <tr><td>lumi_writeback</td><td>异步复位，同步释放</td><td><code>reset_n</code> (全局)</td><td>trap_request=0, CSR 状态复位</td></tr>
+    <tr><td>lumi_regfile</td><td>异步复位</td><td><code>reset_n</code> (全局)</td><td>x0~x31=0, FRF/VRF=0</td></tr>
+    <tr><td>lumi_clic</td><td>异步复位</td><td><code>reset_n</code> (全局)</td><td>FSM=ST_IDLE, mintstatus=0, mintthresh=0</td></tr>
+</table>
+
+<blockquote><strong>复位策略:</strong> 全模块采用异步复位、同步释放策略。<code>reset_n</code> 低有效，全局分配。复位释放后第一个 clk_core 上升沿开始正常取指（PC=mtvec）。</blockquote>
+
+<!-- ═══ 附录 ═══ -->
+<h1 id="appendix">附录</h1>
+
+<h2>A. 接口信号交叉引用矩阵</h2>
+<table>
+    <tr><th>信号名</th><th>生产模块</th><th>消费模块</th><th>接口编号</th></tr>
+    <tr><td colspan="4"><em>待 Phase 7 自动生成交叉引用</em></td></tr>
+</table>
+
+<h2>B. 接口实现方式说明</h2>
+<div class="warn"><strong>当前 RTL 使用 scalar 端口，而非 SystemVerilog interface。</strong></div>
+<p>当前 Lumi-Core RTL 实现中，所有模块间接口均使用 <strong>scalar 端口</strong>（独立信号线）连接，而非 SystemVerilog interface 实例化。具体说明如下：</p>
+<table>
+    <tr><th>Interface 定义 (lumi_interfaces.sv)</th><th>当前状态</th><th>说明</th></tr>
+    <tr>
+        <td><code>pipeline_if</code></td>
+        <td><span class="status-todo">未实例化</span></td>
+        <td>流水线级间信号在 <code>lumi_core_top.sv</code> 中以 scalar 端口和内部 wire 连接（如 <code>e1_valid_r</code>, <code>m_result_r</code> 等）</td>
+    </tr>
+    <tr>
+        <td><code>axi4_if</code></td>
+        <td><span class="status-todo">未实例化</span></td>
+        <td>AXI4 信号在 <code>lumi_axi_wrapper.sv</code> 和 <code>lumi_soc_top.sv</code> 中以 scalar 端口连接（<code>m_axi_awid</code>, <code>m_axi_awaddr</code> 等）</td>
+    </tr>
+    <tr>
+        <td><code>mem_req_if</code></td>
+        <td><span class="status-todo">未实例化</span></td>
+        <td>Cache/TCM 接口在 <code>lumi_core_top.sv</code> 中以 scalar 端口连接（<code>dc_addr</code>, <code>dc_wdata</code>, <code>dc_rdata</code>, <code>dc_we</code>, <code>dc_be</code>, <code>dc_valid</code>, <code>dc_ready</code>, <code>dc_hit</code> 等）</td>
+    </tr>
+    <tr>
+        <td><code>interrupt_if</code></td>
+        <td><span class="status-todo">未实例化</span></td>
+        <td>中断信号在 <code>lumi_clic.sv</code>, <code>lumi_plic.sv</code>, <code>lumi_exception.sv</code> 中以 scalar 端口连接（<code>irq_request</code>, <code>irq_id</code>, <code>irq_level</code>, <code>irq_ack</code> 等）</td>
+    </tr>
+    <tr>
+        <td><code>jtag_if</code></td>
+        <td><span class="status-todo">未实例化</span></td>
+        <td>JTAG/DMI 信号在 <code>lumi_debug_module.sv</code> 中以 scalar 端口连接（<code>tck</code>, <code>tms</code>, <code>tdi</code>, <code>tdo</code>, <code>dmi_req_valid</code>, <code>dmi_req_ready</code> 等）</td>
+    </tr>
+</table>
+<p><code>lumi_interfaces.sv</code> 文件保留作为未来重构的参考定义。当后续迁移到 SystemVerilog interface 架构时，可直接复用这些定义并替换 scalar 端口连接。</p>
+
+<h2>C. 未连接/预留接口清单</h2>
+<p>以下列出当前 RTL 中所有未连接、接零或预留的接口：</p>
+<table>
+    <tr><th>#</th><th>信号/接口</th><th>模块</th><th>状态</th><th>备注</th></tr>
+    <tr><td>1</td><td><code>meip_in</code> (CLIC)</td><td><code>lumi_clic</code></td><td><span class="status-todo">接 1'b0</span></td><td>PLIC → CLIC 的外部中断 pending 信号未连接。PLIC 输出 <code>plic_meip</code> 悬空</td></tr>
+    <tr><td>2</td><td><code>seip_in / msip_in / mtip_in</code> (CLIC)</td><td><code>lumi_clic</code></td><td><span class="status-todo">全部接 0</span></td><td>S 模式外部中断、软件中断、定时器中断输入均未连接</td></tr>
+    <tr><td>3</td><td><code>irq_local</code> (CLIC)</td><td><code>lumi_clic</code></td><td><span class="status-todo">接 16'h0</span></td><td>本地中断输入线全部未连接</td></tr>
+    <tr><td>4</td><td><code>irq_ack</code> (CLIC)</td><td><code>lumi_clic</code></td><td><span class="status-todo">接 1'b0</span></td><td>中断应答未实现。<code>lumi_exception</code> 输出 <code>exc_irq_ack</code> 未连回 CLIC</td></tr>
+    <tr><td>5</td><td>PLIC <code>meip</code> 输出</td><td><code>lumi_plic</code></td><td><span class="status-todo">悬空</span></td><td>PLIC 外部中断 pending 输出未连接到任何模块</td></tr>
+    <tr><td>6</td><td>PLIC MMIO 接口 (<code>plic_addr/wdata/we</code>)</td><td><code>lumi_plic</code></td><td><span class="status-todo">全部接 0</span></td><td>PLIC MMIO 寄存器访问接口未连接，claim/complete 握手不可用</td></tr>
+    <tr><td>7</td><td>PLIC <code>irq_claim</code></td><td><code>lumi_plic</code></td><td><span class="status-todo">接 1'b0</span></td><td>PLIC claim 应答信号未连接</td></tr>
+    <tr><td>8</td><td>PMA Checker 输出 (<code>pma_result/pma_attrs/route_tcm/route_cache/route_mmio/pmp_check_req</code>)</td><td><code>lumi_pma_checker</code></td><td><span class="status-todo">全部悬空</span></td><td>PMA 检查器所有输出端口未连接。PMA 检查功能未生效</td></tr>
+    <tr><td>9</td><td>FPU 所有输入端口</td><td><code>lumi_fpu</code></td><td><span class="status-todo">全部接 0</span></td><td><code>fpu_issue_valid=1'b0, fpu_inst_type=6'h0, fpu_rs1/rs2/rs3=64'h0</code> 等</td></tr>
+    <tr><td>10</td><td>FPU 所有输出端口</td><td><code>lumi_fpu</code></td><td><span class="status-todo">悬空</span></td><td><code>fpu_result_data/fpu_rd/fpu_issue_ready/fpu_result_valid/fpu_fflags/fpu_busy</code> 未连接到流水线</td></tr>
+    <tr><td>11</td><td>Vector 所有输入端口</td><td><code>lumi_vector</code></td><td><span class="status-todo">全部接 0</span></td><td><code>vec_issue_valid=1'b0, vec_opcode=7'h0, vec_rs1/rs2=0, vstart/vl=5'h0, vtype=32'h0</code> 等</td></tr>
+    <tr><td>12</td><td>Vector 所有输出端口</td><td><code>lumi_vector</code></td><td><span class="status-todo">悬空</span></td><td><code>vec_result/vec_rd/vec_ready/vec_valid/vec_busy/vec_mem_*</code> 未连接到流水线</td></tr>
+    <tr><td>13</td><td><code>debug_resume_req</code> (DM→Core)</td><td><code>lumi_debug_module</code></td><td><span class="status-todo">未连回 Core</span></td><td><code>dbg_resume</code> 信号悬空，Core 无法收到恢复请求</td></tr>
+    <tr><td>14</td><td><code>trigger_match_addr/en</code> (DM→Core)</td><td><code>lumi_debug_module</code></td><td><span class="status-todo">悬空</span></td><td>Trigger 命中结果未反馈到 Core</td></tr>
+    <tr><td>15</td><td><code>dmi_req_valid</code> (DM)</td><td><code>lumi_debug_module</code></td><td><span class="status-todo">接 1'b0</span></td><td>DMI 请求未驱动，DMUI FSM 停留在 IDLE</td></tr>
+    <tr><td>16</td><td><code>dmi_req_ready</code> (DM)</td><td><code>lumi_debug_module</code></td><td><span class="status-todo">悬空</span></td><td>DMI 就绪输出未连接</td></tr>
+    <tr><td>17</td><td>AXI Wrapper refill 请求</td><td><code>lumi_axi_wrapper</code></td><td><span class="status-todo">接 1'b0</span></td><td><code>ic_refill_req=1'b0, dc_refill_req=1'b0, nc_access_req=1'b0</code>（V1 统一 SRAM 旁路）</td></tr>
+    <tr><td>18</td><td>AXI Wrapper FFP 端口</td><td><code>lumi_axi_wrapper</code></td><td><span class="status-todo">接零/悬空</span></td><td>AXI4-Lite FFP (Full Featured Port) 端口未连接</td></tr>
+    <tr><td>19</td><td>Power Mgmt 输出 (<code>icg_en/core_sleep/hart_sleep</code>)</td><td><code>lumi_power_mgmt</code></td><td><span class="status-todo">悬空</span></td><td>电源管理输出信号未连接到 SoC 时钟控制</td></tr>
+    <tr><td>20</td><td>FRF 寄存器堆端口</td><td><code>lumi_regfile</code></td><td><span class="status-todo">全部接零</span></td><td><code>frf_rs1/rs2_addr=5'h0, frf_wr_en=1'b0, frf_wr_data=64'h0</code></td></tr>
+    <tr><td>21</td><td>VRF 寄存器堆端口</td><td><code>lumi_regfile</code></td><td><span class="status-todo">全部接零</span></td><td><code>vrf_rs1/rs2_addr=5'h0, vrf_wr_en=1'b0, vrf_wr_data=0</code></td></tr>
+    <tr><td>22</td><td>ECC IRQ 路由</td><td><code>lumi_soc_top</code></td><td><span class="status-todo">未实现</span></td><td>RegFile/TCM 的 <code>ecc_ce_irq/ecc_ded_irq</code> 信号已生成但未路由到 PLIC <code>ext_irq_in</code></td></tr>
+    <tr><td>23</td><td><code>commit_type</code> (Trace)</td><td><code>lumi_trace</code></td><td><span class="status-todo">接 2'b00</span></td><td>提交类型信号未从 Core 传递（TODO）</td></tr>
+    <tr><td>24</td><td><code>trace_config_en</code> (Trace)</td><td><code>lumi_trace</code></td><td><span class="status-todo">接 1'b0</span></td><td>Trace 配置使能未连接 CSR（TODO）</td></tr>
+    <tr><td>25</td><td>Exception 模块返回指令输入</td><td><code>lumi_exception</code></td><td><span class="status-todo">全部接零</span></td><td><code>is_mret/is_sret/is_mnret</code> 接 1'b0，MRET/SRET/MNRET 返回指令未传递</td></tr>
+    <tr><td>26</td><td>Exception 委托/模式输入</td><td><code>lumi_exception</code></td><td><span class="status-todo">全部接零</span></td><td><code>medeleg_in/mideleg_in/stvec_in/priv_mode_in</code> 接零或固定值</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="lld-index.html" class="back-link">&larr; LLD 索引</a> &nbsp;|&nbsp;
+    <a href="index.html" class="back-link">HLD 索引</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core Interface Contracts &mdash; v2.1 (§1~§8 + 附录全部重写为 scalar 端口，附录 C 列出 26 项未连接/预留接口)<br>最后更新: 2026-07-17</p>
+</div>
+
+</body>
+</html>

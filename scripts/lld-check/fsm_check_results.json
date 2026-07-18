@@ -1,0 +1,252 @@
+[
+  {
+    "lld": "lld-fetch-bpred.html",
+    "module": "lumi_fetch",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-fetch-bpred.html",
+    "module": "lumi_predecode",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-decode-issue.html",
+    "module": "lumi_decode_issue",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-execute-bypass.html",
+    "module": "lumi_execute",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-execute-bypass.html",
+    "module": "lumi_bypass",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-memory-stage.html",
+    "module": "lumi_memory_stage",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-writeback.html",
+    "module": "lumi_writeback",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-csr-regfile.html",
+    "module": "lumi_csr_unit",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-csr-regfile.html",
+    "module": "lumi_regfile",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-cache.html",
+    "module": "lumi_cache",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-tcm.html",
+    "module": "lumi_tcm",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-pma-axi.html",
+    "module": "lumi_axi_wrapper",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-pma-axi.html",
+    "module": "lumi_pma_checker",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-pma-axi.html",
+    "module": "lumi_cdc_sync",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-clic.html",
+    "module": "lumi_clic",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-plic.html",
+    "module": "lumi_plic",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-exception.html",
+    "module": "lumi_exception",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-debug-trace.html",
+    "module": "lumi_debug_module",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-debug-trace.html",
+    "module": "lumi_trace",
+    "returncode": 0,
+    "warnings": [
+      "[lumi_trace] Enum 'trace_msg_e': RTL states ['MSG_BRANCH', 'MSG_CONTEXT', 'MSG_EXCEPTION', 'MSG_NOP', 'MSG_SYNC'] not in LLD FSM"
+    ],
+    "infos": [
+      "[lumi_trace] LLD FSM state 'ST_CAPTURE' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_ENCODE' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_FLUSH' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_HALTED' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_HALT_REQ' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_IDLE' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_RESUME_REQ' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_RUN' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_SINGLE_STEP' not in RTL enum 'trace_msg_e'",
+      "[lumi_trace] LLD FSM state 'ST_TRIGGER' not in RTL enum 'trace_msg_e'"
+    ]
+  },
+  {
+    "lld": "lld-fpu-vector.html",
+    "module": "lumi_fpu",
+    "returncode": 0,
+    "warnings": [
+      "[lumi_fpu] Enum 'fpu_inst_e': RTL states ['INST_FADD', 'INST_FCMP', 'INST_FCVT', 'INST_FDIV', 'INST_FMA', 'INST_FMUL', 'INST_FMV', 'INST_FSQRT'] not in LLD FSM"
+    ],
+    "infos": [
+      "[lumi_fpu] LLD FSM state 'ST_ARITH' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_DONE' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FADD' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FCMP' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FCVT' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FDIV' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FMA' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FMUL' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_FSQRT' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_IDLE' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_LOAD' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_MASK' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_REDUCE' not in RTL enum 'fpu_inst_e'",
+      "[lumi_fpu] LLD FSM state 'ST_STORE' not in RTL enum 'fpu_inst_e'"
+    ]
+  },
+  {
+    "lld": "lld-fpu-vector.html",
+    "module": "lumi_vector",
+    "returncode": 0,
+    "warnings": [
+      "[lumi_vector] Enum 'vec_inst_e': RTL states ['INST_VARITH', 'INST_VCMP', 'INST_VLOAD', 'INST_VMASK', 'INST_VMUL', 'INST_VPERM', 'INST_VREDUCE', 'INST_VSTORE'] not in LLD FSM"
+    ],
+    "infos": [
+      "[lumi_vector] LLD FSM state 'ST_ARITH' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_DONE' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FADD' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FCMP' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FCVT' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FDIV' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FMA' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FMUL' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_FSQRT' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_IDLE' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_LOAD' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_MASK' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_REDUCE' not in RTL enum 'vec_inst_e'",
+      "[lumi_vector] LLD FSM state 'ST_STORE' not in RTL enum 'vec_inst_e'"
+    ]
+  },
+  {
+    "lld": "lld-power.html",
+    "module": "lumi_power_mgmt",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-multicore-lockstep.html",
+    "module": "lumi_multicore_top",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-multicore-lockstep.html",
+    "module": "lumi_lockstep",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-dft.html",
+    "module": "lumi_dft_ctrl",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-core-top.html",
+    "module": "lumi_core_top",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-soc-top.html",
+    "module": "lumi_soc_top",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-soc-top.html",
+    "module": "lumi_soc_tb_stub",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  },
+  {
+    "lld": "lld-types-pkg.html",
+    "module": "lumi_pkg",
+    "returncode": 0,
+    "warnings": [],
+    "infos": []
+  }
+]

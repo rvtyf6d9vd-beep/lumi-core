@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumi-Core LLD 文档索引</title>
+    <style>
+        :root { --bg:#f8f9fa;--card-bg:#fff;--accent:#16213e;--text:#333;--link:#0d47a1;--border:#e0e0e0;--note:#546e7a; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.7;color:var(--text);background:var(--bg);max-width:960px;margin:0 auto;padding:2rem}
+        header{text-align:center;padding:2rem 0;border-bottom:3px solid var(--accent);margin-bottom:2.5rem}
+        header h1{font-size:2rem;color:var(--accent);margin-bottom:0.5rem}
+        header .subtitle{color:var(--note);font-size:1.05rem}
+        .back-link{display:inline-block;margin-bottom:1.5rem;padding:0.3rem 0.8rem;background:#f0f4f8;border:1px solid var(--border);border-radius:4px;color:var(--link);text-decoration:none;font-size:0.9rem;font-weight:500}
+        .back-link:hover{background:#e3eaf3}
+        .section{margin-bottom:2.5rem}
+        .section h2{font-size:1.3rem;color:var(--accent);padding-bottom:0.5rem;border-bottom:2px solid var(--border);margin-bottom:1.2rem}
+        .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem}
+        .card{background:var(--card-bg);border-radius:8px;padding:1.3rem;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,0.06);transition:box-shadow 0.2s}
+        .card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+        .card h3{font-size:1.0rem;color:#1a3a5c;margin-bottom:0.4rem}
+        .card h3 a{color:var(--link);text-decoration:none}
+        .card h3 a:hover{text-decoration:underline}
+        .card .desc{font-size:0.85rem;color:var(--note);line-height:1.6}
+        .card .doc-id{font-family:"SF Mono",Menlo,monospace;font-size:0.75rem;color:#90a4ae;margin-top:0.4rem}
+        .batch-badge{display:inline-block;background:var(--accent);color:#fff;padding:0.15rem 0.6rem;border-radius:3px;font-size:0.75rem;font-weight:600;margin-left:0.3rem;vertical-align:middle}
+        .summary-box{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.5rem;margin-bottom:2rem;font-size:0.92rem;color:var(--note)}
+        .summary-box strong{color:var(--text)}
+        .status-todo{color:#e65100;font-weight:600}
+        .status-done{color:#2e7d32;font-weight:600}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>LLD 文档索引</h1>
+    <p class="subtitle">Low Level Design Documents — 信号级、周期级精确规格</p>
+</header>
+
+<a class="back-link" href="index.html">&larr; HLD 设计文档索引</a>
+<a class="back-link" href="interface-contracts.html">接口契约文档</a>
+<a class="back-link" href="lld-template.html">LLD 模板</a>
+
+<div class="summary-box">
+    <strong>概览:</strong> 20 份 LLD 文档 + 1 份接口契约文档，覆盖全部 30 个 RTL 模块。
+    每份文档遵循 10 章节标准结构（标识/功能/接口约束/状态机/数据通路/边界条件/参数/微架构/验证/追溯）。
+    <br><strong>模板:</strong> <a href="lld-template.html">lld-template.html</a>
+    &nbsp;|&nbsp; <strong>接口契约:</strong> <a href="interface-contracts.html">interface-contracts.html</a>
+    &nbsp;|&nbsp; <strong>基线审查:</strong> <a href="lld-baseline-review.html">lld-baseline-review.html</a>
+</div>
+
+<!-- ═══ Phase 2: 流水线核心 ═══ -->
+<div class="section">
+    <h2>Phase 2: 流水线核心模块 <span class="batch-badge">6 LLD</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="lld-fetch-bpred.html">Fetch &amp; Branch Predictor LLD</a></h3>
+            <p class="desc">F1/F2 级取指 + BTB + RAS + LTAGE。端口/FSM/数据通路精确定义。</p>
+            <p class="doc-id">LUMI-LLD-001 | RTL: lumi_fetch.sv + lumi_predecode.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-decode-issue.html">Decode &amp; Issue LLD</a></h3>
+            <p class="desc">D/I 级三发射解码 + 旁路 + skip-stalled。冒险检测逻辑精确定义。</p>
+            <p class="doc-id">LUMI-LLD-002 | RTL: lumi_decode_issue.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-execute-bypass.html">Execute &amp; Bypass LLD</a></h3>
+            <p class="desc">E1/E2 级 ALU/MUL/DIV + 5 路旁路网络。旁路优先级矩阵。</p>
+            <p class="doc-id">LUMI-LLD-003 | RTL: lumi_execute.sv + lumi_bypass.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-memory-stage.html">Memory Stage LLD</a></h3>
+            <p class="desc">M 级 Load/Store + DCache/DTCM 仲裁 + 对齐检查。</p>
+            <p class="doc-id">LUMI-LLD-004 | RTL: lumi_memory_stage.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-writeback.html">Writeback LLD</a></h3>
+            <p class="desc">W 级写回仲裁 + 分支结果反馈 + Trap 处理。</p>
+            <p class="doc-id">LUMI-LLD-005 | RTL: lumi_writeback.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-csr-regfile.html">CSR &amp; Register File LLD</a></h3>
+            <p class="desc">CSR 读写 + HPM 计数器 + 整数/浮点/向量寄存器堆。</p>
+            <p class="doc-id">LUMI-LLD-006 | RTL: lumi_csr_unit.sv + lumi_regfile.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Phase 3: 存储子系统 ═══ -->
+<div class="section">
+    <h2>Phase 3: 存储与总线 <span class="batch-badge">3 LLD</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="lld-cache.html">L1 Cache LLD</a></h3>
+            <p class="desc">I/D-Cache 4 路组相联 + ECC + 替换 FSM + RVWMO。</p>
+            <p class="doc-id">LUMI-LLD-007 | RTL: lumi_cache.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-tcm.html">TCM LLD</a></h3>
+            <p class="desc">ITCM/DTCM 紧耦合内存 + ECC + DMA。</p>
+            <p class="doc-id">LUMI-LLD-008 | RTL: lumi_tcm.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-pma-axi.html">PMA &amp; AXI Bus LLD</a></h3>
+            <p class="desc">PMA 检查器 + AXI4 五通道 + CDC 同步。</p>
+            <p class="doc-id">LUMI-LLD-009 | RTL: lumi_axi_wrapper.sv + lumi_pma_checker.sv + lumi_cdc_sync.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Phase 4: 中断/异常 ═══ -->
+<div class="section">
+    <h2>Phase 4: 中断/异常/特权 <span class="batch-badge">3 LLD</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="lld-clic.html">CLIC LLD</a></h3>
+            <p class="desc">快速中断控制器 + 64 级优先级 + 抢占。</p>
+            <p class="doc-id">LUMI-LLD-010 | RTL: lumi_clic.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-plic.html">PLIC LLD</a></h3>
+            <p class="desc">平台级中断控制器 + 兼容模式。</p>
+            <p class="doc-id">LUMI-LLD-011 | RTL: lumi_plic.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-exception.html">Exception Unit LLD</a></h3>
+            <p class="desc">精确异常 + M/S 委托 + NMI + Trap 跳转。</p>
+            <p class="doc-id">LUMI-LLD-012 | RTL: lumi_exception.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Phase 5: 外围模块 ═══ -->
+<div class="section">
+    <h2>Phase 5: 外围功能模块 <span class="batch-badge">5 LLD</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="lld-debug-trace.html">Debug &amp; Trace LLD</a></h3>
+            <p class="desc">JTAG DMI + halt/resume/step + Nexus Trace 帧。</p>
+            <p class="doc-id">LUMI-LLD-013 | RTL: lumi_debug_module.sv + lumi_trace.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-fpu-vector.html">FPU &amp; Vector LLD</a></h3>
+            <p class="desc">F/D 浮点 + RVV 1.0 向量 + 流水线化 FU。</p>
+            <p class="doc-id">LUMI-LLD-014 | RTL: lumi_fpu.sv + lumi_vector.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-power.html">Power Management LLD</a></h3>
+            <p class="desc">WFI/WRS + ICG 时钟门控 + 多域复位。</p>
+            <p class="doc-id">LUMI-LLD-015 | RTL: lumi_power_mgmt.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-multicore-lockstep.html">Multicore &amp; Lockstep LLD</a></h3>
+            <p class="desc">1~4 核互联 + 双核锁步比较器。</p>
+            <p class="doc-id">LUMI-LLD-016 | RTL: lumi_multicore_top.sv + lumi_lockstep.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-dft.html">DFT &amp; Security LLD</a></h3>
+            <p class="desc">Scan Chain + MBIST + JTAG + SDC 约束。</p>
+            <p class="doc-id">LUMI-LLD-017 | RTL: lumi_dft_ctrl.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Phase 6: 顶层集成 ═══ -->
+<div class="section">
+    <h2>Phase 6: 顶层集成 <span class="batch-badge">3 LLD</span></h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3><a href="lld-core-top.html">Core Top LLD</a></h3>
+            <p class="desc">核心顶层集成 — 流水线实例化 + 全局信号分布。</p>
+            <p class="doc-id">LUMI-LLD-018 | RTL: lumi_core_top.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-soc-top.html">SoC Top LLD</a></h3>
+            <p class="desc">SoC 顶层 — Core + AXI + Debug + DFT 集成。</p>
+            <p class="doc-id">LUMI-LLD-019 | RTL: lumi_soc_top.sv + lumi_soc_tb_stub.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+        <div class="card">
+            <h3><a href="lld-types-pkg.html">Types &amp; Interfaces Pkg LLD</a></h3>
+            <p class="desc">全局类型枚举 + 参数定义 + SV Interface 定义。</p>
+            <p class="doc-id">LUMI-LLD-020 | RTL: lumi_types_pkg.sv + lumi_interfaces.sv | <span class="status-done">COMPLETE</span></p>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <p><a href="index.html" class="back-link">&larr; HLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html" class="back-link">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html" class="back-link">文档地图</a></p>
+    <p>Lumi-Core LLD Index &mdash; v0.1<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

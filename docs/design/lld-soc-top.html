@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — lumi_soc_top SoC 顶层集成</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}
+        li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}
+        .change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>lumi_soc_top Low Level Design</h1>
+    <p class="subtitle">SoC 顶层集成 — Core + AXI + Debug + DFT + 外设子系统</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-SOC-TOP &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="lld-baseline-review.html">lld-baseline-review.html</a></p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/top/lumi_soc_top.sv</code> (668 行), <code>src/rtl/top/lumi_soc_tb_stub.sv</code> (138 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#soc-top">IC-SOC-TOP</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_soc_top</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/top/lumi_soc_top.sv</code>, <code>src/rtl/top/lumi_soc_tb_stub.sv</code></td></tr>
+    <tr><td>对应 HLD</td><td><a href="lld-baseline-review.html">lld-baseline-review.html</a> (LUMI-DESIGN-TOP)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-SOC-TOP</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr>
+        <td>SoC 顶层连线集成: Core + AXI Wrapper + CSR + CLIC/PLIC + Exception + Debug + DFT + Power + FPU + Vector + Trace; V1 统一 SRAM 旁路 (256KiB); PMA Checker; D-018 参数化 generate 单核/多核切换; ECC IRQ 路由</td>
+        <td>Core 流水线内部实现; Cache 控制器 (V1 已移除, 使用 SRAM 旁路); AXI 互联/从设备; 外设 IP 实现</td>
+    </tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> 外部 AXI Slave / Memory, JTAG Host &nbsp;|&nbsp;
+   <strong>下游:</strong> <a href="lld-core-top.html">lumi_core_top</a> (Core 顶层), 所有 SoC 子模块</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本 (RTL 同步审查, 含 ERR-095/096/097, Batch-4 新增模块)</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-001</td><td>Core 集成</td><td>单核 (NUM_HARTS=1) 或多核 (generate) 实例化, 连接 ICache/DCache/CSR/IRQ 接口</td><td><span class="req-tag">LUMI-TOP-001</span></td></tr>
+    <tr><td>F-002</td><td>AXI4 Master 总线</td><td>128-bit 数据 AXI4 Master 接口, 通过 u_axi wrapper 连接外部总线</td><td><span class="req-tag">LUMI-TOP-001</span></td></tr>
+    <tr><td>F-003</td><td>V1 SRAM 旁路</td><td>256KiB 统一 SRAM 替代 Cache, 同时服务 IC (128-bit) 和 DC (32-bit), byte-enable 写</td><td><span class="req-tag">LUMI-TOP-001</span></td></tr>
+    <tr><td>F-004</td><td>中断子系统</td><td>CLIC + PLIC 实例化, CLIC → Core irq_request, ECC IRQ 合并路由</td><td><span class="req-tag">LUMI-IRQ-001</span></td></tr>
+    <tr><td>F-005</td><td>异常处理</td><td>u_exc 实例化, 接收 core 异常信号, 生成 trap 控制信号, NMI 支持</td><td><span class="req-tag">LUMI-EXC-001</span></td></tr>
+    <tr><td>F-006</td><td>Debug Module</td><td>JTAG 调试接口, DMI 访问, halt/resume, trigger match</td><td><span class="req-tag">LUMI-DBG-001</span></td></tr>
+    <tr><td>F-007</td><td>DFT Controller</td><td>Scan chain (4-bit), MBIST, JTAG TAP 多路选择, 安全锁</td><td><span class="req-tag">LUMI-DFT-001</span></td></tr>
+    <tr><td>F-008</td><td>Power Management</td><td>WFI 唤醒, ICG 控制, 多 hart 休眠状态, 复位管理</td><td><span class="req-tag">LUMI-PWR-001</span></td></tr>
+    <tr><td>F-009</td><td>FPU / Vector</td><td>FPU (FP64) 和 Vector (VLEN) 协处理器骨架实例化</td><td><span class="req-tag">LUMI-COPROC-001</span></td></tr>
+    <tr><td>F-010</td><td>Trace Encoder</td><td>指令提交跟踪, AXI trace 写通道</td><td><span class="req-tag">LUMI-TRACE-001</span></td></tr>
+</table>
+
+<h2>2.2 工作模式</h2>
+<table>
+    <tr><th>模式</th><th>触发条件</th><th>行为</th></tr>
+    <tr><td>正常运行</td><td><code>reset_n=1 &amp;&amp; !debug_halt</code></td><td>Core 执行, AXI 事务正常</td></tr>
+    <tr><td>Debug Halt</td><td><code>debug_halt=1</code> (由 u_dbg 驱动 dbg_halt)</td><td>Core fetch 暂停, Debug Module 可读写寄存器和内存</td></tr>
+    <tr><td>WFI Sleep</td><td><code>core_wfi_req=1</code></td><td>Power Management 进入低功耗, 等待 irq_pending 唤醒</td></tr>
+    <tr><td>DFT Scan Mode</td><td><code>scan_enable=1</code></td><td>Scan chain 替代正常逻辑, 用于制造测试</td></tr>
+    <tr><td>多核模式</td><td><code>NUM_HARTS &gt; 1</code></td><td>generate 实例化 u_mc (lumi_multicore_top) 替代单核</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr>
+        <th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th>
+        <th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th>
+    </tr>
+    <tr><th colspan="8" style="background:#37474f">时钟与复位</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟 (50 MHz)</td></tr>
+    <tr><td><code>clk_bus</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>—</td><td>—</td><td>总线时钟 (100 MHz)</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE</td><td>—</td><td>异步复位</td><td>全局异步复位 (低有效)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">AXI4 Master 接口 — Write Address Channel</th></tr>
+    <tr><td><code>m_axi_awid</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写地址 ID</td></tr>
+    <tr><td><code>m_axi_awaddr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写地址</td></tr>
+    <tr><td><code>m_axi_awlen</code></td><td>output</td><td>8</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 长度</td></tr>
+    <tr><td><code>m_axi_awsize</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 大小</td></tr>
+    <tr><td><code>m_axi_awburst</code></td><td>output</td><td>2</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 类型</td></tr>
+    <tr><td><code>m_axi_awlock</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>独占锁 (T-MS3-S2-1.2b)</td></tr>
+    <tr><td><code>m_axi_awcache</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Cache 属性</td></tr>
+    <tr><td><code>m_axi_awprot</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>保护属性</td></tr>
+    <tr><td><code>m_axi_awvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写地址有效</td></tr>
+    <tr><td><code>m_axi_awready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>combinational</td><td>写地址就绪</td></tr>
+    <tr><th colspan="8" style="background:#37474f">AXI4 Master 接口 — Write Data Channel</th></tr>
+    <tr><td><code>m_axi_wdata</code></td><td>output</td><td>128</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写数据</td></tr>
+    <tr><td><code>m_axi_wstrb</code></td><td>output</td><td>16</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写 strobe</td></tr>
+    <tr><td><code>m_axi_wlast</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>最后一个 beat</td></tr>
+    <tr><td><code>m_axi_wvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写数据有效</td></tr>
+    <tr><td><code>m_axi_wready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>combinational</td><td>写数据就绪</td></tr>
+    <tr><th colspan="8" style="background:#37474f">AXI4 Master 接口 — Write Response Channel</th></tr>
+    <tr><td><code>m_axi_bid</code></td><td>input</td><td>4</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写响应 ID</td></tr>
+    <tr><td><code>m_axi_bresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写响应</td></tr>
+    <tr><td><code>m_axi_bvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写响应有效</td></tr>
+    <tr><td><code>m_axi_bready</code></td><td>output</td><td>1</td><td>1</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>写响应就绪</td></tr>
+    <tr><th colspan="8" style="background:#37474f">AXI4 Master 接口 — Read Address Channel</th></tr>
+    <tr><td><code>m_axi_arid</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读地址 ID</td></tr>
+    <tr><td><code>m_axi_araddr</code></td><td>output</td><td>32</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读地址</td></tr>
+    <tr><td><code>m_axi_arlen</code></td><td>output</td><td>8</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 长度</td></tr>
+    <tr><td><code>m_axi_arsize</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 大小</td></tr>
+    <tr><td><code>m_axi_arburst</code></td><td>output</td><td>2</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Burst 类型</td></tr>
+    <tr><td><code>m_axi_arlock</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>独占锁</td></tr>
+    <tr><td><code>m_axi_arcache</code></td><td>output</td><td>4</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>Cache 属性</td></tr>
+    <tr><td><code>m_axi_arprot</code></td><td>output</td><td>3</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>保护属性</td></tr>
+    <tr><td><code>m_axi_arvalid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读地址有效</td></tr>
+    <tr><td><code>m_axi_arready</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>combinational</td><td>读地址就绪</td></tr>
+    <tr><th colspan="8" style="background:#37474f">AXI4 Master 接口 — Read Data Channel</th></tr>
+    <tr><td><code>m_axi_rid</code></td><td>input</td><td>4</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读数据 ID</td></tr>
+    <tr><td><code>m_axi_rdata</code></td><td>input</td><td>128</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读数据</td></tr>
+    <tr><td><code>m_axi_rresp</code></td><td>input</td><td>2</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读响应</td></tr>
+    <tr><td><code>m_axi_rlast</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>最后一个 beat</td></tr>
+    <tr><td><code>m_axi_rvalid</code></td><td>input</td><td>1</td><td>—</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读数据有效</td></tr>
+    <tr><td><code>m_axi_rready</code></td><td>output</td><td>1</td><td>1</td><td>CLK_BUS</td><td>AXI4</td><td>registered</td><td>读数据就绪</td></tr>
+    <tr><th colspan="8" style="background:#37474f">JTAG 接口</th></tr>
+    <tr><td><code>jtag_tck</code></td><td>input</td><td>1</td><td>—</td><td>JTAG_TCK</td><td>—</td><td>异步</td><td>JTAG 时钟</td></tr>
+    <tr><td><code>jtag_tms</code></td><td>input</td><td>1</td><td>—</td><td>JTAG_TCK</td><td>—</td><td>同步 TCK</td><td>Test Mode Select</td></tr>
+    <tr><td><code>jtag_tdi</code></td><td>input</td><td>1</td><td>—</td><td>JTAG_TCK</td><td>—</td><td>同步 TCK</td><td>Test Data In</td></tr>
+    <tr><td><code>jtag_tdo</code></td><td>output</td><td>1</td><td>0</td><td>JTAG_TCK</td><td>—</td><td>同步 TCK</td><td>Test Data Out</td></tr>
+    <tr><td><code>jtag_trst_n</code></td><td>input</td><td>1</td><td>—</td><td>JTAG_TCK</td><td>—</td><td>异步</td><td>JTAG 复位 (低有效)</td></tr>
+    <tr><th colspan="8" style="background:#37474f">中断接口</th></tr>
+    <tr><td><code>ext_irq</code></td><td>input</td><td>32</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>外部中断 (PLIC)</td></tr>
+    <tr><td><code>local_irq</code></td><td>input</td><td>CLIC_INT_INPUTS (16)</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>CLIC 本地中断</td></tr>
+    <tr><th colspan="8" style="background:#37474f">NMI / Debug / Trap</th></tr>
+    <tr><td><code>nmi_signal</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>异步</td><td>不可屏蔽中断</td></tr>
+    <tr><td><code>debug_halt</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>调试暂停请求</td></tr>
+    <tr><td><code>trap_valid</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Trap 发生 (= exc_trap_enter)</td></tr>
+    <tr><td><code>trap_cause</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Trap 原因码</td></tr>
+    <tr><td><code>trap_pc</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>Trap PC</td></tr>
+</table>
+
+<h2>3.2 SV Interface 实例映射</h2>
+<p>本模块使用扁平端口连接 (非 SV Interface)。逻辑上映射:</p>
+<table>
+    <tr><th>Interface 类型</th><th>逻辑实例</th><th>Modport</th><th>连接模块</th></tr>
+    <tr><td><code>axi4_if</code></td><td>m_axi_* 端口</td><td>master</td><td>外部 AXI Slave</td></tr>
+    <tr><td><code>jtag_if</code></td><td>jtag_* 端口</td><td>jtag_slave</td><td>外部 JTAG Host</td></tr>
+    <tr><td><code>mem_req_if</code></td><td>ic_*/dc_* 内部连线</td><td>requester</td><td>V1 SRAM / AXI Wrapper</td></tr>
+</table>
+
+<h2>3.3 跨时钟域接口</h2>
+<table>
+    <tr><th>信号</th><th>源时钟域</th><th>目标时钟域</th><th>同步方案</th></tr>
+    <tr><td>AXI 全部通道</td><td>CLK_CORE (u_axi 内部)</td><td>CLK_BUS (m_axi 端口)</td><td>u_axi wrapper 内部 CDC (异步 FIFO)</td></tr>
+    <tr><td>JTAG tck/tms/tdi</td><td>JTAG_TCK</td><td>CLK_CORE (u_dbg, u_dft)</td><td>模块内部 2-FF 同步</td></tr>
+</table>
+
+<h2>3.4 接口时序图 — AXI4 Write Burst</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant SoC as lumi_soc_top
+    participant AXI as AXI Slave
+    SoC->>AXI: awvalid=1, awaddr=0x1000
+    AXI-->>SoC: awready=1
+    Note over SoC,AXI: clk↑: AW 握手
+    SoC->>AXI: wvalid=1, wdata=D0, wlast=0
+    AXI-->>SoC: wready=1
+    SoC->>AXI: wvalid=1, wdata=D1, wlast=1
+    AXI-->>SoC: wready=1
+    Note over SoC,AXI: clk↑: W 完成
+    AXI->>SoC: bvalid=1, bresp=OKAY
+    SoC-->>AXI: bready=1
+    Note over SoC,AXI: clk↑: B 握手完成
+</pre>
+
+<!-- ═══ §4 状态机定义 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<p class="warn">本模块无显式 FSM。状态机分散在各子模块中: u_axi (AXI 协议 FSM), u_csr (CSR 访问), u_power (电源状态机), u_dft (scan 控制)。SoC 顶层仅做连线和集成。</p>
+
+<!-- ═══ §5 数据通路与时序 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 关键数据通路</h2>
+<pre class="mermaid">
+graph LR
+    subgraph "Core"
+        C[lumi_core_top]
+    end
+    subgraph "Memory"
+        SRAM[V1 256KiB SRAM]
+    end
+    subgraph "Peripheral"
+        AXI[u_axi: AXI Wrapper]
+        CSR[u_csr: CSR Unit]
+        CLIC[u_clic: CLIC]
+        EXC[u_exc: Exception]
+    end
+    C -->|"ic_addr[31:0]"| SRAM
+    SRAM -->|"ic_data[127:0]"| C
+    C -->|"dc_addr/wdata/be"| SRAM
+    SRAM -->|"dc_rdata"| C
+    C -->|"csr_addr/wdata"| CSR
+    CSR -->|"csr_rdata/mstatus/mtvec"| C
+    CLIC -->|"irq_request/id/level"| C
+    C -->|"core_exc_*"| EXC
+    EXC -->|"trap_enter/pc/cause"| CSR
+    AXI -->|"m_axi_*"| EXT[External Bus]
+</pre>
+
+<h2>5.2 V1 SRAM 访问时序</h2>
+<table>
+    <tr><th>Cycle</th><th>IC 路径</th><th>DC 路径</th><th>备注</th></tr>
+    <tr><td>T</td><td>ic_addr 输出</td><td>dc_addr/dc_valid 输出</td><td>组合逻辑索引 SRAM</td></tr>
+    <tr><td>T (同 cycle)</td><td>ic_data=SRAM[idx:idx+3] 128b</td><td>dc_rdata=SRAM[addr] 32b</td><td>组合读, 零延迟</td></tr>
+    <tr><td>T+1 (clk↑)</td><td>—</td><td>dc_valid &amp;&amp; dc_we: SRAM 写入 (byte-enable)</td><td>同步写</td></tr>
+</table>
+
+<h2>5.3 关键路径延迟</h2>
+<table>
+    <tr><th>路径</th><th>组合逻辑级数</th><th>预估延迟</th><th>备注</th></tr>
+    <tr><td>ic_addr → ic_data (V1 SRAM)</td><td>2 (地址解码 + 4-word MUX)</td><td>~1ns</td><td>128-bit SRAM 读为关键路径</td></tr>
+    <tr><td>dc_addr → dc_rdata (V1 SRAM)</td><td>1 (地址解码)</td><td>~300ps</td><td>32-bit 单 word 读</td></tr>
+    <tr><td>AXI CDC (CLK_CORE → CLK_BUS)</td><td>2-FF 同步</td><td>2 clk_bus cycles</td><td>异步 FIFO 延迟</td></tr>
+</table>
+
+<h2>5.4 冒险/冲突处理</h2>
+<table>
+    <tr><th>冒险类型</th><th>场景</th><th>处理策略</th><th>延迟代价</th></tr>
+    <tr><td>IC/DC 地址冲突</td><td>V1 SRAM 同时读写同一 word</td><td>V1 无保护 (SRAM 双端口分离: IC 读 + DC 读写)</td><td>0 (设计保证)</td></tr>
+    <tr><td>AXI 总线竞争</td><td>Trace + Cache refill 同时请求</td><td>u_axi wrapper 内部仲裁</td><td>1+ cycle</td></tr>
+</table>
+
+<!-- ═══ §6 边界条件与异常 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>ICache 地址非 16 字节对齐 (ERR-IC-ALIGN)</td><td>ic_word_idx = {ic_addr[17:4], 2'b00} 强制对齐到 16 字节边界</td><td>Branch redirect 到非对齐地址</td></tr>
+    <tr><td>BC-002</td><td>V1 SRAM 越界访问 (addr &gt; 256KiB)</td><td>无硬件保护, 地址截断至 18-bit (addr[17:2])</td><td>边界地址测试</td></tr>
+    <tr><td>BC-003</td><td>Store byte-enable 部分写 (dc_be 非全 1)</td><td>逐字节写入: <code>for b in 0..3: if dc_be[b] then SRAM[addr][b] &lt;= wdata[b]</code></td><td>sb/sw/sh 混合测试</td></tr>
+    <tr><td>BC-004</td><td>NUM_HARTS &gt; 1 多核模式</td><td>generate 切换为 u_mc (lumi_multicore_top), 但当前骨架连接: meip/msip/mtip 固定 0</td><td>多核配置编译测试</td></tr>
+    <tr><td>BC-005</td><td>reset_n 拉低期间 SRAM 写</td><td><code>if (dc_valid &amp;&amp; dc_we &amp;&amp; reset_n)</code>: reset_n 参与写条件, 复位期间不写</td><td>复位期间 Store 测试</td></tr>
+    <tr><td>BC-006</td><td>ECC IRQ 未路由 (TODO)</td><td>rf_ecc_ce_irq / rf_ecc_ded_irq 声明但未连接到 PLIC ext_irq_in</td><td>ECC 中断测试 (当前不覆盖)</td></tr>
+    <tr><td>BC-007</td><td>JTAG TCK 与 CLK_CORE 异步</td><td>u_dbg / u_dft 内部 2-FF 同步; jtag_trst_n 作为 debug_reset_n 传入 u_power</td><td>跨时钟域 JTAG 访问</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>PMA 访问违规</td><td>u_pma pma_result=PMA_FAULT</td><td>当前骨架: pma_result 未连接 (TODO: 生成 access fault 异常)</td></tr>
+    <tr><td>ECC 可纠正 (RegFile/TCM)</td><td>rf_ecc_ce_irq / tcm_ecc_ce_irq</td><td>硬件自动纠正, IRQ 上报 (路由待实现)</td></tr>
+    <tr><td>DFT Tamper 检测</td><td>u_dft tamper_detect (当前固定 0)</td><td>secure_lock 锁死调试接口</td></tr>
+</table>
+
+<h2>6.3 未定义行为声明</h2>
+<ul>
+    <li>V1 SRAM 索引超出 [0:65535] 范围: 地址截断, 无异常生成</li>
+    <li>FPU/Vector issue_valid 固定为 0: 协处理器不参与执行, 结果未定义</li>
+    <li>PLIC ext_irq_in 固定为 32'h0: 外部中断不通过 PLIC, 仅 CLIC 有效</li>
+</ul>
+
+<h2>6.4 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n=0</code></td><td>所有子模块异步复位; V1 SRAM 不写入; AXI 输出清零</td><td>异步</td></tr>
+    <tr><td><code>debug_halt=1</code></td><td>u_dbg 驱动 dbg_halt → Core fetch 暂停</td><td>下一 clk↑</td></tr>
+    <tr><td><code>core_wfi_req=1</code></td><td>u_power 进入 sleep, icg_en=1, 等待 irq_pending 唤醒</td><td>u_power FSM 控制</td></tr>
+</table>
+
+<!-- ═══ §7 可配置参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>NUM_HARTS</code></td><td>int</td><td><code>lumi_pkg::NUM_HARTS</code> (1)</td><td>1, 2, 4</td><td>核数: 1=单核 (u_core), N=多核 (u_mc)</td></tr>
+    <tr><td><code>ISSUE_WIDTH</code></td><td>int</td><td><code>lumi_pkg::ISSUE_WIDTH</code> (3)</td><td>2, 3</td><td>发射宽度, 传递到 Core 和 RegFile</td></tr>
+    <tr><td><code>V1_SRAM_WORDS</code></td><td>int</td><td>65536</td><td>—</td><td>localparam: 256KiB / 4 = 65536 words (V1 SRAM 深度)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li><code>NUM_HARTS == 1</code> 时实例化 <code>u_core</code>; 否则实例化 <code>u_mc</code> (generate)</li>
+    <li><code>local_irq</code> 位宽 = <code>lumi_pkg::CLIC_INT_INPUTS</code> (16)</li>
+    <li>TB stub 实例化参数: <code>NUM_HARTS=1, ISSUE_WIDTH=3</code></li>
+</ul>
+
+<!-- ═══ §8 内部微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>实例名</th><th>模块</th><th>职责</th><th>关键连接</th></tr>
+    <tr><td><code>u_core</code> / <code>u_mc</code></td><td><code>lumi_core_top</code> / <code>lumi_multicore_top</code></td><td>处理器核心 (单核/多核 generate)</td><td>ic_/dc_/csr_/irq_/commit_*/exc_*</td></tr>
+    <tr><td><code>u_regfile</code></td><td><code>lumi_regfile</code></td><td>IRF/FRF/VRF 寄存器堆 (SoC 级实例)</td><td>rf_rs1/rs2/wr_*</td></tr>
+    <tr><td><code>u_pma</code></td><td><code>lumi_pma_checker</code></td><td>PMA 属性检查 + PMP 检查 + 路由 (TCM/Cache/MMIO)</td><td>dc_addr → pma_result</td></tr>
+    <tr><td><code>u_axi</code></td><td><code>lumi_axi_wrapper</code></td><td>AXI4 Master 协议封装 + CDC (CORE→BUS)</td><td>m_axi_* 全部通道 + FFP 端口</td></tr>
+    <tr><td><code>u_csr</code></td><td><code>lumi_csr_unit</code></td><td>CSR 寄存器堆: mstatus/mtvec/mepc/mcause + CLIC CSR 代理 + HPM</td><td>csr_* ↔ Core; trap_* ↔ u_exc</td></tr>
+    <tr><td><code>u_clic</code></td><td><code>lumi_clic</code></td><td>CLIC 中断控制器: 本地中断 + 标准中断仲裁</td><td>irq_id/level → Core; clic_csr_* → u_csr</td></tr>
+    <tr><td><code>u_plic</code></td><td><code>lumi_plic</code></td><td>PLIC 外部中断控制器 (骨架连接)</td><td>ext_irq_in → meip</td></tr>
+    <tr><td><code>u_exc</code></td><td><code>lumi_exception</code></td><td>异常/Trap 处理: trap 进入/退出, NMI, 委托</td><td>core_exc_* → trap_*; mret/sret/nmi</td></tr>
+    <tr><td><code>u_power</code></td><td><code>lumi_power_mgmt</code></td><td>电源管理: WFI 休眠, ICG, 复位控制</td><td>wfi_req → icg_en/core_sleep</td></tr>
+    <tr><td><code>u_dft</code></td><td><code>lumi_dft_ctrl</code></td><td>DFT: Scan chain, MBIST, JTAG TAP MUX, 安全锁</td><td>jtag_* ↔ TAP; scan_mode → 全局</td></tr>
+    <tr><td><code>u_dbg</code></td><td><code>lumi_debug_module</code></td><td>Debug Module: DMI, halt/resume, trigger</td><td>dbg_halt → Core; commit_pc ← Core</td></tr>
+    <tr><td><code>u_trace</code></td><td><code>lumi_trace</code></td><td>Trace Encoder: 指令提交跟踪, AXI 写通道</td><td>commit_* → trc_axi_*</td></tr>
+    <tr><td><code>u_fpu</code></td><td><code>lumi_fpu</code></td><td>FPU 浮点协处理器 (骨架, issue_valid=0)</td><td>fpu_result/rd/fflags</td></tr>
+    <tr><td><code>u_vec</code></td><td><code>lumi_vector</code></td><td>Vector 向量协处理器 (骨架, issue_valid=0)</td><td>vec_result/rd/mem_*</td></tr>
+</table>
+
+<h2>8.2 V1 统一 SRAM</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>容量</td><td>256 KiB (65536 × 32-bit)</td></tr>
+    <tr><td>IC 访问</td><td>128-bit (4 word), 组合读, 地址对齐到 16 字节</td></tr>
+    <tr><td>DC 访问</td><td>32-bit (1 word), 组合读 + 同步写 (byte-enable)</td></tr>
+    <tr><td>初始化</td><td>TB 通过 <code>$readmemh</code> 加载</td></tr>
+    <tr><td>写条件</td><td><code>dc_valid &amp;&amp; dc_we &amp;&amp; reset_n</code></td></tr>
+</table>
+
+<h2>8.3 SoC 集成拓扑图</h2>
+<pre class="mermaid">
+graph TB
+    subgraph "External"
+        MEM[AXI Slave Memory]
+        JTAG[ JTAG Host]
+    end
+    subgraph "lumi_soc_top"
+        subgraph "Core Subsystem"
+            CORE[u_core: lumi_core_top]
+            RF[u_regfile: IRF/FRF/VRF]
+        end
+        subgraph "Memory Subsystem"
+            SRAM[V1 256KiB SRAM]
+            PMA[u_pma: PMA Checker]
+            AXI[u_axi: AXI Wrapper]
+        end
+        subgraph "Control Subsystem"
+            CSR[u_csr: CSR Unit]
+            CLIC[u_clic: CLIC]
+            PLIC[u_plic: PLIC]
+            EXC[u_exc: Exception]
+        end
+        subgraph "Debug / DFT"
+            DBG[u_dbg: Debug Module]
+            DFT[u_dft: DFT Controller]
+            TRC[u_trace: Trace Encoder]
+        end
+        subgraph "Accelerators"
+            FPU[u_fpu: FPU]
+            VEC[u_vec: Vector]
+        end
+        subgraph "Power"
+            PWR[u_power: Power Management]
+        end
+    end
+
+    CORE <--> SRAM
+    CORE <--> CSR
+    CORE <--> CLIC
+    CORE --> EXC
+    EXC --> CSR
+    CLIC --> CSR
+    AXI <--> MEM
+    DBG <--> JTAG
+    DFT <--> JTAG
+    CORE --> TRC
+    TRC --> AXI
+    CORE --> PWR
+    AXI <--> SRAM
+</pre>
+
+<!-- ═══ §9 验证要点 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>Core 单核集成 (F-001)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>V1 SRAM IC/DC 读写 (F-003)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>CLIC 中断传递 (F-004)</td><td>100%</td><td>P0</td></tr>
+    <tr><td>Exception trap 流程 (F-005)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>AXI4 Write/Read 事务 (F-002)</td><td>100%</td><td>P1</td></tr>
+    <tr><td>Debug halt/resume (F-006)</td><td>80%</td><td>P2</td></tr>
+    <tr><td>多核模式 (F-001 gen_multi_core)</td><td>编译通过</td><td>P2</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_sram_no_write_during_reset</code></td><td><code>!reset_n |-> !(dc_valid &amp;&amp; dc_we)</code></td><td>复位期间 SRAM 不写入</td></tr>
+    <tr><td><code>assert_icache_aligned</code></td><td><code>ic_addr[3:0] == 4'h0 || ic_req_valid</code></td><td>ICache 请求地址 16 字节对齐</td></tr>
+    <tr><td><code>assert_axi_handshake</code></td><td><code>m_axi_awvalid &amp;&amp; !m_axi_awready |=> m_axi_awvalid</code></td><td>AXI valid 在 ready 前保持</td></tr>
+    <tr><td><code>assert_irq_valid_source</code></td><td><code>irq_request == clic_irq_valid</code></td><td>Core 中断请求来自 CLIC</td></tr>
+</table>
+
+<h2>9.3 TB Stub 说明</h2>
+<p><code>lumi_soc_tb_stub</code> 提供:</p>
+<ul>
+    <li><strong>时钟:</strong> clk_core=50MHz (T=20ns), clk_bus=100MHz (T=10ns)</li>
+    <li><strong>复位:</strong> reset_n 持续 100ns 后释放</li>
+    <li><strong>AXI BFM:</strong> 简单桩 — arready=1, awready=1, wready=1, rvalid=arvalid, bvalid=wvalid&amp;wlast</li>
+    <li><strong>仿真时长:</strong> 1ms (#1000000)</li>
+</ul>
+
+<!-- ═══ §10 需求追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-TOP-001</span></td><td>SoC 顶层集成 (Core+AXI+外设)</td><td>§2.1 F-001~F-003, §8.1</td><td><code>lumi_soc_top</code> 全模块</td></tr>
+    <tr><td><span class="req-tag">LUMI-IRQ-001</span></td><td>CLIC + PLIC 中断子系统</td><td>§2.1 F-004, §8.1</td><td>u_clic + u_plic 实例化</td></tr>
+    <tr><td><span class="req-tag">LUMI-EXC-001</span></td><td>异常/Trap 处理</td><td>§2.1 F-005</td><td>u_exc 实例化 L490-L529</td></tr>
+    <tr><td><span class="req-tag">LUMI-DBG-001</span></td><td>Debug Module (JTAG)</td><td>§2.1 F-006</td><td>u_dbg 实例化 L582-L605</td></tr>
+    <tr><td><span class="req-tag">LUMI-DFT-001</span></td><td>DFT Controller (Scan/MBIST)</td><td>§2.1 F-007</td><td>u_dft 实例化 L559-L579</td></tr>
+    <tr><td><span class="req-tag">LUMI-PWR-001</span></td><td>Power Management (WFI/ICG)</td><td>§2.1 F-008</td><td>u_power 实例化 L539-L556</td></tr>
+    <tr><td><span class="req-tag">LUMI-TB-001</span></td><td>SoC Testbench 骨架</td><td>§9.3</td><td><code>lumi_soc_tb_stub.sv</code></td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="lld-baseline-review.html">lld-baseline-review.html</a> 的全部 SoC 集成设计细化。D-018 参数化 generate 对应 §7 NUM_HARTS 配置。Batch-4 新增模块 (Debug/Trace/FPU/Vector) 对应 §8.1 实例表。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#soc-top">IC-SOC-TOP</a> (AXI4 Master, JTAG, 中断接口)</p>
+
+<div class="footer">
+    <p><a href="lld-index.html">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html">文档地图</a></p>
+    <p>Lumi-Core LLD — lumi_soc_top &mdash; v1.0<br>最后更新: 2026-07-16</p>
+</div>
+
+</body>
+</html>

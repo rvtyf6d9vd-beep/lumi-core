@@ -675,8 +675,7 @@ module lumi_fetch #(
 
     // ERR-114 FIX: fetch_active — 组合逻辑, 指示 FSM 正在取指 (ST_FETCH/ST_STALL)
     // 用于门控 pd_advance, 防止 ST_IDLE 阶段重复注册 predecode 输出
-    // ERR-131: post_flush_hold 期间不报告 active, 防止 predecode 数据重复写入 DIB
-    assign fetch_active = (state_reg == ST_FETCH || state_reg == ST_STALL) && !post_flush_hold_r;
+    assign fetch_active = (state_reg == ST_FETCH || state_reg == ST_STALL);
 
     // ═══════════════════════════════════════════════════════════
     // FSM 组合逻辑
@@ -711,10 +710,6 @@ module lumi_fetch #(
                     pc_next    = branch_redirect_pc;
                 end else if (dec_stall || !dib_not_full) begin
                     // decode back-pressure 或 DIB 满: 保持 PC
-                    pc_next = pc_reg;
-                    state_next = ST_FETCH;
-                end else if (post_flush_hold_r) begin
-                    // ERR-131: flush 后首周期保持 PC, 等待 f2_valid_r 建立
                     pc_next = pc_reg;
                     state_next = ST_FETCH;
                 end else if (f2_icache_valid) begin

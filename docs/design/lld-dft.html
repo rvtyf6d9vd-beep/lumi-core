@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD — DFT Controller &amp; Security</title>
+    <style>
+        :root { --bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--note-bg:#e8f4fd;--note-border:#2196F3;--warn-bg:#fff3e0;--warn-border:#ff9800;--crit-bg:#ffebee;--crit-border:#c62828;--ok-bg:#e8f5e9;--ok-border:#2e7d32; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.8;color:var(--text);background:var(--bg);max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+        .cover{text-align:center;padding:3rem 0;border-bottom:3px solid var(--accent);margin-bottom:3rem}
+        .cover h1{font-size:2.2rem;color:var(--accent);margin-bottom:0.5rem}
+        .cover .subtitle{color:#546e7a;font-size:1.1rem}
+        .cover .meta{font-size:0.9rem;color:#90a4ae;margin-top:1.5rem;line-height:2}
+        h1{font-size:1.7rem;color:var(--accent);margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+        h2{font-size:1.35rem;color:#1a3a5c;margin:2rem 0 0.8rem}
+        h3{font-size:1.1rem;color:#37474f;margin:1.5rem 0 0.6rem}
+        p{margin:0.7rem 0;text-align:justify}
+        ul,ol{margin:0.5rem 0 0.5rem 1.5rem}li{margin:0.3rem 0}
+        table{width:100%;border-collapse:collapse;font-size:0.92rem;margin:1rem 0}
+        th{background:var(--accent);color:#fff;padding:0.5rem 0.8rem;text-align:left;font-weight:600;font-size:0.85rem}
+        td{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:top}
+        tr:nth-child(even) td{background:#f8f9fa}
+        code{background:var(--code-bg);padding:0.1rem 0.4rem;border-radius:3px;font-family:"SF Mono",Menlo,monospace;font-size:0.88em}
+        pre{background:var(--code-bg);padding:1rem;border-radius:6px;font-size:0.85rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+        blockquote{background:var(--note-bg);border-left:4px solid var(--note-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .warn{background:var(--warn-bg);border-left:4px solid var(--warn-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .crit{background:var(--crit-bg);border-left:4px solid var(--crit-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        .ok{background:var(--ok-bg);border-left:4px solid var(--ok-border);padding:0.8rem 1.2rem;margin:1rem 0;font-size:0.93rem;border-radius:0 6px 6px 0}
+        a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+        .nav{position:sticky;top:0;background:var(--accent);color:#fff;padding:0.5rem 1rem;z-index:100;display:flex;gap:0.8rem;font-size:0.82rem;flex-wrap:wrap;margin:-2rem -2rem 2rem}
+        .nav a{color:#b3e5fc;font-size:0.82rem}.nav a:hover{color:#fff}
+        .footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+        .badge{display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .badge-crit{background:#ffebee;color:#c62828}.badge-warn{background:#fff3e0;color:#e65100}.badge-ok{background:#e8f5e9;color:#2e7d32}.badge-info{background:#e3f2fd;color:#1565c0}
+        .req-tag{display:inline-block;background:#e3f2fd;color:#1565c0;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;margin-right:0.3rem}
+        .constraint-tag{display:inline-block;background:#fce4ec;color:#c62828;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600}
+        .lld-tag{display:inline-block;background:#e8f5e9;color:#2e7d32;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.78rem;font-weight:600;margin-right:0.3rem}
+        .mermaid{background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:1rem;margin:1rem 0;text-align:center}
+        .change-log{width:auto;margin:0}.change-log td{padding:0.3rem 0.6rem;font-size:0.85rem}
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="../index.html">文档地图</a>
+    <a href="lld-index.html">LLD 索引</a>
+    <a href="#ch1">1.标识</a>
+    <a href="#ch2">2.功能</a>
+    <a href="#ch3">3.接口</a>
+    <a href="#ch4">4.状态机</a>
+    <a href="#ch5">5.数据通路</a>
+    <a href="#ch6">6.边界条件</a>
+    <a href="#ch7">7.参数</a>
+    <a href="#ch8">8.微架构</a>
+    <a href="#ch9">9.验证</a>
+    <a href="#ch10">10.追溯</a>
+</div>
+
+<div class="cover">
+    <h1>DFT Controller &amp; Security Low Level Design</h1>
+    <p class="subtitle">Scan Chain (4-bit) + MBIST March C- + JTAG TAP IEEE 1149.1 + 安全锁定 (tamper_detect)</p>
+    <div class="meta">
+        <p><strong>文档编号:</strong> LUMI-LLD-013 &nbsp;|&nbsp; <strong>对应 HLD:</strong> <a href="dft-security.html">dft-security.html</a> (LUMI-DESIGN-016)</p>
+        <p><strong>RTL 文件:</strong> <code>src/rtl/dft/lumi_dft_ctrl.sv</code> (271 行)</p>
+        <p><strong>版本:</strong> 1.0 &nbsp;|&nbsp; <strong>日期:</strong> 2026-07-16</p>
+        <p><strong>接口契约:</strong> <a href="interface-contracts.html#dft">IC-7.2 (DFT/JTAG)</a></p>
+        <p><strong>负责人:</strong> hw-design</p>
+    </div>
+</div>
+
+<!-- ═══ §1 模块标识与范围 ═══ -->
+<h1 id="ch1">1. 模块标识与范围</h1>
+
+<h2>1.1 模块标识</h2>
+<table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>模块名</td><td><code>lumi_dft_ctrl</code></td></tr>
+    <tr><td>SV 文件</td><td><code>src/rtl/dft/lumi_dft_ctrl.sv</code> (271 行)</td></tr>
+    <tr><td>对应 HLD</td><td><a href="dft-security.html">dft-security.html</a> (LUMI-DESIGN-016)</td></tr>
+    <tr><td>LLD 编号</td><td>LUMI-LLD-013</td></tr>
+</table>
+
+<h2>1.2 职责边界</h2>
+<table>
+    <tr><th>包含</th><th>不包含</th></tr>
+    <tr><td>DFT 主控 FSM (NORMAL/SCAN/MBIST/JTAG/SECURE 五态)</td><td>Scan Flip-Flop 物理插入 (后端 DFT flow)</td></tr>
+    <tr><td>MBIST 控制器: March C- 六阶段 (M0~M5)</td><td>SRAM BIST Wrapper (由 memory compiler 生成)</td></tr>
+    <tr><td>JTAG TAP IEEE 1149.1 完整 16 态状态机</td><td>JTAG 物理 IO pad (SoC 级)</td></tr>
+    <tr><td>JTAG 指令集: BYPASS/IDCODE/EXTEST/INTEST/SAMPLE/PRELOAD</td><td>Debug Module DMI (属于 debug_module)</td></tr>
+    <tr><td>Scan Chain 4-bit 移位 + TDO 多路选择</td><td>Scan Compression (DFTMAX / Tessent)</td></tr>
+    <tr><td>安全锁定: tamper_detect → secure_lock_reg (永久)</td><td>eFuse/OTP 烧写 (SoC 级)</td></tr>
+    <tr><td>TDO 输出多路选择 (JTAG/Scan/Normal)</td><td>边界扫描寄存器 (Boundary Cell)</td></tr>
+</table>
+
+<h2>1.3 关联模块</h2>
+<p><strong>上游:</strong> <code>scan_enable/mbist_enable</code> (SoC 级 DFT 控制) &nbsp;|&nbsp; <code>tamper_detect</code> (安全传感器) &nbsp;|&nbsp; <code>tck/tms/tdi</code> (JTAG 物理接口)</p>
+<p><strong>下游:</strong> <code>scan_mode/scan_out</code> → Scan Chain &nbsp;|&nbsp; <code>mbist_start/done/fail</code> → MBIST 控制器 &nbsp;|&nbsp; <code>tdo</code> → JTAG 输出 &nbsp;|&nbsp; <code>secure_lock</code> → 全芯片安全门控</p>
+
+<h2>1.4 变更记录</h2>
+<table class="change-log">
+    <tr><th>版本</th><th>日期</th><th>变更内容</th><th>关联 Errata</th></tr>
+    <tr><td>1.0</td><td>2026-07-16</td><td>初始版本（RTL 同步审查）</td><td>T-MS3-S2-1.4h (Scan), T-MS3-S2-1.4i (MBIST)</td></tr>
+</table>
+
+<!-- ═══ §2 功能规格 ═══ -->
+<h1 id="ch2">2. 功能规格</h1>
+
+<h2>2.1 功能清单</h2>
+<table>
+    <tr><th>编号</th><th>功能</th><th>描述</th><th>需求来源</th></tr>
+    <tr><td>F-DFT-001</td><td>Scan Chain 控制</td><td>4-bit scan_in/scan_out, scan_enable 触发 ST_SCAN, pass-through 移位</td><td><span class="req-tag">LUMI-DFT-001</span> <span class="constraint-tag">T-MS3-S2-1.4h</span></td></tr>
+    <tr><td>F-DFT-002</td><td>MBIST March C-</td><td>6 阶段: M0(↑w0)→M1(↑r0,w1)→M2(↑r1,w0)→M3(↓r0,w1)→M4(↓r1,w0)→M5(↑r0)</td><td><span class="req-tag">LUMI-DFT-002</span> <span class="constraint-tag">T-MS3-S2-1.4i</span></td></tr>
+    <tr><td>F-DFT-003</td><td>MBIST 地址遍历</td><td>16-bit 地址计数器, 64K words, mb_phase_done 判断</td><td><span class="req-tag">LUMI-DFT-002</span></td></tr>
+    <tr><td>F-DFT-004</td><td>MBIST 错误计数</td><td>32-bit mb_err_cnt, M1~M5 阶段累计, &gt;0 → MB_FAIL</td><td><span class="req-tag">LUMI-DFT-002</span></td></tr>
+    <tr><td>F-DFT-005</td><td>JTAG TAP 状态机</td><td>IEEE 1149.1 标准 16 态, tck 时钟域</td><td><span class="req-tag">LUMI-DFT-003</span></td></tr>
+    <tr><td>F-DFT-006</td><td>JTAG 指令集</td><td>BYPASS(11111), IDCODE(00001), EXTEST(00010), INTEST(00011), SAMPLE(00100), PRELOAD(00101)</td><td><span class="req-tag">LUMI-DFT-003</span></td></tr>
+    <tr><td>F-DFT-007</td><td>IDCODE 读取</td><td>DEVICE_IDCODE = 32'h10E3_1901 (厂商 ID + 型号 + 版本)</td><td><span class="req-tag">LUMI-DFT-003</span></td></tr>
+    <tr><td>F-DFT-008</td><td>安全锁定</td><td>tamper_detect → secure_lock_reg=1 (永久, 仅硬件复位清除)</td><td><span class="req-tag">LUMI-SEC-001</span></td></tr>
+    <tr><td>F-DFT-009</td><td>TDO 多路选择</td><td>ST_JTAG→jtag_tdo_int, ST_SCAN→scan_out[0], 其他→0</td><td><span class="req-tag">LUMI-DFT-001</span></td></tr>
+</table>
+
+<h2>2.2 JTAG 指令定义</h2>
+<table>
+    <tr><th>指令</th><th>编码 (5-bit)</th><th>功能</th><th>DR 位宽</th></tr>
+    <tr><td>BYPASS</td><td><code>5'b11111</code></td><td>Bypass 模式, 1-bit DR</td><td>1</td></tr>
+    <tr><td>IDCODE</td><td><code>5'b00001</code></td><td>读取器件 ID (32'h10E3_1901)</td><td>32</td></tr>
+    <tr><td>EXTEST</td><td><code>5'b00010</code></td><td>外部边界扫描测试</td><td>—</td></tr>
+    <tr><td>INTEST</td><td><code>5'b00011</code></td><td>内部逻辑测试</td><td>—</td></tr>
+    <tr><td>SAMPLE</td><td><code>5'b00100</code></td><td>边界采样</td><td>—</td></tr>
+    <tr><td>PRELOAD</td><td><code>5'b00101</code></td><td>边界预加载</td><td>—</td></tr>
+</table>
+
+<!-- ═══ §3 接口约束表 ═══ -->
+<h1 id="ch3">3. 接口约束表</h1>
+
+<h2>3.1 端口完整列表</h2>
+<table>
+    <tr><th>信号名</th><th>方向</th><th>位宽</th><th>复位值</th><th>时钟域</th><th>握手协议</th><th>时序约束</th><th>描述</th></tr>
+    <tr><td><code>clk_core</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>核心时钟 (DFT 主控 + MBIST)</td></tr>
+    <tr><td><code>reset_n</code></td><td>input</td><td>1</td><td>0 (异步)</td><td>CLK_CORE/TCK</td><td>—</td><td>异步复位</td><td>全局异步复位</td></tr>
+    <tr><td><code>scan_enable</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>level</td><td>Scan 模式使能 (高有效)</td></tr>
+    <tr><td><code>scan_in</code></td><td>input</td><td>4</td><td>—</td><td>CLK_CORE</td><td>—</td><td>—</td><td>Scan Chain 输入 (T-MS3-S2-1.4h)</td></tr>
+    <tr><td><code>scan_out</code></td><td>output</td><td>4</td><td>—</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Scan Chain 输出 (pass-through)</td></tr>
+    <tr><td><code>scan_mode</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>Scan 模式指示 (ST_SCAN 时 =1)</td></tr>
+    <tr><td><code>mbist_enable</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>level</td><td>MBIST 使能</td></tr>
+    <tr><td><code>mbist_start</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>pulse (MB_M0)</td><td>MBIST 开始脉冲</td></tr>
+    <tr><td><code>mbist_done</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>level (MB_DONE)</td><td>MBIST 完成 (无错误)</td></tr>
+    <tr><td><code>mbist_fail</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>level (MB_FAIL)</td><td>MBIST 失败 (有错误)</td></tr>
+    <tr><td><code>mbist_error_count</code></td><td>output</td><td>32</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered</td><td>MBIST 错误计数</td></tr>
+    <tr><td><code>mbist_diag</code></td><td>output</td><td>64</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>MBIST 诊断输出 (T-MS3-S2-1.4i)</td></tr>
+    <tr><td><code>tck</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>10~50 MHz</td><td>JTAG 时钟</td></tr>
+    <tr><td><code>tms</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG TAP 控制</td></tr>
+    <tr><td><code>tdi</code></td><td>input</td><td>1</td><td>—</td><td>TCK</td><td>—</td><td>—</td><td>JTAG 数据输入</td></tr>
+    <tr><td><code>tdo</code></td><td>output</td><td>1</td><td>0</td><td>TCK</td><td>—</td><td>组合 MUX</td><td>JTAG 数据输出 (多路选择)</td></tr>
+    <tr><td><code>jtag_select</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>combinational</td><td>JTAG 模式指示 (ST_JTAG 时 =1)</td></tr>
+    <tr><td><code>tamper_detect</code></td><td>input</td><td>1</td><td>—</td><td>CLK_CORE</td><td>—</td><td>level (边沿检测由外部)</td><td>篡改检测输入</td></tr>
+    <tr><td><code>secure_lock</code></td><td>output</td><td>1</td><td>0</td><td>CLK_CORE</td><td>—</td><td>registered (永久)</td><td>安全锁定输出</td></tr>
+</table>
+
+<h2>3.2 跨时钟域接口</h2>
+<p>JTAG TAP 状态机和 IR/DR 寄存器运行在 <code>tck</code> 域; DFT 主 FSM 和 MBIST 运行在 <code>clk_core</code> 域。两域通过 <code>jtag_mode</code> (组合逻辑, 由 IR 值决定) 桥接 — <code>jtag_mode</code> 在 <code>tck</code> 域计算, 在 <code>clk_core</code> 域采样。物理实现时需确保 <code>jtag_mode</code> 稳定时间满足 CDC 要求。</p>
+
+<!-- ═══ §4 状态机 ═══ -->
+<h1 id="ch4">4. 状态机定义</h1>
+
+<h2>4.1 DFT 主 FSM — <code>dft_state_e</code> (3-bit, 5 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>进入条件</th></tr>
+    <tr><td><code>ST_NORMAL</code></td><td>3'd0</td><td>正常功能模式</td><td>reset / 各模式退出</td></tr>
+    <tr><td><code>ST_SCAN</code></td><td>3'd1</td><td>Scan Chain 移位模式</td><td>scan_enable &amp;&amp; !secure_lock</td></tr>
+    <tr><td><code>ST_MBIST</code></td><td>3'd2</td><td>MBIST March C- 测试</td><td>mbist_enable &amp;&amp; !secure_lock</td></tr>
+    <tr><td><code>ST_JTAG</code></td><td>3'd3</td><td>JTAG 边界扫描模式</td><td>jtag_mode &amp;&amp; !secure_lock</td></tr>
+    <tr><td><code>ST_SECURE</code></td><td>3'd4</td><td>安全锁定 (不可退出)</td><td>secure_lock_reg=1</td></tr>
+</table>
+
+<h2>4.2 DFT 主 FSM 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> ST_NORMAL : reset
+    ST_NORMAL --> ST_SCAN : scan_enable && !secure_lock
+    ST_NORMAL --> ST_MBIST : mbist_enable && !secure_lock
+    ST_NORMAL --> ST_JTAG : jtag_mode && !secure_lock
+    ST_NORMAL --> ST_SECURE : secure_lock_reg
+    ST_SCAN --> ST_NORMAL : !scan_enable
+    ST_MBIST --> ST_NORMAL : !mbist_enable || MB_DONE || MB_FAIL
+    ST_JTAG --> ST_NORMAL : !jtag_mode
+    ST_SECURE --> ST_NORMAL : !secure_lock_reg (仅硬件复位)
+</pre>
+
+<h2>4.3 DFT 主 FSM 转移条件表</h2>
+<table>
+    <tr><th>源状态</th><th>目标状态</th><th>触发条件</th><th>输出动作</th></tr>
+    <tr><td>ST_NORMAL</td><td>ST_SCAN</td><td><code>scan_enable &amp;&amp; !secure_lock_reg</code></td><td>scan_mode=1, scan_out=scan_in</td></tr>
+    <tr><td>ST_NORMAL</td><td>ST_MBIST</td><td><code>mbist_enable &amp;&amp; !scan_enable &amp;&amp; !secure_lock_reg</code></td><td>启动 MBIST 子 FSM</td></tr>
+    <tr><td>ST_NORMAL</td><td>ST_JTAG</td><td><code>jtag_mode &amp;&amp; !scan_enable &amp;&amp; !mbist_enable &amp;&amp; !secure_lock_reg</code></td><td>jtag_select=1, tdo=jtag_tdo_int</td></tr>
+    <tr><td>ST_NORMAL</td><td>ST_SECURE</td><td><code>secure_lock_reg == 1</code></td><td>所有 DFT 功能禁用</td></tr>
+    <tr><td>ST_SCAN</td><td>ST_NORMAL</td><td><code>!scan_enable</code></td><td>scan_mode=0</td></tr>
+    <tr><td>ST_MBIST</td><td>ST_NORMAL</td><td><code>!mbist_enable || mb_state ∈ {MB_DONE, MB_FAIL}</code></td><td>mbist_done/mbist_fail 输出</td></tr>
+    <tr><td>ST_JTAG</td><td>ST_NORMAL</td><td><code>!jtag_mode</code> (IR 切换到 BYPASS/IDCODE)</td><td>jtag_select=0</td></tr>
+    <tr><td>ST_SECURE</td><td>ST_NORMAL</td><td><code>!secure_lock_reg</code> (仅 reset_n 可清除)</td><td>—</td></tr>
+</table>
+
+<h2>4.4 MBIST 子 FSM — <code>mbist_state_e</code> (4-bit, 9 states)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th><th>算法步骤</th></tr>
+    <tr><td><code>MB_IDLE</code></td><td>4'd0</td><td>空闲</td><td>等待 ST_MBIST</td></tr>
+    <tr><td><code>MB_M0</code></td><td>4'd1</td><td>全写 0</td><td>↑(w0)</td></tr>
+    <tr><td><code>MB_M1</code></td><td>4'd2</td><td>升序读 0 写 1</td><td>↑(r0, w1)</td></tr>
+    <tr><td><code>MB_M2</code></td><td>4'd3</td><td>升序读 1 写 0</td><td>↑(r1, w0)</td></tr>
+    <tr><td><code>MB_M3</code></td><td>4'd4</td><td>降序读 0 写 1</td><td>↓(r0, w1)</td></tr>
+    <tr><td><code>MB_M4</code></td><td>4'd5</td><td>降序读 1 写 0</td><td>↓(r1, w0)</td></tr>
+    <tr><td><code>MB_M5</code></td><td>4'd6</td><td>升序读 0</td><td>↑(r0)</td></tr>
+    <tr><td><code>MB_DONE</code></td><td>4'd7</td><td>测试完成 (无错误)</td><td>mb_err_cnt == 0</td></tr>
+    <tr><td><code>MB_FAIL</code></td><td>4'd8</td><td>测试失败 (有错误)</td><td>mb_err_cnt &gt; 0</td></tr>
+</table>
+
+<h2>4.5 MBIST 子 FSM 转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> MB_IDLE : reset
+    MB_IDLE --> MB_M0 : state_reg == ST_MBIST
+    MB_M0 --> MB_M1 : mb_phase_done
+    MB_M1 --> MB_M2 : mb_phase_done
+    MB_M2 --> MB_M3 : mb_phase_done
+    MB_M3 --> MB_M4 : mb_phase_done
+    MB_M4 --> MB_M5 : mb_phase_done
+    MB_M5 --> MB_DONE : mb_phase_done && err_cnt==0
+    MB_M5 --> MB_FAIL : mb_phase_done && err_cnt>0
+    MB_DONE --> MB_IDLE : state_reg != ST_MBIST
+    MB_FAIL --> MB_IDLE : state_reg != ST_MBIST
+</pre>
+
+<h2>4.6 JTAG TAP 状态机 — <code>tap_state_e</code> (4-bit, 16 states, IEEE 1149.1)</h2>
+<table>
+    <tr><th>状态名</th><th>编码</th><th>含义</th></tr>
+    <tr><td>TAP_RESET</td><td>4'h0</td><td>测试逻辑复位</td></tr>
+    <tr><td>TAP_IDLE</td><td>4'h1</td><td>空闲</td></tr>
+    <tr><td>TAP_DR_SEL</td><td>4'h2</td><td>DR 扫描选择</td></tr>
+    <tr><td>TAP_DR_CAP</td><td>4'h3</td><td>DR 捕获</td></tr>
+    <tr><td>TAP_DR_SHIFT</td><td>4'h4</td><td>DR 移位</td></tr>
+    <tr><td>TAP_DR_EXIT1</td><td>4'h5</td><td>DR 退出 1</td></tr>
+    <tr><td>TAP_DR_PAUSE</td><td>4'h6</td><td>DR 暂停</td></tr>
+    <tr><td>TAP_DR_EXIT2</td><td>4'h7</td><td>DR 退出 2</td></tr>
+    <tr><td>TAP_DR_UPD</td><td>4'h8</td><td>DR 更新</td></tr>
+    <tr><td>TAP_IR_SEL</td><td>4'h9</td><td>IR 扫描选择</td></tr>
+    <tr><td>TAP_IR_CAP</td><td>4'hA</td><td>IR 捕获</td></tr>
+    <tr><td>TAP_IR_SHIFT</td><td>4'hB</td><td>IR 移位</td></tr>
+    <tr><td>TAP_IR_EXIT1</td><td>4'hC</td><td>IR 退出 1</td></tr>
+    <tr><td>TAP_IR_PAUSE</td><td>4'hD</td><td>IR 暂停</td></tr>
+    <tr><td>TAP_IR_EXIT2</td><td>4'hE</td><td>IR 退出 2</td></tr>
+    <tr><td>TAP_IR_UPD</td><td>4'hF</td><td>IR 更新</td></tr>
+</table>
+
+<h2>4.7 JTAG TAP 状态转移图</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> TAP_RESET : reset
+    TAP_RESET --> TAP_IDLE : tms=0
+    TAP_RESET --> TAP_RESET : tms=1
+    TAP_IDLE --> TAP_DR_SEL : tms=1
+    TAP_IDLE --> TAP_IDLE : tms=0
+    TAP_DR_SEL --> TAP_IR_SEL : tms=1
+    TAP_DR_SEL --> TAP_DR_CAP : tms=0
+    TAP_DR_CAP --> TAP_DR_SHIFT : tms=0
+    TAP_DR_CAP --> TAP_DR_EXIT1 : tms=1
+    TAP_DR_SHIFT --> TAP_DR_SHIFT : tms=0
+    TAP_DR_SHIFT --> TAP_DR_EXIT1 : tms=1
+    TAP_DR_EXIT1 --> TAP_DR_PAUSE : tms=0
+    TAP_DR_EXIT1 --> TAP_DR_UPD : tms=1
+    TAP_DR_PAUSE --> TAP_DR_PAUSE : tms=0
+    TAP_DR_PAUSE --> TAP_DR_EXIT2 : tms=1
+    TAP_DR_EXIT2 --> TAP_DR_SHIFT : tms=0
+    TAP_DR_EXIT2 --> TAP_DR_UPD : tms=1
+    TAP_DR_UPD --> TAP_IDLE : tms=0
+    TAP_DR_UPD --> TAP_DR_SEL : tms=1
+    TAP_IR_SEL --> TAP_RESET : tms=1
+    TAP_IR_SEL --> TAP_IR_CAP : tms=0
+    TAP_IR_CAP --> TAP_IR_SHIFT : tms=0
+    TAP_IR_CAP --> TAP_IR_EXIT1 : tms=1
+    TAP_IR_SHIFT --> TAP_IR_SHIFT : tms=0
+    TAP_IR_SHIFT --> TAP_IR_EXIT1 : tms=1
+    TAP_IR_EXIT1 --> TAP_IR_PAUSE : tms=0
+    TAP_IR_EXIT1 --> TAP_IR_UPD : tms=1
+    TAP_IR_PAUSE --> TAP_IR_PAUSE : tms=0
+    TAP_IR_PAUSE --> TAP_IR_EXIT2 : tms=1
+    TAP_IR_EXIT2 --> TAP_IR_SHIFT : tms=0
+    TAP_IR_EXIT2 --> TAP_IR_UPD : tms=1
+    TAP_IR_UPD --> TAP_IDLE : tms=0
+    TAP_IR_UPD --> TAP_DR_SEL : tms=1
+</pre>
+
+<h2>4.8 死锁/活锁分析</h2>
+<ul>
+    <li><strong>死锁防护 (DFT 主 FSM):</strong> ST_SECURE 仅在 reset_n 后可退出; 其他状态均有明确退出条件</li>
+    <li><strong>死锁防护 (MBIST):</strong> M0~M5 各阶段 mb_addr 单调递增至 mb_addr_max, 保证有限时间内完成</li>
+    <li><strong>死锁防护 (JTAG TAP):</strong> 5 个连续 tms=1 可从任何状态回到 TAP_RESET</li>
+    <li><strong>活锁防护 (MBIST):</strong> 每 cycle mb_addr +1 或状态转移, 无零进展循环</li>
+</ul>
+
+<!-- ═══ §5 数据通路 ═══ -->
+<h1 id="ch5">5. 数据通路与时序</h1>
+
+<h2>5.1 MBIST March C- 执行时序</h2>
+<pre class="mermaid">
+graph LR
+    M0["M0: ↑w0 (64K)"] --> M1["M1: ↑r0,w1 (64K)"]
+    M1 --> M2["M2: ↑r1,w0 (64K)"]
+    M2 --> M3["M3: ↓r0,w1 (64K)"]
+    M3 --> M4["M4: ↓r1,w0 (64K)"]
+    M4 --> M5["M5: ↑r0 (64K)"]
+    M5 --> DONE["MB_DONE / MB_FAIL"]
+</pre>
+
+<h2>5.2 MBIST 总测试时间</h2>
+<table>
+    <tr><th>阶段</th><th>操作</th><th>周期数</th><th>累计</th></tr>
+    <tr><td>M0</td><td>全写 0</td><td>65,536</td><td>65,536</td></tr>
+    <tr><td>M1</td><td>读 0 + 写 1</td><td>131,072 (2×64K)</td><td>196,608</td></tr>
+    <tr><td>M2</td><td>读 1 + 写 0</td><td>131,072</td><td>327,680</td></tr>
+    <tr><td>M3</td><td>读 0 + 写 1 (降序)</td><td>131,072</td><td>458,752</td></tr>
+    <tr><td>M4</td><td>读 1 + 写 0 (降序)</td><td>131,072</td><td>589,824</td></tr>
+    <tr><td>M5</td><td>读 0</td><td>65,536</td><td>655,360</td></tr>
+    <tr><td colspan="2"><strong>总计</strong></td><td colspan="2"><strong>655,360 cycle ≈ 6.55M cycle</strong></td></tr>
+</table>
+<div class="warn">
+    <strong>注意:</strong> 以上为简化估算 (每 addr 1~2 cycle)。实际 SRAM BIST 接口可能需要额外 wait state, 总时间会更长。64K 地址空间由 <code>mb_addr_max = 16'hFFFF</code> 决定。
+</div>
+
+<h2>5.3 JTAG DR 移位时序</h2>
+<table>
+    <tr><th>TAP 状态</th><th>IR/DR 操作</th><th>说明</th></tr>
+    <tr><td>TAP_IR_SHIFT</td><td><code>ir_reg ≤ {tdi, ir_reg[4:1]}</code></td><td>5-bit IR 右移, tdi 从 MSB 进入</td></tr>
+    <tr><td>TAP_IR_UPD</td><td>IR 锁存</td><td>移位完成, IR 值生效</td></tr>
+    <tr><td>TAP_DR_CAP</td><td><code>dr_reg ≤ DEVICE_IDCODE (if IR=IDCODE)</code></td><td>捕获 DR 初始值</td></tr>
+    <tr><td>TAP_DR_SHIFT</td><td><code>dr_reg ≤ {tdi, dr_reg[31:1]}</code></td><td>32-bit DR 右移, tdi 从 MSB 进入</td></tr>
+    <tr><td>TAP_DR_UPD</td><td>DR 锁存</td><td>移位完成, DR 值生效</td></tr>
+</table>
+
+<h2>5.4 TDO 输出选择逻辑</h2>
+<pre>
+tdo = (state_reg == ST_JTAG) ? jtag_tdo_int :     // JTAG: TAP TDO
+      (state_reg == ST_SCAN) ? scan_out[0] :       // Scan: chain bit[0]
+      1'b0;                                         // Normal: 拉低
+
+jtag_tdo_int = (tap_state == TAP_IR_SHIFT) ? ir_reg[0] : dr_reg[0];
+</pre>
+
+<!-- ═══ §6 边界条件 ═══ -->
+<h1 id="ch6">6. 边界条件与异常处理</h1>
+
+<h2>6.1 边界条件清单</h2>
+<table>
+    <tr><th>编号</th><th>条件</th><th>处理策略</th><th>验证覆盖</th></tr>
+    <tr><td>BC-001</td><td>secure_lock=1 时尝试 scan_enable</td><td>ST_NORMAL→ST_SECURE (不进入 ST_SCAN); secure_lock 优先级最高</td><td>cg_secure_blocks_scan</td></tr>
+    <tr><td>BC-002</td><td>secure_lock=1 时尝试 mbist_enable</td><td>ST_NORMAL→ST_SECURE (不进入 ST_MBIST)</td><td>cg_secure_blocks_mbist</td></tr>
+    <tr><td>BC-003</td><td>secure_lock=1 时尝试 JTAG 边界扫描</td><td>ST_NORMAL→ST_SECURE (不进入 ST_JTAG); IDCODE/BYPASS 仍可读取</td><td>cg_secure_blocks_jtag</td></tr>
+    <tr><td>BC-004</td><td>MBIST 期间 mbist_enable 被清除</td><td>ST_MBIST→ST_NORMAL, MBIST 子 FSM 停在当前状态 (下次重新从 M0 开始)</td><td>cg_mbist_abort</td></tr>
+    <tr><td>BC-005</td><td>MBIST 全 0 错误 (mb_err_cnt=0)</td><td>MB_M5 完成后 → MB_DONE, mbist_done=1, mbist_fail=0</td><td>cg_mbist_pass</td></tr>
+    <tr><td>BC-006</td><td>MBIST 有错误 (mb_err_cnt&gt;0)</td><td>MB_M5 完成后 → MB_FAIL, mbist_fail=1, mbist_error_count=err_cnt</td><td>cg_mbist_fail</td></tr>
+    <tr><td>BC-007</td><td>scan_enable 和 mbist_enable 同时为 1</td><td>scan_enable 优先 (FSM 先检查 scan_enable → ST_SCAN); MBIST 不启动</td><td>cg_scan_mbist_conflict</td></tr>
+    <tr><td>BC-008</td><td>JTAG TAP 连续 5 个 tms=1</td><td>从任何状态回到 TAP_RESET (IEEE 1149.1 标准保证)</td><td>cg_tap_reset_seq</td></tr>
+    <tr><td>BC-009</td><td>tamper_detect 在 ST_MBIST 期间触发</td><td>secure_lock_reg=1, 但 DFT FSM 仍在 ST_MBIST 直到 mbist 完成; 返回 ST_NORMAL 后立即进入 ST_SECURE</td><td>cg_tamper_during_mbist</td></tr>
+</table>
+
+<h2>6.2 错误检测与恢复</h2>
+<table>
+    <tr><th>错误类型</th><th>检测方法</th><th>恢复策略</th></tr>
+    <tr><td>SRAM 读写错误 (MBIST)</td><td>SRAM 比较器 (mb_error_found, 外部驱动)</td><td>mb_err_cnt 累计, M5 后 MB_FAIL, 系统级决策</td></tr>
+    <tr><td>JTAG IR 非法指令</td><td>— (不检测)</td><td>不识别的 IR 值 → jtag_mode=0 → ST_NORMAL; DR 捕获 0</td></tr>
+    <tr><td>tamper_detect 篡改</td><td>边沿触发锁存 → secure_lock_reg</td><td>永久锁定, 仅硬件复位可清除</td></tr>
+    <tr><td>ECC 干扰 MBIST</td><td>mb_ecc_bypass = (mb_state != MB_IDLE)</td><td>MBIST 期间自动禁用 ECC, 避免掩盖错误</td></tr>
+</table>
+
+<h2>6.3 Stall / Flush / Reset 响应</h2>
+<table>
+    <tr><th>全局信号</th><th>响应行为</th><th>时序</th></tr>
+    <tr><td><code>reset_n</code></td><td>异步复位: state→ST_NORMAL, mb_state→MB_IDLE, tap_state→TAP_RESET, ir_reg→IDCODE, dr_reg→IDCODE, secure_lock_reg→0, mb_addr→0, mb_err_cnt→0</td><td>异步</td></tr>
+    <tr><td>tamper_detect</td><td>secure_lock_reg=1, 下一 cycle DFT FSM → ST_SECURE</td><td>1~2 cycle</td></tr>
+    <tr><td>scan_enable=0 (在 ST_SCAN)</td><td>DFT FSM → ST_NORMAL, scan_mode=0</td><td>1 cycle</td></tr>
+</table>
+
+<!-- ═══ §7 参数 ═══ -->
+<h1 id="ch7">7. 可配置参数</h1>
+<table>
+    <tr><th>参数名</th><th>类型</th><th>默认值</th><th>取值范围</th><th>影响描述</th></tr>
+    <tr><td><code>IR_BYPASS</code></td><td>localparam [4:0]</td><td>5'b11111</td><td>固定</td><td>JTAG BYPASS 指令</td></tr>
+    <tr><td><code>IR_IDCODE</code></td><td>localparam [4:0]</td><td>5'b00001</td><td>固定</td><td>JTAG IDCODE 指令</td></tr>
+    <tr><td><code>IR_EXTEST</code></td><td>localparam [4:0]</td><td>5'b00010</td><td>固定</td><td>JTAG EXTEST 指令</td></tr>
+    <tr><td><code>IR_INTEST</code></td><td>localparam [4:0]</td><td>5'b00011</td><td>固定</td><td>JTAG INTEST 指令</td></tr>
+    <tr><td><code>IR_SAMPLE</code></td><td>localparam [4:0]</td><td>5'b00100</td><td>固定</td><td>JTAG SAMPLE 指令</td></tr>
+    <tr><td><code>IR_PRELOAD</code></td><td>localparam [4:0]</td><td>5'b00101</td><td>固定</td><td>JTAG PRELOAD 指令</td></tr>
+    <tr><td><code>DEVICE_IDCODE</code></td><td>localparam [31:0]</td><td>32'h10E3_1901</td><td>固定</td><td>器件 ID (厂商+型号+版本)</td></tr>
+    <tr><td><code>mb_addr_max</code></td><td>wire [15:0]</td><td>16'hFFFF</td><td>SRAM 深度</td><td>MBIST 地址空间上限 (64K words)</td></tr>
+</table>
+
+<h2>7.1 参数约束关系</h2>
+<ul>
+    <li>Scan Chain 位宽固定 4-bit (T-MS3-S2-1.4h), 不由参数控制</li>
+    <li>JTAG IR 位宽固定 5-bit, DR 位宽固定 32-bit (IEEE 1149.1 标准)</li>
+    <li>MBIST 地址空间 = mb_addr_max + 1 = 64K words; 实际值取决于 SRAM 实例深度</li>
+    <li>DEVICE_IDCODE bit[0] 固定为 1 (IEEE 1149.1 要求)</li>
+</ul>
+
+<!-- ═══ §8 微架构 ═══ -->
+<h1 id="ch8">8. 内部微架构细节</h1>
+
+<h2>8.1 子模块划分</h2>
+<table>
+    <tr><th>子模块</th><th>职责</th><th>关键信号</th></tr>
+    <tr><td>DFT 主 FSM</td><td>5 态模式切换 (NORMAL/SCAN/MBIST/JTAG/SECURE)</td><td><code>state_reg (dft_state_e)</code></td></tr>
+    <tr><td>MBIST 子 FSM</td><td>March C- 9 态 (IDLE + M0~M5 + DONE + FAIL)</td><td><code>mb_state_reg (mbist_state_e)</code></td></tr>
+    <tr><td>MBIST 地址计数器</td><td>16-bit, 0→mb_addr_max</td><td><code>mb_addr[15:0], mb_phase_done</code></td></tr>
+    <tr><td>MBIST 错误计数器</td><td>32-bit, M1~M5 累计</td><td><code>mb_err_cnt[31:0]</code></td></tr>
+    <tr><td>JTAG TAP 控制器</td><td>IEEE 1149.1 标准 16 态, tck 域</td><td><code>tap_state_reg (tap_state_e)</code></td></tr>
+    <tr><td>JTAG IR 寄存器</td><td>5-bit, TAP_IR_SHIFT 移位</td><td><code>ir_reg[4:0]</code></td></tr>
+    <tr><td>JTAG DR 寄存器</td><td>32-bit, TAP_DR_SHIFT/CAP 操作</td><td><code>dr_reg[31:0]</code></td></tr>
+    <tr><td>安全锁定寄存器</td><td>1-bit, tamper_detect 锁存 (永久)</td><td><code>secure_lock_reg</code></td></tr>
+    <tr><td>TDO 多路选择器</td><td>JTAG/Scan/Normal 模式切换</td><td><code>tdo</code> (3-to-1 MUX)</td></tr>
+    <tr><td>ECC Bypass 控制</td><td>MBIST 期间禁用 ECC</td><td><code>mb_ecc_bypass</code></td></tr>
+</table>
+
+<h2>8.2 内部寄存器</h2>
+<table>
+    <tr><th>寄存器名</th><th>位宽</th><th>复位值</th><th>更新条件</th><th>用途</th></tr>
+    <tr><td><code>state_reg</code></td><td>3</td><td>ST_NORMAL</td><td>每 clk_core↑</td><td>DFT 主模式</td></tr>
+    <tr><td><code>mb_state_reg</code></td><td>4</td><td>MB_IDLE</td><td>每 clk_core↑</td><td>MBIST 阶段</td></tr>
+    <tr><td><code>mb_addr</code></td><td>16</td><td>0</td><td>M0~M5 每 cycle +1</td><td>MBIST 当前地址</td></tr>
+    <tr><td><code>mb_err_cnt</code></td><td>32</td><td>0</td><td>M1~M5 且 error_found</td><td>MBIST 错误计数</td></tr>
+    <tr><td><code>mb_error_found</code></td><td>1</td><td>0</td><td>SRAM 比较器 (外部)</td><td>当前地址错误指示</td></tr>
+    <tr><td><code>tap_state_reg</code></td><td>4</td><td>TAP_RESET</td><td>每 tck↑</td><td>JTAG TAP 状态</td></tr>
+    <tr><td><code>ir_reg</code></td><td>5</td><td>IR_IDCODE</td><td>TAP_IR_SHIFT: 移位</td><td>JTAG 指令</td></tr>
+    <tr><td><code>dr_reg</code></td><td>32</td><td>DEVICE_IDCODE</td><td>TAP_DR_CAP/SHIFT</td><td>JTAG 数据</td></tr>
+    <tr><td><code>secure_lock_reg</code></td><td>1</td><td>0</td><td>tamper_detect 上升沿</td><td>永久安全锁定</td></tr>
+</table>
+
+<!-- ═══ §9 验证 ═══ -->
+<h1 id="ch9">9. 验证要点</h1>
+
+<h2>9.1 功能覆盖目标</h2>
+<table>
+    <tr><th>覆盖项</th><th>覆盖目标</th><th>优先级</th></tr>
+    <tr><td>Scan Chain 移位正确性 (F-DFT-001)</td><td>4-bit 全组合</td><td>P0</td></tr>
+    <tr><td>MBIST March C- 完整执行 (F-DFT-002)</td><td>M0→M5 全阶段</td><td>P0</td></tr>
+    <tr><td>MBIST Pass/Fail 判定 (F-DFT-004)</td><td>err_cnt=0 和 &gt;0</td><td>P0</td></tr>
+    <tr><td>JTAG TAP 16 态全覆盖 (F-DFT-005)</td><td>100% 状态覆盖</td><td>P0</td></tr>
+    <tr><td>IDCODE 读取 (F-DFT-007)</td><td>32'h10E3_1901 正确返回</td><td>P0</td></tr>
+    <tr><td>安全锁定不可逆 (F-DFT-008)</td><td>tamper→lock, 软件不可清除</td><td>P0</td></tr>
+    <tr><td>Secure 阻止所有 DFT 模式</td><td>secure_lock + scan/mbist/jtag 各组合</td><td>P0</td></tr>
+    <tr><td>TDO 多路选择正确性 (F-DFT-009)</td><td>3 种模式全覆盖</td><td>P1</td></tr>
+    <tr><td>MBIST ECC Bypass</td><td>MBIST 期间 ECC 禁用</td><td>P1</td></tr>
+</table>
+
+<h2>9.2 SVA 断言建议</h2>
+<table>
+    <tr><th>断言名</th><th>属性</th><th>目的</th></tr>
+    <tr><td><code>assert_secure_lock_permanent</code></td><td>tamper_detect → ##1 secure_lock ##[0:$] secure_lock</td><td>锁定后永不自动解除</td></tr>
+    <tr><td><code>assert_secure_blocks_dft</code></td><td>secure_lock → !(scan_mode || mbist_start || jtag_select)</td><td>Secure 状态下 DFT 功能全部禁用</td></tr>
+    <tr><td><code>assert_mbist_sequence</code></td><td>MB_M0 → ##[65536] MB_M1 → ... → MB_M5</td><td>March C- 阶段顺序正确</td></tr>
+    <tr><td><code>assert_tap_reset_seq</code></td><td>tms[*5] → tap_state == TAP_RESET</td><td>5 个 tms=1 回到 RESET</td></tr>
+    <tr><td><code>assert_idcode_value</code></td><td>TAP_DR_CAP &amp;&amp; ir==IDCODE → dr == 32'h10E3_1901</td><td>IDCODE 值正确</td></tr>
+    <tr><td><code>assert_ir_default</code></td><td>reset → ir_reg == IR_IDCODE</td><td>IR 复位值 = IDCODE</td></tr>
+</table>
+
+<!-- ═══ §10 追溯 ═══ -->
+<h1 id="ch10">10. 需求追溯</h1>
+
+<h2>10.1 需求 ID 映射</h2>
+<table>
+    <tr><th>需求 ID</th><th>需求描述</th><th>LLD 章节</th><th>RTL 实现</th></tr>
+    <tr><td><span class="req-tag">LUMI-DFT-001</span></td><td>Scan Chain 控制</td><td>§2.1, §5.4</td><td>ST_SCAN, scan_out = scan_in</td></tr>
+    <tr><td><span class="req-tag">LUMI-DFT-002</span></td><td>MBIST March C-</td><td>§2.1, §4.4, §5.1</td><td>mbist_state_e FSM, mb_addr</td></tr>
+    <tr><td><span class="req-tag">LUMI-DFT-003</span></td><td>JTAG IEEE 1149.1</td><td>§2.1, §4.6, §8.1</td><td>tap_state_e FSM, ir_reg, dr_reg</td></tr>
+    <tr><td><span class="req-tag">LUMI-SEC-001</span></td><td>安全锁定 (tamper)</td><td>§2.1, §8.1</td><td>secure_lock_reg, ST_SECURE</td></tr>
+</table>
+
+<h2>10.2 HLD 追溯</h2>
+<p>本文档承接 <a href="dft-security.html">dft-security.html</a> (LUMI-DESIGN-016) 的设计细化。HLD §3.1 (Scan Chain, T-MS3-S2-1.4h) → §2.1/§5.4; HLD §3.2 (MBIST, T-MS3-S2-1.4i) → §2.1/§4.4/§5.1; HLD §3.3 (JTAG) → §2.2/§4.6/§8.1; HLD §3.4 (安全) → §2.1/§8.1。</p>
+
+<h2>10.3 接口契约追溯</h2>
+<p>本文档涉及的接口契约: <a href="interface-contracts.html#dft">IC-7.2 (DFT/JTAG)</a></p>
+
+<h2>10.4 Testpoint 追溯</h2>
+<table>
+    <tr><th>Testpoint ID</th><th>描述</th><th>LLD 章节</th></tr>
+    <tr><td>T-MS3-S2-1.4h</td><td>4-bit Scan Chain 接口</td><td>§3.1 (scan_in/scan_out), §5.4</td></tr>
+    <tr><td>T-MS3-S2-1.4i</td><td>MBIST 诊断输出</td><td>§3.1 (mbist_diag), §8.1</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="lld-index.html">&larr; 返回 LLD 索引</a> &nbsp;|&nbsp;
+    <a href="interface-contracts.html">接口契约</a> &nbsp;|&nbsp;
+    <a href="../index.html">文档地图</a></p>
+    <p>LUMI-LLD-013 &nbsp;|&nbsp; DFT Controller &amp; Security &nbsp;|&nbsp; Phase 5 &nbsp;|&nbsp; 2026-07-16</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LLD 独立审查报告 — 2026-07-16</title>
+<style>
+:root{--bg:#fff;--text:#333;--accent:#16213e;--border:#e0e0e0;--code-bg:#f5f5f5;--link:#0d47a1;--p0:#c62828;--p1:#e65100;--p2:#f9a825;--p3:#546e7a;--info:#1565c0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);max-width:1200px;margin:0 auto;padding:2rem}
+h1{font-size:1.6rem;color:var(--accent);margin:2rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+h2{font-size:1.3rem;color:#1a3a5c;margin:1.5rem 0 0.6rem}
+h3{font-size:1.1rem;color:#37474f;margin:1rem 0 0.4rem}
+p{margin:0.5rem 0}
+table{width:100%;border-collapse:collapse;font-size:0.85rem;margin:0.8rem 0}
+th{background:var(--accent);color:#fff;padding:0.4rem 0.6rem;text-align:left;font-weight:600}
+td{padding:0.35rem 0.6rem;border-bottom:1px solid var(--border);vertical-align:top}
+tr:nth-child(even) td{background:#f8f9fa}
+code{background:var(--code-bg);padding:0.1rem 0.3rem;border-radius:3px;font-family:Menlo,monospace;font-size:0.85em}
+.cover{text-align:center;padding:2rem 0;border-bottom:3px solid var(--accent);margin-bottom:2rem}
+.summary{background:#e8f4fd;border-left:4px solid var(--link);padding:0.8rem 1.2rem;margin:1rem 0;border-radius:0 6px 6px 0}
+.warn{background:#fff3e0;border-left:4px solid var(--p1);padding:0.6rem 1rem;margin:0.8rem 0;border-radius:0 6px 6px 0}
+.badge{display:inline-block;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600;color:#fff;margin-right:0.3rem}
+.badge-P0{background:var(--p0)}.badge-P1{background:var(--p1)}.badge-P2{background:var(--p2);color:#333}.badge-P3{background:var(--p3)}.badge-Info{background:var(--info)}
+.footer{text-align:center;color:#90a4ae;font-size:0.85rem;margin-top:3rem;padding-top:1rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div class="cover">
+<h1>LLD 独立审查报告</h1>
+<p style="color:#546e7a">Independent Review of LLD Documents vs RTL</p>
+<p style="color:#90a4ae;font-size:0.9rem">审查日期: 2026-07-16 | 审查人: Kimi (AI)</p>
+</div>
+
+<h1>1. 审查概览</h1>
+<div class="summary">
+<strong>审查范围:</strong> 20 份模块 LLD + 1 份接口契约 + LLD 模板/索引 + 4 个自动化脚本 + CI 配置。<br>
+<strong>审查方法:</strong> 自动化检查（端口一致性、FSM 覆盖）+ 人工抽样审查 + 接口契约双向核对 + 文档体系评估。<br>
+<strong>重要说明:</strong> 自动化检查存在工具限制，大量"误报"源于 LLD 使用数组索引、interface 定义与实际 scalar 端口差异；本报告已过滤并保留实质性问题。
+</div>
+
+<h2>1.1 统计摘要</h2>
+<table>
+<tr><th>等级</th><th>数量</th><th>含义</th></tr>
+<tr><td><span class="badge badge-P0">P0</span></td><td>11</td><td>严重，会导致设计/连接错误</td></tr>
+<tr><td><span class="badge badge-P1">P1</span></td><td>16</td><td>重要，影响验证或编码</td></tr>
+<tr><td><span class="badge badge-P2">P2</span></td><td>13</td><td>中等，描述不完整或易误导</td></tr>
+<tr><td><span class="badge badge-P3">P3</span></td><td>5</td><td>轻微，格式/细节问题</td></tr>
+<tr><td><span class="badge badge-Info">Info</span></td><td>3</td><td>改进建议</td></tr>
+</table>
+
+<h2>1.2 自动化检查原始结果</h2>
+<table>
+<tr><th>检查项</th><th>结果</th></tr>
+<tr><td>RTL 基线</td><td>25 模块 / 640 端口 / 26 枚举 / 54 状态</td></tr>
+<tr><td>端口一致性检查</td><td>29 对，原始错误 71，原始警告 448</td></tr>
+<tr><td>FSM 覆盖检查</td><td>原始警告 3，原始信息 38</td></tr>
+</table>
+
+<div class="warn">
+<strong>工具限制说明:</strong>
+<ul>
+<li>端口提取正则无法解析嵌套参数表达式，部分位宽需人工确认。</li>
+<li>RTL 实际使用 scalar 端口，脚本将 SV interface 定义信号误报为额外端口。</li>
+<li>LLD 中数组信号常带 [ISSUE_WIDTH-1:0] 索引，与 RTL 基名匹配产生大量误报。</li>
+<li>FSM 检查仅比较状态名集合，不验证转移条件。</li>
+</ul>
+</div>
+
+<h1>2. 问题清单</h1>
+<table>
+<tr><th>等级</th><th>类别</th><th>文件</th><th>章节</th><th>问题描述</th><th>RTL 依据</th><th>建议修复方向</th></tr>
+<tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>核心LLD</td>
+<td><code>lld-memory-stage.html</code></td>
+<td>§6.1/§6.2</td>
+<td>未对齐 Load/Store 文档描述为触发 misalign 异常，但 RTL 已改为透明拆分处理，m_pipe_exception 始终清零</td>
+<td><code>lumi_memory_stage.sv L659-662</code></td>
+<td>重写未对齐访问描述为透明拆分，不触发异常</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>核心LLD</td>
+<td><code>lld-writeback.html</code></td>
+<td>§4.2/§4.3/§6.1</td>
+<td>中断判断条件与 RISC-V 语义冲突：RTL 使用 !trap_cause[3] 判断中断，导致正常中断错误进入 ST_TRAP，异常与 irq 同时到达时反而进入 ST_IRQ</td>
+<td><code>lumi_writeback.sv L410-412</code></td>
+<td>统一 RTL 判断条件为 trap_cause==11 并同步修正文档，或重写文档描述当前 RTL 实际行为</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-3.3</td>
+<td>Core↔TCM 文档写基于 mem_req_if，但 RTL lumi_tcm 使用显式 scalar 端口 core_addr/core_wdata/core_rdata 等</td>
+<td><code>lumi_tcm.sv L26-61</code></td>
+<td>重写 IC-3.3 为 scalar 端口契约，或修改 RTL 使用 mem_req_if</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-3.4</td>
+<td>Cache↔AXI Wrapper 文档写为完整 AXI4 五通道，但 RTL 实际为简化 refill/evict 接口</td>
+<td><code>lumi_cache.sv L55-71</code></td>
+<td>重写 IC-3.4 为自定义 refill/evict 接口</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-3.5</td>
+<td>DMA↔DTCM 文档写基于 mem_req_if，但 RTL 中 DMA 端口为 AXI4-Lite 风格 scalar 信号</td>
+<td><code>lumi_tcm.sv L39-55</code></td>
+<td>重写 IC-3.5 为 AXI4-Lite 风格信号表</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-3.1</td>
+<td>ICache 接口缺失 ic_hit/ic_ready/ic_flush 信号</td>
+<td><code>lumi_cache.sv L38-43</code></td>
+<td>补充三个信号到 IC-3.1</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-5.1</td>
+<td>CLIC→Core 信号 irq_valid 与实际端口 irq_request 命名不一致；irq_ack 在 SoC 顶层固定接 0，应答机制未实现</td>
+<td><code>lumi_core_top.sv L35; lumi_soc_top.sv L460/L502</code></td>
+<td>统一命名并将 exc_irq_ack 连回 CLIC irq_ack</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-5.2</td>
+<td>PLIC meip_in 在 SoC 顶层接 1'b0，PLIC 未实际接入中断路径</td>
+<td><code>lumi_soc_top.sv L450/L468-482</code></td>
+<td>将 plic_meip 连接到 CLIC meip_in，或重写 IC-5.2 说明未连接</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-4.3</td>
+<td>PMA Checker↔AXI Wrapper 直连接口声明存在，但 lumi_pma_checker 输出全部悬空未连接</td>
+<td><code>lumi_soc_top.sv L319-335</code></td>
+<td>删除 IC-4.3 或实现真实连接</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-4.2</td>
+<td>AXI4-Lite 消费者写为 CSR 单元/MMIO 外设，但 lumi_csr_unit 使用直接 CSR 接口而非 AXI4-Lite</td>
+<td><code>lumi_core_top.sv L40-46; lumi_soc_top.sv L390-436</code></td>
+<td>修正 IC-4.2 消费者为 FFP 外设/m_ffp_* 端口</td>
+</tr><tr>
+<td><span class="badge badge-P0">P0</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>附录B</td>
+<td>SV Interface 实例映射表错误：pipeline_if/axi4_if/mem_req_if/interrupt_if/jtag_if 在 RTL 中均未被实例化，仅存在于定义</td>
+<td><code>src/rtl/**/*.sv (grep)</code></td>
+<td>重写附录B说明当前使用scalar端口，interface为预留</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>核心LLD</td>
+<td><code>lld-fetch-bpred.html</code></td>
+<td>§3.1</td>
+<td>f2_inst_count 位宽描述为 3，实际 RTL 声明为 [3:0] 即 4 bit</td>
+<td><code>lumi_fetch.sv L29</code></td>
+<td>位宽改为 4 或说明 $clog2(FETCH_WIDTH)+1</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>核心LLD</td>
+<td><code>lld-decode-issue.html</code></td>
+<td>§3.1</td>
+<td>端口表遗漏 e1m_load_pending 与 e1m_rd 输入信号</td>
+<td><code>lumi_decode_issue.sv L58-59</code></td>
+<td>补全端口表</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>核心LLD</td>
+<td><code>lld-decode-issue.html</code></td>
+<td>§2.1/§5.1.3/§6.2</td>
+<td>文档称 FPU/FP-Load/FP-Store/Zicond 触发非法指令异常，但 RTL 仅设置 valid=0 丢弃，不设置 exc_valid</td>
+<td><code>lumi_decode_issue.sv L544-567/L457-480/L803-807</code></td>
+<td>修正为标记无效并丢弃，或修改 RTL 设置 exc_valid</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>核心LLD</td>
+<td><code>lld-cache.html</code></td>
+<td>§5.1/§5.2</td>
+<td>地址解码固定描述为 4-way 32KB 配置，但 RTL 默认 8-way，参数化计算为 IC_IDX_W=6/IC_TAG_W=20</td>
+<td><code>lumi_cache.sv L26-32/L86-97/L213-221</code></td>
+<td>改为参数化表达式并注明 4-way/8-way 示例值</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-2.2</td>
+<td>生产方写为 lumi_fetch (F2)/lumi_predecode，但 lumi_predecode 输出直接接入 lumi_decode_issue，lumi_fetch 不直接输出 pd_inst*</td>
+<td><code>lumi_core_top.sv L295-314</code></td>
+<td>明确边界为 lumi_predecode → lumi_decode_issue</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-2.4</td>
+<td>协议类型写为 E1 始终接收，但 RTL 在分支/误预测气泡/mem_busy 时会阻塞 I→E1 寄存器</td>
+<td><code>lumi_core_top.sv L470-548</code></td>
+<td>改为寄存器捕获+条件阻塞</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-2.5</td>
+<td>协议类型写为直连组合逻辑，但 E2 MUL/DIV 为多周期 valid-busy 反馈</td>
+<td><code>lumi_core_top.sv L182-189/L581-586</code></td>
+<td>改为多周期 valid-busy 反馈或拆分前后向</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-4.1</td>
+<td>AXI4 主端口信号表不完整，缺失 awburst/awlock/awcache/awprot/awuser 及对应 AR 边带信号</td>
+<td><code>lumi_axi_wrapper.sv L50-84; lumi_interfaces.sv L46-93</code></td>
+<td>补充完整 AXI4 边带信号</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-6.1</td>
+<td>文档基于 jtag_if，但 lumi_debug_module 使用 scalar 端口；DMI 信号名 dmi_valid/ready 与 RTL dmi_req_valid/ready 不一致</td>
+<td><code>lumi_soc_top.sv L594-595</code></td>
+<td>重写为 scalar 信号表并统一 DMI 握手名</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-5.1/IC-5.2</td>
+<td>文档基于 interrupt_if，但 lumi_clic/plic/core_top 均未使用 interrupt_if，全是 scalar 端口</td>
+<td><code>grep src/rtl</code></td>
+<td>重写为 scalar 信号表或修改 RTL 使用 interface</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>文档体系</td>
+<td><code>lld-index.html</code></td>
+<td>概览</td>
+<td>概览声明 22 份 LLD 文档，实际卡片只有 20 份</td>
+<td><code>docs/design/lld-index.html</code></td>
+<td>修正为 20 份或补全缺失</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>文档体系</td>
+<td><code>docs/design/index.html</code></td>
+<td>HLD-LLD映射</td>
+<td>HLD 与 LLD 编号/命名无 1:1 映射表，查找不直观</td>
+<td><code>docs/design/index.html</code></td>
+<td>增加 HLD↔LLD 映射表</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>自动化</td>
+<td><code>lld_port_check.py</code></td>
+<td>位宽比较</td>
+<td>位宽比较使用子串命中，导致 '32' 与 '32-bit data bus' 被判定一致，漏报真实错误</td>
+<td><code>scripts/lld-check/lld_port_check.py</code></td>
+<td>严格比较数值位宽或规范化后比较</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>自动化</td>
+<td><code>lld_signal_extract.py</code></td>
+<td>参数化端口</td>
+<td>位宽正则无法解析嵌套参数表达式如 [(PARAM-1):0]、[$clog2(N):0]</td>
+<td><code>scripts/lld-check/lld_signal_extract.py</code></td>
+<td>增强正则或使用 SV 解析器</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>CI</td>
+<td><code>lld-check.yaml</code></td>
+<td>模块名推断</td>
+<td>按 lld-fetch-bpred.html → lumi_fetch_bpred 推断模块名，RTL 实际为 lumi_fetch+lumi_predecode，会报 module not found</td>
+<td><code>.github/workflows/lld-check.yaml</code></td>
+<td>使用显式模块映射表</td>
+</tr><tr>
+<td><span class="badge badge-P1">P1</span></td>
+<td>CI</td>
+<td><code>lld-check.yaml</code></td>
+<td>FSM检查</td>
+<td>FSM 检查步骤未 exit 1，文档缺失不会导致 CI 失败</td>
+<td><code>.github/workflows/lld-check.yaml</code></td>
+<td>FSM 检查失败时退出非零</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>核心LLD</td>
+<td><code>lld-writeback.html</code></td>
+<td>§4.3</td>
+<td>ST_IDLE→ST_TRAP 条件表直接把 RTL 内部实现细节写入，但与 §4.2/BC-005 的 RISC-V 语义冲突</td>
+<td><code>lumi_writeback.sv L412</code></td>
+<td>统一术语，明确说明当前 RTL 判断位</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>核心LLD</td>
+<td><code>lld-cache.html</code></td>
+<td>§5.5</td>
+<td>Tag Comparator 延迟描述基于 19bit tag，与默认 8-way 配置 20bit tag 不符</td>
+<td><code>lumi_cache.sv L86-97</code></td>
+<td>改为参数化描述</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>核心LLD</td>
+<td><code>lld-fetch-bpred.html</code></td>
+<td>§3.1</td>
+<td>f2_base_pc_out 描述为 cache line 基地址，但 RTL 实际输出 pc_reg（含 offset）</td>
+<td><code>lumi_fetch.sv L671</code></td>
+<td>统一描述为当前 PC 或改名</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>IC-2.1/IC-2.6</td>
+<td>多个接口协议描述与实际反压/寄存行为不符</td>
+<td><code>lumi_interfaces.sv/LMS相关</code></td>
+<td>按实际 RTL 修正协议描述</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>文档体系</td>
+<td><code>lld-template.html</code></td>
+<td>§6</td>
+<td>强制要求 5 条边界条件，对简单组合模块可能过度填充</td>
+<td><code>docs/design/lld-template.html</code></td>
+<td>改为最低 1 条 + 显式声明无</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>文档体系</td>
+<td><code>lld-template.html</code></td>
+<td>可裁剪规则</td>
+<td>仅 §4 给出可裁剪说明，CDC/关键路径/子模块等章节缺少裁剪指引</td>
+<td><code>docs/design/lld-template.html</code></td>
+<td>扩展可裁剪规则</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>文档体系</td>
+<td><code>lld-template.html</code></td>
+<td>Mermaid</td>
+<td>Mermaid 图表未引入 JS 运行时，浏览器直接打开无法渲染</td>
+<td><code>docs/design/lld-template.html</code></td>
+<td>增加 Mermaid JS 引用</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>文档体系</td>
+<td><code>lld-index.html</code></td>
+<td>状态标记</td>
+<td>全部 LLD 状态仍为 TODO，与已编写事实不符</td>
+<td><code>docs/design/lld-index.html</code></td>
+<td>更新为 COMPLETE/版本号</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>文档体系</td>
+<td><code>lld-index.html</code></td>
+<td>阶段命名</td>
+<td>HLD 用 Batch 1~4，LLD 用 Phase 2~6，两套命名不一致</td>
+<td><code>docs/design/index.html vs lld-index.html</code></td>
+<td>统一命名或增加对照</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>自动化</td>
+<td><code>lld_signal_extract.py</code></td>
+<td>interface</td>
+<td>未识别 SV interface 实例化端口</td>
+<td><code>scripts/lld-check/lld_signal_extract.py</code></td>
+<td>增加 interface 实例化解析</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>自动化</td>
+<td><code>lld_port_check.py</code></td>
+<td>列数假设</td>
+<td>假设 §3.1 表格固定 8 列，若合并单元格会错位解析</td>
+<td><code>scripts/lld-check/lld_port_check.py</code></td>
+<td>解析表头确定列</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>CI</td>
+<td><code>lld-check.yaml</code></td>
+<td>PR paths</td>
+<td>pull_request paths 未包含 interface-contracts.html</td>
+<td><code>.github/workflows/lld-check.yaml</code></td>
+<td>补充路径</td>
+</tr><tr>
+<td><span class="badge badge-P2">P2</span></td>
+<td>CI</td>
+<td><code>lld-check.yaml</code></td>
+<td>单LLD多RTL</td>
+<td>一份 LLD 常对应多个 RTL 模块，脚本只检查一个推断名</td>
+<td><code>.github/workflows/lld-check.yaml</code></td>
+<td>使用映射表覆盖全部相关模块</td>
+</tr><tr>
+<td><span class="badge badge-P3">P3</span></td>
+<td>文档体系</td>
+<td><code>lld-template.html</code></td>
+<td>CSS</td>
+<td>样式全部内联，模板更新后已生成 LLD 不会同步</td>
+<td><code>docs/design/lld-template.html</code></td>
+<td>提供共享样式文件或构建注入</td>
+</tr><tr>
+<td><span class="badge badge-P3">P3</span></td>
+<td>文档体系</td>
+<td><code>lld-index.html</code></td>
+<td>编号</td>
+<td>LUMI-LLD-001~020 已用尽，预留扩展空间有限</td>
+<td><code>docs/design/lld-index.html</code></td>
+<td>预留扩展编号段</td>
+</tr><tr>
+<td><span class="badge badge-P3">P3</span></td>
+<td>文档体系</td>
+<td><code>docs/design/index.html</code></td>
+<td>更新日期</td>
+<td>HLD 索引最后更新 2026-07-07，未随 LLD 建立刷新</td>
+<td><code>docs/design/index.html</code></td>
+<td>更新日期</td>
+</tr><tr>
+<td><span class="badge badge-P3">P3</span></td>
+<td>接口契约</td>
+<td><code>interface-contracts.html</code></td>
+<td>版本说明</td>
+<td>版本写 v1.0 §3~§8 已填充，但 §6/§7 大量接口标记未连接</td>
+<td><code>interface-contracts.html</code></td>
+<td>版本说明改为骨架填充，部分待连接</td>
+</tr><tr>
+<td><span class="badge badge-P3">P3</span></td>
+<td>自动化</td>
+<td><code>lld_fsm_check.py</code></td>
+<td>转移条件</td>
+<td>仅比较状态集合，不验证转移条件表与 RTL 逻辑一致性</td>
+<td><code>scripts/lld-check/lld_fsm_check.py</code></td>
+<td>增加转移条件检查</td>
+</tr><tr>
+<td><span class="badge badge-Info">Info</span></td>
+<td>文档体系</td>
+<td><code>lld-template.html</code></td>
+<td>IC映射</td>
+<td>模板未说明 IC 编号与 LLD 编号的映射规则</td>
+<td><code>docs/design/lld-template.html</code></td>
+<td>增加映射说明</td>
+</tr><tr>
+<td><span class="badge badge-Info">Info</span></td>
+<td>核心LLD</td>
+<td><code>lld-debug-trace.html</code></td>
+<td>IC-6.3</td>
+<td>Trace 文档监听 commit_valid/commit_pc，RTL 中 lumi_trace 仅使用 slot0</td>
+<td><code>lumi_soc_top.sv L608-622</code></td>
+<td>可注明当前 Trace 仅支持 slot0</td>
+</tr><tr>
+<td><span class="badge badge-Info">Info</span></td>
+<td>自动化</td>
+<td><code>lld-check.yaml</code></td>
+<td>分支范围</td>
+<td>仅监听 main/develop，feature 分支需依赖 PR 阶段</td>
+<td><code>.github/workflows/lld-check.yaml</code></td>
+<td>按需扩展</td>
+</tr>
+</table>
+
+<h1>3. 文档体系评估结论</h1>
+<h3>3.1 整体设定</h3>
+<ul>
+<li><strong>合理:</strong> 10 章节 LLD 模板、独立接口契约文档、HLD/LLD 分离、自动化检查机制。</li>
+<li><strong>需改进:</strong> 模板强制 5 条边界条件对简单模块过度；Mermaid 未引入 JS 运行时；CSS 未共享。</li>
+</ul>
+<h3>3.2 最大风险</h3>
+<ul>
+<li>接口契约文档大量声明基于 SV interface，但 RTL 全部使用 scalar 端口，interface 层与实现严重脱节。</li>
+<li>核心 LLD 中存在与 RTL 实际行为冲突的描述（memory-stage 未对齐异常、writeback 中断判断）。</li>
+<li>CI 脚本模块名推断错误，会导致检查直接失败。</li>
+</ul>
+
+<div class="footer">
+<p><a href="docs/design/lld-index.html">LLD 索引</a> | <a href="docs/design/interface-contracts.html">接口契约</a></p>
+<p>Lumi-Core LLD Independent Review — 2026-07-16</p>
+</div>
+
+</body>
+</html>

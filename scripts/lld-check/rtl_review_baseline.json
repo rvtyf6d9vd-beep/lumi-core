@@ -1,0 +1,4356 @@
+{
+  "modules": [
+    {
+      "file": "src/rtl/bus/lumi_axi_wrapper.sv",
+      "module": "lumi_axi_wrapper",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "clk_bus",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ic_refill_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ic_refill_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ic_refill_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_refill_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_refill_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_refill_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_evict_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_evict_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_evict_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_evict_data",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "nc_access_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nc_access_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nc_access_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "nc_access_we",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nc_access_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "nc_access_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trace_write_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_write_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_write_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trace_write_data",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awlen",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "m_axi_awsize",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_awburst",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_awlock",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awcache",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_awprot",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_awvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wlast",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_bresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_bvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_bready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arlen",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "m_axi_arsize",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_arburst",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_arlock",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arcache",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_arprot",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_arvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_rlast",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_awvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_awready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "m_ffp_wstrb",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_ffp_wvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_wready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_bresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_ffp_bvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_bready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_arvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_arready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_rdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "m_ffp_rresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_ffp_rvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_ffp_rready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/bus/lumi_cdc_sync.sv",
+      "module": "lumi_cdc_2ff_sync",
+      "ports": [
+        {
+          "name": "clk_dst",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "din",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dout",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/bus/lumi_pma_checker.sv",
+      "module": "lumi_pma_checker",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pma_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "pma_access_type",
+          "direction": "input",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "pma_privilege",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "pma_result",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "lumi_pkg",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pmp_check_req",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pmp_check_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "pmp_check_type",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "pmp_result",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "route_tcm",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "route_cache",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "route_mmio",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_bypass.sv",
+      "module": "lumi_bypass",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "m_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "w_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "w_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "fpu_result",
+          "direction": "input",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "fpu_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "fpu_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "query_rs1",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "query_rs2",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "bypass_rs1_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "bypass_rs2_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_core_top.sv",
+      "module": "lumi_core_top",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ic_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "ic_data",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "ic_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ic_req_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_rdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dc_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_be",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "dc_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_ready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dc_hit",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_request",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_id",
+          "direction": "input",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "irq_level",
+          "direction": "input",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "csr_addr",
+          "direction": "output",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "csr_rdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "csr_op",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "mstatus_out",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mtvec_out",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "debug_halt",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nmi_signal",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_result",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "hpm_inst_retired",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch_miss",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_load",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_store",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_exception",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_exc_fetch",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "core_exc_decode",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "core_exc_exec",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "core_exc_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "core_exc_insn",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "core_exc_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "wfi_req",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mon_inst",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mon_inst_raw",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "mon_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "mon_rd_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mon_irq",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_decode_issue.sv",
+      "module": "lumi_decode_issue",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pd_inst",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pd_inst_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pd_inst_raw",
+          "direction": "input",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "f2_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "d_rs1_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "d_rs2_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "regfile_rs1_addr",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "regfile_rs2_addr",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "regfile_rs1_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "regfile_rs2_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "lumi_pkg",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "i_fu_id",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "bypass_rs1_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "bypass_rs2_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "fu_busy",
+          "direction": "input",
+          "width": "10",
+          "width_expr": "9:0"
+        },
+        {
+          "name": "stall_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dib_not_full",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "flush",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "div_busy",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1m_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_execute.sv",
+      "module": "lumi_execute",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lumi_pkg",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_rs1_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_rs2_data",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_pred_taken",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_sb_empty",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_pred_target",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_result",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_branch_taken",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_branch_target",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_branch_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_mispredict",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_br_is_jal",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_br_is_jalr",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_br_is_call",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_br_is_ret",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_br_is_compressed",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_mem_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e1_mem_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_mem_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_mul_result",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_mul_result_hi",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_mul_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e2_div_result",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_div_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e2_div_busy",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e2_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e1_exc_cause",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_fetch.sv",
+      "module": "lumi_fetch",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f1_pc_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "f2_icache_data",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "f2_icache_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f2_instructions",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f2_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f2_pc_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "f2_pred_taken",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f2_pred_target",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "f2_raw_data_out",
+          "direction": "output",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "f2_base_pc_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "f2_start_offset_out",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "f2_pred_taken_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "f2_carry_hw_out",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "f2_carry_valid_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pred_branch_slot",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "branch_redirect_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "branch_redirect_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_redirect_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_redirect_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tage_update_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "tage_update_taken",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tage_update_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "br_update_is_jal",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "br_update_is_jalr",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "br_update_is_call",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "br_update_is_ret",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "br_update_is_compressed",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "predecode_bytes_consumed",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "predecode_inst_count",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "predecode_carry_hw_out",
+          "direction": "input",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "predecode_carry_valid_out",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dec_stall",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dib_not_full",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "debug_halt",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_predecode.sv",
+      "module": "lumi_predecode",
+      "ports": [
+        {
+          "name": "raw_data",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "base_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "start_offset",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "carry_hw",
+          "direction": "input",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "carry_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pred_taken",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "pred_branch_slot",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "inst",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "inst_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "inst_raw",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "inst_count",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "bytes_consumed",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "carry_hw_out",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "carry_valid_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_writeback.sv",
+      "module": "lumi_writeback",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lumi_pkg",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "w_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "w_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "w_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "regfile_wr_en",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "regfile_wr_addr",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "regfile_wr_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_result",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_request",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_request",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_addr",
+          "direction": "output",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "csr_rdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "csr_op",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "mstatus_out",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mtvec_out",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_mul_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_mul_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e2_div_result",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "e2_div_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "e2_rd",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "hpm_inst_retired",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch_miss",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_load",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_store",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_exception",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mon_inst",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mon_inst_raw",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "mon_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "mon_rd_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mon_irq",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/csr/lumi_csr_unit.sv",
+      "module": "lumi_csr_unit",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "csr_addr",
+          "direction": "input",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "csr_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "csr_we",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "csr_op",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "mstatus_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mtvec_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mepc_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mcause_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "medeleg_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mideleg_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "priv_mode_out",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "trap_enter",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_is_irq",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_pc_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_cause_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_tval_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_priv_in",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "mret_exec",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "sret_exec",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nmi_enter",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mnret_exec",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nmi_pc_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "clic_csr_addr",
+          "direction": "output",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "clic_csr_wdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "clic_csr_rdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "clic_csr_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_inst_retired",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_branch_mispred",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_icache_miss",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_dcache_miss",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_tlb_miss",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_interrupt",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "hpm_count",
+          "direction": "output",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "mie_meip",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mie_msip",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mie_mtip",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mie_r_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mip_r_out",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/debug/lumi_debug_module.sv",
+      "module": "lumi_debug_module",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tck",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tms",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdi",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdo",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trst_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dmi_addr",
+          "direction": "input",
+          "width": "7",
+          "width_expr": "6:0"
+        },
+        {
+          "name": "dmi_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dmi_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dmi_op",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "dmi_req_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dmi_req_ready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "abs_cmd_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "abs_cmd_data",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "abs_resp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "debug_halt_req",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "debug_resume_req",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trigger_match_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trigger_match_en",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/debug/lumi_trace.sv",
+      "module": "lumi_trace",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_type",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "trace_enable",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_data_out",
+          "direction": "output",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "trace_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_axi_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trace_axi_wdata",
+          "direction": "output",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "trace_axi_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_axi_ready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trace_config_en",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/dft/lumi_dft_ctrl.sv",
+      "module": "lumi_dft_ctrl",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "scan_enable",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "scan_in",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "scan_out",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "scan_mode",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mbist_enable",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mbist_start",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mbist_done",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mbist_fail",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mbist_error_count",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mbist_diag",
+          "direction": "output",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "tck",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tms",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdi",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdo",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_select",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tamper_detect",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "secure_lock",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/fpu/lumi_fpu.sv",
+      "module": "lumi_fpu",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "fpu_issue_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "fpu_inst_type",
+          "direction": "input",
+          "width": "6",
+          "width_expr": "5:0"
+        },
+        {
+          "name": "fpu_fmt",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "fpu_rm",
+          "direction": "input",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "fpu_rs1",
+          "direction": "input",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "fpu_rs2",
+          "direction": "input",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "fpu_rs3",
+          "direction": "input",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "fpu_result_data",
+          "direction": "output",
+          "width": "64",
+          "width_expr": "63:0"
+        },
+        {
+          "name": "fpu_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "fpu_issue_ready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "fpu_result_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "fpu_fflags",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "fpu_busy",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/fpu/lumi_vector.sv",
+      "module": "lumi_vector",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_issue_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_opcode",
+          "direction": "input",
+          "width": "7",
+          "width_expr": "6:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vstart",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "vl",
+          "direction": "input",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "vtype",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_rd",
+          "direction": "output",
+          "width": "5",
+          "width_expr": "4:0"
+        },
+        {
+          "name": "vec_ready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_busy",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_mem_addr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_mem_we",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_mem_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vec_mem_ready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/interrupt/lumi_clic.sv",
+      "module": "lumi_clic",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "meip_in",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "seip_in",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "msip_in",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mtip_in",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mie_gate",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "meip",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_id",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "irq_level_out",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "irq_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_preempt",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_ack",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "clic_csr_addr",
+          "direction": "input",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "clic_csr_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "clic_csr_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "clic_csr_we",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/interrupt/lumi_exception.sv",
+      "module": "lumi_exception",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "exc_fetch",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "exc_decode",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "exc_exec",
+          "direction": "input",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "exc_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "exc_insn",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "exc_pc",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "nmi_signal",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_request",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_id",
+          "direction": "input",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "irq_ack",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mtvec_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mstatus_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "medeleg_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mideleg_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "priv_mode_in",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "mnepc_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mncause_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "mnstatus_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "stvec_in",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "is_mret",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "is_sret",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "is_mnret",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_take",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_cause",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_epc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_tval",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_is_irq",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_enter",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mret_exec",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "sret_exec",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nmi_enter_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "mnret_exec_out",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "delegated",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "flush_pipe",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/interrupt/lumi_plic.sv",
+      "module": "lumi_plic",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "plic_addr",
+          "direction": "input",
+          "width": "12",
+          "width_expr": "11:0"
+        },
+        {
+          "name": "plic_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "plic_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "plic_we",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/memory/lumi_tcm.sv",
+      "module": "lumi_tcm",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "core_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "core_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "core_we",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_be",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "core_valid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_ready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_hit",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_awaddr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dma_awvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_awready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_wdata",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dma_wvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_wready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_araddr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dma_addr",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dma_arvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_arready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_rdata",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "dma_rvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_rready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_bresp",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "dma_bvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "dma_bready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ecc_ce_irq",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ecc_ded_irq",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ecc_ce_count",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/multicore/lumi_lockstep.sv",
+      "module": "lumi_lockstep",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "commit_pc_a",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_pc_b",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_result_a",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "commit_result_b",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "lockstep_match",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lockstep_error",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "error_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "error_slot",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "lockstep_enable",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lockstep_error_mode",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "lockstep_nmi",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lockstep_reset",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "lockstep_log",
+          "direction": "output",
+          "width": "64",
+          "width_expr": "63:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/multicore/lumi_multicore_top.sv",
+      "module": "lumi_multicore_top",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "axi_araddr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "axi_arvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "axi_arready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "axi_rdata",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "axi_rvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "axi_rready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tck",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tms",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdi",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "tdo",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/power/lumi_power_mgmt.sv",
+      "module": "lumi_power_mgmt",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "wfi_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "wrs_req",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_active",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "irq_pending",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "icg_en",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_sleep",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "logic",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "sys_reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "debug_reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "core_reset_n",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "bus_reset_n",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vcc_on",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "vcc_ret_on",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "power_state",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/top/lumi_soc_top.sv",
+      "module": "lumi_soc_top",
+      "ports": [
+        {
+          "name": "clk_core",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "clk_bus",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "reset_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awid",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_awaddr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "m_axi_awlen",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "m_axi_awsize",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_awburst",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_awlock",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awcache",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_awprot",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_awvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_awready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wdata",
+          "direction": "output",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "m_axi_wstrb",
+          "direction": "output",
+          "width": "16",
+          "width_expr": "15:0"
+        },
+        {
+          "name": "m_axi_wlast",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_wready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_bid",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_bresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_bvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_bready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arid",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_araddr",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "m_axi_arlen",
+          "direction": "output",
+          "width": "8",
+          "width_expr": "7:0"
+        },
+        {
+          "name": "m_axi_arsize",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_arburst",
+          "direction": "output",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_arlock",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arcache",
+          "direction": "output",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_arprot",
+          "direction": "output",
+          "width": "3",
+          "width_expr": "2:0"
+        },
+        {
+          "name": "m_axi_arvalid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_arready",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rid",
+          "direction": "input",
+          "width": "4",
+          "width_expr": "3:0"
+        },
+        {
+          "name": "m_axi_rdata",
+          "direction": "input",
+          "width": "128",
+          "width_expr": "127:0"
+        },
+        {
+          "name": "m_axi_rresp",
+          "direction": "input",
+          "width": "2",
+          "width_expr": "1:0"
+        },
+        {
+          "name": "m_axi_rlast",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rvalid",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "m_axi_rready",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_tck",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_tms",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_tdi",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_tdo",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "jtag_trst_n",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "ext_irq",
+          "direction": "input",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "logic",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "nmi_signal",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "debug_halt",
+          "direction": "input",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_valid",
+          "direction": "output",
+          "width": "1",
+          "width_expr": "1"
+        },
+        {
+          "name": "trap_cause",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        },
+        {
+          "name": "trap_pc",
+          "direction": "output",
+          "width": "32",
+          "width_expr": "31:0"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/top/lumi_soc_top.sv",
+      "module": "u_dbg",
+      "ports": []
+    }
+  ],
+  "enums": [
+    {
+      "file": "src/rtl/bus/lumi_axi_wrapper.sv",
+      "enum_name": "axi_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/core/lumi_decode_issue.sv",
+      "enum_name": "dec_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/core/lumi_execute.sv",
+      "enum_name": "div_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/core/lumi_fetch.sv",
+      "enum_name": "fetch_state_e",
+      "states": [
+        {
+          "name": "ST_IDLE",
+          "value": "3'd0"
+        },
+        {
+          "name": "ST_FETCH",
+          "value": "3'd1"
+        },
+        {
+          "name": "ST_STALL",
+          "value": "3'd2"
+        },
+        {
+          "name": "ST_FLUSH",
+          "value": "3'd3"
+        },
+        {
+          "name": "ST_HALT",
+          "value": "3'd4"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/core/lumi_memory_stage.sv",
+      "enum_name": "mem_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/core/lumi_writeback.sv",
+      "enum_name": "wb_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/debug/lumi_debug_module.sv",
+      "enum_name": "dbg_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/debug/lumi_debug_module.sv",
+      "enum_name": "dmui_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/debug/lumi_trace.sv",
+      "enum_name": "trace_msg_e",
+      "states": [
+        {
+          "name": "MSG_SYNC",
+          "value": "3'd1"
+        },
+        {
+          "name": "MSG_BRANCH",
+          "value": "3'd2"
+        },
+        {
+          "name": "MSG_EXCEPTION",
+          "value": "3'd3"
+        },
+        {
+          "name": "MSG_CONTEXT",
+          "value": "3'd4"
+        },
+        {
+          "name": "MSG_NOP",
+          "value": "3'd0   // 空闲/NOP"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/debug/lumi_trace.sv",
+      "enum_name": "trace_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/dft/lumi_dft_ctrl.sv",
+      "enum_name": "dft_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/dft/lumi_dft_ctrl.sv",
+      "enum_name": "mbist_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/dft/lumi_dft_ctrl.sv",
+      "enum_name": "tap_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/fpu/lumi_fpu.sv",
+      "enum_name": "fpu_inst_e",
+      "states": [
+        {
+          "name": "INST_FADD",
+          "value": "6'd0"
+        },
+        {
+          "name": "INST_FMUL",
+          "value": "6'd1"
+        },
+        {
+          "name": "INST_FMA",
+          "value": "6'd2"
+        },
+        {
+          "name": "INST_FDIV",
+          "value": "6'd3"
+        },
+        {
+          "name": "INST_FSQRT",
+          "value": "6'd4"
+        },
+        {
+          "name": "INST_FCVT",
+          "value": "6'd5"
+        },
+        {
+          "name": "INST_FMV",
+          "value": "6'd6"
+        },
+        {
+          "name": "INST_FCMP",
+          "value": "6'd7"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/fpu/lumi_fpu.sv",
+      "enum_name": "fpu_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/fpu/lumi_vector.sv",
+      "enum_name": "vec_inst_e",
+      "states": [
+        {
+          "name": "INST_VARITH",
+          "value": "7'd0"
+        },
+        {
+          "name": "INST_VMUL",
+          "value": "7'd1"
+        },
+        {
+          "name": "INST_VREDUCE",
+          "value": "7'd2"
+        },
+        {
+          "name": "INST_VLOAD",
+          "value": "7'd3"
+        },
+        {
+          "name": "INST_VSTORE",
+          "value": "7'd4"
+        },
+        {
+          "name": "INST_VMASK",
+          "value": "7'd5"
+        },
+        {
+          "name": "INST_VPERM",
+          "value": "7'd6"
+        },
+        {
+          "name": "INST_VCMP",
+          "value": "7'd7    // 向量比较"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/fpu/lumi_vector.sv",
+      "enum_name": "vec_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/include/lumi_types_pkg.sv",
+      "enum_name": "priv_e",
+      "states": [
+        {
+          "name": "PRIV_M",
+          "value": "2'b11"
+        },
+        {
+          "name": "PRIV_S",
+          "value": "2'b01"
+        },
+        {
+          "name": "PRIV_U",
+          "value": "2'b00"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/include/lumi_types_pkg.sv",
+      "enum_name": "fu_type_e",
+      "states": [
+        {
+          "name": "FU_ALU",
+          "value": "4'd0"
+        },
+        {
+          "name": "FU_MUL",
+          "value": "4'd1"
+        },
+        {
+          "name": "FU_DIV",
+          "value": "4'd2"
+        },
+        {
+          "name": "FU_MEM",
+          "value": "4'd3"
+        },
+        {
+          "name": "FU_FP",
+          "value": "4'd4"
+        },
+        {
+          "name": "FU_VEC",
+          "value": "4'd5"
+        },
+        {
+          "name": "FU_BRANCH",
+          "value": "4'd6"
+        },
+        {
+          "name": "FU_MISC",
+          "value": "4'd7"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/include/lumi_types_pkg.sv",
+      "enum_name": "exc_type_e",
+      "states": [
+        {
+          "name": "EXC_INST_MISALIGN",
+          "value": "4'd0"
+        },
+        {
+          "name": "EXC_INST_ACCESS",
+          "value": "4'd1"
+        },
+        {
+          "name": "EXC_ILLEGAL_INST",
+          "value": "4'd2"
+        },
+        {
+          "name": "EXC_BREAKPOINT",
+          "value": "4'd3"
+        },
+        {
+          "name": "EXC_LOAD_MISALIGN",
+          "value": "4'd4"
+        },
+        {
+          "name": "EXC_LOAD_ACCESS",
+          "value": "4'd5"
+        },
+        {
+          "name": "EXC_STORE_MISALIGN",
+          "value": "4'd6"
+        },
+        {
+          "name": "EXC_STORE_ACCESS",
+          "value": "4'd7"
+        },
+        {
+          "name": "EXC_ECALL_U",
+          "value": "4'd8"
+        },
+        {
+          "name": "EXC_ECALL_S",
+          "value": "4'd9"
+        },
+        {
+          "name": "EXC_ECALL_M",
+          "value": "4'd11"
+        },
+        {
+          "name": "EXC_INST_PAGE",
+          "value": "4'd12"
+        },
+        {
+          "name": "EXC_LOAD_PAGE",
+          "value": "4'd13"
+        },
+        {
+          "name": "EXC_STORE_PAGE",
+          "value": "4'd15"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/include/lumi_types_pkg.sv",
+      "enum_name": "pma_result_e",
+      "states": [
+        {
+          "name": "PMA_PASS",
+          "value": "2'b00"
+        },
+        {
+          "name": "PMA_FAULT",
+          "value": "2'b01"
+        },
+        {
+          "name": "PMA_MISALIGNED",
+          "value": "2'b10"
+        }
+      ]
+    },
+    {
+      "file": "src/rtl/interrupt/lumi_clic.sv",
+      "enum_name": "clic_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/memory/lumi_cache.sv",
+      "enum_name": "cache_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/memory/lumi_tcm.sv",
+      "enum_name": "tcm_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/multicore/lumi_lockstep.sv",
+      "enum_name": "ls_state_e",
+      "states": []
+    },
+    {
+      "file": "src/rtl/power/lumi_power_mgmt.sv",
+      "enum_name": "pwr_state_e",
+      "states": []
+    }
+  ],
+  "stats": {
+    "total_files": 24,
+    "total_modules": 25,
+    "total_ports": 640,
+    "total_enums": 26,
+    "total_states": 54
+  }
+}
