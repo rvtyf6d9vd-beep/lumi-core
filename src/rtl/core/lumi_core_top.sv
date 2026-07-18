@@ -164,6 +164,7 @@ module lumi_core_top #(
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
     logic          e1_br_is_jalr;
+    logic          e1_br_executed;  // 条件分支已执行 (LTAGE 更新用)
     logic [31:0]   e1_mem_addr [1:0];
     logic          e1_mem_we [1:0];
     logic [31:0]   e1_mem_wdata [1:0];
@@ -176,6 +177,8 @@ module lumi_core_top #(
     logic [31:0]   m_result_r [ISSUE_WIDTH-1:0];
     logic [4:0]    m_rd_r [ISSUE_WIDTH-1:0];
     logic [ISSUE_WIDTH-1:0] m_exception_r;
+    // MUL/DIV E2 结果有效值 (组合逻辑替换 m_result_r 中的占位符 0)
+    logic [31:0]   m_result_eff [ISSUE_WIDTH-1:0];
 
     // ── SA-10 修复: M 级旁路 valid (从 memory_stage 输出) ──
     logic [ISSUE_WIDTH-1:0] m_bypass_valid;
@@ -252,7 +255,7 @@ module lumi_core_top #(
         .trap_redirect_valid   (trap_request),
         .tage_update_pc        (e1_br_pc),      // ERR-019: 使用分支 PC (非 target) 更新 BTB
         .tage_update_taken     (e1_br_taken),
-        .tage_update_valid     (e1_br_taken),
+        .tage_update_valid     (e1_br_executed),  // FIX: 条件分支 (含 not-taken) 都更新 LTAGE
         // ERR-019: 分支类型 (BTB 写入区分 JAL/JALR/条件分支)
         .br_update_is_jal      (e1_br_is_jal),
         .br_update_is_jalr     (e1_br_is_jalr),
@@ -353,12 +356,18 @@ module lumi_core_top #(
         .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
         .flush                 (e1_mispredict || trap_request),
         .div_busy              (e2_div_busy),
-        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy),  // ERR-114: 分支气泡/mem_busy 时不发射
+        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测
         // 当 E1→M 有 load 指令时, 其结果在 M 级才能产生,
         // 依赖指令不能在此 cycle 发射 (否则进入 E1 读到旧值)
         .e1m_load_pending      (e1m_load_pending),
-        .e1m_rd                (e1m_rd_check)
+        .e1m_rd                (e1m_rd_check),
+        // Bug#5b: E1 load-use 冒险检测
+        .e1_load_pending       (e1_load_pending),
+        .e1_load_rd            (e1_load_rd),
+        // ERR-115: E1 MUL-use 冒险检测
+        .e1_mul_pending        (e1_mul_pending),
+        .e1_mul_rd             (e1_mul_rd)
     );
 
     // Bug#5: E1→M load pending 信号生成
@@ -371,6 +380,37 @@ module lumi_core_top #(
             e1m_load_pending[i] = m_valid_r[i] &&
                                   (m_inst_r[i].fu_type == FU_MEM) &&
                                   !m_inst_r[i].inst[5];
+        end
+    end
+
+    // Bug#5b: E1 load-use 冒险检测 — E1 有 load 时, 依赖指令不能同周期发射
+    // 原因: load 在 E1 时发射依赖指令, 下周期 load 进入 M 但结果尚未就绪,
+    //   M 旁路提供旧值 (m_pipe_result 是上一批次结果).
+    //   延迟 1 周期发射, 让 load 先进入 M, 依赖指令在 E1 时可从 W 旁路获取结果.
+    logic [ISSUE_WIDTH-1:0] e1_load_pending;
+    logic [4:0]             e1_load_rd [ISSUE_WIDTH-1:0];
+    always_comb begin
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            e1_load_rd[i] = e1_rd[i];
+            e1_load_pending[i] = e1_valid_r[i] &&
+                                 (e1_inst_r[i].fu_type == FU_MEM) &&
+                                 !e1_inst_r[i].inst[5];
+        end
+    end
+
+    // ERR-115 FIX: E1 MUL-use 冒险检测 — E1 有 MUL (非 DIV) 时, 依赖指令不能同周期发射
+    // 原因: MUL 在 E1 级开始计算, 但 E1 旁路提供的是占位值 (0);
+    //   下周期 MUL 进入 M 级, E2 结果有效, M 旁路才能提供正确值.
+    //   延迟 1 周期发射, 让 MUL 先进入 M, 依赖指令在 E1 时可从 M 旁路获取结果.
+    // 注意: DIV 由 e1_div_pending 单独处理, 此处用 funct3[2]=0 排除 DIV.
+    logic [ISSUE_WIDTH-1:0] e1_mul_pending;
+    logic [4:0]             e1_mul_rd [ISSUE_WIDTH-1:0];
+    always_comb begin
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            e1_mul_rd[i] = e1_rd[i];
+            e1_mul_pending[i] = e1_valid_r[i] &&
+                                (e1_inst_r[i].fu_type == FU_MUL) &&
+                                !e1_inst_r[i].inst[14];  // funct3[2]=0: MUL*, not DIV*
         end
     end
 
@@ -406,13 +446,28 @@ module lumi_core_top #(
         bp_w_valid[1]  = rf_wr_en[1];
     end
 
-    // T-MS3-S3-BF.1.5: M 级旁路源 MUX
-    // 对 ALU/MUL/DIV/BRANCH/MISC 使用 E1→M 寄存器输出 (m_result_r)，使 E2
-    // MUL/DIV 结果产生后下一拍即可被旁路到 E1；Load 仍使用 memory_stage
-    // 输出 (m_result_out) 并在 mem_ready_in=1 时才置 valid。
+    // MUL/DIV E2 结果旁路: 当 M 级指令是 MUL/DIV 且 E2 结果有效时,
+    // 用 E2 结果替换 m_result_r 中的占位值 (0).
+    // 原因: E1→M 寄存器捕获时 e2_mul_valid 是上一周期的值 (时序错位),
+    // 无法捕获当前 MUL 的 E2 结果. 组合逻辑在同一周期提供正确值.
     always_comb begin
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
-            bp_m_result[i] = m_result_r[i];
+            if (m_inst_r[i].fu_type == FU_MUL && e2_mul_valid)
+                m_result_eff[i] = e2_mul_result;
+            else if (m_inst_r[i].fu_type == FU_DIV && e2_div_valid)
+                m_result_eff[i] = e2_div_result;
+            else
+                m_result_eff[i] = m_result_r[i];
+        end
+    end
+
+    // T-MS3-S3-BF.1.5: M 级旁路源 MUX
+    // 对 ALU/MUL/DIV/BRANCH/MISC 使用 m_result_eff (含 E2 旁路),
+    // 使 E2 MUL/DIV 结果产生后同一周期即可被旁路到 E1；
+    // Load 仍使用 memory_stage 输出 (m_result_out) 并在 mem_ready_in=1 时才置 valid。
+    always_comb begin
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            bp_m_result[i] = m_result_eff[i];
             bp_m_rd[i]     = m_rd_r[i];
             bp_m_valid[i]  = 1'b0;
             if (m_valid_r[i]) begin
@@ -424,8 +479,8 @@ module lumi_core_top #(
                     // Store 不写 rd，不提供旁路
                     bp_m_valid[i] = 1'b0;
                 end else begin
-                    // ALU/MUL/DIV/BRANCH/MISC: 使用 E1→M 寄存器输出
-                    bp_m_result[i] = m_result_r[i];
+                    // ALU/MUL/DIV/BRANCH/MISC: 使用 m_result_eff (含 E2 旁路)
+                    bp_m_result[i] = m_result_eff[i];
                     bp_m_valid[i]  = m_valid_r[i];
                 end
             end
@@ -483,6 +538,18 @@ module lumi_core_top #(
         end
     end
 
+    // ERR-114 FIX: E1 有未完成 DIV 指令检测 (组合逻辑, 无延迟)
+    // e2_div_busy 有 1 周期延迟, 导致 DIV 指令在第 1 周期就进入 M 级
+    // 使用组合信号: E1 有 DIV 且结果未就绪时立即 stall
+    logic e1_div_pending;
+    always_comb begin
+        e1_div_pending = 1'b0;
+        for (int i = 0; i < ISSUE_WIDTH; i++) begin
+            if (e1_valid_r[i] && e1_inst_r[i].fu_type == FU_DIV && !e2_div_valid)
+                e1_div_pending = 1'b1;
+        end
+    end
+
     // ERR-022: 误预测后扩展气泡 — 当误预测分支写 rd!=0 (如 JAL ra),
     // 需要额外 1 周期让 W-level bypass 有正确值.
     // 没有这个, 紧随的依赖指令 (如 RET 读 ra) 读到旧值.
@@ -534,9 +601,9 @@ module lumi_core_top #(
                 e1_rs1_data_r[i] <= 32'h0;
                 e1_rs2_data_r[i] <= 32'h0;
             end
-        end else if (mem_busy) begin
+        end else if (mem_busy || e1_div_pending) begin
             // Bug#5 修复: mem_busy 时冻结 I→E1 (与 E1→M 同步)
-            // 防止 decode_issue stall 期间 E1 被清空导致指令丢失
+            // ERR-114 修复: e2_div_busy 时冻结 I→E1, 防止 DIV 结果未就绪时指令继续前进
         end else if (e1_has_branch || post_mispredict_bubble) begin
             // ERR-019: 分支气泡 — E1 有分支指令时, 不捕获 D/I 数据
             // ERR-022: 误预测后扩展气泡 — 额外 1 周期让 W bypass 有正确 ra 值
@@ -582,6 +649,7 @@ module lumi_core_top #(
         .e1_br_is_call         (e1_br_is_call),    // ERR-044
         .e1_br_is_ret          (e1_br_is_ret),     // ERR-044
         .e1_br_is_compressed   (e1_br_is_compressed), // ERR-RAS
+        .e1_br_executed        (e1_br_executed),       // LTAGE 更新
         .e1_mem_addr           (e1_mem_addr),
         .e1_mem_we             (e1_mem_we),
         .e1_mem_wdata          (e1_mem_wdata),
@@ -619,29 +687,48 @@ module lumi_core_top #(
                 m_rd_r[i]      <= 5'h0;
             end
         end else if (e1_mispredict) begin
-            // ERR-020 修复 (核心): 误预测时, M 级必须捕获分支指令本身!
-            // 分支指令 (如 JAL) 需要继续流经 M→W 以完成寄存器写入 (如 ra).
-            // 同时杀死分支之后的推测指令 (它们是基于错误预测获取的).
+            // FIX: 误预测时保留分支及其前的所有有效指令, 仅刷新分支后的指令.
+            // 原 bug: m_valid_r <= '0 清除所有 slot, 导致分支前的指令 (如 sw/addi/srli) 丢失.
+            // issue 阶段在分支后停止发射 (lumi_decode_issue.sv L818),
+            // 所以同批次中分支后的 slot 不会有有效指令.
+            // 但分支前的指令 (低 slot 号, 程序顺序更早) 必须保留并提交.
             m_valid_r <= '0;
             m_exception_r <= e1_exception;
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 m_inst_r[i]    <= e1_inst_r[i];
+                // 传播 E1 异常 (EBREAK/ECALL) 到 inst_pkt
+                m_inst_r[i].exc_valid <= e1_exception[i];
+                m_inst_r[i].exc_cause <= e1_exc_cause[i];
                 m_rd_r[i]      <= e1_rd[i];
-                m_result_r[i]  <= e1_result[i];
-                // ERR-022 修复: 无条件保留误预测分支 — 移除 !m_valid_r[0] 检查.
-                // 原 bug: m_valid_r[0] 读旧值, 当 M-slot0 有指令时 JAL 被丢弃, ra 写入丢失.
+                // E2 MUL/DIV 结果旁路 (与 normal path 一致)
+                if (e1_inst_r[i].fu_type == FU_MUL && e1_valid[i]) begin
+                    m_result_r[i] <= e2_mul_valid ? e2_mul_result : e1_result[i];
+                end else if (e1_inst_r[i].fu_type == FU_DIV && e1_valid[i]) begin
+                    m_result_r[i] <= e2_div_valid ? e2_div_result : e1_result[i];
+                end else begin
+                    m_result_r[i] <= e1_result[i];
+                end
+                // 保留分支及其前的所有有效指令
                 if (e1_valid[i] && e1_inst_r[i].fu_type == FU_BRANCH) begin
                     m_valid_r[i] <= 1'b1;
+                    // 保留分支前所有有效指令 (程序顺序中更早的指令)
+                    for (int j = 0; j < i; j++) begin
+                        if (e1_valid[j])
+                            m_valid_r[j] <= 1'b1;
+                    end
                 end
             end
         end else begin
             // SA-6 修复: mem_busy 时保持 E1→M 寄存器
             // 防止双 MEM 串行化期间 E1→M 重复捕获旧批次
-            if (!mem_busy) begin
+            if (!mem_busy && !e1_div_pending) begin
                 m_valid_r     <= e1_valid;
                 m_exception_r <= e1_exception;
                 for (int i = 0; i < ISSUE_WIDTH; i++) begin
                     m_inst_r[i]    <= e1_inst_r[i];
+                    // 传播 E1 异常 (EBREAK/ECALL) 到 inst_pkt, 供 memory_stage 传递到 W 级
+                    m_inst_r[i].exc_valid <= e1_exception[i];
+                    m_inst_r[i].exc_cause <= e1_exc_cause[i];
                     m_rd_r[i]      <= e1_rd[i];
                     // E2 MUL/DIV 结果旁路: 如果 E2 有结果, 替换 E1 result
                     if (e1_inst_r[i].fu_type == FU_MUL && e1_valid[i]) begin
@@ -651,6 +738,15 @@ module lumi_core_top #(
                     end else begin
                         m_result_r[i] <= e1_result[i];
                     end
+                end
+            end else begin
+                // Stall: 保持寄存器, 但捕获 E2 结果到 m_result_r
+                // (e2_mul_valid 下一周期失效, 需在当前周期锁存正确值)
+                for (int i = 0; i < ISSUE_WIDTH; i++) begin
+                    if (m_inst_r[i].fu_type == FU_MUL && e2_mul_valid)
+                        m_result_r[i] <= e2_mul_result;
+                    else if (m_inst_r[i].fu_type == FU_DIV && e2_div_valid)
+                        m_result_r[i] <= e2_div_result;
                 end
             end
         end
@@ -669,7 +765,7 @@ module lumi_core_top #(
         .reset_n               (reset_n),
         .m_inst                (m_inst_r),        // 来自 E1→M 寄存器 (正确对齐)
         .m_valid               (m_valid_r),       // 来自 E1→M 寄存器
-        .m_result              (m_result_r),      // 来自 E1→M 寄存器
+        .m_result              (m_result_eff),     // E1→M + E2 旁路 (MUL/DIV)
         .m_rd                  (m_rd_r),          // 来自 E1→M 寄存器
         .e1_mem_addr           (e1_mem_addr),
         .e1_mem_we             (e1_mem_we),
@@ -695,7 +791,8 @@ module lumi_core_top #(
         // 否则 SB 永远满, 后续 store 全部走 ST_COMMIT 路径写最早入队 entry,
         // 导致 mini-test 的 sw 0x3FFE0 永远不生效 (写入地址固定为 SB head)
         .store_commit_ack      (1'b1),
-        .sb_empty_out          (sb_empty)              // ERR-055: FENCE drain
+        .sb_empty_out          (sb_empty),             // ERR-055: FENCE drain
+        .trap_flush            (trap_request)          // Trap flush: 防止异常指令重复提交
     );
 
     // ═══════════════════════════════════════════════════════════

@@ -232,21 +232,6 @@ module lumi_writeback #(
         end
     end
 
-    // ERR-114 DEBUG: trace W stage slot 2 writeback
-    always_comb begin
-        if (w_valid[2] && w_rd[2] != 5'h0) begin
-            $display("[WB-DBG] cyc=%0d s0_v=%b s0_rd=%0d s1_v=%b s1_rd=%0d s2_v=%b s2_rd=%0d s2_res=0x%08h wr_sel=%b wr_en=%b wr0_addr=%0d wr0_data=0x%08h wr1_addr=%0d wr1_data=0x%08h stall=%b",
-                $time/1000,
-                w_valid[0], w_rd[0],
-                w_valid[1], w_rd[1],
-                w_valid[2], w_rd[2], w_result[2],
-                wr_select, regfile_wr_en,
-                regfile_wr_addr[0], regfile_wr_data[0],
-                regfile_wr_addr[1], regfile_wr_data[1],
-                slot2_need_stall);
-        end
-    end
-
     // ── SA-5: 寄存被stall的slot 2数据 (下周期写回) ──
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
@@ -368,7 +353,8 @@ module lumi_writeback #(
         end
 
         // 中断检查 (如果没有异常)
-        if (!trap_taken && irq_request) begin
+        // FIX: 仅在 MIE (mstatus[3]) 使能时接受中断, 避免 trap handler 执行期间被中断打断
+        if (!trap_taken && irq_request && mstatus_out[3]) begin
             trap_taken   = 1'b1;
             trap_request = 1'b1;
             trap_cause   = 4'd11; // M external interrupt (简化)

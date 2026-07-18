@@ -60,7 +60,19 @@ module lumi_decode_issue #(
     // ── Bug#5: E1→M Load-Use 冒险检测输入 ────────────────
     // 当 E1→M 有未完成 load 时, 依赖其结果的指令不能发射
     input  logic [ISSUE_WIDTH-1:0]  e1m_load_pending,
-    input  logic [4:0]              e1m_rd [ISSUE_WIDTH-1:0]
+    input  logic [4:0]              e1m_rd [ISSUE_WIDTH-1:0],
+
+    // ── Bug#5b: E1 Load-Use 冒险检测输入 ──────────────────
+    // 当 E1 有 load 时, 依赖其结果的指令不能同周期发射
+    // (load 结果需经过 M→W 后才能被旁路)
+    input  logic [ISSUE_WIDTH-1:0]  e1_load_pending,
+    input  logic [4:0]              e1_load_rd [ISSUE_WIDTH-1:0],
+
+    // ── ERR-115: E1 MUL-Use 冒险检测输入 ─────────────────
+    // 当 E1 有 MUL 时, 依赖其结果的指令不能同周期发射
+    // (MUL E1 旁路提供占位值, 需延迟 1 周期让 MUL 进入 M 级)
+    input  logic [ISSUE_WIDTH-1:0]  e1_mul_pending,
+    input  logic [4:0]              e1_mul_rd [ISSUE_WIDTH-1:0]
 );
 
     import lumi_pkg::*;
@@ -808,6 +820,32 @@ module lumi_decode_issue #(
                                 end
                             end
 
+                            // Bug#5b: E1 Load-Use 冒险 — E1 有 load 时延迟发射
+                            if (!tmp_batch_raw) begin
+                                for (int m = 0; m < ISSUE_WIDTH; m++) begin
+                                    if (e1_load_pending[m] && e1_load_rd[m] != 5'h0) begin
+                                        if ((dec[qi].has_rs1 && dec[qi].rs1 == e1_load_rd[m]) ||
+                                            (dec[qi].has_rs2 && dec[qi].rs2 == e1_load_rd[m])) begin
+                                            tmp_batch_raw = 1'b1;
+                                        end
+                                    end
+                                end
+                            end
+
+                            // ERR-115: E1 MUL-Use 冒险 — E1 有 MUL 时延迟发射
+                            // MUL 在 E1 级计算尚未完成, 旁路提供占位值,
+                            // 依赖指令必须等待 MUL 进入 M 级后再发射
+                            if (!tmp_batch_raw) begin
+                                for (int m = 0; m < ISSUE_WIDTH; m++) begin
+                                    if (e1_mul_pending[m] && e1_mul_rd[m] != 5'h0) begin
+                                        if ((dec[qi].has_rs1 && dec[qi].rs1 == e1_mul_rd[m]) ||
+                                            (dec[qi].has_rs2 && dec[qi].rs2 == e1_mul_rd[m])) begin
+                                            tmp_batch_raw = 1'b1;
+                                        end
+                                    end
+                                end
+                            end
+                            
                             if (tmp_fu_available && !tmp_batch_raw && !issue_ready[s]) begin
                                 issue_sel[s]   = qi[2:0];
                                 issue_ready[s] = 1'b1;
@@ -992,48 +1030,6 @@ module lumi_decode_issue #(
             post_flush_block_r <= 1'b0;
     end
 
-    // ── ERR-114 诊断 trace: DIB 写入/注册状态 ──
-    // synopsys translate_off
-    `ifdef VERILATOR
-    logic [31:0] di_cyc_cnt;
-    always_ff @(posedge clk_core or negedge reset_n)
-        if (!reset_n) di_cyc_cnt <= '0; else di_cyc_cnt <= di_cyc_cnt + 1;
-
-    initial begin
-        forever begin
-            @(posedge clk_core);
-            // 追踪 DIB 写入
-            if (dib_wr_offset > 0) begin
-                for (int i = 0; i < FETCH_WIDTH; i++) begin
-                    if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
-                        $display("[DI-WR] cyc=%0d dib_idx=%0d pc=0x%08h inst=0x%08h",
-                            di_cyc_cnt, (dib_wr_ptr + i[DIB_PTR_W-1:0]),
-                            pd_inst_pc_r[i], pd_inst_r[i]);
-                    end
-                end
-            end
-            // 追踪 DIB 注册决策
-            if (di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130) begin
-                $display("[DI-REG] cyc=%0d pd_pending=%0d dib_wr_off=%0d pd_rem=%0d can_acc=%0d adv=%0d f2v=%0d dib_cnt=%0d iss_cnt=%0d pd_ic=%0d",
-                    di_cyc_cnt, pd_pending, dib_wr_offset, pd_remaining,
-                    dib_can_accept, pd_advance, f2_valid, dib_count, issue_count, pd_inst_count);
-            end
-            // 追踪 issue (cyc 95-130)
-            for (int s = 0; s < ISSUE_WIDTH; s++) begin
-                if (issue_ready[s] && di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130) begin
-                    $display("[DI-IS] cyc=%0d slot=%0d pc=0x%08h inst=0x%08h",
-                        di_cyc_cnt, s, dib_read_pc[issue_sel[s]], dib_read_inst[issue_sel[s]]);
-                end
-            end
-            // 追踪 stall
-            if ((e1m_load_pending[0] || e1m_load_pending[1] || stall_out) &&
-                di_cyc_cnt >= 32'd95 && di_cyc_cnt <= 32'd130)
-                $display("[DI-STALL] cyc=%0d e1m_lp=[%0b,%0b] stall=%0b dib_cnt=%0d",
-                    di_cyc_cnt, e1m_load_pending[0], e1m_load_pending[1],
-                    stall_out, dib_count);
-        end
-    end
-    `endif
-    // synopsys translate_on
+    // ERR-114 诊断 trace 已移除 (Phase 5 清理)
 
 endmodule

@@ -99,14 +99,17 @@ V1_ENV_SRCS := $(TB_DIR)/uvm_compat/uvm_shim_pkg.sv \
                $(TB_DIR)/env/lumi_scoreboard.sv
 
 V1_TB_SRCS := $(RTL_SRCS) \
+              $(RTL_DIR)/top/lumi_soc_tb_stub.sv \
               $(TB_DIR)/lib/lumi_tb_pkg.sv \
               $(TB_DIR)/agents/axi_memory_bfm.sv \
               $(TB_DIR)/agents/jtag_bfm.sv \
               $(TB_DIR)/lib/signature_compare.sv \
               $(V1_ENV_SRCS) \
+              $(TB_DIR)/top/lumi_tb_top.sv \
               $(TB_DIR)/top/lumi_v1_tb_top.sv
 
 V1_SIM_DIR := $(TOP_DIR)/../sim-v1
+V1_OBJ_DIR := $(V1_SIM_DIR)/obj_dir_fast
 
 # Verilator 警告抑制 (V1 允许更多警告)
 V1_WNO := -Wno-UNSIGNED -Wno-DECLFILENAME -Wno-UNUSEDSIGNAL \
@@ -130,10 +133,10 @@ v1-lint:
 .PHONY: v1-build
 v1-build:
 	mkdir -p $(V1_SIM_DIR)
-	$(VERILATOR) --binary $(INC_DIRS) --top-module lumi_v1_tb_top \
-		-Mdir $(V1_SIM_DIR)/obj_dir \
+	$(VERILATOR) --binary --timing --main $(INC_DIRS) --top-module lumi_v1_tb_top \
+		-Mdir $(V1_OBJ_DIR) \
+		--prefix Vlumi_v1_tb_top \
 		-o Vlumi_v1 \
-		--trace --coverage \
 		-Wall $(V1_WNO) \
 		$(V1_TB_SRCS)
 	@echo "[V1-BUILD] OK"
@@ -161,7 +164,7 @@ v1-smoke: v1-build
 		$(TESTS_DIR)/results/rv32i_smoke_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-SMOKE] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_smoke_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_smoke_32.hex
 	@echo "[V1-SMOKE] Done"
 
 # RV32I 全面测试 (覆盖全部 40 条指令)
@@ -175,7 +178,7 @@ v1-rv32i-full: v1-build
 		$(TESTS_DIR)/results/rv32i_full_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-RV32I-FULL] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_full_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_full_32.hex
 	@echo "[V1-RV32I-FULL] Done"
 
 # RV32M 扩展测试
@@ -189,7 +192,7 @@ v1-rv32m: v1-build
 		$(TESTS_DIR)/results/rv32m_basic_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-RV32M] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32m_basic_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32m_basic_32.hex
 	@echo "[V1-RV32M] Done"
 
 # RV32I 未对齐内存访问定向测试 (BUG-009/BUG-010)
@@ -203,7 +206,7 @@ v1-rv32i-misalign: v1-build
 		$(TESTS_DIR)/results/rv32i_misalign_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-MISALIGN] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_misalign_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32i_misalign_32.hex
 	@echo "[V1-MISALIGN] Done"
 
 # Loop Debug Test (core_list_init 最小复现)
@@ -217,8 +220,36 @@ v1-loop-debug: v1-build
 		$(TESTS_DIR)/results/rv32im_loop_debug_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-LOOP-DBG] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32im_loop_debug_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32im_loop_debug_32.hex
 	@echo "[V1-LOOP-DBG] Done"
+
+# RV32IM Bug Regression Test (ERR-115~ERR-127, 13 个 RTL bug 回归)
+.PHONY: v1-bug-regression
+v1-bug-regression: v1-build
+	@echo "[V1-BUG-REG] Compiling rv32im_bug_regression.S..."
+	$(RV32I_CC) -march=rv32im_zicsr -mabi=ilp32 -nostdlib \
+		-T $(RV32I_LD) -o $(TESTS_DIR)/results/rv32im_bug_regression.elf \
+		$(TESTS_DIR)/directed/rv32im_bug_regression.S
+	$(ELF2HEX) $(TESTS_DIR)/results/rv32im_bug_regression.elf \
+		$(TESTS_DIR)/results/rv32im_bug_regression_32.hex \
+		--base-addr 0x0 --mem-size 0x40000 --word-width 32
+	@echo "[V1-BUG-REG] Running..."
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32im_bug_regression_32.hex
+	@echo "[V1-BUG-REG] Done"
+
+# CSR mcause Test (Phase 1: mcause=0 调查)
+.PHONY: v1-csrr-mcause
+v1-csrr-mcause: v1-build
+	@echo "[V1-CSR-MCAUSE] Compiling csrr_mcause.S..."
+	$(RV32I_CC) -march=rv32im_zicsr -mabi=ilp32 -nostdlib \
+		-T $(RV32I_LD) -o $(TESTS_DIR)/results/csrr_mcause.elf \
+		$(TESTS_DIR)/directed/csrr_mcause.S
+	$(ELF2HEX) $(TESTS_DIR)/results/csrr_mcause.elf \
+		$(TESTS_DIR)/results/csrr_mcause_32.hex \
+		--base-addr 0x0 --mem-size 0x40000 --word-width 32
+	@echo "[V1-CSR-MCAUSE] Running..."
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/csrr_mcause_32.hex
+	@echo "[V1-CSR-MCAUSE] Done"
 
 # RV32B 扩展测试
 .PHONY: v1-rv32b
@@ -231,7 +262,7 @@ v1-rv32b: v1-build
 		$(TESTS_DIR)/results/rv32b_basic_32.hex \
 		--base-addr 0x0 --mem-size 0x40000 --word-width 32
 	@echo "[V1-RV32B] Running..."
-	$(V1_SIM_DIR)/obj_dir/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32b_basic_32.hex
+	$(V1_OBJ_DIR)/Vlumi_v1 +itcm_file=$(TESTS_DIR)/results/rv32b_basic_32.hex
 	@echo "[V1-RV32B] Done"
 
 # riscv-arch-test 编译
@@ -253,7 +284,7 @@ arch-build: arch-clone
 .PHONY: arch-run
 arch-run: v1-build
 	@echo "[ARCH-RUN] Run individual tests with:"
-	@echo "  $(V1_SIM_DIR)/obj_dir/Vlumi_v1 +hex_file=<test.hex> +sig_start=<addr> +sig_end=<addr> +sig_ref=<ref>"
+	@echo "  $(V1_OBJ_DIR)/Vlumi_v1 +hex_file=<test.hex> +sig_start=<addr> +sig_end=<addr> +sig_ref=<ref>"
 
 # V1 报告生成
 .PHONY: v1-report

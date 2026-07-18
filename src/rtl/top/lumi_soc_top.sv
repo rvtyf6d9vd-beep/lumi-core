@@ -405,7 +405,7 @@ module lumi_soc_top #(
         // Trap 接口 (T-MS3-S3-BF.1.1: 连接 exception 模块)
         .trap_enter       (exc_trap_enter),
         .trap_is_irq      (exc_trap_is_irq),
-        .trap_pc_in       (exc_trap_pc),
+        .trap_pc_in       (exc_trap_epc),  // FIX: mepc 需要异常指令 PC, 非 trap target
         .trap_cause_in    (exc_trap_cause),
         .trap_tval_in     (exc_trap_tval),
         .trap_priv_in     (2'b11),

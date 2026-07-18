@@ -58,7 +58,10 @@ module lumi_memory_stage #(
     input  logic                    store_commit_ack,
 
     // ERR-055: Store buffer empty signal for FENCE
-    output logic                    sb_empty_out
+    output logic                    sb_empty_out,
+
+    // ── Trap flush: trap_request 时刷新 M→W 寄存器, 防止异常指令重复提交 ──
+    input  logic                    trap_flush
 );
 
     import lumi_pkg::*;
@@ -396,6 +399,10 @@ module lumi_memory_stage #(
     // 修复: load 旁路仅在 mem_ready_in=1 时有效 (SRAM 读完成)
     //      store 永远不写 rd, 但加 m_bypass_valid=0 作为防御
     //      非 MEM 指令直接使用 m_valid (如 ALU/MUL/DIV, 1 cycle latency)
+    // FIX: stall_port1=1 时 port 1 load 尚未读取, m_pipe_result 是旧值,
+    //      旁路无效. 否则依赖指令 (如 beq) 读到旧值导致误预测.
+    //      pending_port1_r=1 时 port 1 正在读取, 但 m_pipe_result 尚未更新,
+    //      旁路也无效 (结果在下一周期 posedge 才写入 m_pipe_result).
     always_comb begin
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             m_bypass_valid[i] = 1'b0;
@@ -404,8 +411,8 @@ module lumi_memory_stage #(
                 m_bypass_valid[i] = 1'b0;
             end else if (m_valid[i]) begin
                 if (m_inst[i].fu_type == FU_MEM && !m_inst[i].inst[5]) begin
-                    // Load: 仅在 SRAM 读完成时旁路有效
-                    m_bypass_valid[i] = mem_ready_in;
+                    // Load: 仅在 SRAM 读完成且无端口串行化延迟时旁路有效
+                    m_bypass_valid[i] = mem_ready_in && !stall_port1 && !pending_port1_r;
                 end else if (m_inst[i].fu_type == FU_MEM && m_inst[i].inst[5]) begin
                     // Store: 不需要旁路 (store 不写 rd)
                     m_bypass_valid[i] = 1'b0;
@@ -571,7 +578,10 @@ module lumi_memory_stage #(
             // SA-6 修复: stall_port1 时保持寄存器 (防止 port 0 被重复捕获)
             // ERR-114 FIX: m_pipe_valid 门控 — 仅在 batch_done && !ma_skip_r 时提交
             //   防止未对齐拆分期间指令被重复提交 (SH 提交 3 次导致后续 lui 丢失)
-            if (!stall_port1) begin
+            // Trap flush: trap_request 时清除 M→W valid, 防止异常指令重复提交
+            if (trap_flush) begin
+                m_pipe_valid <= '0;
+            end else if (!stall_port1) begin
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 m_pipe[i]       <= m_inst[i];
                 // ERR-114: batch_done=0 → 内存操作进行中, 不提交
@@ -644,13 +654,20 @@ module lumi_memory_stage #(
                         end
                     endcase
 
-                    // 对齐异常检测 — BUG-007 修复: 不再触发异常，改为透明处理
-                    // 原逻辑: 检测到未对齐 → 设置 exception → trap
-                    // 新逻辑: 检测到未对齐 → 拆分为两次对齐访问 (见 ma_active_r 逻辑)
-                    m_pipe_exception[i] <= 1'b0;
+                    // 传播 E1 级异常 (EBREAK/ECALL) 到 W 级, 触发 trap 重定向到 mtvec
+                    // BUG-007: 未对齐异常不再触发, 改为拆分访问 (见 ma_active_r 逻辑)
+                    // E1 异常 (EBREAK/ECALL) 由 execute 设置, 通过 inst_pkt.exc_valid 传播
+                    m_pipe_exception[i] <= m_inst[i].exc_valid;
                 end
             end
             end // if (!stall_port1)
+            else begin
+                // stall_port1=1: clear m_pipe_valid to prevent W stage re-commit.
+                // When dual-LSU port 0 completes but port 1 needs 1 more cycle,
+                // stall_port1 freezes the M→W register. Without clearing valid,
+                // the W stage re-commits the same instructions (duplicate commit).
+                m_pipe_valid <= '0;
+            end
 
             // Store Buffer 入队
             // ERR-027/028 修复: BYPASS_SB=1 时跳过 SB, store 直写 SRAM

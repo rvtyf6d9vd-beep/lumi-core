@@ -2544,3 +2544,225 @@ errata:
       回归: v1-smoke/rv32i-full/rv32m PASS, rv32i_misalign.S PASS (exit_code=0, 535 cycles)
     regression_test: "tests/directed/rv32i_misalign.S"
     related_errata: ["ERR-108", "ERR-109", "ERR-110", "ERR-111", "ERR-112", "ERR-113"]
+
+  # ═══════════════════════════════════════════════════════════
+  # ERR-115 ~ ERR-127: CoreMark V1 调试中发现的 13 个 RTL Bug
+  # 来源: CoreMark_V1_Handoff_Manual.md (2026-07-18)
+  # ═══════════════════════════════════════════════════════════
+
+  - id: "ERR-115"
+    title: "MUL/DIV E2 结果与 E1→M 寄存器捕获时序错位 (Bug-MUL-BP)"
+    description: |
+      MUL/DIV 在 E2 级产生结果，但 M 级寄存器 m_result_r 中是占位值 0。
+      当后续指令在 M 级读取旁路时，得到错误的 0 值而非实际计算结果。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "新增 m_result_eff 组合逻辑，E2 结果有效时替换占位值 (lumi_core_top.sv L427-448)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-1)"
+
+  - id: "ERR-116"
+    title: "stall_port1 时 M 旁路提供旧值 (Bug-M-BPV)"
+    description: |
+      stall_port1=1 时 port 1 load 未读 SRAM，但 m_bypass_valid=1 仍提供旧值，
+      导致后续指令获取到过时的数据。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "m_bypass_valid = mem_ready_in && !stall_port1 && !pending_port1_r (L411-414)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-2)"
+
+  - id: "ERR-117"
+    title: "E1 有 load 时依赖指令同周期发射导致旁路旧值 (Bug-E1LU)"
+    description: |
+      E1 级有 load 指令时，依赖该 load 结果的指令在同一周期被发射，
+      M 级旁路提供的是 load 之前的旧值。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_core_top.sv", "src/rtl/core/lumi_decode_issue.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "新增 e1_load_pending/e1_load_rd 信号，issue 时检测 E1 load 依赖并阻止发射 (L817-827)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-2)"
+
+  - id: "ERR-118"
+    title: "DIV 流水线延迟导致过早进入 M 级 (Bug-DIV-P)"
+    description: |
+      e2_div_busy 有 1 周期延迟，DIV 在第 1 周期就进入 M 级，
+      导致结果尚未就绪就被提交。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "新增 e1_div_pending 组合信号，E1 有 DIV 且结果未就绪时 stall (L519-530)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-1)"
+
+  - id: "ERR-119"
+    title: "误预测时分支前指令被清除 (Bug-MP-PRE)"
+    description: |
+      误预测时 m_valid_r<='0 清除所有 slot，导致分支前的有效指令也被丢失。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "保留分支及其前所有有效指令，仅刷新分支后推测指令 (L668-695)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-3)"
+
+  - id: "ERR-120"
+    title: "Not-taken 误预测重定向到错误 PC (Bug-NT-REDIR)"
+    description: |
+      not-taken 误预测时重定向到 branch_target 而非 PC+4，
+      导致取指从错误地址继续。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "e1_branch_target = taken ? target : (pc+4) (L674-677)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-3)"
+
+  - id: "ERR-121"
+    title: "LTAGE 仅 taken 时更新，not-taken 不更新 (Bug-LTAGE-NT)"
+    description: |
+      tage_update_valid 仅在 taken 时有效，not-taken 分支不更新 LTAGE 表，
+      导致分支预测准确率下降。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_core_top.sv", "src/rtl/core/lumi_execute.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "新增 e1_br_executed 信号，条件分支 taken/not-taken 都触发 LTAGE 更新"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-4)"
+
+  - id: "ERR-122"
+    title: "BTB 组级查找污染当前分支预测 (Bug-BTB-OVR)"
+    description: |
+      slot-0 BTB 命中时仍检查组级 BTB，后续 JAL 条目污染当前分支预测结果。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "添加条件 if (grp_found && !btb_hit) 防止组级查找覆盖直接命中 (L414)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-4)"
+
+  - id: "ERR-123"
+    title: "EBREAK/ECALL 异常未传播到 W 级 (Bug-EXC-PROP)"
+    description: |
+      m_pipe_exception 固定为 0，EBREAK/ECALL 异常信号未传播到 W 级，
+      导致 trap handler 不被触发。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv", "src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "传播 exc_valid/exc_cause 到 inst_pkt，确保异常到达 W 级"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-5)"
+
+  - id: "ERR-124"
+    title: "trap_request 时 M→W 寄存器未清除导致重复提交 (Bug-TRAP-FL)"
+    description: |
+      trap_request 时 M→W 寄存器未清除，异常指令可能被重复提交。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv", "src/rtl/core/lumi_core_top.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "新增 trap_flush 输入，清除 m_pipe_valid"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-5)"
+
+  - id: "ERR-125"
+    title: "中断检查未检查 mstatus.MIE 位 (Bug-IRQ-MIE)"
+    description: |
+      中断检查逻辑未验证 mstatus.MIE (全局中断使能位)，
+      导致在 MIE=0 时仍响应中断。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_writeback.sv"]
+    affected_versions: ["v0.2"]
+    severity: high
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "添加 && mstatus_out[3] 条件 (L353-356)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-5)"
+
+  - id: "ERR-126"
+    title: "stall_port1 时 W 级重复提交 (Bug-STP1-DUP)"
+    description: |
+      stall_port1=1 时 M→W 保持旧值，导致 W 级重复提交同一条指令。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_memory_stage.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "stall_port1=1 时 m_pipe_valid <= '0 (L545-551)"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-6)"
+
+  - id: "ERR-127"
+    title: "post_flush_hold_r 机制冗余 (Bug-PFHR)"
+    description: |
+      post_flush_hold_r 机制不再需要（已被其他修复替代），
+      但仍存在可能影响流水线效率。
+    discovered_date: "2026-07-18"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v0.2"]
+    severity: low
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-18"
+    resolved_by: hw-design
+    resolution: "移除 post_flush_hold_r 及相关逻辑"
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-3)"

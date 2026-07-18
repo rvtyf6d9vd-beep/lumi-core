@@ -214,16 +214,6 @@ module lumi_fetch #(
     // 如果不做边沿检测, FSM override 在每个组合评估中重新触发, pc_reg 永远无法更新.
     logic                      branch_redirect_valid_d;
 
-    // SA-CM-PCFIX: post-flush PC hold flag.
-    // After redirect, F2 must capture data at the redirect target BEFORE the PC advances.
-    // Without this flag, dib_not_full=1 (empty DIB after flush) causes PC to advance
-    // in the same cycle F2 captures, so predecode uses the NEW pc_reg (wrong start_offset)
-    // while F2 captured data for the OLD pc_reg. This skips the first fetch block.
-    // With post_flush_hold_r, PC advance is blocked for 1 cycle after flush,
-    // giving predecode the correct start_offset for the F2-captured data.
-    logic                      post_flush_hold_r;
-
-
     // ═══════════════════════════════════════════════════════════
     // 指令拆分与有效计数
     // ═══════════════════════════════════════════════════════════
@@ -414,7 +404,10 @@ module lumi_fetch #(
         // SA-CM-005 FIX: Re-enable group-level BTB prediction
         // pc_slot_in_grp ensures we only match entries AFTER current PC,
         // avoiding the carry-fetch stale entry problem.
-        if (grp_found) begin
+        // FIX: slot-0 BTB 命中时不检查组级 BTB, 防止后续 JAL 的 BTB 条目
+        // 覆盖当前 PC 处条件分支的预测 (如 BSS clear loop 中 JAL at 0x2c
+        // 污染 bgeu at 0x20 的预测).
+        if (grp_found && !btb_hit) begin
             pred_branch_slot = grp_slot;
 
             if (grp_is_ret) begin
@@ -465,7 +458,6 @@ module lumi_fetch #(
             f2_pred_branch_slot_r <= 4'hF;  // ERR-BTB
             dec_stall_r     <= 1'b0;  // ERR-019
             branch_redirect_valid_d <= 1'b0;
-            post_flush_hold_r  <= 1'b0;
             // ERR-042: carry 寄存器复位
             carry_hw_r      <= 16'h0;
             carry_valid_r   <= 1'b0;
@@ -491,12 +483,6 @@ module lumi_fetch #(
             dec_stall_r <= dec_stall;
             // SA-CM-REDIRECT-FIX: 寄存 branch_redirect_valid 用于边沿检测
             branch_redirect_valid_d <= branch_redirect_valid;
-            // SA-CM-PCFIX: post_flush_hold 设置/清除逻辑
-            // 进入 FLUSH 时设置, 在 ST_FETCH 的第一个周期清除
-            if (state_next == ST_FLUSH)
-                post_flush_hold_r <= 1'b1;
-            else if (state_reg == ST_FETCH)
-                post_flush_hold_r <= 1'b0;
             // ── F1 → F2 流水线寄存器 ────────────────────────
             if (state_reg == ST_FETCH) begin
                 f1_pc_r          <= f1_pc_out;
@@ -723,15 +709,6 @@ module lumi_fetch #(
                     // ICache 响应有效: PC 前进
                     if (f1_pred_taken_comb) begin
                         pc_next = f1_pred_target_comb;
-                    end else if (post_flush_hold_r) begin
-                        // SA-CM-PCFIX: flush 后的第一个周期, 保持 PC 不变.
-                        // F2 在本周期捕获 redirect 目标数据, 但 predecode 使用
-                        // 当前 pc_reg 计算 start_offset. 如果 PC 同时前进,
-                        // 下个周期的 predecode 会用新的 pc_reg (错误的 start_offset)
-                        // 处理 F2 捕获的数据, 导致指令被跳过.
-                        // 保持 PC 不变, 让 predecode 在下个周期用正确的 start_offset
-                        // 重新计算 bytes_consumed, 然后 PC 正确前进.
-                        pc_next = pc_reg;
                     end else begin
                         // ERR-042: PC 前进量由 predecode 动态计算
                         // BUG-FIX: 始终使用 pc_reg (当前 F1 PC), 而不是 f2_pc_r.
@@ -825,25 +802,5 @@ module lumi_fetch #(
             else $error("[ASSERT] PC not 2-byte aligned: 0x%08h", pc_next);
         // synthesis translate_on
     end
-
-    // DIAG-PC: separate block for PC tracing -- disabled for clean simulation
-    // always @(pc_reg or state_reg) begin
-    //     if (pc_reg >= 32'h3a00 && pc_reg <= 32'h3c00)
-    //         $display("[PC-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
-    //     if (state_reg != ST_IDLE && pc_reg < 32'h40)
-    //         $display("[FSM-DBG] pc=0x%08h st=%0d", pc_reg, state_reg);
-    // end
-
-    // DIAG-CYC: per-cycle PC sampler -- disabled for clean simulation
-    // int cyc_cnt;
-    // always_ff @(posedge clk_core or negedge reset_n) begin
-    //     if (!reset_n) begin
-    //         cyc_cnt <= 0;
-    //     end else begin
-    //         cyc_cnt <= cyc_cnt + 1;
-    //         if (cyc_cnt < 100)
-    //             $display("[CYC-DBG] ...")
-    //     end
-    // end
 
 endmodule

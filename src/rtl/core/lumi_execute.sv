@@ -42,6 +42,8 @@ module lumi_execute #(
     output logic                    e1_br_is_ret,
     // ERR-RAS: 分支指令压缩标志 (execute-level RAS 区分 PC+2/PC+4)
     output logic                    e1_br_is_compressed,
+    // LTAGE 更新: 条件分支已执行 (taken 或 not-taken 都需更新)
+    output logic                    e1_br_executed,
 
     // ── E1 LSU 地址 (→ Memory 级) ─────────────────────────────
     output logic [31:0]             e1_mem_addr [1:0],        // 2x LSU
@@ -382,6 +384,7 @@ module lumi_execute #(
         e1_br_is_call    = 1'b0;   // ERR-044
         e1_br_is_ret     = 1'b0;   // ERR-044
         e1_br_is_compressed = 1'b0; // ERR-RAS
+        e1_br_executed   = 1'b0;   // 条件分支执行标志
         e2_div_busy      = div_busy_r;
 
         // ERR-020: 多槽误预测优先级 — 最早 slot (最低 i) 优先
@@ -671,18 +674,25 @@ module lumi_execute #(
                         if (e1_mispredict && !already_redirected) begin
                             already_redirected = 1'b1;
                             e1_branch_taken  = branch_taken[i];
-                            e1_branch_target = branch_target[i];
+                            // FIX: not-taken 误预测时重定向到 PC+4 (fall-through),
+                            // 而非分支目标. 原 bug: 总是使用 branch_target,
+                            // 导致 not-taken 误预测跳到错误地址.
+                            e1_branch_target = branch_taken[i] ? branch_target[i] : (e1_inst[i].pc + 32'd4);
                             e1_branch_pc     = e1_inst[i].pc;
                             e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
-                            // DIAG: misprediction redirect -- debug print removed
+                            // 条件分支 (非 JAL/JALR) 需更新 LTAGE
+                            e1_br_executed = !(e1_inst[i].inst[6:0] == 7'b1101111) &&
+                                             !(e1_inst[i].inst[6:0] == 7'b1100111);
                         end else if (!e1_mispredict && !already_redirected) begin
-                            // 非误预测但仍需更新分支反馈 (BTB 学习)
+                            // 非误预测但仍需更新分支反馈 (BTB/LTAGE 学习)
                             e1_branch_taken  = branch_taken[i];
-                            e1_branch_target = branch_target[i];
+                            e1_branch_target = branch_taken[i] ? branch_target[i] : (e1_inst[i].pc + 32'd4);
                             e1_branch_pc     = e1_inst[i].pc;
                             e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
+                            e1_br_executed = !(e1_inst[i].inst[6:0] == 7'b1101111) &&
+                                             !(e1_inst[i].inst[6:0] == 7'b1100111);
                         end
                     end
 
