@@ -435,6 +435,20 @@ module lumi_fetch #(
                 f1_pred_target_comb = grp_target;
             end
         end
+
+        // ERR-131h: BTB miss 时直接检测 JAL 指令 (消除冷启动误预测)
+        // V1 ICache 是组合逻辑, 可在 F1 直接读取指令
+        if (!btb_hit && !grp_found) begin
+            automatic logic [31:0] f1_inst = f2_icache_data[{pc_reg[3:2], 5'b0} +: 32];
+            if (f1_inst[6:0] == OP_JAL) begin
+                automatic logic [31:0] jal_imm = {{12{f1_inst[31]}}, f1_inst[19:12], f1_inst[20], f1_inst[30:21], 1'b0};
+                f1_pred_taken_comb  = 1'b1;
+                f1_pred_target_comb = pc_reg + jal_imm;
+                f1_btb_hit_comb     = 1'b1;
+                if (f1_inst[11:7] == 5'd1 || f1_inst[11:7] == 5'd5)
+                    ras_push = 1'b1;
+            end
+        end
     end
 
     // ═══════════════════════════════════════════════════════════
