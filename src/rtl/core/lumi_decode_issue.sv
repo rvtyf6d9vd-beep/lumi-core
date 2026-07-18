@@ -273,6 +273,17 @@ module lumi_decode_issue #(
             wait_for_fresh_r <= 1'b0;   // 无保留数据, 无需等待
     end
 
+    // ERR-131e: 选择性 DIB flush — 计算保留条目数 (PC <= flush_pc)
+    logic [DIB_PTR_W-1:0] flush_keep_count;
+    always_comb begin
+        flush_keep_count = '0;
+        for (int i = 0; i < DIB_DEPTH; i++) begin
+            automatic logic [DIB_PTR_W-1:0] idx = dib_rd_ptr + DIB_PTR_W'(i);
+            if (i[DIB_PTR_W-1:0] < dib_count[DIB_PTR_W-1:0] && dib[idx].valid && dib[idx].pc <= flush_pc)
+                flush_keep_count = flush_keep_count + 1'b1;
+        end
+    end
+
     // ── DIB 写入/读取统一 always_ff ──
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
@@ -282,9 +293,16 @@ module lumi_decode_issue #(
             for (int i = 0; i < DIB_DEPTH; i++)
                 dib[i] <= '{default: '0};
         end else if (flush) begin
-            dib_wr_ptr <= '0;
-            dib_rd_ptr <= '0;
-            dib_count  <= '0;
+            // ERR-131e: 选择性 flush — 保留 PC <= flush_pc 的条目 (正确路径)
+            dib_wr_ptr <= dib_rd_ptr + flush_keep_count;
+            // dib_rd_ptr 不变
+            dib_count  <= {1'b0, flush_keep_count};
+            // 清除保留点之后的条目
+            for (int i = 0; i < DIB_DEPTH; i++) begin
+                automatic logic [DIB_PTR_W-1:0] idx = dib_rd_ptr + DIB_PTR_W'(i);
+                if (i[DIB_PTR_W-1:0] >= flush_keep_count && i[DIB_PTR_W-1:0] < dib_count[DIB_PTR_W-1:0])
+                    dib[idx].valid <= 1'b0;
+            end
         end else begin
             // ── 写入: pd_inst_r → DIB ──
             // dib_wr_offset 已检查 pending + 新 predecode 空间 (全握手).
