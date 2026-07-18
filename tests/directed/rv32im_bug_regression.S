@@ -1,12 +1,12 @@
 # =================================================================
-# RV32IM Bug Regression Test — 16 个 RTL Bug 回归测试
-# 覆盖: ERR-115~ERR-130 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
+# RV32IM Bug Regression Test — 17 个 RTL Bug 回归测试
+# 覆盖: ERR-115~ERR-131 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
 #        NT-REDIR/LTAGE-NT/BTB-OVR/EXC-PROP/TRAP-FL/IRQ-MIE/
-#        STP1-DUP/PFHR/REM/TRAP-BATCH/DUAL-LD)
-# 7 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
+#        STP1-DUP/PFHR/REM/TRAP-BATCH/DUAL-LD/FLUSH-PD)
+# 8 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
 #          TC-3(误预测指令保留) TC-4(LTAGE+BTB)
 #          TC-5(EBREAK/ECALL trap) TC-6(双MEM不重复提交)
-#          TC-7(双 load 端口串行化)
+#          TC-7(双 load 端口串行化) TC-8(分支末尾指令保持)
 # Pass: a0=0 ECALL | Fail: a0=1 ECALL (sig 区记录失败 TC 号)
 # Compile: riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -nostdlib
 # =================================================================
@@ -426,15 +426,57 @@ tc7_3ld_3:
     sw      t0, 164(sp)
 
     # ══════════════════════════════════════════════════════════
+    # TC-8: 分支末尾 block 指令保持 (ERR-131 Bug-FLUSH-PD)
+    # 验证: 条件分支 not-taken 后紧跟的指令不被 flush 清除
+    # 场景: 循环中分支反复 taken/not-taken, 确认 not-taken 路径指令正确执行
+    # ══════════════════════════════════════════════════════════
+tc8_start:
+    li      t0, 0               # loop counter
+    li      t1, 10              # loop limit
+    li      t2, 0               # accumulator for not-taken path
+    li      t3, 0               # accumulator for taken path
+tc8_loop:
+    addi    t0, t0, 1           # counter++
+    andi    t4, t0, 1           # t4 = counter & 1
+    bnez    t4, tc8_taken       # if odd, skip not-taken path
+    # not-taken path: these instructions must NOT be dropped
+    addi    t2, t2, 100         # accumulate 100 per even iteration
+    addi    t2, t2, 1           # +1 (verify both instructions execute)
+    j       tc8_next
+tc8_taken:
+    addi    t3, t3, 200         # accumulate 200 per odd iteration
+tc8_next:
+    blt     t0, t1, tc8_loop    # loop back
+
+    # Verify: 5 even iterations (2,4,6,8,10) * 101 = 505
+    li      t4, 505
+    beq     t2, t4, tc8_even_ok
+    addi    s0, s0, 1
+    sw      t2, 176(sp)         # sig: TC-8 even fail
+    j       test_fail
+tc8_even_ok:
+    # Verify: 5 odd iterations (1,3,5,7,9) * 200 = 1000
+    li      t4, 1000
+    beq     t3, t4, tc8_odd_ok
+    addi    s0, s0, 1
+    sw      t3, 180(sp)         # sig: TC-8 odd fail
+    j       test_fail
+tc8_odd_ok:
+
+    # PASS TC-8 marker
+    li      t0, 8
+    sw      t0, 184(sp)
+
+    # ══════════════════════════════════════════════════════════
     # All tests passed!
     # ══════════════════════════════════════════════════════════
     li      t0, 0x55AA
-    sw      t0, 168(sp)         # PASS marker
+    sw      t0, 188(sp)         # PASS marker
 
     li      a0, 0
     ecall
 
 test_fail:
-    sw      s0, 172(sp)         # total fail count
+    sw      s0, 192(sp)         # total fail count
     li      a0, 1
     ecall

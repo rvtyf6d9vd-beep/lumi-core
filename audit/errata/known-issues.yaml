@@ -2826,3 +2826,31 @@ errata:
       专门捕获 port0 的 load 结果到 m_pipe_result[0]，同时冻结其他寄存器。
       正常分支增加 !(pending_port1_r && i==0) 条件防止 port0 被覆写。
     regression_test: "tests/directed/rv32im_bug_regression.S (TC-7)"
+
+  - id: "ERR-131"
+    title: "flush 无条件清除 pd_inst_valid_r 导致正确路径指令丢失 (Bug-FLUSH-PD)"
+    description: |
+      当 flush=1 且 pd_advance=1 同周期发生时，flush 无条件清除 pd_inst_valid_r，
+      导致刚注册的正确路径 predecode 数据永久丢失。fetch 反复注册同一 block
+      但每次都被 flush 清除，形成活锁。
+      同时，fetch 阶段的重定向边沿检测 (!branch_redirect_valid_d) 阻止了
+      连续 cycle 的误预测重定向，导致 BTB 无法学习正确目标。
+      具体表现: CoreMark BSS 清零循环中 bgeu+JAL 连续误预测，指令丢失导致
+      指针损坏，程序写入代码段。
+    discovered_date: "2026-07-19"
+    discovered_by: hw-design
+    affected_modules: ["src/rtl/core/lumi_decode_issue.sv", "src/rtl/core/lumi_fetch.sv"]
+    affected_versions: ["v0.2"]
+    severity: critical
+    status: resolved
+    workaround: "无"
+    resolved_date: "2026-07-19"
+    resolved_by: hw-design
+    resolution: |
+      三部分修复:
+      (1) pd_inst_valid_r: flush && pd_advance 时保留注册而非清除;
+      (2) wait_for_fresh_r: 阻止保留的旧数据写入 DIB，等待新数据覆盖;
+      (3) dib_count: 用 wait_for_fresh_r 门控确保计数一致;
+      (4) fetch redirect: 移除边沿检测 (!branch_redirect_valid_d)，
+          允许连续误预测重定向，state_reg != ST_FLUSH 已足够防止重复。
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-8)"
