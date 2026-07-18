@@ -226,7 +226,7 @@ module lumi_decode_issue #(
                 pd_inst_raw_r[i]        <= 16'h0;
             end
         end else if (flush && !pd_advance) begin
-            // ERR-131: flush 且无新数据 → 清除 (错误路径数据)
+            // ERR-131: flush 且无新数据 → 清除
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
         end else if (flush && pd_advance) begin
@@ -258,17 +258,17 @@ module lumi_decode_issue #(
         end
     end
 
-    // ERR-131: wait_for_fresh — flush+pd_advance 保留的旧数据不应写入 DIB
+    // ERR-131: wait_for_fresh — flush 保留的旧数据不应写入 DIB
     // 等待 pd_advance=1 (无 flush) 注册新数据后才允许 DIB 写入
     logic wait_for_fresh_r;
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n)
             wait_for_fresh_r <= 1'b0;
-        else if (flush && pd_advance)
-            wait_for_fresh_r <= 1'b1;   // 保留了旧数据, 等待新数据
+        else if (flush && (pd_inst_valid_r != '0))
+            wait_for_fresh_r <= 1'b1;   // 保留了旧数据, 等待新数据覆盖
         else if (pd_advance && !flush)
             wait_for_fresh_r <= 1'b0;   // 新数据已注册, 可以写 DIB
-        else if (flush && !pd_advance)
+        else if (flush && (pd_inst_valid_r == '0))
             wait_for_fresh_r <= 1'b0;   // 无保留数据, 无需等待
     end
 

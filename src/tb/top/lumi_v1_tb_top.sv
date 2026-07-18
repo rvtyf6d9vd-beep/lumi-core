@@ -308,6 +308,16 @@ module lumi_v1_tb_top;
             end
           end
         end
+        // ERR-131 residual: cycle-gated trace for code section corruption diagnosis
+        if (cycle_count >= 170671 && cycle_count <= 170681) begin
+          for (int s = 0; s < 3; s++) begin
+            if (commit_valid_all[s]) begin
+              $display("[DIAG-170K] cyc=%0d s=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h op=0x%02h",
+                       cycle_count, s, commit_pc_packed[s], commit_inst_packed[s],
+                       commit_rd_packed[s], commit_rd_data_packed[s], commit_inst_packed[s][6:0]);
+            end
+          end
+        end
         // SA-CM-011: detect first transition to invalid PC
         if (!first_invalid_reported && commit_valid_all[0]) begin
           if (commit_pc_packed[0] > 32'h0008_0000) begin
@@ -327,6 +337,25 @@ module lumi_v1_tb_top;
   end
 
   // ── Phase 3: Fetch Stage Debugging ───────────────────────────────
+  // ERR-131 residual: every-cycle flush/DIB trace
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 170665 && cycle_count <= 170685) begin
+        $display("[DIAG-FL] cyc=%0d mispred=%0b dib_cnt=%0d pd_valid=%06b pd_pc0=0x%08h wait_fresh=%0b pd_adv=%0b fetch_act=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.u_decode_issue.dib_count,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_inst_valid_r,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_inst_pc_r[0],
+                 u_dut.gen_single_core.u_core.u_decode_issue.wait_for_fresh_r,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_advance,
+                 u_dut.gen_single_core.u_core.u_decode_issue.fetch_active);
+      end
+    end
+  end
+
   // Task 3.3: PC alignment monitoring
   initial begin
     wait(reset_n);
