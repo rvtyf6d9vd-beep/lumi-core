@@ -367,19 +367,25 @@ module lumi_writeback #(
     // CSR 写使能: CSR 操作或 trap
     assign csr_we = csr_active || trap_taken;
 
+    // ERR-129: 同 batch 异常后指令抑制
+    logic exception_seen;
+
     // ═══════════════════════════════════════════════════════════
     // 提交信号 (→ 锁步比较器 D-011)
     // ═══════════════════════════════════════════════════════════
+    // ERR-129 FIX: 异常指令后的同 batch 指令不得提交
+    // 当 batch 中有 exception 时, 异常指令本身可以提交 (scoreboard 需要),
+    // 但后续 slot 的指令必须被抑制, 因为 trap handler 接管后这些指令不应执行.
     always_comb begin
         commit_valid = '0;
+        exception_seen = 1'b0;
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             commit_pc[i]     = w_pc[i];
             commit_result[i] = w_result[i];
-            // ERR-017 修复: V1 允许所有有效指令提交 (包括 ECALL)
-            // scoreboard 通过 commit_inst 检测 ECALL, 需要 commit_valid=1
-            // 完整 trap 处理 (仅提交异常前指令) 留到后续里程碑
-            if (w_valid[i]) begin
+            if (w_valid[i] && !exception_seen) begin
                 commit_valid[i] = 1'b1;
+                if (w_exception[i])
+                    exception_seen = 1'b1;  // 后续 slot 不再提交
             end
         end
     end

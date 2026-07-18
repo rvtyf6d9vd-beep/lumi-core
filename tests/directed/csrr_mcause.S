@@ -14,14 +14,18 @@ _start:
 
     # ══════════════════════════════════════════════════════════
     # Test 1: EBREAK → mcause == 3
+    # 设计: MRET 回到 ebreak+4, 所以 ebreak+4 必须是成功路径
     # ══════════════════════════════════════════════════════════
     la      t0, trap_handler_ebreak
     csrw    mtvec, t0
 
+    j       t1_do_ebreak       # 确保 EBREAK 在新 batch
+    nop
+t1_do_ebreak:
     ebreak                      # 应触发 trap, mcause=3
-
-    # 不应到达此处 (ebreak 触发异常后跳到 trap_handler_ebreak)
-    j       test_fail
+    # MRET 回到此处 (mepc+4)
+    nop
+    j       t1_mcause_verified  # 跳过 handler 代码
 
     .align 2
 trap_handler_ebreak:
@@ -30,12 +34,12 @@ trap_handler_ebreak:
 
     # 验证 mcause == 3 (EBREAK)
     li      t2, 3
-    beq     t1, t2, t1_mcause_ok
+    beq     t1, t2, t1_handler_ok
     # mcause != 3 → FAIL
     addi    s0, s0, 1
     sw      t1, 4(sp)           # sig[1] = wrong mcause
     j       test_fail
-t1_mcause_ok:
+t1_handler_ok:
 
     # 验证 mepc 指向 ebreak 指令地址
     csrr    t3, mepc
@@ -45,6 +49,9 @@ t1_mcause_ok:
     addi    t3, t3, 4
     csrw    mepc, t3
     mret
+    # MRET 回到 t1_do_ebreak+4 (nop), 然后 j t1_mcause_verified
+
+t1_mcause_verified:
 
     # ══════════════════════════════════════════════════════════
     # Test 2: ECALL from M-mode → mcause == 11
@@ -53,10 +60,13 @@ t2_start:
     la      t0, trap_handler_ecall
     csrw    mtvec, t0
 
+    j       t2_do_ecall        # 确保 ECALL 在新 batch
+    nop
+t2_do_ecall:
     ecall                       # 应触发 trap, mcause=11
-
-    # trap_handler_ecall 通过 MRET 回到此处
-    j       test_fail           # 不应到达 (handler 直接跳到 t2_after)
+    # MRET 回到此处 (mepc+4)
+    nop
+    j       t2_after            # 跳过 handler 代码
 
     .align 2
 trap_handler_ecall:
@@ -64,19 +74,20 @@ trap_handler_ecall:
     sw      t1, 12(sp)          # sig[3] = mcause value
 
     li      t2, 11
-    beq     t1, t2, t2_mcause_ok
+    beq     t1, t2, t2_handler_ok
     addi    s0, s0, 1
     sw      t1, 16(sp)          # sig[4] = wrong mcause
     j       test_fail
-t2_mcause_ok:
+t2_handler_ok:
 
     csrr    t3, mepc
     sw      t3, 20(sp)          # sig[5] = mepc (ecall 地址)
 
-    # 跳过 ecall，直接跳到 t2_after
-    la      t3, t2_after
+    # 跳过 ecall
+    addi    t3, t3, 4
     csrw    mepc, t3
     mret
+    # MRET 回到 t2_do_ecall+4 (nop), 然后 j t2_after
 
 t2_after:
 
@@ -88,7 +99,12 @@ t3_start:
     csrw    mtvec, t0
     li      s1, 0               # trap counter
 
+    j       t3_do_ebreak1      # 确保 EBREAK 在新 batch
+    nop
+t3_do_ebreak1:
     ebreak                      # 第 1 次
+    nop
+t3_do_ebreak2:
     ebreak                      # 第 2 次
 
     # trap_handler_multi 通过 MRET 回到此处
