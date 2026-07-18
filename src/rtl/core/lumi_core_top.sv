@@ -169,7 +169,7 @@ module lumi_core_top #(
         else          e1_mispredict_d <= e1_mispredict;
     end
     assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request;
-    wire di_flush_gated = di_flush_edge;  // ERR-131c: cooldown 已移除 (破坏回归)
+    wire di_flush_gated = di_flush_edge;  // ERR-131: cooldown 无效 (第一次 flush 已造成损害)
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
     logic          e1_br_is_jalr;
