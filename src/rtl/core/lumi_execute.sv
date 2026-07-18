@@ -613,11 +613,6 @@ module lumi_execute #(
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             e1_result[i]     = e1_inst[i].pc + (e1_inst[i].is_compressed ? 32'd2 : 32'd4);
-                            // synthesis translate_off
-                            if (e1_inst[i].pc >= 32'h20 && e1_inst[i].pc <= 32'h50)
-                                $display("[JAL-DBG] pc=0x%08h imm=0x%08h target=0x%08h inst=0x%08h",
-                                         e1_inst[i].pc, e1_inst[i].imm, branch_target[i], e1_inst[i].inst);
-                            // synthesis translate_on
                         end
                         // JALR: opcode=1100111 (间接跳转)
                         // 修复: 压缩指令 (C.JR/C.JALR/C.RET) 返回地址 = PC+2
@@ -684,12 +679,6 @@ module lumi_execute #(
                             // 导致 not-taken 误预测跳到错误地址.
                             e1_branch_target = branch_taken[i] ? branch_target[i] : (e1_inst[i].pc + 32'd4);
                             e1_branch_pc     = e1_inst[i].pc;
-                            // synthesis translate_off
-                            if (e1_inst[i].pc >= 32'h4aa0 && e1_inst[i].pc <= 32'h4ac0)
-                                $display("[BR-REDIR] pc=0x%08h taken=%0b target=0x%08h redirect=0x%08h",
-                                         e1_inst[i].pc, branch_taken[i], branch_target[i],
-                                         branch_taken[i] ? branch_target[i] : (e1_inst[i].pc + 32'd4));
-                            // synthesis translate_on
                             e1_br_is_jal  = (e1_inst[i].inst[6:0] == 7'b1101111);
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
                             // 条件分支 (非 JAL/JALR) 需更新 LTAGE

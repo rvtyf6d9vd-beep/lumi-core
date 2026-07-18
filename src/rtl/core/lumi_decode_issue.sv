@@ -208,17 +208,6 @@ module lumi_decode_issue #(
     logic pd_advance;
     assign pd_advance = dib_can_accept && !stall_out && fetch_active;
 
-    // synthesis translate_off
-    always @(posedge clk_core) begin
-        if (reset_n && pd_inst_pc[0] >= 32'h4aa0 && pd_inst_pc[0] <= 32'h4ac0) begin
-            $display("[PD-DBG] pd_adv=%0b f2v=%0b fetch_act=%0b valid=%06b pc0=0x%08h cnt=%0d dib_acc=%0b stall=%0b dib_cnt=%0d pipe_stall=%0b",
-                     pd_advance, f2_valid, fetch_active, pd_inst_valid,
-                     pd_inst_pc[0], pd_inst_count,
-                     dib_can_accept, stall_out, dib_count, pipe_stall);
-        end
-    end
-    // synthesis translate_on
-
     // ── pd_inst_valid_r 注册: advance + clear-after-write ──
     // 两种更新路径 (不互斥, pd_advance 优先):
     //   A. pd_advance=1: DIB 可接受 → 注册当前 predecode (覆盖旧数据)

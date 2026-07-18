@@ -245,24 +245,7 @@ module lumi_v1_tb_top;
   end
 
   // ─── ERR-130 Debug: removed (fixed in a23d197) ──
-
-  // ─── ERR-131 Debug: pipe_stall component monitor ──
-  initial begin
-    wait(reset_n);
-    forever begin
-      @(posedge clk_core);
-      if (cycle_count >= 791900 && cycle_count <= 792010) begin
-        $display("[PIPE-STALL] cyc=%0d mem_busy=%0b e1_div_pend=%0b e1_has_br=%0b post_mp=%0b pipe_stall=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.mem_busy,
-                 u_dut.gen_single_core.u_core.e1_div_pending,
-                 u_dut.gen_single_core.u_core.e1_has_branch,
-                 u_dut.gen_single_core.u_core.post_mispredict_bubble,
-                 u_dut.gen_single_core.u_core.mem_busy || u_dut.gen_single_core.u_core.e1_div_pending ||
-                 u_dut.gen_single_core.u_core.e1_has_branch || u_dut.gen_single_core.u_core.post_mispredict_bubble);
-      end
-    end
-  end
+  // ─── ERR-131 Debug: removed (fixed in 56b25a4) ──
 
   // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
   // wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
