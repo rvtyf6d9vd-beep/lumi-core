@@ -237,6 +237,8 @@ module lumi_decode_issue #(
                 pd_inst_raw_r[i]        <= 16'h0;
             end
         end else if (flush) begin
+            // ERR-131: flush 清除 pd_inst_valid_r
+            // 注意: 如果 pd_advance=1 同周期, 数据会丢失 (待修复 BTB 学习问题后解决)
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
         end else begin
