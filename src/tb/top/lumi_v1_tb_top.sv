@@ -247,6 +247,26 @@ module lumi_v1_tb_top;
   // ─── ERR-130 Debug: removed (fixed in a23d197) ──
   // ─── ERR-131 Debug: removed (fixed in 56b25a4) ──
 
+  // ─── ERR-131k: 捕获首次跳回 boot code (PC < 0x50, cycle > 100) ──
+  initial begin
+    logic boot_return_logged;
+    wait(reset_n);
+    boot_return_logged = 0;
+    forever begin
+      @(posedge clk_core);
+      if (!boot_return_logged && cycle_count >= 49995 && cycle_count <= 50005 &&
+          commit_valid_all[0]) begin
+        $display("[BOOT-RET] cyc=%0d pc=0x%08h inst=0x%08h rd=x%0d rdata=0x%08h",
+                 cycle_count, commit_pc_packed[0], commit_inst_packed[0],
+                 commit_rd_packed[0], commit_rd_data_packed[0]);
+        if (commit_pc_packed[0] < 32'h50 && cycle_count > 50000) begin
+          boot_return_logged = 1;
+          $display("[BOOT-RET] *** JUMP TO BOOT CODE DETECTED ***");
+        end
+      end
+    end
+  end
+
   // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
   // wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
   // wire w_f2_valid  = u_dut.gen_single_core.u_core.f2_valid;

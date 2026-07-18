@@ -367,7 +367,7 @@ module lumi_core_top #(
         .flush_pc              (e1_br_pc),       // ERR-131: 误预测分支 PC (选择性 DIB flush)
         .flush_taken           (e1_br_taken),    // ERR-131h: 误预测分支是否 taken
         .div_busy              (e2_div_busy),
-        .pipe_stall            (post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-131j: 移除 e1_has_branch, 允许分支评估期间继续 issue
+        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测
         // 当 E1→M 有 load 指令时, 其结果在 M 级才能产生,
         // 依赖指令不能在此 cycle 发射 (否则进入 E1 读到旧值)
@@ -615,8 +615,10 @@ module lumi_core_top #(
         end else if (mem_busy || e1_div_pending) begin
             // Bug#5 修复: mem_busy 时冻结 I→E1 (与 E1→M 同步)
             // ERR-114 修复: e2_div_busy 时冻结 I→E1, 防止 DIV 结果未就绪时指令继续前进
-        end else if (post_mispredict_bubble) begin
+        end else if (e1_has_branch || post_mispredict_bubble) begin
+            // ERR-019: 分支气泡 — E1 有分支指令时, 不捕获 D/I 数据
             // ERR-022: 误预测后扩展气泡 — 额外 1 周期让 W bypass 有正确 ra 值
+            // 分支需要 1 周期在 E1 求值, 期间不允许推测指令进入 E1
             e1_valid_r <= '0;
         end else begin
             e1_valid_r <= i_valid;
