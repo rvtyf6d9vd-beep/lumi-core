@@ -236,11 +236,19 @@ module lumi_decode_issue #(
                 pd_inst_pc_r[i]         <= 32'h0;
                 pd_inst_raw_r[i]        <= 16'h0;
             end
-        end else if (flush) begin
-            // ERR-131: flush 清除 pd_inst_valid_r
-            // 注意: 如果 pd_advance=1 同周期, 数据会丢失 (待修复 BTB 学习问题后解决)
+        end else if (flush && !pd_advance) begin
+            // ERR-131: flush 且无新数据 → 清除 (错误路径数据)
             pd_inst_valid_r <= '0;
             pd_inst_compressed_r <= '0;
+        end else if (flush && pd_advance) begin
+            // ERR-131 FIX: flush 但有新数据 → 保留注册, 等待新数据覆盖后再写 DIB
+            pd_inst_valid_r      <= pd_inst_valid;
+            pd_inst_compressed_r <= pd_inst_compressed;
+            for (int i = 0; i < FETCH_WIDTH; i++) begin
+                pd_inst_r[i]     <= pd_inst[i];
+                pd_inst_pc_r[i]  <= pd_inst_pc[i];
+                pd_inst_raw_r[i] <= pd_inst_raw[i];
+            end
         end else begin
             // A: DIB 可接受 → 注册新数据 (优先)
             if (pd_advance) begin
@@ -261,6 +269,20 @@ module lumi_decode_issue #(
         end
     end
 
+    // ERR-131: wait_for_fresh — flush+pd_advance 保留的旧数据不应写入 DIB
+    // 等待 pd_advance=1 (无 flush) 注册新数据后才允许 DIB 写入
+    logic wait_for_fresh_r;
+    always_ff @(posedge clk_core or negedge reset_n) begin
+        if (!reset_n)
+            wait_for_fresh_r <= 1'b0;
+        else if (flush && pd_advance)
+            wait_for_fresh_r <= 1'b1;   // 保留了旧数据, 等待新数据
+        else if (pd_advance && !flush)
+            wait_for_fresh_r <= 1'b0;   // 新数据已注册, 可以写 DIB
+        else if (flush && !pd_advance)
+            wait_for_fresh_r <= 1'b0;   // 无保留数据, 无需等待
+    end
+
     // ── DIB 写入/读取统一 always_ff ──
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
@@ -278,7 +300,8 @@ module lumi_decode_issue #(
             // dib_wr_offset 已检查 pending + 新 predecode 空间 (全握手).
             //   pd_advance_r 确保下周期注册新数据, 不会重复写入.
             //   不需要 f2_valid 门控 (会死锁).
-            if (dib_wr_offset > 0) begin
+            // ERR-131: wait_for_fresh_r 阻止 flush 保留的旧数据写入 DIB
+            if (dib_wr_offset > 0 && !wait_for_fresh_r) begin
                 for (int i = 0; i < FETCH_WIDTH; i++) begin
                     if (pd_inst_valid_r[i] && (i < dib_wr_offset)) begin
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].valid      <= 1'b1;
@@ -297,9 +320,8 @@ module lumi_decode_issue #(
             end
 
             // ── count 统一更新 ──
-            // dib_wr_offset: 0 或 pd_pending (全握手空间检查)
-            //   flush 时 dib_count 已重置
-            dib_count <= dib_count + dib_wr_offset - issue_count;
+            // ERR-131: wait_for_fresh_r 时实际写入量为 0
+            dib_count <= dib_count + (wait_for_fresh_r ? '0 : dib_wr_offset) - issue_count;
         end
     end
 

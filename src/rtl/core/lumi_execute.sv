@@ -613,6 +613,11 @@ module lumi_execute #(
                             branch_taken[i]  = 1'b1;
                             branch_target[i] = e1_inst[i].pc + e1_inst[i].imm;
                             e1_result[i]     = e1_inst[i].pc + (e1_inst[i].is_compressed ? 32'd2 : 32'd4);
+                            // synthesis translate_off
+                            if (e1_inst[i].pc >= 32'h20 && e1_inst[i].pc <= 32'h50)
+                                $display("[JAL-DBG] pc=0x%08h imm=0x%08h target=0x%08h inst=0x%08h",
+                                         e1_inst[i].pc, e1_inst[i].imm, branch_target[i], e1_inst[i].inst);
+                            // synthesis translate_on
                         end
                         // JALR: opcode=1100111 (间接跳转)
                         // 修复: 压缩指令 (C.JR/C.JALR/C.RET) 返回地址 = PC+2
