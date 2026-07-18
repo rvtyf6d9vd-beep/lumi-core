@@ -55,6 +55,7 @@ module lumi_decode_issue #(
     output logic                    dib_can_accept, // BUG-009-DIB: 当前 predecode 批次可放入 DIB (考虑 issue 排空)
     input  logic                    flush,
     input  logic [31:0]             flush_pc,   // ERR-131: 误预测分支 PC (选择性 DIB flush)
+    input  logic                    flush_taken, // ERR-131h: 误预测分支是否 taken
     input  logic                    div_busy,
     input  logic                    pipe_stall,  // ERR-114: 流水线不能接收新指令 (分支气泡/误预测气泡)
 
@@ -293,16 +294,10 @@ module lumi_decode_issue #(
             for (int i = 0; i < DIB_DEPTH; i++)
                 dib[i] <= '{default: '0};
         end else if (flush) begin
-            // ERR-131e: 选择性 flush — 保留 PC <= flush_pc 的条目 (正确路径)
-            dib_wr_ptr <= dib_rd_ptr + flush_keep_count;
-            // dib_rd_ptr 不变
-            dib_count  <= {1'b0, flush_keep_count};
-            // 清除保留点之后的条目
-            for (int i = 0; i < DIB_DEPTH; i++) begin
-                automatic logic [DIB_PTR_W-1:0] idx = dib_rd_ptr + DIB_PTR_W'(i);
-                if (i[DIB_PTR_W-1:0] >= flush_keep_count && i[DIB_PTR_W-1:0] < dib_count[DIB_PTR_W-1:0])
-                    dib[idx].valid <= 1'b0;
-            end
+            // DIB 全量清除 (误预测后所有 DIB 条目均为错误路径)
+            dib_wr_ptr <= '0;
+            dib_rd_ptr <= '0;
+            dib_count  <= '0;
         end else begin
             // ── 写入: pd_inst_r → DIB ──
             // dib_wr_offset 已检查 pending + 新 predecode 空间 (全握手).

@@ -365,6 +365,7 @@ module lumi_core_top #(
         .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
         .flush                 (di_flush_gated),  // ERR-131c: cooldown 抑制幽灵误预测
         .flush_pc              (e1_br_pc),       // ERR-131: 误预测分支 PC (选择性 DIB flush)
+        .flush_taken           (e1_br_taken),    // ERR-131h: 误预测分支是否 taken
         .div_busy              (e2_div_busy),
         .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测
