@@ -169,6 +169,7 @@ module lumi_core_top #(
         else          e1_mispredict_d <= e1_mispredict;
     end
     assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request;
+    wire di_flush_gated = di_flush_edge;  // ERR-131c: cooldown 已移除 (破坏回归)
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
     logic          e1_br_is_jalr;
@@ -362,7 +363,8 @@ module lumi_core_top #(
         .stall_out             (dec_stall),
         .dib_not_full          (dib_not_full),
         .dib_can_accept        (dib_can_accept),  // BUG-009-DIB
-        .flush                 (di_flush_edge),  // ERR-131: 边沿检测防止反复 flush
+        .flush                 (di_flush_gated),  // ERR-131c: cooldown 抑制幽灵误预测
+        .flush_pc              (e1_br_pc),       // ERR-131: 误预测分支 PC (选择性 DIB flush)
         .div_busy              (e2_div_busy),
         .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
         // Bug#5: E1→M Load-Use 冒险检测

@@ -54,6 +54,7 @@ module lumi_decode_issue #(
     output logic                    dib_not_full,  // DIB 有空间 (替代 all_issued)
     output logic                    dib_can_accept, // BUG-009-DIB: 当前 predecode 批次可放入 DIB (考虑 issue 排空)
     input  logic                    flush,
+    input  logic [31:0]             flush_pc,   // ERR-131: 误预测分支 PC (选择性 DIB flush)
     input  logic                    div_busy,
     input  logic                    pipe_stall,  // ERR-114: 流水线不能接收新指令 (分支气泡/误预测气泡)
 
@@ -781,7 +782,8 @@ module lumi_decode_issue #(
         // ERR-019: post_flush_block 时禁止发射 — flush 后等待正确路径批次
         // ERR-114: pipe_stall 时禁止发射 — 分支气泡/误预测气泡期间 E1 不捕获,
         //   若仍发射会消耗 DIB 条目但指令丢失
-        if (!post_flush_block_r && !pipe_stall) begin
+        // ERR-131d: 移除 post_flush_block_r (它延迟 issue 1 cycle, 导致指令被下次 flush 清除)
+        if (!pipe_stall) begin
 
         // 程序序扫描: 从解码队列中按序选择可发射的指令
         for (int s = 0; s < ISSUE_WIDTH; s++) begin
@@ -889,10 +891,10 @@ module lumi_decode_issue #(
                 end
             end
         end
-        end // ERR-019: close if (!post_flush_block_r)
+        end // ERR-131d: close if (!pipe_stall)
 
         // stall_out: DIB 有指令但无法发射 (FU busy 或 stop_issue)
-        if (!dib_empty && !post_flush_block_r) begin
+        if (!dib_empty) begin
             // DIB 有有效指令但 issue_count == 0, 说明被阻塞
             // ERR-114: pipe_stall 时 issue 暂停, 但不应阻塞 fetch 填充 DIB
             // ERR-131 FIX: 移除 || pipe_stall, 仅在真正无法发射时才 stall fetch
