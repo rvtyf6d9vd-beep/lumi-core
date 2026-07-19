@@ -635,16 +635,18 @@ module lumi_execute #(
                         end
 
                         // 误预测检测: ERR-019 修复 — 比较预测与实际
-                        // ERR-131L: JAL/JALR 始终视为 predicted taken, 跳过 target 检查
+                        // ERR-131L: JAL/JALR taken 时不检查 pred_taken (始终视为 predicted taken)
                         if (branch_taken[i]) begin
-                            if (!(e1_pred_taken || e1_inst[i].inst[6:0] == 7'b1101111 || e1_inst[i].inst[6:0] == 7'b1100111)) begin
+                            if (!e1_pred_taken && e1_inst[i].inst[6:0] != 7'b1101111 && e1_inst[i].inst[6:0] != 7'b1100111) begin
+                                // 条件分支: 预测 not-taken, 实际 taken → 误预测
                                 e1_mispredict = 1'b1;
-                            end else if (e1_inst[i].inst[6:0] != 7'b1101111 && e1_inst[i].inst[6:0] != 7'b1100111 && branch_target[i] != e1_pred_target) begin
-                                // 条件分支: 预测 taken 但目标不同 → 误预测 (JAL/JALR 跳过 target 检查)
+                            end else if (e1_pred_taken && branch_target[i] != e1_pred_target) begin
+                                // 预测 taken 但目标不同 → 误预测
                                 e1_mispredict = 1'b1;
                             end
                         end else begin
-                            if (e1_pred_taken || e1_inst[i].inst[6:0] == 7'b1101111 || e1_inst[i].inst[6:0] == 7'b1100111) begin
+                            if (e1_pred_taken) begin
+                                // 预测 taken, 实际 not-taken → 误预测
                                 e1_mispredict = 1'b1;
                             end
                         end
