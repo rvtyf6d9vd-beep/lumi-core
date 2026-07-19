@@ -2847,10 +2847,8 @@ errata:
     resolved_date: "2026-07-19"
     resolved_by: hw-design
     resolution: |
-      三部分修复:
-      (1) pd_inst_valid_r: flush && pd_advance 时保留注册而非清除;
-      (2) wait_for_fresh_r: 阻止保留的旧数据写入 DIB，等待新数据覆盖;
-      (3) dib_count: 用 wait_for_fresh_r 门控确保计数一致;
-      (4) fetch redirect: 移除边沿检测 (!branch_redirect_valid_d)，
-          允许连续误预测重定向，state_reg != ST_FLUSH 已足够防止重复。
-    regression_test: "tests/directed/rv32im_bug_regression.S (TC-8)"
+      最终修复 (ERR-131L, 2026-07-19):
+      根因: group-level BTB 被 SA-CM-005 旁路, JAL 未预测 taken, wrong-path 误预测级联.
+      修复: (1) group BTB 对 JAL/JALR 不 bypass; (2) E1 JAL/JALR opcode override + skip target check;
+      (3) DIB pred_taken per-instruction. 验证: CoreMark PASS (152330 cycles), 7/7 回归 PASS.
+    regression_test: "tests/directed/rv32im_bug_regression.S (TC-8) + CoreMark V1"      (3) lumi_decode_issue.sv: DIB pred_taken 按 opcode 设置 (JAL=1, cond=0).
