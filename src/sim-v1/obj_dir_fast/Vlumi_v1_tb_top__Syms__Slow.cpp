@@ -11,7 +11,7 @@ Vlumi_v1_tb_top__Syms::Vlumi_v1_tb_top__Syms(VerilatedContext* contextp, const c
     , TOP{this, namep}
 {
     // Check resources
-    Verilated::stackCheck(7064);
+    Verilated::stackCheck(7060);
     // Setup sub module instances
     TOP__uvm_shim.ctor(this, "uvm_shim");
     TOP__uvm_shim__03a__03auvm_component__Vclpkg.ctor(this, "uvm_shim::uvm_component__Vclpkg");

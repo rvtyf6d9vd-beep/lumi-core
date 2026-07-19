@@ -410,10 +410,9 @@ module lumi_fetch #(
         // SA-CM-005 FIX: Re-enable group-level BTB prediction
         // pc_slot_in_grp ensures we only match entries AFTER current PC,
         // avoiding the carry-fetch stale entry problem.
-        // FIX: slot-0 BTB 命中时不检查组级 BTB, 防止后续 JAL 的 BTB 条目
-        // 覆盖当前 PC 处条件分支的预测 (如 BSS clear loop 中 JAL at 0x2c
-        // 污染 bgeu at 0x20 的预测).
-        if (grp_found && !btb_hit) begin
+        // ERR-131L FIX: slot-0 BTB 命中时, 仅对条件分支 bypass 组级 BTB,
+        // JAL/JALR (无条件跳转) 始终预测 taken (防止 wrong-path 指令进入 pipeline).
+        if (grp_found && (!btb_hit || !grp_is_branch)) begin
             pred_branch_slot = grp_slot;
 
             if (grp_is_ret) begin

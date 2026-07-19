@@ -220,7 +220,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___eval_initial__TOP(Vlumi_v1_tb_top_
     }
     if (VL_TESTPLUSARGS_I("vcd"s)) {
         vlSymsp->_vm_contextp__->dumpfile("lumi_v1_tb.vcd"s);
-        VL_PRINTF_MT("-Info: /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/src/tb/top/lumi_v1_tb_top.sv:892: $dumpvar ignored, as Verilated without --trace\n");
+        VL_PRINTF_MT("-Info: /Users/chenjiangshan/Workbench/FullAIFlowProjects/Lumi-core/src/tb/top/lumi_v1_tb_top.sv:923: $dumpvar ignored, as Verilated without --trace\n");
     }
     lumi_v1_tb_top__DOT__u_axi_mem__DOT__unnamedblk1__DOT__i = 0U;
     while (VL_GTS_III(32, 0x00004000U, lumi_v1_tb_top__DOT__u_axi_mem__DOT__unnamedblk1__DOT__i)) {

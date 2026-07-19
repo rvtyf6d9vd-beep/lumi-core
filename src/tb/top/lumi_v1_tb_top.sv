@@ -284,12 +284,43 @@ module lumi_v1_tb_top;
       // 追踪 bgeu 0x20 在 E1 的评估
       if (cycle_count > 119995 && cycle_count < 120010 &&
           u_dut.gen_single_core.u_core.e1_br_pc == 32'h20) begin
-        $display("[E1-BGEU] cyc=%0d br_pc=0x%08h br_taken=%0b mispredict=%0b e1_has_branch=%0b",
+        $display("[E1-BGEU] cyc=%0d br_pc=0x%08h br_taken=%0b mispredict=%0b e1_has_branch=%0b e1_pred_taken_r=%0b",
                  cycle_count,
                  u_dut.gen_single_core.u_core.e1_br_pc,
                  u_dut.gen_single_core.u_core.e1_br_taken,
                  u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_has_branch);
+                 u_dut.gen_single_core.u_core.e1_has_branch,
+                 u_dut.gen_single_core.u_core.e1_pred_taken_r);
+      end
+      // ERR-131L: 追踪 pd_pred_taken_r 在 DIB 写入时的值
+      if (cycle_count >= 119996 && cycle_count <= 120002) begin
+        $display("[PRED-DBG] cyc=%0d pd_pred_taken=%0b pd_pred_taken_r=%0b f2_pd_pred_taken=%0b pd_advance=%0b dib_wr_offset=%0d",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_pred_taken,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_pred_taken_r,
+                 u_dut.gen_single_core.u_core.f2_pd_pred_taken,
+                 u_dut.gen_single_core.u_core.u_decode_issue.pd_advance,
+                 u_dut.gen_single_core.u_core.u_decode_issue.dib_wr_offset);
+      end
+      // ERR-131L: 追踪 F1 预测机制 (btb_hit, grp_found, f1_pred_taken_comb)
+      if (cycle_count >= 119998 && cycle_count <= 120000 &&
+          u_dut.gen_single_core.u_core.u_fetch.pc_reg == 32'h20) begin
+        $display("[F1-PRED] cyc=%0d pc=0x20 btb_hit=%0b grp_found=%0b f1_pred_taken=%0b f1_btb_hit=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_fetch.btb_hit,
+                 u_dut.gen_single_core.u_core.u_fetch.grp_found,
+                 u_dut.gen_single_core.u_core.u_fetch.f1_pred_taken_comb,
+                 u_dut.gen_single_core.u_core.u_fetch.f1_btb_hit_comb);
+      end
+      // ERR-131L: 追踪 branch_redirect_valid 来源
+      if (cycle_count >= 119997 && cycle_count <= 120001) begin
+        $display("[REDIRECT] cyc=%0d branch_redirect_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h e1_br_target=0x%08h",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_br_taken || u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.e1_br_taken,
+                 u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.e1_br_pc,
+                 u_dut.gen_single_core.u_core.e1_br_target);
       end
       // 打印 cycle 119998-120006 的 pc_reg
       if (cycle_count >= 119998 && cycle_count <= 120006) begin
