@@ -506,6 +506,7 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__dib_can_accept = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 11632574076329042084ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__mem_busy = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 12733778363430427161ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__sb_empty = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 8445678353045767454ull);
+    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vcellinp__u_fetch__branch_redirect_valid = 0;
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vcellinp__u_decode_issue__pipe_stall = 0;
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1m_load_pending = VL_SCOPED_RAND_RESET_I(3, __VscopeHash, 10882933173968976390ull);
     for (int __Vi0 = 0; __Vi0 < 3; ++__Vi0) {
