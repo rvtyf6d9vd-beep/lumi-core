@@ -247,112 +247,41 @@ module lumi_v1_tb_top;
   // ─── ERR-130 Debug: removed (fixed in a23d197) ──
   // ─── ERR-131 Debug: removed (fixed in 56b25a4) ──
 
-  // ─── ERR-131L: 追踪 pointer store 0x4DB8 是否被执行 + 首次 mispredict ──
+  // ─── ERR-131L Phase 1: 追踪 misprediction redirect target (cyc 186300-186340) ──
   initial begin
     logic ptr_store_seen;
-    logic first_mispred_logged;
     wait(reset_n);
     ptr_store_seen = 0;
-    first_mispred_logged = 0;
     forever begin
       @(posedge clk_core);
-      // 检查 pointer store commit
+      // Task 1.2: 检查 pointer store 0x4DB8 是否被执行
       if (!ptr_store_seen && commit_valid_all[0] && commit_pc_packed[0] == 32'h4DB8) begin
         ptr_store_seen = 1;
-        $display("[PTR-STORE] cyc=%0d pc=0x4DB8 COMMITTED (pointer store executed)", cycle_count);
+        $display("[PTR-STORE] cyc=%0d pc=0x4DB8 COMMITTED", cycle_count);
       end
-      // 检查首次 mispredict (after BSS clear ~120K)
-      if (!first_mispred_logged && cycle_count > 152253 && cycle_count < 152540 &&
-          u_dut.gen_single_core.u_core.e1_mispredict) begin
-        first_mispred_logged = 1;
-        $display("[FIRST-MISP] cyc=%0d br_pc=0x%08h br_taken=%0b pred_taken=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.e1_br_pc,
-                 u_dut.gen_single_core.u_core.e1_br_taken,
-                 u_dut.gen_single_core.u_core.e1_pred_taken_r);
+      // Task 1.1 + 1.3: 追踪 misprediction redirect target
+      if (cycle_count >= 186300 && cycle_count <= 186340) begin
+        if (u_dut.gen_single_core.u_core.e1_mispredict) begin
+          $display("[MISP] cyc=%0d br_pc=0x%08h br_taken=%0b br_target=0x%08h pred_taken=%0b",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_taken,
+                   u_dut.gen_single_core.u_core.e1_br_target,
+                   u_dut.gen_single_core.u_core.e1_pred_taken_r);
+        end
+        if (u_dut.gen_single_core.u_core.e1_br_taken && !u_dut.gen_single_core.u_core.e1_mispredict) begin
+          $display("[BR-TAKEN] cyc=%0d br_pc=0x%08h br_target=0x%08h",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_target);
+        end
       end
-      // 追踪 pc_reg=0x2C 时的 F1 预测 (BSS clear JAL)
-      if (cycle_count > 119980 && cycle_count < 120010 &&
-          u_dut.gen_single_core.u_core.u_fetch.pc_reg == 32'h2C) begin
-        $display("[F1-JAL] cyc=%0d pc_reg=0x%08h f1_pred_taken=%0b f2_icache_word3=0x%08h btb_hit=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.u_fetch.pc_reg,
-                 u_dut.gen_single_core.u_core.u_fetch.f1_pred_taken_comb,
-                 u_dut.gen_single_core.u_core.u_fetch.f2_icache_data[127:96],
-                 u_dut.gen_single_core.u_core.u_fetch.btb_hit);
-      end
-      // 追踪 bgeu 0x20 在 E1 的评估
-      if (cycle_count > 119995 && cycle_count < 120010 &&
-          u_dut.gen_single_core.u_core.e1_br_pc == 32'h20) begin
-        $display("[E1-BGEU] cyc=%0d br_pc=0x%08h br_taken=%0b mispredict=%0b e1_has_branch=%0b e1_pred_taken_r=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.e1_br_pc,
-                 u_dut.gen_single_core.u_core.e1_br_taken,
-                 u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_has_branch,
-                 u_dut.gen_single_core.u_core.e1_pred_taken_r);
-      end
-      // ERR-131L: 追踪 pd_pred_taken_r 在 DIB 写入时的值
-      if (cycle_count >= 119996 && cycle_count <= 120002) begin
-        $display("[PRED-DBG] cyc=%0d pd_pred_taken=%0b pd_pred_taken_r=%0b f2_pd_pred_taken=%0b pd_advance=%0b dib_wr_offset=%0d",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.u_decode_issue.pd_pred_taken,
-                 u_dut.gen_single_core.u_core.u_decode_issue.pd_pred_taken_r,
-                 u_dut.gen_single_core.u_core.f2_pd_pred_taken,
-                 u_dut.gen_single_core.u_core.u_decode_issue.pd_advance,
-                 u_dut.gen_single_core.u_core.u_decode_issue.dib_wr_offset);
-      end
-      // ERR-131L: 追踪 F1 预测机制 (btb_hit, grp_found, f1_pred_taken_comb)
-      if (cycle_count >= 119998 && cycle_count <= 120000 &&
-          u_dut.gen_single_core.u_core.u_fetch.pc_reg == 32'h20) begin
-        $display("[F1-PRED] cyc=%0d pc=0x20 btb_hit=%0b grp_found=%0b f1_pred_taken=%0b f1_btb_hit=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.u_fetch.btb_hit,
-                 u_dut.gen_single_core.u_core.u_fetch.grp_found,
-                 u_dut.gen_single_core.u_core.u_fetch.f1_pred_taken_comb,
-                 u_dut.gen_single_core.u_core.u_fetch.f1_btb_hit_comb);
-      end
-      // ERR-131L: 追踪 JAL 0x2C issue 时的 pred_taken
-      if (cycle_count > 119990 && cycle_count < 120015 &&
-          u_dut.gen_single_core.u_core.u_decode_issue.i_issue[0].pc == 32'h2C &&
-          u_dut.gen_single_core.u_core.u_decode_issue.i_issue_valid[0]) begin
-        $display("[JAL-ISSUE] cyc=%0d pc=0x2C i_pred_taken=%0b dib_bp_hit=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.u_decode_issue.i_pred_taken,
-                 u_dut.gen_single_core.u_core.u_decode_issue.dib_bp_hit);
-      end
-      // ERR-131L: 追踪 bgeu 误预测时的 e1_valid_r
-      if (cycle_count >= 152250 && cycle_count <= 152260) begin
-        $display("[E1-VALID] cyc=%0d e1_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h i_valid=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.e1_valid_r,
-                 u_dut.gen_single_core.u_core.e1_br_taken,
-                 u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_br_pc,
-                 u_dut.gen_single_core.u_core.i_valid);
-      end
-      // ERR-131L: 追踪 bgeu 误预测时的 e1_valid_r 和 I→E1 clear
-      if (cycle_count >= 152250 && cycle_count <= 152260) begin
-        $display("[E1-VALID] cyc=%0d e1_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h i_valid=%0b",
-                 cycle_count,
-                 u_dut.gen_single_core.u_core.e1_valid_r,
-                 u_dut.gen_single_core.u_core.e1_br_taken,
-                 u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_br_pc,
-                 u_dut.gen_single_core.u_core.i_valid);
-      end
-      // 打印 cycle 119998-120006 的 pc_reg
-      if (cycle_count >= 186320 && cycle_count <= 186345) begin
-        $display("[PC-TRACE] cyc=%0d pc_reg=0x%08h",
-                 cycle_count, u_dut.gen_single_core.u_core.u_fetch.pc_reg);
-      end
-      // 如果到了 CODE-WR cycle 还没看到 pointer store
-      if (!ptr_store_seen && cycle_count == 152540) begin
-        $display("[PTR-STORE] cyc=152540 pointer store 0x4DB8 NEVER COMMITTED!");
+      // 检查 pointer store 是否在 CODE-WR 之前被 commit
+      if (!ptr_store_seen && cycle_count == 186338) begin
+        $display("[PTR-STORE] cyc=186338 pointer store 0x4DB8 NEVER COMMITTED!");
       end
     end
   end
-
   // 周期性打印 V1 SRAM 状态 (前 50 周期, 用于调试) — 已注释保留 (ERR-019 调试)
   // wire w_dec_stall = u_dut.gen_single_core.u_core.dec_stall;
   // wire w_f2_valid  = u_dut.gen_single_core.u_core.f2_valid;

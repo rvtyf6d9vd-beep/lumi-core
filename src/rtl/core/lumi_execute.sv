@@ -635,10 +635,12 @@ module lumi_execute #(
                         end
 
                         // 误预测检测: ERR-019 修复 — 比较预测与实际
+                        // ERR-131L: JAL/JALR 跳过 target 比较 (DIB pred_target 是 group 级别的，不是 per-instruction)
                         if (branch_taken[i]) begin
                             if (!e1_pred_taken) begin
                                 e1_mispredict = 1'b1;
-                            end else if (branch_target[i] != e1_pred_target) begin
+                            end else if (e1_inst[i].inst[6:0] != 7'b1101111 && e1_inst[i].inst[6:0] != 7'b1100111 && branch_target[i] != e1_pred_target) begin
+                                // 仅条件分支比较 target (JAL/JALR target 从指令计算，不依赖 e1_pred_target)
                                 e1_mispredict = 1'b1;
                             end
                         end else begin

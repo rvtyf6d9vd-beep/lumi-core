@@ -130,7 +130,6 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     for (int __Vi0 = 0; __Vi0 < 65536; ++__Vi0) {
         vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__v1_sram[__Vi0] = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 2501650943425445746ull);
     }
-    VL_SCOPED_RAND_RESET_W(128, vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__v1_ic_line, __VscopeHash, 13170306190644859301ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__sram_we_count = 0;
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_valid = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 13683817168089506804ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__clic_irq_id = VL_SCOPED_RAND_RESET_I(8, __VscopeHash, 5370917681094564604ull);
@@ -586,8 +585,6 @@ VL_ATTR_COLD void Vlumi_v1_tb_top___024root___ctor_var_reset(Vlumi_v1_tb_top___0
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__carry_valid_r = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 18445310219150606498ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f1_pred_target_comb = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 6071378415315119875ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f1_pred_taken_comb = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 2673754970460148049ull);
-    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__f1_btb_hit_comb = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 13388811898214270524ull);
-    vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__grp_found = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 16258513016957870291ull);
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk10__DOT__t = 0;
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk11__DOT__unnamedblk13__DOT__t = 0;
     vlSelf->lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__unnamedblk7__DOT__i = 0;

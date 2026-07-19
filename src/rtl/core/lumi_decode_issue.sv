@@ -318,7 +318,7 @@ module lumi_decode_issue #(
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
                         // ERR-131L: 存储 F1 实际预测 (pd_pred_taken_r)
-                        // 冷启动 JAL 需要 mispredict 来触发 F1→E1 redirect
+                        // BTB/LTAGE 学习通过 pd_pred_taken_r 反映到 DIB
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= pd_pred_taken_r;
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
                     end
