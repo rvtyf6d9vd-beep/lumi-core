@@ -635,20 +635,15 @@ module lumi_execute #(
                         end
 
                         // 误预测检测: ERR-019 修复 — 比较预测与实际
-                        // 原 bug: 无条件认为所有 taken 分支都是误预测, 导致
-                        // BTB 已正确预测的 JAL/BGEU 仍然触发 flush, 无限循环.
+                        // ERR-131L: JAL/JALR 始终视为 predicted taken (opcode 检测)
                         if (branch_taken[i]) begin
-                            if (!e1_pred_taken) begin
-                                // 预测 not-taken (BTB 冷启动), 实际 taken → 误预测
+                            if (!(e1_pred_taken || e1_inst[i].inst[6:0] == 7'b1101111 || e1_inst[i].inst[6:0] == 7'b1100111)) begin
                                 e1_mispredict = 1'b1;
                             end else if (branch_target[i] != e1_pred_target) begin
-                                // 预测 taken 但目标不同 → 误预测
                                 e1_mispredict = 1'b1;
                             end
-                            // else: 预测 taken + 实际 taken + 目标相同 → 正确预测
                         end else begin
-                            if (e1_pred_taken) begin
-                                // 预测 taken, 实际 not-taken → 误预测
+                            if (e1_pred_taken || e1_inst[i].inst[6:0] == 7'b1101111 || e1_inst[i].inst[6:0] == 7'b1100111) begin
                                 e1_mispredict = 1'b1;
                             end
                         end

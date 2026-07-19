@@ -312,15 +312,14 @@ module lumi_v1_tb_top;
                  u_dut.gen_single_core.u_core.u_fetch.f1_pred_taken_comb,
                  u_dut.gen_single_core.u_core.u_fetch.f1_btb_hit_comb);
       end
-      // ERR-131L: 追踪 branch_redirect_valid 来源
-      if (cycle_count >= 119997 && cycle_count <= 120001) begin
-        $display("[REDIRECT] cyc=%0d branch_redirect_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h e1_br_target=0x%08h",
+      // ERR-131L: 追踪 JAL 0x2C issue 时的 pred_taken
+      if (cycle_count > 119990 && cycle_count < 120015 &&
+          u_dut.gen_single_core.u_core.u_decode_issue.i_issue[0].pc == 32'h2C &&
+          u_dut.gen_single_core.u_core.u_decode_issue.i_issue_valid[0]) begin
+        $display("[JAL-ISSUE] cyc=%0d pc=0x2C i_pred_taken=%0b dib_bp_hit=%0b",
                  cycle_count,
-                 u_dut.gen_single_core.u_core.e1_br_taken || u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_br_taken,
-                 u_dut.gen_single_core.u_core.e1_mispredict,
-                 u_dut.gen_single_core.u_core.e1_br_pc,
-                 u_dut.gen_single_core.u_core.e1_br_target);
+                 u_dut.gen_single_core.u_core.u_decode_issue.i_pred_taken,
+                 u_dut.gen_single_core.u_core.u_decode_issue.dib_bp_hit);
       end
       // 打印 cycle 119998-120006 的 pc_reg
       if (cycle_count >= 119998 && cycle_count <= 120006) begin

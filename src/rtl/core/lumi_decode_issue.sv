@@ -378,7 +378,7 @@ module lumi_decode_issue #(
                 dib_read_inst[s]       = pd_inst_r[dib_bp_idx];
                 dib_read_pc[s]         = pd_inst_pc_r[dib_bp_idx];
                 dib_read_compressed[s] = pd_inst_compressed_r[dib_bp_idx];
-                dib_read_pred_taken[s] = pd_pred_taken;  // ERR-131L: bypass path
+                dib_read_pred_taken[s] = (pd_inst_r[dib_bp_idx][6:0] == 7'b1101111 || pd_inst_r[dib_bp_idx][6:0] == 7'b1100111);  // ERR-131L: JAL/JALR=taken
                 dib_read_pred_target[s] = pd_pred_target; // ERR-131L
                 dib_read_raw[s]        = pd_inst_raw_r[dib_bp_idx];
                 dib_read_valid[s]      = 1'b1;
