@@ -29,6 +29,7 @@ SECTIONS
     .data : {
         *(.data .data.*)
         *(.sdata .sdata.*)
+        *(.srodata .srodata.*)
     } > TCM
 
     /* Global pointer anchor */
@@ -39,6 +40,7 @@ SECTIONS
     .bss : {
         *(.bss .bss.*)
         *(.sbss .sbss.*)
+        *(COMMON)
     } > TCM
     . = ALIGN(4);
     __bss_end = .;

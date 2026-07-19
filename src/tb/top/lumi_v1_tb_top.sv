@@ -205,8 +205,8 @@ module lumi_v1_tb_top;
         if (v1_dc_addr >= 32'h7AB0 && v1_dc_addr < 32'h8300)
           $display("[LIST-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b ready=%0b",
                    cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be, v1_dc_ready);
-        // CODE-SECTION WRITE DETECTOR: any store to code region (0x0000-0x7AA3) is suspicious
-        if (v1_dc_addr < 32'h7AA4)
+        // CODE-SECTION WRITE DETECTOR: any store to code region (0x0000-0x73B7) is suspicious
+        if (v1_dc_addr < 32'h73B8)
           $display("[CODE-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b",
                    cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be);
       end
@@ -941,6 +941,16 @@ module lumi_v1_tb_top;
       $dumpfile("lumi_v1_tb.vcd");
       $dumpvars(0, lumi_v1_tb_top);
     end
+  end
+
+  // ERR-131L: 检查 seed4_volatile (0x7A98) 初始值
+  initial begin
+    wait(reset_n);
+    #1;
+    $display("[SEED-CHK] sram[0x7A98/4=%0d] = 0x%08h (expect 0x00000032=50)",
+             32'h7A98 >> 2, u_dut.v1_sram[32'h7A98 >> 2]);
+    $display("[SEED-CHK] sram[0x7A9C/4=%0d] = 0x%08h (expect 0x00000066)",
+             32'h7A9C >> 2, u_dut.v1_sram[32'h7A9C >> 2]);
   end
 
 endmodule

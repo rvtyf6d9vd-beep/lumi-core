@@ -433,37 +433,48 @@ for (i = 0; i < MULTITHREAD; i++)
         }
 #endif
 #if defined(GEM5_SIMULATION)
-        /* Compute CM/MHz from raw ticks (simulation-specific)
-         * Formula: CM/MHz = (iterations * 1e6) / total_ticks
-         * Because CM/MHz = iters_per_sec / freq_MHz
-         *   and iters_per_sec = iters / (total_ticks / freq_Hz)
-         *   = iters * freq_Hz / total_ticks
-         *   so CM/MHz = iters * freq_Hz / (total_ticks * freq_MHz)
-         *             = iters * 1e6 / total_ticks
-         */
+        /* Compute CM/MHz from raw ticks (simulation-specific) */
         {
             unsigned long iters = default_num_contexts * results[0].iterations;
-            /* CM/MHz * 100 = iters * 1e8 / total_ticks
-             * On RV32, iters*1e8 overflows unsigned long (32-bit).
-             * Compute as: (iters * 1e6 / total_ticks) * 100 + remainder*100/total_ticks
-             * Use iterative subtraction to avoid modulo issues */
             unsigned long ticks = (unsigned long)total_time;
-            unsigned long per_iter = ticks / iters;  /* ticks per iteration */
+            unsigned long per_iter = (iters > 0) ? ticks / iters : 0;
             unsigned long cm_mhz_x100 = 0;
             if (per_iter > 0) {
-                /* CM/MHz = 1e6 / per_iter, * 100 = 1e8 / per_iter */
                 cm_mhz_x100 = 100000000UL / per_iter;
             }
+            extern unsigned long v1_sim_iters;
+            extern unsigned long v1_sim_ticks;
+            extern unsigned long v1_cm_per_mhz_x100;
+            v1_sim_iters = iters;
+            v1_sim_ticks = ticks;
+            v1_cm_per_mhz_x100 = cm_mhz_x100;
             ee_printf("CoreMark_CM_per_MHz_x100 : %lu\n", cm_mhz_x100);
             ee_printf("CoreMark_sim_iters : %lu\n", iters);
             ee_printf("CoreMark_sim_ticks : %lu\n", (unsigned long)total_time);
-            /* Force clean exit to avoid io_getevents syscall in cleanup */
             _exit(0);
         }
 #endif
     }
     if (total_errors > 0)
         ee_printf("Errors detected\n");
+
+#if defined(GEM5_SIMULATION)
+    /* ERR-131L: 无论是否有错误，始终写入结果并退出 */
+    {
+        unsigned long iters = default_num_contexts * results[0].iterations;
+        unsigned long ticks = (unsigned long)total_time;
+        unsigned long per_iter = (iters > 0) ? ticks / iters : 0;
+        unsigned long cm_mhz_x100 = 0;
+        if (per_iter > 0) cm_mhz_x100 = 100000000UL / per_iter;
+        extern unsigned long v1_sim_iters;
+        extern unsigned long v1_sim_ticks;
+        extern unsigned long v1_cm_per_mhz_x100;
+        v1_sim_iters = iters;
+        v1_sim_ticks = ticks;
+        v1_cm_per_mhz_x100 = cm_mhz_x100;
+        _exit(total_errors > 0 ? 1 : 0);
+    }
+#endif
     if (total_errors < 0)
         ee_printf(
             "Cannot validate operation for these seed values, please compare "

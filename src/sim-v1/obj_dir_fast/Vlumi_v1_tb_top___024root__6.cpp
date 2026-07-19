@@ -237,6 +237,7 @@ void Vlumi_v1_tb_top___024root____VbeforeTrig_ha6986e42__0(Vlumi_v1_tb_top___024
         vlSelfRef.__VtrigSched_ha6986e42__0.ready(__VeventDescription);
         vlSelfRef.__VtrigSched_ha6986e42__0.ready(__VeventDescription);
         vlSelfRef.__VtrigSched_ha6986e42__0.ready(__VeventDescription);
+        vlSelfRef.__VtrigSched_ha6986e42__0.ready(__VeventDescription);
     }
     vlSelfRef.__VactTriggeredAcc[0U] = (vlSelfRef.__VactTriggeredAcc[0U] 
                                         | __VTmp[0U]);

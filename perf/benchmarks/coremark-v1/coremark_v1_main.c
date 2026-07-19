@@ -21,9 +21,9 @@
  * Result capture via ee_printf interception
  * ═══════════════════════════════════════════════ */
 
-static unsigned long v1_cm_per_mhz_x100 = 0;
-static unsigned long v1_sim_iters = 0;
-static unsigned long v1_sim_ticks = 0;
+unsigned long v1_cm_per_mhz_x100 = 0;
+unsigned long v1_sim_iters = 0;
+unsigned long v1_sim_ticks = 0;
 static unsigned long v1_errors = 0;
 
 /* 简易字符串数字解析 */
@@ -140,10 +140,11 @@ extern void v1_write_result(unsigned long bench_id, unsigned long iterations,
                              unsigned long checks);
 
 void _exit(int code) {
-    /* 写入 CoreMark 结果到 0x3FFE0 */
+    /* DEBUG: 硬编码 iterations 确认 v1_write_result 路径 */
+    unsigned long dbg_iters = v1_sim_iters ? v1_sim_iters : 0xDEAD;
     v1_write_result(
         1,                      /* bench_id: CoreMark */
-        v1_sim_iters,           /* iterations */
+        dbg_iters,              /* iterations */
         v1_sim_ticks,           /* total_ticks */
         v1_cm_per_mhz_x100,     /* metric_x100: CM/MHz * 100 */
         v1_errors               /* checks: 0=pass */
