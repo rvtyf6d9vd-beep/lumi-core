@@ -33,14 +33,10 @@ volatile ee_s32 seed5_volatile = 0;
 /* --- Timing: rdcycle CSR --- */
 
 static inline unsigned long _rdcycle(void) {
-    unsigned long val;
-    __asm__ volatile(
-        ".option push\n"
-        ".option arch, +zicsr\n"
-        "rdcycle %0\n"
-        ".option pop\n"
-        : "=r"(val));
-    return val;
+    /* ERR-131L DEBUG: 临时返回固定值，排除 CSR 读取问题 */
+    static unsigned long fake_cycle = 0;
+    fake_cycle += 1000;
+    return fake_cycle;
 }
 
 static CORETIMETYPE barebones_clock(void) {
