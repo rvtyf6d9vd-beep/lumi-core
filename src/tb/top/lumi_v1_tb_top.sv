@@ -342,7 +342,7 @@ module lumi_v1_tb_top;
                  u_dut.gen_single_core.u_core.i_valid);
       end
       // 打印 cycle 119998-120006 的 pc_reg
-      if (cycle_count >= 119998 && cycle_count <= 120006) begin
+      if (cycle_count >= 199998 && cycle_count <= 200006) begin
         $display("[PC-TRACE] cyc=%0d pc_reg=0x%08h",
                  cycle_count, u_dut.gen_single_core.u_core.u_fetch.pc_reg);
       end

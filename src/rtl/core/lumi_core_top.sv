@@ -161,6 +161,8 @@ module lumi_core_top #(
     logic [ISSUE_WIDTH-1:0] e1_valid;
     logic          e1_br_taken;
     logic [31:0]   e1_br_target;
+    // ERR-131L: misprediction redirect 目标根据实际 taken/not-taken 选择
+    wire [31:0] e1_redirect_pc = e1_br_taken ? e1_br_target : (e1_br_pc + 32'd4);
     logic [31:0]   e1_br_pc;  // ERR-019: 分支指令 PC (BTB 更新)
     logic          e1_mispredict;
     // ERR-131: decode flush 边沿检测 — 防止 flush 期间错误路径指令反复触发 DIB 清除
@@ -261,7 +263,7 @@ module lumi_core_top #(
         .f2_pc_out             (f2_pc),
         .f2_pred_taken         (f2_pred_taken),
         .f2_pred_target        (f2_pred_target),
-        .branch_redirect_pc    (e1_br_target),
+        .branch_redirect_pc    (e1_redirect_pc),  // ERR-131L: taken→target, not-taken→PC+4
         .branch_redirect_valid (e1_br_taken || e1_mispredict),  // ERR-131L: taken branch 也 redirect (清除 F2 wrong-path)
         .trap_redirect_pc      (trap_pc),
         .trap_redirect_valid   (trap_request),
