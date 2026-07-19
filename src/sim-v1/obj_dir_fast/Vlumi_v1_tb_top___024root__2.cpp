@@ -11,6 +11,8 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__1(Vlumi_v1_tb_top___024root* 
     Vlumi_v1_tb_top__Syms* const __restrict vlSymsp VL_ATTR_UNUSED = vlSelf->vlSymsp;
     auto& vlSelfRef = std::ref(*vlSelf).get();
     // Locals
+    IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
+    lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata = 0;
     IData/*31:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h655a0b78__0;
     lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT____Vlvbound_h655a0b78__0 = 0;
     CData/*6:0*/ lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_decode_issue__DOT____Vlvbound_hc1529785__0;
@@ -6793,7 +6795,7 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__1(Vlumi_v1_tb_top___024root* 
     }
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__is_clic_csr = 0U;
     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__csr_addr_valid = 1U;
-    vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata 
+    lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata 
         = ((0x0fb1U == (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb))
             ? vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_clic__DOT__mintstatus_r
             : ((0x0347U == (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb))
@@ -8281,7 +8283,7 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__1(Vlumi_v1_tb_top___024root* 
                                     }
                                 } else {
                                     vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__csr_read_val 
-                                        = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
+                                        = lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
                                 }
                             } else if (((0x0b03U <= (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb)) 
                                         & (0x0b1fU 
@@ -10213,7 +10215,7 @@ void Vlumi_v1_tb_top___024root___nba_sequent__TOP__1(Vlumi_v1_tb_top___024root* 
                     if ((2U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb))) {
                         if ((1U & (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb))) {
                             vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__csr_read_val 
-                                = vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
+                                = lumi_v1_tb_top__DOT__u_dut__DOT__clic_csr_rdata;
                         } else if (((0x0b03U <= (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb)) 
                                     & (0x0b1fU >= (IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_writeback__DOT__csr_addr_comb)))) {
                             vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__u_csr__DOT__csr_read_val 

@@ -317,9 +317,9 @@ module lumi_decode_issue #(
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pc         <= pd_inst_pc_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
-                        // ERR-131L: 存储 F1 预测 (传播到 E1 用于 mispredict 检测)
-                        // JAL/JALR 始终 pred_taken=1; 条件分支默认 not-taken (BTB miss 行为)
-                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= (pd_inst_r[i][6:0] == 7'b1101111 || pd_inst_r[i][6:0] == 7'b1100111);
+                        // ERR-131L: 存储 F1 实际预测 (pd_pred_taken_r)
+                        // 冷启动 JAL 需要 mispredict 来触发 F1→E1 redirect
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= pd_pred_taken_r;
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
                     end
                 end
@@ -378,7 +378,7 @@ module lumi_decode_issue #(
                 dib_read_inst[s]       = pd_inst_r[dib_bp_idx];
                 dib_read_pc[s]         = pd_inst_pc_r[dib_bp_idx];
                 dib_read_compressed[s] = pd_inst_compressed_r[dib_bp_idx];
-                dib_read_pred_taken[s] = (pd_inst_r[dib_bp_idx][6:0] == 7'b1101111 || pd_inst_r[dib_bp_idx][6:0] == 7'b1100111);  // ERR-131L: JAL/JALR=taken
+                dib_read_pred_taken[s] = pd_pred_taken;  // ERR-131L: F1 实际预测
                 dib_read_pred_target[s] = pd_pred_target; // ERR-131L
                 dib_read_raw[s]        = pd_inst_raw_r[dib_bp_idx];
                 dib_read_valid[s]      = 1'b1;

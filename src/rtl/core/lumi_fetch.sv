@@ -440,9 +440,8 @@ module lumi_fetch #(
             end
         end
 
-        // ERR-131h: BTB miss 时直接检测 JAL/条件分支 (消除冷启动误预测)
+        // ERR-131h: 检测 pc_reg 处的 JAL (消除冷启动误预测)
         // V1 ICache 是组合逻辑, 可在 F1 直接读取指令
-        // ERR-131L: JAL 检测无条件优先 (JAL 永远 taken, 不受 btb_hit/grp_found 影响)
         begin
             automatic logic [31:0] f1_inst = f2_icache_data[{pc_reg[3:2], 5'b0} +: 32];
             if (f1_inst[6:0] == OP_JAL) begin
