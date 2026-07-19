@@ -318,7 +318,8 @@ module lumi_decode_issue #(
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
                         // ERR-131L: 存储 F1 预测 (传播到 E1 用于 mispredict 检测)
-                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= pd_pred_taken_r;
+                        // JAL/JALR 始终 pred_taken=1; 条件分支默认 not-taken (BTB miss 行为)
+                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= (pd_inst_r[i][6:0] == 7'b1101111 || pd_inst_r[i][6:0] == 7'b1100111);
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
                     end
                 end
