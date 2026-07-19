@@ -262,7 +262,7 @@ module lumi_core_top #(
         .f2_pred_taken         (f2_pred_taken),
         .f2_pred_target        (f2_pred_target),
         .branch_redirect_pc    (e1_br_target),
-        .branch_redirect_valid (e1_br_taken || e1_mispredict),  // ERR-131L: taken branch 也 redirect (清除 F2 wrong-path)
+        .branch_redirect_valid (e1_mispredict),
         .trap_redirect_pc      (trap_pc),
         .trap_redirect_valid   (trap_request),
         .tage_update_pc        (e1_br_pc),      // ERR-019: 使用分支 PC (非 target) 更新 BTB
