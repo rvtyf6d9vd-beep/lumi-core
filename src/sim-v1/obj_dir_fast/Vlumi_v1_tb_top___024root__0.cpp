@@ -348,8 +348,8 @@ VlCoroutine Vlumi_v1_tb_top___024root___eval_initial__TOP__Vtiming__6(Vlumi_v1_t
                          , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__e1_br_pc
                          , '#',3,(IData)(vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__i_valid));
         }
-        if (VL_UNLIKELY((((0x00030d3eU <= vlSelfRef.lumi_v1_tb_top__DOT__cycle_count) 
-                          & (0x00030d46U >= vlSelfRef.lumi_v1_tb_top__DOT__cycle_count))))) {
+        if (VL_UNLIKELY((((0x0002d7d0U <= vlSelfRef.lumi_v1_tb_top__DOT__cycle_count) 
+                          & (0x0002d7e9U >= vlSelfRef.lumi_v1_tb_top__DOT__cycle_count))))) {
             VL_WRITEF_NX("[PC-TRACE] cyc=%0d pc_reg=0x%08h\n",2
                          , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__cycle_count
                          , '#',32,vlSelfRef.lumi_v1_tb_top__DOT__u_dut__DOT__gen_single_core__DOT__u_core__DOT__u_fetch__DOT__pc_reg);
