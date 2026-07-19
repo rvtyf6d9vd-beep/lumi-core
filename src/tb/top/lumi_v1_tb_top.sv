@@ -262,7 +262,7 @@ module lumi_v1_tb_top;
         $display("[PTR-STORE] cyc=%0d pc=0x4DB8 COMMITTED (pointer store executed)", cycle_count);
       end
       // 检查首次 mispredict (after BSS clear ~120K)
-      if (!first_mispred_logged && cycle_count > 120000 &&
+      if (!first_mispred_logged && cycle_count > 152253 && cycle_count < 152540 &&
           u_dut.gen_single_core.u_core.e1_mispredict) begin
         first_mispred_logged = 1;
         $display("[FIRST-MISP] cyc=%0d br_pc=0x%08h br_taken=%0b pred_taken=%0b",
@@ -320,6 +320,26 @@ module lumi_v1_tb_top;
                  cycle_count,
                  u_dut.gen_single_core.u_core.u_decode_issue.i_pred_taken,
                  u_dut.gen_single_core.u_core.u_decode_issue.dib_bp_hit);
+      end
+      // ERR-131L: 追踪 bgeu 误预测时的 e1_valid_r
+      if (cycle_count >= 152250 && cycle_count <= 152260) begin
+        $display("[E1-VALID] cyc=%0d e1_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h i_valid=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_valid_r,
+                 u_dut.gen_single_core.u_core.e1_br_taken,
+                 u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.e1_br_pc,
+                 u_dut.gen_single_core.u_core.i_valid);
+      end
+      // ERR-131L: 追踪 bgeu 误预测时的 e1_valid_r 和 I→E1 clear
+      if (cycle_count >= 152250 && cycle_count <= 152260) begin
+        $display("[E1-VALID] cyc=%0d e1_valid=%0b e1_br_taken=%0b e1_mispredict=%0b e1_br_pc=0x%08h i_valid=%0b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.e1_valid_r,
+                 u_dut.gen_single_core.u_core.e1_br_taken,
+                 u_dut.gen_single_core.u_core.e1_mispredict,
+                 u_dut.gen_single_core.u_core.e1_br_pc,
+                 u_dut.gen_single_core.u_core.i_valid);
       end
       // 打印 cycle 119998-120006 的 pc_reg
       if (cycle_count >= 119998 && cycle_count <= 120006) begin
