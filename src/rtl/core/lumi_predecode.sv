@@ -173,10 +173,11 @@ module lumi_predecode #(
             bytes_consumed = bo - {1'b0, start_offset};
 
         // ── ERR-BTB: pred_taken 修正: 截断分支后的指令 ──
+        // ERR-131L-FIX Bug#2: 使用 inst_pc[i][3:1] (2-byte slot) 而非指令索引 i
         if (pred_taken && pred_branch_slot != 4'hF) begin
             // 清除 pred_branch_slot 之后的指令
             for (int i = 0; i < FETCH_WIDTH; i++) begin
-                if (4'(i) > pred_branch_slot) begin
+                if (inst_pc[i][3:1] > pred_branch_slot) begin
                     inst_valid[i]      = 1'b0;
                     inst[i]            = 32'h0;
                     inst_pc[i]         = 32'h0;

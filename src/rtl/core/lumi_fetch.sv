@@ -37,6 +37,7 @@ module lumi_fetch #(
     output logic [31:0]             f2_base_pc_out,        // F2 cache line 基地址
     output logic [3:0]              f2_start_offset_out,   // PC[3:0] 起始偏移
     output logic                    f2_pred_taken_out,     // F2 预测 taken
+    output logic [31:0]             f2_pred_target_out,    // ERR-131L-FIX: F2 预测目标 (组合逻辑, 与 f2_pred_taken_out 对齐)
     output logic [15:0]             f2_carry_hw_out,       // carry halfword
     output logic                    f2_carry_valid_out,    // carry 有效
     // ERR-BTB: 预测分支所在 slot (predecode 用于正确截断)
@@ -60,6 +61,8 @@ module lumi_fetch #(
     input  logic                    br_update_is_ret,
     // ERR-RAS: execute-level RAS 压缩标志 (从 execute 级传递)
     input  logic                    br_update_is_compressed,
+    // ERR-131L-FIX Bug#10: BTB 写入目标 (taken target, 非 redirect target)
+    input  logic [31:0]             br_btb_target,
 
     // ── Predecode 反馈 (ERR-042) ─────────────────────────────
     input  logic [4:0]              predecode_bytes_consumed,
@@ -188,6 +191,15 @@ module lumi_fetch #(
     logic                      ltage_pred;                  // 最终预测
     logic                      ltage_cond_pred;             // 条件分支预测
 
+    // ERR-131L-FIX Bug#7: LTAGE update-path lookup signals
+    // 原始 bug: LTAGE 更新使用 F1 级的 ltage_hit/ltage_idx/ltage_tag (基于 pc_reg),
+    // 而非 tage_update_pc (执行分支的 PC)。导致 LTAGE 表项写入错误的 index/tag,
+    // 分支预测器永远无法学习 → 每次循环迭代都误预测。
+    logic [LTAGE_IDX_W-1:0]    ltage_upd_idx  [LTAGE_TABLES-1:0];
+    logic [7:0]                ltage_upd_tag   [LTAGE_TABLES-1:0];
+    logic                      ltage_upd_hit   [LTAGE_TABLES-1:0];
+    logic [LTAGE_CTR_W-1:0]    ltage_upd_ctr   [LTAGE_TABLES-1:0];
+
     // ═══════════════════════════════════════════════════════════
     // F1/F2 流水线寄存器
     // ═══════════════════════════════════════════════════════════
@@ -261,6 +273,22 @@ module lumi_fetch #(
         end
     endgenerate
 
+    // ERR-131L-FIX Bug#7: 更新路径 index/tag 计算 (使用 tage_update_pc)
+    generate
+        for (genvar t = 0; t < LTAGE_TABLES; t++) begin : gen_ltage_upd_idx
+            localparam int HIST_LEN = (t < 2)  ? (4 + t * 2) :
+                                      (t < 4)  ? (9 + (t-2) * 5) :
+                                      (t < 8)  ? (21 + (t-4) * 12) :
+                                                 (72 + (t-8) * 40);
+            localparam int ACTUAL_HIST = (HIST_LEN > LTAGE_HIST_MAX) ? LTAGE_HIST_MAX : HIST_LEN;
+
+            assign ltage_upd_idx[t] = tage_update_pc[LTAGE_IDX_W:1] ^
+                                      branch_history[ACTUAL_HIST-1 : ACTUAL_HIST - LTAGE_IDX_W];
+            assign ltage_upd_tag[t] = tage_update_pc[15:8] ^
+                                      branch_history[ACTUAL_HIST-1 : ACTUAL_HIST - 8];
+        end
+    endgenerate
+
     // 逐表查找
     always_comb begin
         ltage_pred = 1'b0;
@@ -278,6 +306,15 @@ module lumi_fetch #(
             if (ltage_hit[t]) begin
                 ltage_pred = ltage_ctr[t][LTAGE_CTR_W-1]; // MSB = 预测方向
             end
+        end
+    end
+
+    // ERR-131L-FIX Bug#7: 更新路径逐表查找
+    always_comb begin
+        for (int t = 0; t < LTAGE_TABLES; t++) begin
+            ltage_upd_hit[t] = ltage_tables[t][ltage_upd_idx[t]].valid &&
+                               (ltage_tables[t][ltage_upd_idx[t]].tag == ltage_upd_tag[t]);
+            ltage_upd_ctr[t] = ltage_tables[t][ltage_upd_idx[t]].ctr;
         end
     end
 
@@ -410,9 +447,14 @@ module lumi_fetch #(
         // SA-CM-005 FIX: Re-enable group-level BTB prediction
         // pc_slot_in_grp ensures we only match entries AFTER current PC,
         // avoiding the carry-fetch stale entry problem.
-        // ERR-131L FIX: slot-0 BTB 命中时, 仅对条件分支 bypass 组级 BTB,
-        // JAL/JALR (无条件跳转) 始终预测 taken (防止 wrong-path 指令进入 pipeline).
-        if (grp_found && (!btb_hit || !grp_is_branch)) begin
+        // ERR-131L FIX Bug#6: 组级 BTB 不应覆盖 slot-0 条件分支的 not-taken 预测
+        // 原 bug: 检查 grp_is_branch 而非 btb_is_branch, 导致组级 JAL 覆盖
+        //   slot-0 条件分支的 not-taken 预测 → BGEU 被误预测为 taken
+        // 修复: 仅在以下情况使用组级预测:
+        //   1. slot-0 BTB 未命中 (!btb_hit), OR
+        //   2. slot-0 BTB 命中条件分支且预测 not-taken (btb_is_branch && !f1_pred_taken_comb)
+        //   (此时组内后续指令在正确路径上, JAL 应被预测)
+        if (grp_found && (!btb_hit || (btb_is_branch && !f1_pred_taken_comb))) begin
             pred_branch_slot = grp_slot;
 
             if (grp_is_ret) begin
@@ -578,18 +620,20 @@ module lumi_fetch #(
 
             // ── LTAGE 更新 (fetch-bpred.html §3.3) ─────────
             // BUG-FIX: flush 期间不更新 LTAGE, 防止错误路径分支污染预测器
+            // ERR-131L-FIX Bug#7: 使用 tage_update_pc 的 index/tag/hit (ltage_upd_*)
+            //   而非 pc_reg 的 (ltage_*), 确保更新正确的 LTAGE 表项
             if (tage_update_valid && state_reg != ST_FLUSH) begin
                 // 更新分支历史 (左移, 新结果进入 bit[0])
                 branch_history <= {branch_history[LTAGE_HIST_MAX-2:0], tage_update_taken};
 
                 // 更新最长命中表的计数器
                 for (int t = LTAGE_TABLES - 1; t >= 0; t--) begin
-                    if (ltage_hit[t]) begin
+                    if (ltage_upd_hit[t]) begin
                         // 更新饱和计数器: taken++ / not-taken--
-                        if (tage_update_taken && ltage_ctr[t] < (2**LTAGE_CTR_W - 1))
-                            ltage_tables[t][ltage_idx[t]].ctr <= ltage_ctr[t] + 1'b1;
-                        else if (!tage_update_taken && ltage_ctr[t] > 0)
-                            ltage_tables[t][ltage_idx[t]].ctr <= ltage_ctr[t] - 1'b1;
+                        if (tage_update_taken && ltage_upd_ctr[t] < (2**LTAGE_CTR_W - 1))
+                            ltage_tables[t][ltage_upd_idx[t]].ctr <= ltage_upd_ctr[t] + 1'b1;
+                        else if (!tage_update_taken && ltage_upd_ctr[t] > 0)
+                            ltage_tables[t][ltage_upd_idx[t]].ctr <= ltage_upd_ctr[t] - 1'b1;
                         break; // 只更新最长命中表
                     end
                 end
@@ -599,15 +643,15 @@ module lumi_fetch #(
                     logic any_hit;
                     any_hit = 1'b0;
                     for (int t = 0; t < LTAGE_TABLES; t++)
-                        any_hit = any_hit | ltage_hit[t];
+                        any_hit = any_hit | ltage_upd_hit[t];
                     if (!any_hit) begin
                         for (int t = 0; t < LTAGE_TABLES; t++) begin
-                            if (!ltage_tables[t][ltage_idx[t]].valid) begin
-                                ltage_tables[t][ltage_idx[t]].valid  <= 1'b1;
-                                ltage_tables[t][ltage_idx[t]].tag    <= ltage_tag[t];
-                                ltage_tables[t][ltage_idx[t]].ctr    <= tage_update_taken ?
+                            if (!ltage_tables[t][ltage_upd_idx[t]].valid) begin
+                                ltage_tables[t][ltage_upd_idx[t]].valid  <= 1'b1;
+                                ltage_tables[t][ltage_upd_idx[t]].tag    <= ltage_upd_tag[t];
+                                ltage_tables[t][ltage_upd_idx[t]].ctr    <= tage_update_taken ?
                                     3'b100 : 3'b011;   // 弱 taken / 弱 not-taken
-                                ltage_tables[t][ltage_idx[t]].useful <= 2'b01;
+                                ltage_tables[t][ltage_upd_idx[t]].useful <= 2'b01;
                                 break;
                             end
                         end
@@ -629,7 +673,7 @@ module lumi_fetch #(
         btb_wr_idx       = tage_update_pc[BTB_IDX_W:1];
         btb_wr_data.valid  = 1'b1;
         btb_wr_data.tag    = tage_update_pc[31 : BTB_IDX_W+1];
-        btb_wr_data.target = branch_redirect_pc;
+        btb_wr_data.target = br_btb_target;  // ERR-131L-FIX Bug#10: 始终用 taken target
         btb_wr_data.is_call    = 1'b0;
         btb_wr_data.is_ret     = 1'b0;
         btb_wr_data.is_branch  = 1'b0;  // 默认: 无条件跳转 (JAL)
@@ -687,6 +731,7 @@ module lumi_fetch #(
     assign f2_base_pc_out      = pc_reg;
     assign f2_start_offset_out = fetch_start_offset;
     assign f2_pred_taken_out   = f1_pred_taken_comb;
+    assign f2_pred_target_out  = f1_pred_target_comb;  // ERR-131L-FIX: 组合逻辑 pred_target (与 pred_taken_out 对齐)
     assign f2_carry_hw_out     = carry_hw_r;
     assign f2_carry_valid_out  = carry_valid_r;
     // ERR-BTB: pred_branch_slot 输出 mux

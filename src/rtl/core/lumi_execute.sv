@@ -44,6 +44,8 @@ module lumi_execute #(
     output logic                    e1_br_is_compressed,
     // LTAGE 更新: 条件分支已执行 (taken 或 not-taken 都需更新)
     output logic                    e1_br_executed,
+    // ERR-131L-FIX Bug#10: BTB 写入目标 (始终为 taken target, 非 redirect target)
+    output logic [31:0]             e1_br_btb_target,
 
     // ── E1 LSU 地址 (→ Memory 级) ─────────────────────────────
     output logic [31:0]             e1_mem_addr [1:0],        // 2x LSU
@@ -145,6 +147,7 @@ module lumi_execute #(
     logic [31:0] branch_target [ISSUE_WIDTH-1:0];
     logic        is_branch [ISSUE_WIDTH-1:0];
     bit          already_redirected; // ERR-020: 多槽误预测优先级标志
+    bit          btb_updated;       // ERR-131L-FIX Bug#8: BTB/LTAGE 更新优先级标志
 
     function automatic logic branch_evaluate(
         input logic [2:0]  funct3,
@@ -385,10 +388,12 @@ module lumi_execute #(
         e1_br_is_ret     = 1'b0;   // ERR-044
         e1_br_is_compressed = 1'b0; // ERR-RAS
         e1_br_executed   = 1'b0;   // 条件分支执行标志
+        e1_br_btb_target = 32'h0;  // ERR-131L-FIX Bug#10
         e2_div_busy      = div_busy_r;
 
         // ERR-020: 多槽误预测优先级 — 最早 slot (最低 i) 优先
         already_redirected = 1'b0;
+        btb_updated       = 1'b0;  // ERR-131L-FIX Bug#8
 
         for (int i = 0; i < ISSUE_WIDTH; i++) begin
             e1_result[i]    = 32'h0;
@@ -680,8 +685,13 @@ module lumi_execute #(
                             // 条件分支 (非 JAL/JALR) 需更新 LTAGE
                             e1_br_executed = !(e1_inst[i].inst[6:0] == 7'b1101111) &&
                                              !(e1_inst[i].inst[6:0] == 7'b1100111);
-                        end else if (!e1_mispredict && !already_redirected) begin
+                            // ERR-131L-FIX Bug#10: BTB target 始终为 taken target
+                            //   非 redirect target (not-taken 误预测时 redirect=PC+4, 但 BTB 应存 taken target)
+                            e1_br_btb_target = branch_target[i];
+                        end else if (!e1_mispredict && !btb_updated) begin
                             // 非误预测但仍需更新分支反馈 (BTB/LTAGE 学习)
+                            // ERR-131L-FIX Bug#8: 使用 btb_updated 而非 already_redirected
+                            //   防止非误预测分支阻塞后续误预测分支的 redirect
                             e1_branch_taken  = branch_taken[i];
                             e1_branch_target = branch_taken[i] ? branch_target[i] : (e1_inst[i].pc + 32'd4);
                             e1_branch_pc     = e1_inst[i].pc;
@@ -689,6 +699,9 @@ module lumi_execute #(
                             e1_br_is_jalr = (e1_inst[i].inst[6:0] == 7'b1100111);
                             e1_br_executed = !(e1_inst[i].inst[6:0] == 7'b1101111) &&
                                              !(e1_inst[i].inst[6:0] == 7'b1100111);
+                            // ERR-131L-FIX Bug#10: BTB target 始终为 taken target
+                            e1_br_btb_target = branch_target[i];
+                            btb_updated = 1'b1;  // ERR-131L-FIX Bug#8: 防止后续 slot 覆盖 BTB update
                         end
                     end
 

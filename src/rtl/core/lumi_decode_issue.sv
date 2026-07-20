@@ -60,6 +60,7 @@ module lumi_decode_issue #(
     input  logic                    flush_taken, // ERR-131h: 误预测分支是否 taken
     input  logic                    pd_pred_taken, // ERR-131L: F1 预测 taken (传播到 DIB)
     input  logic [31:0]             pd_pred_target, // ERR-131L: F1 预测目标
+    input  logic [3:0]              pd_pred_branch_slot, // ERR-131L-FIX Bug#2: 预测分支 slot (per-instruction pred_taken)
     input  logic                    div_busy,
     input  logic                    pipe_stall,  // ERR-114: 流水线不能接收新指令 (分支气泡/误预测气泡)
 
@@ -174,6 +175,7 @@ module lumi_decode_issue #(
     logic [FETCH_WIDTH-1:0] pd_inst_compressed_r;
     logic                   pd_pred_taken_r;   // ERR-131L: 注册的 F1 预测
     logic [31:0]            pd_pred_target_r;  // ERR-131L: 注册的 F1 预测目标
+    logic [3:0]             pd_pred_branch_slot_r; // ERR-131L-FIX Bug#2: 注册的 pred_branch_slot
     logic [15:0]        pd_inst_raw_r [FETCH_WIDTH-1:0];
 
     // ── pd_pending: pd_inst_valid_r 中有效条目数 ──
@@ -232,6 +234,7 @@ module lumi_decode_issue #(
             pd_inst_compressed_r <= '0;
             pd_pred_taken_r <= 1'b0;  // ERR-131L
             pd_pred_target_r <= 32'h0; // ERR-131L
+            pd_pred_branch_slot_r <= 4'hF; // ERR-131L-FIX Bug#2
             for (int i = 0; i < FETCH_WIDTH; i++) begin
                 pd_inst_r[i]            <= 32'h0;
                 pd_inst_pc_r[i]         <= 32'h0;
@@ -243,6 +246,7 @@ module lumi_decode_issue #(
             pd_inst_compressed_r <= '0;
             pd_pred_taken_r <= 1'b0;  // ERR-131L
             pd_pred_target_r <= 32'h0; // ERR-131L
+            pd_pred_branch_slot_r <= 4'hF; // ERR-131L-FIX Bug#2
         end else begin
             // A: DIB 可接受 → 注册新数据 (优先)
             if (pd_advance) begin
@@ -250,6 +254,7 @@ module lumi_decode_issue #(
                 pd_inst_compressed_r <= pd_inst_compressed;
                 pd_pred_taken_r  <= pd_pred_taken;   // ERR-131L
                 pd_pred_target_r <= pd_pred_target;  // ERR-131L
+                pd_pred_branch_slot_r <= pd_pred_branch_slot; // ERR-131L-FIX Bug#2
                 for (int i = 0; i < FETCH_WIDTH; i++) begin
                     pd_inst_r[i]     <= pd_inst[i];
                     pd_inst_pc_r[i]  <= pd_inst_pc[i];
@@ -279,16 +284,7 @@ module lumi_decode_issue #(
             wait_for_fresh_r <= 1'b0;   // 无保留数据, 无需等待
     end
 
-    // ERR-131e: 选择性 DIB flush — 计算保留条目数 (PC <= flush_pc)
-    logic [DIB_PTR_W-1:0] flush_keep_count;
-    always_comb begin
-        flush_keep_count = '0;
-        for (int i = 0; i < DIB_DEPTH; i++) begin
-            automatic logic [DIB_PTR_W-1:0] idx = dib_rd_ptr + DIB_PTR_W'(i);
-            if (i[DIB_PTR_W-1:0] < dib_count[DIB_PTR_W-1:0] && dib[idx].valid && dib[idx].pc <= flush_pc)
-                flush_keep_count = flush_keep_count + 1'b1;
-        end
-    end
+    // ERR-131L-FIX Bug#5: 移除 flush_keep_count 死代码 (DIB flush 为全量清除, 此值从未使用)
 
     // ── DIB 写入/读取统一 always_ff ──
     always_ff @(posedge clk_core or negedge reset_n) begin
@@ -317,10 +313,17 @@ module lumi_decode_issue #(
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pc         <= pd_inst_pc_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].compressed <= pd_inst_compressed_r[i];
                         dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].inst_raw   <= pd_inst_raw_r[i];
-                        // ERR-131L: 存储 F1 实际预测 (pd_pred_taken_r)
-                        // BTB/LTAGE 学习通过 pd_pred_taken_r 反映到 DIB
-                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= pd_pred_taken_r;
-                        dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
+                        // ERR-131L-FIX Bug#2: per-instruction pred_taken
+                        // 只有 pred_branch_slot 位置的指令才预测 taken
+                        // 其他指令 (如条件分支前的指令) 不应预测 taken
+                        // 使用指令 PC[3:1] (2-byte slot within 16-byte group) 与 pred_branch_slot 比较
+                        if (pd_pred_taken_r && pd_inst_pc_r[i][3:1] == pd_pred_branch_slot_r) begin
+                            dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= 1'b1;
+                            dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= pd_pred_target_r;
+                        end else begin
+                            dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_taken  <= 1'b0;
+                            dib[dib_wr_ptr + i[DIB_PTR_W-1:0]].pred_target <= 32'h0;
+                        end
                     end
                 end
                 dib_wr_ptr <= dib_wr_ptr + dib_wr_offset;

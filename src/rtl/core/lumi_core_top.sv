@@ -170,13 +170,16 @@ module lumi_core_top #(
         if (!reset_n) e1_mispredict_d <= 1'b0;
         else          e1_mispredict_d <= e1_mispredict;
     end
-    assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request ||
-                           (e1_br_taken && !e1_mispredict);  // ERR-131L: taken branch 也 flush DIB
+    // ERR-131L-FIX Bug#3: 移除 e1_br_taken && !e1_mispredict 条件
+    // Bug#2 修复后 predecode 截断可靠, DIB 中无 wrong-path 指令
+    // taken branch 预测正确时无需 flush DIB, 避免丢弃正确路径指令
+    assign di_flush_edge = (e1_mispredict && !e1_mispredict_d) || trap_request;
     wire di_flush_gated = di_flush_edge;  // ERR-131: cooldown 无效 (第一次 flush 已造成损害)
     // ERR-019: 分支类型
     logic          e1_br_is_jal;
     logic          e1_br_is_jalr;
     logic          e1_br_executed;  // 条件分支已执行 (LTAGE 更新用)
+    logic [31:0]   e1_br_btb_target; // ERR-131L-FIX Bug#10: BTB 写入目标 (taken target)
     logic [31:0]   e1_mem_addr [1:0];
     logic          e1_mem_we [1:0];
     logic [31:0]   e1_mem_wdata [1:0];
@@ -275,6 +278,7 @@ module lumi_core_top #(
         .br_update_is_call     (e1_br_is_call),
         .br_update_is_ret      (e1_br_is_ret),
         .br_update_is_compressed (e1_br_is_compressed),
+        .br_btb_target           (e1_br_btb_target),    // ERR-131L-FIX Bug#10
         // ERR-042: predecode 反馈
         .predecode_bytes_consumed (pd_bytes_consumed),
         .predecode_inst_count     (pd_inst_count),
@@ -285,6 +289,7 @@ module lumi_core_top #(
         .f2_base_pc_out        (f2_pd_base_pc),
         .f2_start_offset_out   (f2_pd_start_offset),
         .f2_pred_taken_out     (f2_pd_pred_taken),
+        .f2_pred_target_out    (f2_pd_pred_target), // ERR-131L-FIX: 组合逻辑 pred_target
         .f2_carry_hw_out       (f2_pd_carry_hw),
         .f2_carry_valid_out    (f2_pd_carry_valid),
         .pred_branch_slot      (f2_pd_pred_branch_slot),  // ERR-BTB
@@ -303,6 +308,7 @@ module lumi_core_top #(
     logic [31:0]  f2_pd_base_pc;
     logic [3:0]   f2_pd_start_offset;
     logic         f2_pd_pred_taken;
+    logic [31:0]  f2_pd_pred_target;  // ERR-131L-FIX: 组合逻辑 pred_target (与 pred_taken 对齐)
     logic [15:0]  f2_pd_carry_hw;
     logic         f2_pd_carry_valid;
     logic [3:0]   f2_pd_pred_branch_slot;  // ERR-BTB
@@ -370,11 +376,12 @@ module lumi_core_top #(
         .flush_pc              (e1_br_pc),       // ERR-131: 误预测分支 PC (选择性 DIB flush)
         .flush_taken           (e1_br_taken),    // ERR-131h: 误预测分支是否 taken
         .pd_pred_taken         (f2_pd_pred_taken),  // ERR-131L: F1 预测传播到 DIB (组合逻辑, 当前 cycle)
-        .pd_pred_target        (f2_pred_target), // ERR-131L: F1 预测目标传播到 DIB
+        .pd_pred_target        (f2_pd_pred_target), // ERR-131L-FIX: 组合逻辑 pred_target (与 pred_taken 对齐)
+        .pd_pred_branch_slot   (f2_pd_pred_branch_slot), // ERR-131L-FIX Bug#2: 预测分支 slot
         .i_pred_taken          (i_pred_taken_from_dib),  // ERR-131L: DIB 发射指令的预测
         .i_pred_target         (i_pred_target_from_dib), // ERR-131L: DIB 发射指令的预测目标
         .div_busy              (e2_div_busy),
-        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending),  // ERR-114: 分支气泡/mem_busy 时不发射
+        .pipe_stall            (e1_has_branch || post_mispredict_bubble || mem_busy || e1_div_pending || pending_bypass_stall),  // ERR-114 / BUG-009-FIX2
         // Bug#5: E1→M Load-Use 冒险检测
         // 当 E1→M 有 load 指令时, 其结果在 M 级才能产生,
         // 依赖指令不能在此 cycle 发射 (否则进入 E1 读到旧值)
@@ -439,6 +446,15 @@ module lumi_core_top #(
     logic [4:0]  bp_w_rd [ISSUE_WIDTH-1:0];
     logic [ISSUE_WIDTH-1:0] bp_w_valid;
 
+    // BUG-009-FIX: Pending write bypass from writeback
+    logic                    pending_bypass_valid;
+    logic [4:0]              pending_bypass_rd;
+    logic [31:0]             pending_bypass_data;
+    logic                    pending_bypass_stall;  // BUG-009-FIX2
+    logic                    pending_bypass2_valid;  // BUG-009-FIX2
+    logic [4:0]              pending_bypass2_rd;
+    logic [31:0]             pending_bypass2_data;
+
     // T-MS3-S3-BF.1.5: M 级旁路源适配
     // E2 MUL/DIV 结果在 E1→M 寄存器 (m_result_r) 后即可用；若使用 memory_stage
     // 再打一拍后的 m_result_out，依赖指令会读到旧值。Load 结果仍由 memory_stage
@@ -462,6 +478,10 @@ module lumi_core_top #(
         bp_w_result[1] = rf_wr_data[1];
         bp_w_rd[1]     = rf_wr_addr[1];
         bp_w_valid[1]  = rf_wr_en[1];
+        // BUG-009-FIX: 端口 2 — 延迟写回 bypass (slot2_pending/slot1_pending)
+        bp_w_result[2] = pending_bypass_data;
+        bp_w_rd[2]     = pending_bypass_rd;
+        bp_w_valid[2]  = pending_bypass_valid;
     end
 
     // MUL/DIV E2 结果旁路: 当 M 级指令是 MUL/DIV 且 E2 结果有效时,
@@ -528,6 +548,10 @@ module lumi_core_top #(
         .w_result            (bp_w_result),
         .w_rd                (bp_w_rd),
         .w_valid             (bp_w_valid),
+        // BUG-009-FIX2: 2nd pending bypass (slot2_pending2)
+        .w_extra_valid       (pending_bypass2_valid),
+        .w_extra_rd          (pending_bypass2_rd),
+        .w_extra_result      (pending_bypass2_data),
         // FPU 旁路
         .fpu_result          (64'h0),      // TODO: 连接 FPU
         .fpu_rd              (5'h0),
@@ -609,9 +633,10 @@ module lumi_core_top #(
                 e1_rs1_data_r[i] <= 32'h0;
                 e1_rs2_data_r[i] <= 32'h0;
             end
-        end else if (e1_mispredict || trap_request || e1_br_taken) begin
+        end else if (((e1_mispredict || e1_br_taken) && !mem_busy) || trap_request) begin
             // ERR-019: flush 时清除 E1 输入, 杀死与分支同批次发射的推测指令
             // ERR-131L: taken branch 也清除 I→E1 (squash wrong-path 指令)
+            // BUG-009-FIX: mem_busy 时延迟 flush, 防止 misprediction 覆盖 M 级 load
             e1_valid_r <= '0;
             e1_pred_taken_r  <= 1'b0;
             e1_pred_target_r <= 32'h0;
@@ -632,7 +657,7 @@ module lumi_core_top #(
             e1_valid_r <= i_valid;
             // ERR-019: 捕获预测状态 (来自 F2)
             e1_pred_taken_r  <= i_pred_taken_from_dib;  // ERR-131L: 从 DIB 获取预测 (而非 F2)
-            e1_pred_target_r <= f2_pred_target;
+            e1_pred_target_r <= i_pred_target_from_dib;  // ERR-131L-FIX Bug#1: 从 DIB 获取 (与 pred_taken 一致)
             for (int i = 0; i < ISSUE_WIDTH; i++) begin
                 e1_inst_r[i]    <= i_inst[i];
                 e1_rs1_data_r[i] <= i_rs1_data[i];
@@ -669,6 +694,7 @@ module lumi_core_top #(
         .e1_br_is_ret          (e1_br_is_ret),     // ERR-044
         .e1_br_is_compressed   (e1_br_is_compressed), // ERR-RAS
         .e1_br_executed        (e1_br_executed),       // LTAGE 更新
+        .e1_br_btb_target      (e1_br_btb_target),    // ERR-131L-FIX Bug#10
         .e1_mem_addr           (e1_mem_addr),
         .e1_mem_we             (e1_mem_we),
         .e1_mem_wdata          (e1_mem_wdata),
@@ -705,8 +731,9 @@ module lumi_core_top #(
                 m_result_r[i]  <= 32'h0;
                 m_rd_r[i]      <= 5'h0;
             end
-        end else if (e1_mispredict) begin
+        end else if (e1_mispredict && !mem_busy) begin
             // FIX: 误预测时保留分支及其前的所有有效指令, 仅刷新分支后的指令.
+            // BUG-009-FIX: mem_busy 时冻结 E1→M, 防止 misprediction 替换 M 级未完成 load
             // 原 bug: m_valid_r <= '0 清除所有 slot, 导致分支前的指令 (如 sw/addi/srli) 丢失.
             // issue 阶段在分支后停止发射 (lumi_decode_issue.sv L818),
             // 所以同批次中分支后的 slot 不会有有效指令.
@@ -778,7 +805,7 @@ module lumi_core_top #(
     // ═══════════════════════════════════════════════════════════
     lumi_memory_stage #(
         .ISSUE_WIDTH (ISSUE_WIDTH),
-        .BYPASS_SB   (1'b1)       // ERR-027/028 修复: store 直写 SRAM
+        .BYPASS_SB   (1'b1)       // ERR-131L-FIX Bug#9: store 直写 SRAM (加 commit gate)
     ) u_memory (
         .clk_core              (clk_core),
         .reset_n               (reset_n),
@@ -860,7 +887,16 @@ module lumi_core_top #(
         .mon_inst_raw        (mon_inst_raw),
         .mon_rd              (mon_rd),
         .mon_rd_data         (mon_rd_data),
-        .mon_irq             (mon_irq)
+        .mon_irq             (mon_irq),
+        // BUG-009-FIX: Pending write bypass
+        .pending_bypass_valid  (pending_bypass_valid),
+        .pending_bypass_rd     (pending_bypass_rd),
+        .pending_bypass_data   (pending_bypass_data),
+        // BUG-009-FIX2: 2nd pending bypass + stall
+        .pending_bypass2_valid (pending_bypass2_valid),
+        .pending_bypass2_rd    (pending_bypass2_rd),
+        .pending_bypass2_data  (pending_bypass2_data),
+        .pending_bypass_stall  (pending_bypass_stall)
     );
 
     // ═══════════════════════════════════════════════════════════

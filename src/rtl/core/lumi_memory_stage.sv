@@ -357,8 +357,16 @@ module lumi_memory_stage #(
     // 当 store 和 load 在同一 cycle 处理时:
     //   - store 的 SRAM 写入在 NEXT clock edge 才生效
     //   - load 的 SRAM 组合读返回的是 OLD 值 (store 之前的值)
-    // 修复: 组合转发 — 如果同一 cycle 有 store 到相同 word 地址,
-    //        将 store 数据直接转发给 load (覆盖 SRAM 读出的旧值)
+    // 修复: 组合转发 — 如果同一 cycle 有 OLDER store 到相同 word 地址,
+    //        将 store 数据直接转发给 YOUNGER load (覆盖 SRAM 读出的旧值)
+    //
+    // BUG-009-FIX3: 仅转发从 OLDER store 到 YOUNGER load.
+    //   port 0 是 older (更低 PC/slot), port 1 是 younger.
+    //   正确转发: port 0 store → port 1 load
+    //   错误转发: port 1 store → port 0 load (load 应读旧值)
+    //   原代码错误地将 port 1 store 转发给 port 0 load,
+    //   导致 list reversal 循环中 load 读到 store 的新值而非原始值.
+    // ═══════════════════════════════════════════════════════════
     logic [31:0] fwd_load_data [1:0];
     always_comb begin
         for (int l = 0; l < 2; l++) begin
@@ -366,7 +374,8 @@ module lumi_memory_stage #(
             merged = mem_rdata_in; // 默认: SRAM 读出值
 
             // 检查 port 0 是否有 store 到相同 word 地址
-            if (lsu_valid[0] && lsu_we[0] &&
+            // port 0 是 older, 可以转发给任何 younger load (l >= 1)
+            if (l >= 1 && lsu_valid[0] && lsu_we[0] &&
                 (lsu_addr[0][31:2] == lsu_addr[l][31:2])) begin
                 // 按 byte-enable 转发: store 写入的字节用 store data,
                 // 其余字节保持 SRAM 读出值 (对 byte/halfword load 安全)
@@ -376,8 +385,10 @@ module lumi_memory_stage #(
                 end
             end
 
-            // 检查 port 1 是否有 store 到相同 word 地址 (罕见: 双 store)
-            if (lsu_valid[1] && lsu_we[1] &&
+            // 检查 port 1 是否有 store 到相同 word 地址
+            // port 1 是 younger, 仅转发给更年轻的端口 (2 端口设计中不存在)
+            // BUG-009-FIX3: 不转发给 port 0 (older load 应读旧值)
+            if (l >= 2 && lsu_valid[1] && lsu_we[1] &&
                 (lsu_addr[1][31:2] == lsu_addr[l][31:2])) begin
                 for (int b = 0; b < 4; b++) begin
                     if (lsu_be[1][b])

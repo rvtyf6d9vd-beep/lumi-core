@@ -27,6 +27,11 @@ module lumi_bypass #(
     input  logic [4:0]              w_rd      [ISSUE_WIDTH-1:0],
     input  logic [ISSUE_WIDTH-1:0]  w_valid,
 
+    // BUG-009-FIX2: 2nd pending write bypass (slot2_pending2)
+    input  logic                    w_extra_valid,
+    input  logic [4:0]              w_extra_rd,
+    input  logic [31:0]             w_extra_result,
+
     // ── FPU 旁路 ─────────────────────────────────────────────
     input  logic [63:0]             fpu_result,
     input  logic [4:0]              fpu_rd,
@@ -192,6 +197,17 @@ module lumi_bypass #(
             bypass_rs1_data[i] = rs1_match[31:0];
             bypass_rs2_hit[i]  = rs2_match[32];
             bypass_rs2_data[i] = rs2_match[31:0];
+
+            // BUG-009-FIX2: 2nd pending write bypass (lowest W-level priority)
+            // Only used if no higher-priority match found
+            if (!rs1_match[32] && w_extra_valid && w_extra_rd == query_rs1[i]) begin
+                bypass_rs1_hit[i]  = 1'b1;
+                bypass_rs1_data[i] = w_extra_result;
+            end
+            if (!rs2_match[32] && w_extra_valid && w_extra_rd == query_rs2[i]) begin
+                bypass_rs2_hit[i]  = 1'b1;
+                bypass_rs2_data[i] = w_extra_result;
+            end
 
             // ERR-024: 旁路查询已验证 (E1→E1 bypass 工作正常), 调试输出移除
         end

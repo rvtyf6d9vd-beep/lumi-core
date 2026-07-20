@@ -67,7 +67,22 @@ module lumi_writeback #(
     output logic [15:0]             mon_inst_raw [ISSUE_WIDTH-1:0],
     output logic [4:0]              mon_rd   [ISSUE_WIDTH-1:0],
     output logic [31:0]             mon_rd_data [ISSUE_WIDTH-1:0],
-    output logic                    mon_irq        // IRQ accepted
+    output logic                    mon_irq,       // IRQ accepted
+
+    // ── BUG-009-FIX: Pending write bypass (for lumi_bypass W-level) ──
+    // When slot 2/slot 1 write is deferred (both ports occupied),
+    // the result must still be visible to the bypass network
+    output logic                    pending_bypass_valid,
+    output logic [4:0]              pending_bypass_rd,
+    output logic [31:0]             pending_bypass_data,
+
+    // BUG-009-FIX2: 2nd pending bypass (slot2_pending2, entry 1)
+    output logic                    pending_bypass2_valid,
+    output logic [4:0]              pending_bypass2_rd,
+    output logic [31:0]             pending_bypass2_data,
+
+    // BUG-009-FIX2: Stall issue when 2+ pending writes exceed bypass capacity
+    output logic                    pending_bypass_stall
 );
 
     import lumi_pkg::*;
@@ -106,6 +121,17 @@ module lumi_writeback #(
     logic [31:0]             slot2_inst_r;        // slot 2 的指令字 (用于 commit 跟踪)
     logic                    slot2_is_csr_r;      // slot 2 是否 CSR 指令
     logic [31:0]             slot2_csr_rdata_r;   // slot 2 的 CSR 读取值
+    logic                    slot2_pending_written; // BUG-009-FIX: slot2_pending 本周期是否成功写入
+
+    // BUG-009-FIX2: 2nd entry for slot2_pending overflow
+    logic                    slot2_pending2;
+    logic [4:0]              slot2_rd_r2;
+    logic [31:0]             slot2_data_r2;
+    logic [31:0]             slot2_pc_r2;
+    logic [31:0]             slot2_inst_r2;
+    logic                    slot2_is_csr_r2;
+    logic [31:0]             slot2_csr_rdata_r2;
+    logic                    slot2_pending2_written;
 
     // ── SA-CM-LD-001: Slot 1 延迟寄存器 (E2 抢占时保存) ──
     logic                    slot1_pending;       // slot 1 被 E2 抢占, 有待写回
@@ -115,6 +141,7 @@ module lumi_writeback #(
     logic [31:0]             slot1_inst_r;        // slot 1 的指令字
     logic                    slot1_is_csr_r;      // slot 1 是否 CSR 指令
     logic [31:0]             slot1_csr_rdata_r;   // slot 1 的 CSR 读取值
+    logic                    slot1_pending_written; // BUG-009-FIX: slot1_pending 本周期是否成功写入
 
     // ── SA-CM-LD-001: 检测 slot 1 是否被 E2 抢占 ──
     logic slot1_preempted;
@@ -142,6 +169,9 @@ module lumi_writeback #(
         regfile_wr_data[0] = 32'h0;
         regfile_wr_data[1] = 32'h0;
         wr_select = '0;
+        slot2_pending_written = 1'b0;  // BUG-009-FIX
+        slot1_pending_written = 1'b0;  // BUG-009-FIX
+        slot2_pending2_written = 1'b0; // BUG-009-FIX2
 
         // ── W 端口 0: 槽 0 ──
         if (w_valid[0] && w_rd[0] != 5'h0 && !w_exception[0]) begin
@@ -172,88 +202,253 @@ module lumi_writeback #(
             wr_select[1]        = 1'b1;
         end
 
-        // ── 槽 2: 使用空闲端口 (ERR-114: 修复 NOP 占用端口问题) ──
-        // ERR-114 FIX: 检查 !regfile_wr_en[0] 而非 !w_valid[0]
-        //   原 bug: NOP (w_valid=1, rd=0) 不写 regfile, 但 !w_valid[0] 为 false,
-        //   导致 slot 2 无法使用空闲端口 → 写回延迟 → RAW 冒险
-        // 槽 2 使用端口 0 (如果端口 0 空闲)
+        // ── BUG-009-FIX2: 延迟写回优先于新写回 (防止 buffer 溢出) ──
+        // SA-CM-LD-001: Slot 1 延迟数据写回 (E2 抢占后)
+        if (slot1_pending && !e2_mul_valid && !e2_div_valid) begin
+            if (!regfile_wr_en[1]) begin
+                regfile_wr_en[1]    = 1'b1;
+                regfile_wr_addr[1]  = slot1_rd_r;
+                regfile_wr_data[1]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
+                slot1_pending_written = 1'b1;
+            end else if (!regfile_wr_en[0]) begin
+                regfile_wr_en[0]    = 1'b1;
+                regfile_wr_addr[0]  = slot1_rd_r;
+                regfile_wr_data[0]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
+                slot1_pending_written = 1'b1;
+            end
+        end
+
+        // SA-5: Slot 2 延迟数据写回 (entry 0, 最老)
+        if (slot2_pending && !e2_mul_valid && !e2_div_valid) begin
+            if (!regfile_wr_en[0]) begin
+                regfile_wr_en[0]    = 1'b1;
+                regfile_wr_addr[0]  = slot2_rd_r;
+                regfile_wr_data[0]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+                slot2_pending_written = 1'b1;
+            end else if (!regfile_wr_en[1]) begin
+                regfile_wr_en[1]    = 1'b1;
+                regfile_wr_addr[1]  = slot2_rd_r;
+                regfile_wr_data[1]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+                slot2_pending_written = 1'b1;
+            end
+        end
+
+        // BUG-009-FIX2: Slot 2 延迟数据写回 (entry 1, 较新)
+        if (slot2_pending2 && !e2_mul_valid && !e2_div_valid) begin
+            if (!regfile_wr_en[0]) begin
+                regfile_wr_en[0]    = 1'b1;
+                regfile_wr_addr[0]  = slot2_rd_r2;
+                regfile_wr_data[0]  = slot2_is_csr_r2 ? slot2_csr_rdata_r2 : slot2_data_r2;
+                slot2_pending2_written = 1'b1;
+            end else if (!regfile_wr_en[1]) begin
+                regfile_wr_en[1]    = 1'b1;
+                regfile_wr_addr[1]  = slot2_rd_r2;
+                regfile_wr_data[1]  = slot2_is_csr_r2 ? slot2_csr_rdata_r2 : slot2_data_r2;
+                slot2_pending2_written = 1'b1;
+            end
+        end
+
+        // ── 槽 2: 使用空闲端口 (在延迟写回之后) ──
         if (!regfile_wr_en[0] && w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2]) begin
             regfile_wr_en[0]    = 1'b1;
             regfile_wr_addr[0]  = w_rd[2];
-            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
             if (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL)
                 regfile_wr_data[0]  = csr_rdata;
             else
                 regfile_wr_data[0]  = w_result[2];
             wr_select[2]        = 1'b1;
         end
-        // 或者槽 2 使用端口 1 (如果端口 1 空闲且无 E2)
         if (!regfile_wr_en[1] && !e2_mul_valid && !e2_div_valid &&
             w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2]) begin
             regfile_wr_en[1]    = 1'b1;
             regfile_wr_addr[1]  = w_rd[2];
-            // ERR-017 修复: CSR 指令写旧 CSR 值到 rd, 非 rs1 pass-through
             if (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL)
                 regfile_wr_data[1]  = csr_rdata;
             else
                 regfile_wr_data[1]  = w_result[2];
             wr_select[2]        = 1'b1;
         end
+    end
 
-        // ── SA-CM-LD-001: Slot 1 延迟数据写回 (E2 抢占后) ──
-        // 上周期被 E2 抢占的 slot 1, 本周期尝试写回 (优先级高于 slot2_pending)
-        if (slot1_pending && !e2_mul_valid && !e2_div_valid) begin
-            if (!regfile_wr_en[1]) begin
-                // 端口 1 空闲: 使用端口 1
-                regfile_wr_en[1]    = 1'b1;
-                regfile_wr_addr[1]  = slot1_rd_r;
-                regfile_wr_data[1]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
-            end else if (!regfile_wr_en[0]) begin
-                // 端口 0 空闲: 使用端口 0
-                regfile_wr_en[0]    = 1'b1;
-                regfile_wr_addr[0]  = slot1_rd_r;
-                regfile_wr_data[0]  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
-            end
+    // ═══════════════════════════════════════════════════════════
+    // BUG-009-FIX: Pending write bypass
+    // 当 slot 2/slot 1 写回被延迟 (两端口被占用), 其结果仍需对 bypass 可见
+    // 优先级: 本周期被延迟的 slot 2 > 本周期被抢占的 slot 1
+    //         > 上周期 slot2_pending entry0 > slot2_pending entry1 > slot1_pending
+    //
+    // BUG-009-FIX2: bypass 网络仅有 1 个 pending 端口 (bp_w_valid[2]).
+    // 当 2+ 个延迟写回同时需要 bypass 转发时, 拉高 pending_bypass_stall
+    // 阻止 issue 级发射新指令, 等待延迟写回完成.
+    // ═══════════════════════════════════════════════════════════
+    always_comb begin
+        automatic int unsigned pending_cnt;
+        pending_cnt = 0;
+        // 本周期新产生的延迟写回
+        if (w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2])
+            pending_cnt = pending_cnt + 1;
+        if (slot1_preempted)
+            pending_cnt = pending_cnt + 1;
+        // 上周期延迟, 本周期仍未写入
+        if (slot2_pending && !slot2_pending_written)
+            pending_cnt = pending_cnt + 1;
+        if (slot2_pending2 && !slot2_pending2_written)
+            pending_cnt = pending_cnt + 1;
+        if (slot1_pending && !slot1_pending_written)
+            pending_cnt = pending_cnt + 1;
+
+        pending_bypass_stall = (pending_cnt > 1);
+    end
+
+    always_comb begin
+        pending_bypass_valid = 1'b0;
+        pending_bypass_rd    = 5'h0;
+        pending_bypass_data  = 32'h0;
+
+        // Priority 1: 本周期 slot 2 有效但无法写入 (wr_select[2]=0)
+        if (w_valid[2] && w_rd[2] != 5'h0 && !w_exception[2] && !wr_select[2]) begin
+            pending_bypass_valid = 1'b1;
+            pending_bypass_rd    = w_rd[2];
+            if (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL)
+                pending_bypass_data = csr_rdata;
+            else
+                pending_bypass_data = w_result[2];
         end
+        // Priority 2: 本周期 slot 1 被 E2 抢占
+        else if (slot1_preempted) begin
+            pending_bypass_valid = 1'b1;
+            pending_bypass_rd    = w_rd[1];
+            if (w_inst[1].fu_type == FU_MISC && w_inst[1].funct3 != FN_ECALL)
+                pending_bypass_data = csr_rdata;
+            else
+                pending_bypass_data = w_result[1];
+        end
+        // Priority 3: 上周期 slot2_pending (entry 0), 本周期仍未写入
+        else if (slot2_pending && !slot2_pending_written) begin
+            pending_bypass_valid = 1'b1;
+            pending_bypass_rd    = slot2_rd_r;
+            pending_bypass_data  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+        end
+        // Priority 4: 上周期 slot1_pending, 本周期仍未写入
+        // (slot2_pending2 由 pending_bypass2 独立提供)
+        else if (slot1_pending && !slot1_pending_written) begin
+            pending_bypass_valid = 1'b1;
+            pending_bypass_rd    = slot1_rd_r;
+            pending_bypass_data  = slot1_is_csr_r ? slot1_csr_rdata_r : slot1_data_r;
+        end
+    end
 
-        // ── SA-5: Slot 2 延迟数据写回 (ERR-114: 修复端口占用问题) ──
-        // ERR-114 FIX: 使用任意空闲端口 (原代码要求两端口都空闲, 过度限制)
-        // 上周期被stall的slot 2, 本周期尝试写回
-        if (slot2_pending && !e2_mul_valid && !e2_div_valid) begin
-            if (!regfile_wr_en[0]) begin
-                regfile_wr_en[0]    = 1'b1;
-                regfile_wr_addr[0]  = slot2_rd_r;
-                regfile_wr_data[0]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
-            end else if (!regfile_wr_en[1]) begin
-                regfile_wr_en[1]    = 1'b1;
-                regfile_wr_addr[1]  = slot2_rd_r;
-                regfile_wr_data[1]  = slot2_is_csr_r ? slot2_csr_rdata_r : slot2_data_r;
+    // BUG-009-FIX2: 2nd pending bypass — slot2_pending2 (entry 1)
+    // 独立端口, 解决 bypass 网络只有 1 个 pending 端口时
+    // slot2_pending2 数据无法被转发的问题
+    always_comb begin
+        pending_bypass2_valid = slot2_pending2 && !slot2_pending2_written;
+        pending_bypass2_rd    = slot2_rd_r2;
+        pending_bypass2_data  = slot2_is_csr_r2 ? slot2_csr_rdata_r2 : slot2_data_r2;
+    end
+
+    // ── BUG-009-FIX2: Post-drain state (combinational) ──
+    // 计算 drain + shift 后的 buffer 状态, 用于 always_ff 决定新数据入队位置
+    logic                    pd_e0_valid;
+    logic [4:0]              pd_e0_rd;
+    logic [31:0]             pd_e0_data;
+    logic [31:0]             pd_e0_pc;
+    logic [31:0]             pd_e0_inst;
+    logic                    pd_e0_is_csr;
+    logic [31:0]             pd_e0_csr_rdata;
+    logic                    pd_e1_valid;
+
+    always_comb begin
+        if (slot2_pending && !slot2_pending_written) begin
+            // Entry 0 存活 (未写入), 数据不变
+            pd_e0_valid     = 1'b1;
+            pd_e0_rd        = slot2_rd_r;
+            pd_e0_data      = slot2_data_r;
+            pd_e0_pc        = slot2_pc_r;
+            pd_e0_inst      = slot2_inst_r;
+            pd_e0_is_csr    = slot2_is_csr_r;
+            pd_e0_csr_rdata = slot2_csr_rdata_r;
+            // Entry 1 也存活 (如果未写入), 数据不变
+            pd_e1_valid     = slot2_pending2 && !slot2_pending2_written;
+        end else begin
+            // Entry 0 已写入或为空: entry 1 上移到 entry 0 (如果存活)
+            if (slot2_pending2 && !slot2_pending2_written) begin
+                pd_e0_valid     = 1'b1;
+                pd_e0_rd        = slot2_rd_r2;
+                pd_e0_data      = slot2_data_r2;
+                pd_e0_pc        = slot2_pc_r2;
+                pd_e0_inst      = slot2_inst_r2;
+                pd_e0_is_csr    = slot2_is_csr_r2;
+                pd_e0_csr_rdata = slot2_csr_rdata_r2;
+            end else begin
+                pd_e0_valid     = 1'b0;
+                pd_e0_rd        = 5'h0;
+                pd_e0_data      = 32'h0;
+                pd_e0_pc        = 32'h0;
+                pd_e0_inst      = 32'h0;
+                pd_e0_is_csr    = 1'b0;
+                pd_e0_csr_rdata = 32'h0;
             end
+            // Entry 1 清空 (上移或已写入)
+            pd_e1_valid     = 1'b0;
         end
     end
 
     // ── SA-5: 寄存被stall的slot 2数据 (下周期写回) ──
+    // BUG-009-FIX2: 2-entry buffer 防止数据丢失
+    // 使用 post-drain 组合状态决定新数据入队位置, 避免 shift-up 被覆盖
     always_ff @(posedge clk_core or negedge reset_n) begin
         if (!reset_n) begin
-            slot2_pending     <= 1'b0;
-            slot2_rd_r        <= 5'h0;
-            slot2_data_r      <= 32'h0;
-            slot2_pc_r        <= 32'h0;
-            slot2_inst_r      <= 32'h0;
-            slot2_is_csr_r    <= 1'b0;
-            slot2_csr_rdata_r <= 32'h0;
-        end else if (slot2_need_stall) begin
-            // 捕获本周期被stall的slot 2数据
-            slot2_pending     <= 1'b1;
-            slot2_rd_r        <= w_rd[2];
-            slot2_data_r      <= w_result[2];
-            slot2_pc_r        <= w_pc[2];
-            slot2_inst_r      <= w_inst[2].inst;
-            slot2_is_csr_r    <= (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL);
-            slot2_csr_rdata_r <= csr_rdata;
+            slot2_pending      <= 1'b0;
+            slot2_rd_r         <= 5'h0;
+            slot2_data_r       <= 32'h0;
+            slot2_pc_r         <= 32'h0;
+            slot2_inst_r       <= 32'h0;
+            slot2_is_csr_r     <= 1'b0;
+            slot2_csr_rdata_r  <= 32'h0;
+            slot2_pending2     <= 1'b0;
+            slot2_rd_r2        <= 5'h0;
+            slot2_data_r2      <= 32'h0;
+            slot2_pc_r2        <= 32'h0;
+            slot2_inst_r2      <= 32'h0;
+            slot2_is_csr_r2    <= 1'b0;
+            slot2_csr_rdata_r2 <= 32'h0;
         end else begin
-            // 本周期成功写回 slot 2, 或本周期slot 2不存在, 清除pending
-            slot2_pending     <= 1'b0;
+            // Step 1: 锁存 post-drain 状态
+            slot2_pending      <= pd_e0_valid;
+            slot2_rd_r         <= pd_e0_rd;
+            slot2_data_r       <= pd_e0_data;
+            slot2_pc_r         <= pd_e0_pc;
+            slot2_inst_r       <= pd_e0_inst;
+            slot2_is_csr_r     <= pd_e0_is_csr;
+            slot2_csr_rdata_r  <= pd_e0_csr_rdata;
+
+            slot2_pending2     <= pd_e1_valid;
+            // Entry 1 数据寄存器: 存活时不需更新 (保持原值)
+
+            // Step 2: 新延迟写回入队 (lowest free entry)
+            if (slot2_need_stall) begin
+                if (!pd_e0_valid) begin
+                    // Entry 0 空闲, 保存到 entry 0
+                    slot2_pending      <= 1'b1;
+                    slot2_rd_r         <= w_rd[2];
+                    slot2_data_r       <= w_result[2];
+                    slot2_pc_r         <= w_pc[2];
+                    slot2_inst_r       <= w_inst[2].inst;
+                    slot2_is_csr_r     <= (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL);
+                    slot2_csr_rdata_r  <= csr_rdata;
+                end else if (!pd_e1_valid) begin
+                    // Entry 0 满, entry 1 空闲, 保存到 entry 1
+                    slot2_pending2     <= 1'b1;
+                    slot2_rd_r2        <= w_rd[2];
+                    slot2_data_r2      <= w_result[2];
+                    slot2_pc_r2        <= w_pc[2];
+                    slot2_inst_r2      <= w_inst[2].inst;
+                    slot2_is_csr_r2    <= (w_inst[2].fu_type == FU_MISC && w_inst[2].funct3 != FN_ECALL);
+                    slot2_csr_rdata_r2 <= csr_rdata;
+                end
+                // else: 两个 entry 都满, pending_bypass_stall 应已阻止此情况
+                //       如果仍发生, 写入被丢弃 (与修复前行为一致)
+            end
         end
     end
 
@@ -276,6 +471,9 @@ module lumi_writeback #(
             slot1_inst_r      <= w_inst[1].inst;
             slot1_is_csr_r    <= (w_inst[1].fu_type == FU_MISC && w_inst[1].funct3 != FN_ECALL);
             slot1_csr_rdata_r <= csr_rdata;
+        end else if (slot1_pending && !slot1_pending_written) begin
+            // BUG-009-FIX: slot1_pending 仍未写入 (两端口被占用), 保持等待
+            slot1_pending     <= 1'b1;
         end else begin
             // 本周期成功写回 slot 1 (或无需写回), 清除pending
             // 但仅在 slot1 未被新的 preempt 覆盖时清除
