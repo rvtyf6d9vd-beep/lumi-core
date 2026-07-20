@@ -29,6 +29,7 @@ perf/gem5-model/gem5/
 
 # ── Verilator / 仿真产物 ──
 obj_dir/
+obj_dir_fast/
 build/
 *.vcd
 *.hex
