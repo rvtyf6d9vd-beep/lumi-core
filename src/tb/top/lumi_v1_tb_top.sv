@@ -189,9 +189,13 @@ module lumi_v1_tb_top;
   wire [31:0] v1_dc_wdata      = u_dut.dc_wdata;
   wire [3:0]  v1_dc_be         = u_dut.dc_be;
 
+  // ─── CODE-WR counter ──────────────────────────────────────
+  int code_wr_count;
+
   // ─── SRAM Write Trace: 记录所有 SRAM 写入 ──────────────────
   initial begin
     wait(reset_n);
+    code_wr_count = 0;
     forever begin
       @(posedge clk_core);
       if (v1_dc_valid && v1_dc_we) begin
@@ -205,10 +209,558 @@ module lumi_v1_tb_top;
         if (v1_dc_addr >= 32'h7AB0 && v1_dc_addr < 32'h8300)
           $display("[LIST-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b ready=%0b",
                    cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be, v1_dc_ready);
-        // CODE-SECTION WRITE DETECTOR: any store to code region (0x0000-0x73B7) is suspicious
-        if (v1_dc_addr < 32'h73B8)
-          $display("[CODE-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b",
+        // CODE-SECTION WRITE DETECTOR: .text is 0x0000-0x6A4F (ELF verified)
+        // 0x6A50+ is .rodata/.data/.bss — writes there are legitimate
+        if (v1_dc_addr < 32'h6A50 && code_wr_count < 30) begin
+          code_wr_count = code_wr_count + 1;
+          $display("[CODE-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b cmt_pc0=0x%08h cmt_v=%b",
+                   cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be,
+                   commit_pc_packed[0], commit_valid_all);
+          // Trace M-stage instruction details
+          $display("  M-slot0: pc=0x%08h v=%b fu=%0d inst=0x%08h",
+                   u_dut.gen_single_core.u_core.m_inst_r[0].pc,
+                   u_dut.gen_single_core.u_core.m_valid_r[0],
+                   u_dut.gen_single_core.u_core.m_inst_r[0].fu_type,
+                   u_dut.gen_single_core.u_core.m_inst_r[0].inst);
+          $display("  M-slot1: pc=0x%08h v=%b fu=%0d inst=0x%08h",
+                   u_dut.gen_single_core.u_core.m_inst_r[1].pc,
+                   u_dut.gen_single_core.u_core.m_valid_r[1],
+                   u_dut.gen_single_core.u_core.m_inst_r[1].fu_type,
+                   u_dut.gen_single_core.u_core.m_inst_r[1].inst);
+          $display("  M1-mem:  addr0=0x%08h we0=%b addr1=0x%08h we1=%b",
+                   u_dut.gen_single_core.u_core.u_memory.m1_mem_addr[0],
+                   u_dut.gen_single_core.u_core.u_memory.m1_mem_we[0],
+                   u_dut.gen_single_core.u_core.u_memory.m1_mem_addr[1],
+                   u_dut.gen_single_core.u_core.u_memory.m1_mem_we[1]);
+        end
+      end
+    end
+  end
+
+  // ─── E1-stage store-to-code detection (pre-SRAM-write) ───────
+  // Captures register values before they reach SRAM
+  int e1_code_store_count;
+  initial begin
+    wait(reset_n);
+    e1_code_store_count = 0;
+    forever begin
+      @(posedge clk_core);
+      if (e1_code_store_count < 30 && cycle_count < 200000) begin
+        // Check slot 0
+        if (u_dut.gen_single_core.u_core.e1_mem_we[0] &&
+            u_dut.gen_single_core.u_core.e1_mem_addr[0] < 32'h6A50) begin
+          e1_code_store_count = e1_code_store_count + 1;
+          $display("[E1-CODE-ST] cyc=%0d s0 pc=0x%08h addr=0x%08h rs1=0x%08h imm=%0d data=0x%08h misp=%b",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_inst_r[0].pc,
+                   u_dut.gen_single_core.u_core.e1_mem_addr[0],
+                   u_dut.gen_single_core.u_core.e1_rs1_data_r[0],
+                   $signed(u_dut.gen_single_core.u_core.e1_inst_r[0].imm),
+                   u_dut.gen_single_core.u_core.e1_mem_wdata[0],
+                   u_dut.gen_single_core.u_core.e1_mispredict);
+        end
+        // Check slot 1
+        if (u_dut.gen_single_core.u_core.e1_mem_we[1] &&
+            u_dut.gen_single_core.u_core.e1_mem_addr[1] < 32'h6A50) begin
+          e1_code_store_count = e1_code_store_count + 1;
+          $display("[E1-CODE-ST] cyc=%0d s1 pc=0x%08h addr=0x%08h rs1=0x%08h imm=%0d data=0x%08h misp=%b",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_inst_r[1].pc,
+                   u_dut.gen_single_core.u_core.e1_mem_addr[1],
+                   u_dut.gen_single_core.u_core.e1_rs1_data_r[1],
+                   $signed(u_dut.gen_single_core.u_core.e1_inst_r[1].imm),
+                   u_dut.gen_single_core.u_core.e1_mem_wdata[1],
+                   u_dut.gen_single_core.u_core.e1_mispredict);
+        end
+      end
+    end
+  end
+
+  // ─── Trace mem_busy + e1_mispredict coincidence (Bug#9 fix verification) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 200000 && u_dut.gen_single_core.u_core.u_memory.mem_busy && u_dut.gen_single_core.u_core.e1_mispredict)
+        $display("[BUSY-MISP] cyc=%0d mem_busy=1 e1_mispredict=1 br_pc=0x%08h br_target=0x%08h",
+                 cycle_count, u_dut.gen_single_core.u_core.e1_br_pc, u_dut.gen_single_core.u_core.e1_br_target);
+    end
+  end
+
+  // ─── Trace stores to list_head next pointers (create cycles) ──
+  // list_head range: 0x73D0-0x76E0, next pointers at 8-byte aligned addresses
+  // Catch stores that write a pointer to another node (cycle creation)
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      for (int i = 0; i < 2; i++) begin
+        if (u_dut.gen_single_core.u_core.e1_mem_we[i]) begin
+          automatic logic [31:0] st_addr = u_dut.gen_single_core.u_core.e1_mem_addr[i];
+          automatic logic [31:0] st_data = u_dut.gen_single_core.u_core.e1_mem_wdata[i];
+          // Store to list_head next pointer (8-byte aligned in list_head range)
+          if (st_addr >= 32'h73D0 && st_addr < 32'h76E0 && st_addr[2:0] == 3'h0)
+            $display("[NEXT-PTR-ST] cyc=%0d slot=%0d pc=0x%08h addr=0x%08h data=0x%08h",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                     st_addr, st_data);
+        end
+      end
+    end
+  end
+
+  // ─── Trace pending_bypass_stall and dual-pending events ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (u_dut.gen_single_core.u_core.pending_bypass_stall)
+        $display("[BP-STALL] cyc=%0d s1p=%b s2p=%b s1w=%b s2w=%b s1pre=%b s2ns=%b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_writeback.slot1_pending,
+                 u_dut.gen_single_core.u_core.u_writeback.slot2_pending,
+                 u_dut.gen_single_core.u_core.u_writeback.slot1_pending_written,
+                 u_dut.gen_single_core.u_core.u_writeback.slot2_pending_written,
+                 u_dut.gen_single_core.u_core.u_writeback.slot1_preempted,
+                 u_dut.gen_single_core.u_core.u_writeback.slot2_need_stall);
+    end
+  end
+
+  // ─── Mergesort progress tracker ──
+  // Entry: 0x36c, Exit: 0x890, Pass-end check: 0x5A8
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      // Trace mergesort entry (0x36c committed)
+      for (int i = 0; i < 3; i++) begin
+        if (commit_valid_all[i] && commit_pc_packed[i] == 32'h36c)
+          $display("[MS-ENTRY] cyc=%0d mergesort called", cycle_count);
+        // Trace mergesort exit (0x890 committed)
+        if (commit_valid_all[i] && commit_pc_packed[i] == 32'h890)
+          $display("[MS-EXIT] cyc=%0d mergesort returned", cycle_count);
+        // Trace outer-loop pass end (0x59C committed = lw s2,12(sp) loading nmerges)
+        if (commit_valid_all[i] && commit_pc_packed[i] == 32'h59C)
+          $display("[MS-PASS] cyc=%0d pass end nmerges(s2)=x%08h insize(s6)=x%08h",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.u_writeback.commit_result[i],
+                   32'h0); // s6 not directly available
+      end
+    end
+  end
+
+  // ─── Trace load at 0x4AEC (lw a1, 12(s0) → core_list_init param) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 200000)
+      // Trace E1 stage when load at 0x4AEC executes
+      for (int i = 0; i < 3; i++) begin
+        if (u_dut.gen_single_core.u_core.e1_valid_r[i] &&
+            u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h4AEC) begin
+          $display("[LOAD-4AEC] cyc=%0d slot=%0d addr=0x%08h rs1(s0)=0x%08h imm=%0d",
+                   cycle_count, i,
+                   u_dut.gen_single_core.u_core.e1_mem_addr[i],
+                   u_dut.gen_single_core.u_core.e1_rs1_data_r[i],
+                   $signed(u_dut.gen_single_core.u_core.e1_inst_r[i].imm));
+        end
+      end
+    end
+  end
+
+  // ─── Trace stores writing 0x29A to any address (before cyc 152520) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count < 152520) begin
+        // Check E1 stores for data containing 0x029A
+        for (int i = 0; i < 2; i++) begin
+          if (u_dut.gen_single_core.u_core.e1_mem_we[i]) begin
+            automatic logic [31:0] wd = u_dut.gen_single_core.u_core.e1_mem_wdata[i];
+            if ((wd & 32'h0000_FFFF) == 32'h029A ||
+                ((wd >> 16) & 32'h0000_FFFF) == 32'h029A ||
+                wd == 32'h0000029A) begin
+              $display("[STORE-29A] cyc=%0d slot=%0d pc=0x%08h addr=0x%08h data=0x%08h",
+                       cycle_count, i,
+                       u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                       u_dut.gen_single_core.u_core.e1_mem_addr[i],
+                       wd);
+            end
+          end
+        end
+        // Also trace ALL SRAM writes to word 0x73DC (idx=0x1CF7)
+        if (v1_dc_valid && v1_dc_we && (v1_dc_addr[17:2] == 16'h1CF7)) begin
+          $display("[SRAM-73DC-WR] cyc=%0d addr=0x%08h data=0x%08h be=%04b",
                    cycle_count, v1_dc_addr, v1_dc_wdata, v1_dc_be);
+        end
+      end
+      // Dump SRAM at 0x73DC right before the load
+      if (cycle_count == 152500) begin
+        $display("[SRAM-DUMP] cyc=152500 sram[0x73DC]=0x%08h sram[0x73E8]=0x%08h",
+                 u_dut.v1_sram[32'h73DC >> 2], u_dut.v1_sram[32'h73E8 >> 2]);
+      end
+    end
+  end
+
+  // ─── Trace slot2_pending / slot1_pending data loss (BUG-009-FIX verification) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      // slot2_pending loss: new slot2_need_stall overwrites old un-written pending data
+      if (u_dut.gen_single_core.u_core.u_writeback.slot2_need_stall &&
+          u_dut.gen_single_core.u_core.u_writeback.slot2_pending &&
+          !u_dut.gen_single_core.u_core.u_writeback.slot2_pending_written)
+        $display("[SLOT2-LOSS] cyc=%0d OLD rd=x%0d data=0x%08h | NEW rd=x%0d data=0x%08h pc=0x%08h",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_writeback.slot2_rd_r,
+                 u_dut.gen_single_core.u_core.u_writeback.slot2_data_r,
+                 u_dut.gen_single_core.u_core.u_writeback.w_rd[2],
+                 u_dut.gen_single_core.u_core.u_writeback.w_result[2],
+                 u_dut.gen_single_core.u_core.u_writeback.w_pc[2]);
+      // slot1_pending loss: new slot1_preempted overwrites old un-written pending data
+      if (u_dut.gen_single_core.u_core.u_writeback.slot1_preempted &&
+          u_dut.gen_single_core.u_core.u_writeback.slot1_pending &&
+          !u_dut.gen_single_core.u_core.u_writeback.slot1_pending_written)
+        $display("[SLOT1-LOSS] cyc=%0d OLD rd=x%0d data=0x%08h | NEW rd=x%0d data=0x%08h pc=0x%08h",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_writeback.slot1_rd_r,
+                 u_dut.gen_single_core.u_core.u_writeback.slot1_data_r,
+                 u_dut.gen_single_core.u_core.u_writeback.w_rd[1],
+                 u_dut.gen_single_core.u_core.u_writeback.w_result[1],
+                 u_dut.gen_single_core.u_core.u_writeback.w_pc[1]);
+    end
+  end
+
+  // ─── Trace misaligned PC + branch redirects in ee_printf (0x3a50-0x4400) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      // Trace any branch redirect with target in ee_printf range
+      if (u_dut.gen_single_core.u_core.e1_mispredict ||
+          (u_dut.gen_single_core.u_core.e1_br_taken && !u_dut.gen_single_core.u_core.e1_mispredict)) begin
+        if (u_dut.gen_single_core.u_core.e1_br_target >= 32'h3a50 &&
+            u_dut.gen_single_core.u_core.e1_br_target <= 32'h4400) begin
+          $display("[BR-EE] cyc=%0d br_pc=0x%08h target=0x%08h mispred=%b taken=%b al_2=%b",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_target,
+                   u_dut.gen_single_core.u_core.e1_mispredict,
+                   u_dut.gen_single_core.u_core.e1_br_taken,
+                   u_dut.gen_single_core.u_core.e1_br_target[1:0]);
+        end
+      end
+      // Trace any commit PC that is not 4-byte aligned
+      for (int s = 0; s < 3; s++) begin
+        if (commit_valid_all[s] && commit_pc_packed[s][1:0] != 2'b00) begin
+          $display("[MIS-PC] cyc=%0d s=%0d pc=0x%08h inst=0x%08h",
+                   cycle_count, s, commit_pc_packed[s], commit_inst_packed[s]);
+        end
+      end
+    end
+  end
+
+  // ─── Trace mergesort load/store (cyc 154100-154200) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 154100 && cycle_count <= 154200) begin
+        // Trace E1 loads and stores in mergesort
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.e1_valid_r[i] &&
+              u_dut.gen_single_core.u_core.e1_inst_r[i].pc >= 32'h4dc &&
+              u_dut.gen_single_core.u_core.e1_inst_r[i].pc <= 32'h510) begin
+            $display("[MS-E1] cyc=%0d slot=%0d pc=0x%08h inst=0x%08h fu=%0d rd=%0d rs1=0x%08h rs2=0x%08h mem_we=%b mem_addr=0x%08h mem_wdata=0x%08h",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].inst,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].fu_type,
+                     u_dut.gen_single_core.u_core.e1_rd[i],
+                     u_dut.gen_single_core.u_core.e1_rs1_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_rs2_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_mem_we[i],
+                     u_dut.gen_single_core.u_core.e1_mem_addr[i],
+                     u_dut.gen_single_core.u_core.e1_mem_wdata[i]);
+          end
+        end
+        // Trace M-stage loads (results)
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.m_valid_r[i] &&
+              u_dut.gen_single_core.u_core.m_inst_r[i].fu_type == lumi_pkg::FU_MEM &&
+              !u_dut.gen_single_core.u_core.m_inst_r[i].inst[5]) begin
+            $display("[MS-M-LOAD] cyc=%0d slot=%0d pc=0x%08h rd=%0d result=0x%08h mem_busy=%b bypass_v=%b",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.m_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.m_rd_r[i],
+                     u_dut.gen_single_core.u_core.m_result_r[i],
+                     u_dut.gen_single_core.u_core.mem_busy,
+                     u_dut.gen_single_core.u_core.m_bypass_valid[i]);
+          end
+        end
+        // Trace commit of mergesort instructions
+        for (int i = 0; i < 3; i++) begin
+          if (commit_valid_all[i] &&
+              commit_pc_packed[i] >= 32'h4dc &&
+              commit_pc_packed[i] <= 32'h510) begin
+            $display("[MS-CMT] cyc=%0d slot=%0d pc=0x%08h rd=x%0d data=0x%08h inst=0x%08h",
+                     cycle_count, i,
+                     commit_pc_packed[i],
+                     commit_rd_packed[i],
+                     commit_rd_data_packed[i],
+                     commit_inst_packed[i]);
+          end
+        end
+        // Trace memory stage signals
+        $display("[MS-MEM] cyc=%0d addr_out=0x%08h rdata=0x%08h valid=%b we=%b ready=%b busy=%b state=%0d batch=%b stall_p1=%b pend_p1=%b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_memory.mem_addr_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_rdata_in,
+                 u_dut.gen_single_core.u_core.u_memory.mem_valid_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_we_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_ready_in,
+                 u_dut.gen_single_core.u_core.u_memory.mem_busy,
+                 u_dut.gen_single_core.u_core.u_memory.state_reg,
+                 u_dut.gen_single_core.u_core.u_memory.batch_done,
+                 u_dut.gen_single_core.u_core.u_memory.stall_port1,
+                 u_dut.gen_single_core.u_core.u_memory.pending_port1_r);
+      end
+    end
+  end
+
+  // ─── List structure dump with cycle detection ──
+  // results.0 at 0x73D0, results.list at 0x73D0+0x24=0x73F4 (SRAM idx 0x1CFD)
+  // static_memblk at 0x7418 — list_head nodes (8 bytes each: next + info)
+  // List range: 0x7418 - 0x7520 (32 nodes * 8 bytes)
+  initial begin
+    logic [31:0] cur;
+    logic [63:0] visited;
+    int i;
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count == 153500 || cycle_count == 153600 ||
+          cycle_count == 155000 || cycle_count == 156000 ||
+          cycle_count == 157000 || cycle_count == 158000 ||
+          cycle_count == 159000 || cycle_count == 160000 ||
+          cycle_count == 162000 || cycle_count == 164000 ||
+          cycle_count == 166000 || cycle_count == 168000 ||
+          cycle_count == 170000 || cycle_count == 200000 ||
+          cycle_count == 500000 || cycle_count == 1000000) begin
+        $display("[LIST-DUMP] cyc=%0d", cycle_count);
+        // Read list head pointer from results.list (0x73F4)
+        cur = u_dut.v1_sram[32'h73F4 >> 2];
+        $display("[LIST-DUMP] results.list = 0x%08h", cur);
+        visited = 64'b0;
+        for (i = 0; i < 50; i++) begin
+          if (cur == 0) begin
+            $display("[LIST-DUMP] [%0d] NULL (list end, %0d nodes)", i, i);
+            i = 50; // break
+          end else if (cur < 32'h7418 || cur >= 32'h7600) begin
+            $display("[LIST-DUMP] [%0d] ptr=0x%08h (OUT OF RANGE)", i, cur);
+            i = 50; // break
+          end else begin
+            automatic int node_idx;
+            node_idx = (cur - 32'h7418) >> 3;
+            if (node_idx < 64 && visited[node_idx]) begin
+              $display("[LIST-DUMP] [%0d] node@0x%08h ** CYCLE DETECTED ** (already visited node %0d)",
+                       i, cur, node_idx);
+              i = 50; // break
+            end else begin
+              if (node_idx < 64)
+                visited[node_idx] = 1'b1;
+              $display("[LIST-DUMP] [%0d] node@0x%08h next=0x%08h info=0x%08h",
+                       i, cur,
+                       u_dut.v1_sram[cur >> 2],
+                       u_dut.v1_sram[(cur >> 2) + 1]);
+              cur = u_dut.v1_sram[cur >> 2];
+            end
+          end
+        end
+        // Also dump raw SRAM at static_memblk area
+        $display("[LIST-RAW] cyc=%0d", cycle_count);
+        for (i = 0; i < 40; i++) begin
+          $display("[LIST-RAW] [%0d] addr=0x%08h next=0x%08h info=0x%08h",
+                   i, 32'h7418 + i*8,
+                   u_dut.v1_sram[(32'h7418 >> 2) + i*2],
+                   u_dut.v1_sram[(32'h7418 >> 2) + i*2 + 1]);
+        end
+      end
+    end
+  end
+
+  // ─── M-stage trace for load at 0x4AEC (cyc 152520-152545) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152520 && cycle_count <= 152545) begin
+        // Trace M-stage instructions
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.m_valid_r[i])
+            $display("[M-TRACE] cyc=%0d slot=%0d pc=0x%08h fu=%0d inst=0x%08h rd=%0d",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.m_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.m_inst_r[i].fu_type,
+                     u_dut.gen_single_core.u_core.m_inst_r[i].inst,
+                     u_dut.gen_single_core.u_core.m_rd_r[i]);
+        end
+        // Trace memory stage signals
+        $display("[MEM-TRACE] cyc=%0d addr_out=0x%08h rdata_in=0x%08h valid=%b we=%b ready=%b busy=%b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_memory.mem_addr_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_rdata_in,
+                 u_dut.gen_single_core.u_core.u_memory.mem_valid_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_we_out,
+                 u_dut.gen_single_core.u_core.u_memory.mem_ready_in,
+                 u_dut.gen_single_core.u_core.u_memory.mem_busy);
+        $display("[MEM-TRACE] cyc=%0d m1_addr0=0x%08h m1_we0=%b m1_addr1=0x%08h m1_we1=%b stall_p1=%b pend_p1=%b batch_done=%b",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_memory.m1_mem_addr[0],
+                 u_dut.gen_single_core.u_core.u_memory.m1_mem_we[0],
+                 u_dut.gen_single_core.u_core.u_memory.m1_mem_addr[1],
+                 u_dut.gen_single_core.u_core.u_memory.m1_mem_we[1],
+                 u_dut.gen_single_core.u_core.u_memory.stall_port1,
+                 u_dut.gen_single_core.u_core.u_memory.pending_port1_r,
+                 u_dut.gen_single_core.u_core.u_memory.batch_done);
+        $display("[MEM-TRACE] cyc=%0d fwd0=0x%08h fwd1=0x%08h pipe_res0=0x%08h pipe_res1=0x%08h pipe_res2=0x%08h",
+                 cycle_count,
+                 u_dut.gen_single_core.u_core.u_memory.fwd_load_data[0],
+                 u_dut.gen_single_core.u_core.u_memory.fwd_load_data[1],
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[0],
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[1],
+                 u_dut.gen_single_core.u_core.u_memory.m_pipe_result[2]);
+      end
+    end
+  end
+
+  // ─── Commit trace for rd=a1 (x11) between cyc 152520-152545 ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152520 && cycle_count <= 152545) begin
+        for (int i = 0; i < 3; i++) begin
+          if (commit_valid_all[i] && commit_rd_packed[i] == 5'd11)
+            $display("[COMMIT-A1] cyc=%0d slot=%0d rd=a1 data=0x%08h pc=0x%08h",
+                     cycle_count, i, commit_rd_data_packed[i], commit_pc_packed[i]);
+        end
+      end
+    end
+  end
+
+  // ─── E1 all-slots trace when load at 0x4AEC or JAL at 0x4AF0 is in E1 ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152520 && cycle_count <= 152545) begin
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.e1_valid_r[i] &&
+              (u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h4AEC ||
+               u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h4AF0 ||
+               u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h4AE8))
+            $display("[E1-ALL] cyc=%0d slot=%0d pc=0x%08h fu=%0d valid=%b rd=%0d rs1=0x%08h rs2=0x%08h",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].fu_type,
+                     u_dut.gen_single_core.u_core.e1_valid_r[i],
+                     u_dut.gen_single_core.u_core.e1_rd[i],
+                     u_dut.gen_single_core.u_core.e1_rs1_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_rs2_data_r[i]);
+        end
+      end
+    end
+  end
+
+  // ─── Commit trace for load at 0x4AEC (pc=0x4AEC) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152520 && cycle_count <= 152560) begin
+        for (int i = 0; i < 3; i++) begin
+          if (commit_valid_all[i] && commit_pc_packed[i] == 32'h4AEC)
+            $display("[COMMIT-4AEC] cyc=%0d slot=%0d pc=0x%08h rd=%0d data=0x%08h",
+                     cycle_count, i, commit_pc_packed[i],
+                     commit_rd_packed[i], commit_rd_data_packed[i]);
+        end
+      end
+    end
+  end
+
+  // ─── Trace 0xBD8 commit and 0xC18 E1 details ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152530 && cycle_count <= 152555) begin
+        // Trace commit of 0xBD8 (addi t3, a1, 8)
+        for (int i = 0; i < 3; i++) begin
+          if (commit_valid_all[i] && commit_pc_packed[i] == 32'h0BD8)
+            $display("[COMMIT-BD8] cyc=%0d slot=%0d pc=0x%08h rd=%0d data=0x%08h",
+                     cycle_count, i, commit_pc_packed[i],
+                     commit_rd_packed[i], commit_rd_data_packed[i]);
+        end
+        // Trace ALL mispredictions
+        if (u_dut.gen_single_core.u_core.e1_mispredict)
+          $display("[MISP-ALL] cyc=%0d br_pc=0x%08h br_target=0x%08h mem_busy=%b",
+                   cycle_count,
+                   u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_target,
+                   u_dut.gen_single_core.u_core.u_memory.mem_busy);
+        // Trace 0xC18 in E1
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.e1_valid_r[i] &&
+              u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h0C18)
+            $display("[E1-C18] cyc=%0d slot=%0d pc=0x%08h rs1=0x%08h rs2=0x%08h mem_addr=0x%08h mem_wdata=0x%08h mem_we=%b",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.e1_rs1_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_rs2_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_mem_addr[i],
+                     u_dut.gen_single_core.u_core.e1_mem_wdata[i],
+                     u_dut.gen_single_core.u_core.e1_mem_we[i]);
+        end
+        // Trace 0xBD8 in E1
+        for (int i = 0; i < 3; i++) begin
+          if (u_dut.gen_single_core.u_core.e1_valid_r[i] &&
+              u_dut.gen_single_core.u_core.e1_inst_r[i].pc == 32'h0BD8)
+            $display("[E1-BD8] cyc=%0d slot=%0d pc=0x%08h rs1(a1)=0x%08h rd=%0d result=0x%08h",
+                     cycle_count, i,
+                     u_dut.gen_single_core.u_core.e1_inst_r[i].pc,
+                     u_dut.gen_single_core.u_core.e1_rs1_data_r[i],
+                     u_dut.gen_single_core.u_core.e1_rd[i],
+                     u_dut.gen_single_core.u_core.e1_result[i]);
+        end
+      end
+    end
+  end
+
+  // ─── Trace regfile writes to x28 (t3) and all writes (cyc 152530-152555) ──
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count >= 152530 && cycle_count <= 152555) begin
+        // Trace ALL regfile writes to x28 (t3)
+        for (int p = 0; p < 2; p++) begin
+          if (u_dut.gen_single_core.u_core.rf_wr_en[p] &&
+              u_dut.gen_single_core.u_core.rf_wr_addr[p] == 5'd28)
+            $display("[RF-WR-X28] cyc=%0d port=%0d addr=x28 data=0x%08h",
+                     cycle_count, p, u_dut.gen_single_core.u_core.rf_wr_data[p]);
+        end
+        // Trace ALL regfile writes (any reg) for context
+        for (int p = 0; p < 2; p++) begin
+          if (u_dut.gen_single_core.u_core.rf_wr_en[p])
+            $display("[RF-WR-ALL] cyc=%0d port=%0d addr=x%0d data=0x%08h",
+                     cycle_count, p,
+                     u_dut.gen_single_core.u_core.rf_wr_addr[p],
+                     u_dut.gen_single_core.u_core.rf_wr_data[p]);
+        end
       end
     end
   end
@@ -259,22 +811,42 @@ module lumi_v1_tb_top;
         ptr_store_seen = 1;
         $display("[PTR-STORE] cyc=%0d pc=0x4DB8 COMMITTED", cycle_count);
       end
-      // Task 1.1 + 1.3: 追踪 misprediction redirect target
-      if (cycle_count >= 186300 && cycle_count <= 186340) begin
-        if (u_dut.gen_single_core.u_core.e1_mispredict) begin
-          $display("[MISP] cyc=%0d br_pc=0x%08h br_taken=%0b br_target=0x%08h pred_taken=%0b",
-                   cycle_count,
-                   u_dut.gen_single_core.u_core.e1_br_pc,
+      // Task 1.1 + 1.3: 追踪 misprediction (ERR-131L-FIX: cyc 152500-152525)
+      if (cycle_count >= 1000000 && cycle_count <= 100050) begin
+        if (u_dut.gen_single_core.u_core.e1_mispredict)
+          $display("[MISP] cyc=%0d br_pc=0x%08h taken=%0b tgt=0x%08h pred_t=%0b pred_tgt_r=0x%08h",
+                   cycle_count, u_dut.gen_single_core.u_core.e1_br_pc,
                    u_dut.gen_single_core.u_core.e1_br_taken,
                    u_dut.gen_single_core.u_core.e1_br_target,
-                   u_dut.gen_single_core.u_core.e1_pred_taken_r);
-        end
-        if (u_dut.gen_single_core.u_core.e1_br_taken && !u_dut.gen_single_core.u_core.e1_mispredict) begin
-          $display("[BR-TAKEN] cyc=%0d br_pc=0x%08h br_target=0x%08h",
-                   cycle_count,
-                   u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_pred_taken_r,
+                   u_dut.gen_single_core.u_core.e1_pred_target_r);
+        if (u_dut.gen_single_core.u_core.e1_br_taken && !u_dut.gen_single_core.u_core.e1_mispredict)
+          $display("[BR-OK] cyc=%0d br_pc=0x%08h tgt=0x%08h",
+                   cycle_count, u_dut.gen_single_core.u_core.e1_br_pc,
                    u_dut.gen_single_core.u_core.e1_br_target);
-        end
+        if (commit_valid_all[0])
+          $display("[CMT] cyc=%0d pc0=0x%08h", cycle_count, commit_pc_packed[0]);
+        if (commit_valid_all[1])
+          $display("[CMT] cyc=%0d pc1=0x%08h", cycle_count, commit_pc_packed[1]);
+      end
+      if (cycle_count >= 152500 && cycle_count <= 152525) begin
+        if (u_dut.gen_single_core.u_core.e1_mispredict)
+          $display("[MISP] cyc=%0d br_pc=0x%08h taken=%0b tgt=0x%08h pred_t=%0b pred_tgt_r=0x%08h",
+                   cycle_count, u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_taken,
+                   u_dut.gen_single_core.u_core.e1_br_target,
+                   u_dut.gen_single_core.u_core.e1_pred_taken_r,
+                   u_dut.gen_single_core.u_core.e1_pred_target_r);
+        if (u_dut.gen_single_core.u_core.e1_br_taken && !u_dut.gen_single_core.u_core.e1_mispredict)
+          $display("[BR-OK] cyc=%0d br_pc=0x%08h tgt=0x%08h",
+                   cycle_count, u_dut.gen_single_core.u_core.e1_br_pc,
+                   u_dut.gen_single_core.u_core.e1_br_target);
+        if (commit_valid_all[0])
+          $display("[CMT] cyc=%0d pc0=0x%08h", cycle_count, commit_pc_packed[0]);
+        if (commit_valid_all[1])
+          $display("[CMT] cyc=%0d pc1=0x%08h", cycle_count, commit_pc_packed[1]);
+        if (u_dut.gen_single_core.u_core.di_flush_gated)
+          $display("[DIBF] cyc=%0d", cycle_count);
       end
       // 检查 pointer store 是否在 CODE-WR 之前被 commit
       if (!ptr_store_seen && cycle_count == 186338) begin
@@ -880,6 +1452,38 @@ module lumi_v1_tb_top;
              32'h7A98 >> 2, u_dut.v1_sram[32'h7A98 >> 2]);
     $display("[SEED-CHK] sram[0x7A9C/4=%0d] = 0x%08h (expect 0x00000066)",
              32'h7A9C >> 2, u_dut.v1_sram[32'h7A9C >> 2]);
+  end
+
+  // ─── ERR-131L-FIX: 周期性 PC trace + 全局 MISP 计数器 ──────────
+  wire w_e1_mispredict = u_dut.gen_single_core.u_core.e1_mispredict;
+  wire w_e1_br_taken    = u_dut.gen_single_core.u_core.e1_br_taken;
+  int unsigned g_mispredict_count;
+  int unsigned g_br_taken_count;
+  int unsigned g_dib_flush_count;
+  wire w_di_flush_gated  = u_dut.gen_single_core.u_core.di_flush_gated;
+
+  always_ff @(posedge clk_core or negedge reset_n) begin
+    if (!reset_n) begin
+      g_mispredict_count <= 0;
+      g_br_taken_count   <= 0;
+      g_dib_flush_count  <= 0;
+    end else begin
+      if (w_e1_mispredict) g_mispredict_count <= g_mispredict_count + 1;
+      if (w_e1_br_taken)   g_br_taken_count   <= g_br_taken_count + 1;
+      if (w_di_flush_gated) g_dib_flush_count  <= g_dib_flush_count + 1;
+    end
+  end
+
+  initial begin
+    wait(reset_n);
+    forever begin
+      @(posedge clk_core);
+      if (cycle_count > 0 && (cycle_count % 500000) == 0) begin
+        $display("[PERIODIC] cyc=%0d pc0=0x%08h pc1=0x%08h pc2=0x%08h v=%b misp=%0d br_t=%0d dibf=%0d",
+                 cycle_count, commit_pc_packed[0], commit_pc_packed[1], commit_pc_packed[2],
+                 commit_valid_all, g_mispredict_count, g_br_taken_count, g_dib_flush_count);
+      end
+    end
   end
 
 endmodule

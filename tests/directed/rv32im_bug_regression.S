@@ -1,12 +1,15 @@
 # =================================================================
-# RV32IM Bug Regression Test — 17 个 RTL Bug 回归测试
-# 覆盖: ERR-115~ERR-131 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
+# RV32IM Bug Regression Test — 21 个 RTL Bug 回归测试
+# 覆盖: ERR-115~ERR-135 (Bug-MUL-BP/M-BPV/E1LU/DIV-P/MP-PRE/
 #        NT-REDIR/LTAGE-NT/BTB-OVR/EXC-PROP/TRAP-FL/IRQ-MIE/
-#        STP1-DUP/PFHR/REM/TRAP-BATCH/DUAL-LD/FLUSH-PD)
-# 8 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
-#          TC-3(误预测指令保留) TC-4(LTAGE+BTB)
-#          TC-5(EBREAK/ECALL trap) TC-6(双MEM不重复提交)
-#          TC-7(双 load 端口串行化) TC-8(分支末尾指令保持)
+#        STP1-DUP/PFHR/REM/TRAP-BATCH/DUAL-LD/FLUSH-PD/
+#        PEND-BYP/STL-FWD/SLOT2-OVF/BYP2-PORT)
+# 12 个 TC: TC-1(MUL/DIV旁路) TC-2(stall+load-use)
+#           TC-3(误预测指令保留) TC-4(LTAGE+BTB)
+#           TC-5(EBREAK/ECALL trap) TC-6(双MEM不重复提交)
+#           TC-7(双 load 端口串行化) TC-8(分支末尾指令保持)
+#           TC-9(3-wide pending bypass) TC-10(store-to-load fwd)
+#           TC-11(slot2 连续写回) TC-12(双 pending bypass)
 # Pass: a0=0 ECALL | Fail: a0=1 ECALL (sig 区记录失败 TC 号)
 # Compile: riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -nostdlib
 # =================================================================
@@ -468,15 +471,210 @@ tc8_odd_ok:
     sw      t0, 184(sp)
 
     # ══════════════════════════════════════════════════════════
+    # TC-9: ERR-132 — 3-wide RAW bypass (pending write)
+    # 验证: slot 2 结果被延迟写回时, bypass 仍能转发正确值
+    # 3 条连续 ALU 写不同寄存器, 第 4 条读第 3 条 (slot 2) 结果
+    # ══════════════════════════════════════════════════════════
+tc9_start:
+    # 连续 3 条 ALU — 处理器 3-wide 发射时 slot 2 可能被延迟
+    addi    a0, x0, 100         # slot 0: a0 = 100
+    addi    a1, x0, 200         # slot 1: a1 = 200
+    addi    a2, x0, 300         # slot 2: a2 = 300 (可能被延迟写回)
+    # 紧接依赖 a2 (slot 2 结果) — 必须通过 pending_bypass 获取
+    add     a3, a2, a0          # a3 = a2 + a0 = 400
+    li      a4, 400
+    beq     a3, a4, tc9_ok1
+    addi    s0, s0, 1
+    sw      a3, 196(sp)         # sig: TC-9 basic fail
+    j       test_fail
+tc9_ok1:
+    # 链式依赖: slot 2 结果 → 下一条 → 再下一条
+    addi    a5, x0, 7
+    addi    a6, x0, 8
+    addi    a7, x0, 9           # slot 2: a7 = 9
+    add     t0, a7, a5          # t0 = 9 + 7 = 16 (依赖 slot 2)
+    add     t1, t0, a6          # t1 = 16 + 8 = 24 (链式)
+    li      t2, 24
+    beq     t1, t2, tc9_ok2
+    addi    s0, s0, 1
+    sw      t1, 200(sp)         # sig: TC-9 chain fail
+    j       test_fail
+tc9_ok2:
+    # PASS TC-9 marker
+    li      t0, 9
+    sw      t0, 204(sp)
+
+    # ══════════════════════════════════════════════════════════
+    # TC-10: ERR-133 — Store-to-Load 转发方向
+    # 验证: store 后 load 同地址获得正确值;
+    #       older store 转发给 younger load 正确
+    # ══════════════════════════════════════════════════════════
+tc10_start:
+    li      t0, 0x1800          # 使用 sig 区外的地址 (避免干扰)
+    # 先写一个已知值
+    li      t1, 0xBEEF
+    sw      t1, 0(t0)           # mem[0x1800] = 0xBEEF
+    nop
+    nop
+    # 基本 store→load 转发
+    li      t2, 0xDEAD
+    sw      t2, 0(t0)           # store 0xDEAD
+    lw      t3, 0(t0)           # load — 应得到 0xDEAD (转发或 SRAM)
+    li      t4, 0xDEAD
+    beq     t3, t4, tc10_ok1
+    addi    s0, s0, 1
+    sw      t3, 208(sp)         # sig: TC-10 basic fwd fail
+    j       test_fail
+tc10_ok1:
+    # 连续 store+load 不同偏移
+    li      t5, 0x1234
+    sw      t5, 4(t0)           # mem[0x1804] = 0x1234
+    li      t6, 0x5678
+    sw      t6, 8(t0)           # mem[0x1808] = 0x5678
+    lw      a0, 4(t0)           # load 0x1804
+    lw      a1, 8(t0)           # load 0x1808
+    li      a2, 0x1234
+    beq     a0, a2, tc10_ok2a
+    addi    s0, s0, 1
+    sw      a0, 212(sp)
+    j       test_fail
+tc10_ok2a:
+    li      a2, 0x5678
+    beq     a1, a2, tc10_ok2
+    addi    s0, s0, 1
+    sw      a1, 216(sp)
+    j       test_fail
+tc10_ok2:
+    # PASS TC-10 marker
+    li      t0, 10
+    sw      t0, 220(sp)
+
+    # ══════════════════════════════════════════════════════════
+    # TC-11: ERR-134 — 连续 3-wide 写回不丢失
+    # 验证: 多轮 3 条 ALU 连续发射, 所有寄存器最终值正确
+    #       (slot2_pending 不丢失数据)
+    # ══════════════════════════════════════════════════════════
+tc11_start:
+    # 8 轮, 每轮 3 条 addi 累加到 a0/a1/a2
+    li      a0, 0
+    li      a1, 0
+    li      a2, 0
+    # Round 1
+    addi    a0, a0, 1           # slot 0
+    addi    a1, a1, 10          # slot 1
+    addi    a2, a2, 100         # slot 2
+    # Round 2
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 3
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 4
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 5
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 6
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 7
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+    # Round 8
+    addi    a0, a0, 1
+    addi    a1, a1, 10
+    addi    a2, a2, 100
+
+    # 验证: a0=8, a1=80, a2=800
+    li      t0, 8
+    beq     a0, t0, tc11_ok1
+    addi    s0, s0, 1
+    sw      a0, 224(sp)         # sig: TC-11 a0 fail
+    j       test_fail
+tc11_ok1:
+    li      t0, 80
+    beq     a1, t0, tc11_ok2
+    addi    s0, s0, 1
+    sw      a1, 228(sp)         # sig: TC-11 a1 fail
+    j       test_fail
+tc11_ok2:
+    li      t0, 800
+    beq     a2, t0, tc11_ok3
+    addi    s0, s0, 1
+    sw      a2, 232(sp)         # sig: TC-11 a2 fail
+    j       test_fail
+tc11_ok3:
+    # PASS TC-11 marker
+    li      t0, 11
+    sw      t0, 236(sp)
+
+    # ══════════════════════════════════════════════════════════
+    # TC-12: ERR-135 — 双 pending bypass 正确性
+    # 验证: MUL 占用 E2 + 3-wide ALU 制造 slot1/slot2 延迟,
+    #       后续指令通过 pending_bypass/pending_bypass2 获取正确值
+    # ══════════════════════════════════════════════════════════
+tc12_start:
+    # 准备 MUL 操作数
+    li      a0, 6
+    li      a1, 7
+    # MUL 占用 E2 端口 (抢占 port 1)
+    # 同批次 3 条 ALU: slot 0→port 0, slot 1→被抢占, slot 2→无端口
+    mul     t0, a0, a1          # t0 = 42, E2 占用 port 1
+    addi    t1, x0, 111         # slot 0 → port 0: t1 = 111
+    addi    t2, x0, 222         # slot 1 → 被 E2 抢占 → slot1_pending
+    addi    t3, x0, 333         # slot 2 → 无端口 → slot2_pending
+    # 依赖 t3 (slot2_pending) 和 t1 (port 0 正常写回)
+    add     t4, t3, t1          # t4 = 333 + 111 = 444
+    li      t5, 444
+    beq     t4, t5, tc12_ok1
+    addi    s0, s0, 1
+    sw      t4, 240(sp)         # sig: TC-12 slot2 bypass fail
+    j       test_fail
+tc12_ok1:
+    # 依赖 t2 (slot1_pending)
+    add     t5, t2, t0          # t5 = 222 + 42 = 264
+    li      t6, 264
+    beq     t5, t6, tc12_ok2
+    addi    s0, s0, 1
+    sw      t5, 244(sp)         # sig: TC-12 slot1 bypass fail
+    j       test_fail
+tc12_ok2:
+    # 第二轮: 连续 MUL + ALU 制造双 pending
+    li      a0, 3
+    li      a1, 4
+    mul     a2, a0, a1          # a2 = 12, E2 占用
+    addi    a3, x0, 555         # slot 0 → port 0
+    addi    a4, x0, 666         # slot 1 → slot1_pending
+    addi    a5, x0, 777         # slot 2 → slot2_pending
+    # 依赖 a5 (slot2_pending) — 必须通过 pending_bypass 获取
+    add     a6, a5, a3          # a6 = 777 + 555 = 1332
+    li      a7, 1332
+    beq     a6, a7, tc12_ok3
+    addi    s0, s0, 1
+    sw      a6, 248(sp)         # sig: TC-12 round2 fail
+    j       test_fail
+tc12_ok3:
+    # PASS TC-12 marker
+    li      t0, 12
+    sw      t0, 252(sp)
+
+    # ══════════════════════════════════════════════════════════
     # All tests passed!
     # ══════════════════════════════════════════════════════════
     li      t0, 0x55AA
-    sw      t0, 188(sp)         # PASS marker
+    sw      t0, 256(sp)         # PASS marker
 
     li      a0, 0
     ecall
 
 test_fail:
-    sw      s0, 192(sp)         # total fail count
+    sw      s0, 260(sp)         # total fail count
     li      a0, 1
     ecall
