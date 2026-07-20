@@ -225,10 +225,21 @@ module lumi_scoreboard #(
         end
       end
       // Store-to-0x3FFE0 detection (Task 4.1)
+      // BUG-FIX: 仅在 magic=0xDEADBEEF 或 0xDEAD0001 时触发 test_done
+      // 之前的实现在任何写入 0x3FFE0 时触发, 导致栈写入误触发
       if (v1_dc_valid && v1_dc_we && v1_dc_addr == 32'h3FFE0 && !test_done) begin
-        test_done <= 1'b1;
-        exit_code <= 32'h0; // PASS
-        $display("[SB] STORE-to-0x3FFE0 detected: magic=0x%08h", v1_dc_wdata);
+        if (v1_dc_wdata == 32'hDEADBEEF) begin
+          test_done <= 1'b1;
+          exit_code <= 32'h0; // PASS
+          $display("[SB] STORE-to-0x3FFE0: magic=0xDEADBEEF (benchmark complete)");
+        end else if (v1_dc_wdata == 32'hDEAD0001) begin
+          test_done <= 1'b1;
+          exit_code <= 32'hFFFF_FFFF; // TRAP
+          $display("[SB] STORE-to-0x3FFE0: magic=0xDEAD0001 (trap)");
+        end else begin
+          $display("[SB] STORE-to-0x3FFE0 (non-magic): data=0x%08h cyc=%0d pc0=0x%08h",
+                   v1_dc_wdata, cycle_cnt, commit_pc[0]);
+        end
       end
     end // if (!test_done)
     end // else begin
